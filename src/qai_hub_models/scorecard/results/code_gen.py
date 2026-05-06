@@ -38,6 +38,7 @@ from qai_hub_models.scorecard.results.performance_summary import (
     ModelPerfSummary,
     ProfileScorecardJob,
 )
+from qai_hub_models.utils.device import DevicesAndChipsetsYaml
 from qai_hub_models.utils.numerics_yaml import QAIHMModelNumerics
 from qai_hub_models.utils.testing_export_eval import QAIHMModelReleaseAssets
 
@@ -459,7 +460,12 @@ def remove_perf_failures(
                 }
                 if path_perf:
                     performance_metrics[device] = path_perf
-                    supported_chipsets.update(device.extended_supported_chipsets)
+                    if device.available_in_hub:
+                        supported_chipsets.update(device.extended_supported_chipsets)
+                    else:
+                        yaml = DevicesAndChipsetsYaml.load()
+                        if details := yaml.devices.get(device.reference_device_name):
+                            supported_chipsets.add(details.chipset)
 
             universal_assets = {
                 path: copy.deepcopy(component_details.universal_assets[path])
