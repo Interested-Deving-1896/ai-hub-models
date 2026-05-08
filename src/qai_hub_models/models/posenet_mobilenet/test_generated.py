@@ -125,7 +125,6 @@ def test_pre_quantize_compile() -> None:
         compile_model,
         MODEL_ID,
         Model.from_pretrained(),
-        EVAL_DEVICE,
     )
 
 
@@ -144,7 +143,6 @@ def test_quantize(precision: Precision) -> None:
             MODEL_ID,
             Model.from_pretrained(),
             precision,
-            EVAL_DEVICE,
         )
     except CachedScorecardJobError as e:
         pytest.skip(str(e))

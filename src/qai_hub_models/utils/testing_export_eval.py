@@ -509,7 +509,6 @@ def pre_quantize_compile_via_export(
     ],
     model_id: str,
     model: CollectionModel | BaseModel,
-    device: ScorecardDevice,
 ) -> None:
     """
     Use the provided export script function to submit ONNX compile jobs (before quantization).
@@ -530,15 +529,13 @@ def pre_quantize_compile_via_export(
         Model ID.
     model
         QAIHM instance of the model.
-    device
-        Scorecard device.
 
     """
     # Run ONNX compile jobs
     compile_output = compile_model(
         model,
         model_id,
-        device.execution_device,
+        cs_universal.execution_device,
         TargetRuntime.ONNX,
         Precision.float,
     )
@@ -552,7 +549,7 @@ def pre_quantize_compile_via_export(
             job,
             Precision.float,
             ScorecardCompilePath.ONNX_FOR_QUANTIZATION,
-            device,
+            cs_universal,
             component,
             graph_name,
         )
@@ -563,7 +560,6 @@ def quantize_via_export(
     model_id: str,
     model: CollectionModel | BaseModel,
     precision: Precision,
-    device: ScorecardDevice,
 ) -> None:
     """
     Use the provided export script function to submit quantize jobs.
@@ -586,8 +582,6 @@ def quantize_via_export(
         QAIHM instance of the model.
     precision
         Model precision.
-    device
-        Scorecard device.
 
     """
     # Fetch ONNX compile jobs from pre_quantize_compile_via_export
@@ -597,7 +591,7 @@ def quantize_via_export(
         model_id,
         Precision.float,
         ScorecardCompilePath.ONNX_FOR_QUANTIZATION,
-        device,
+        cs_universal,
         model.component_class_names if isinstance(model, CollectionModel) else None,
         raise_if_not_successful=True,
     )
@@ -608,7 +602,7 @@ def quantize_via_export(
                 model_id,
                 precision,
                 ScorecardCompilePath.ONNX_FOR_QUANTIZATION,
-                device,
+                cs_universal,
             )
         )
 
@@ -639,7 +633,9 @@ def quantize_via_export(
 
     # Verify success or cache job IDs to a file.
     for component, job in quantize_jobs.items():
-        assert_success_or_cache_job(model_id, job, precision, None, device, component)
+        assert_success_or_cache_job(
+            model_id, job, precision, None, cs_universal, component
+        )
 
 
 def compile_via_export(
