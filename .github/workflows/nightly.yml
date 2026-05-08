@@ -46,7 +46,7 @@ jobs:
         enable_compile_tests: true
         python_version: "3.10"
         models: ${{ inputs.models || 'pytorch' }}
-        deployment: dev
+        deployment: prod
         generate_test_summary: false
 
     run-tests311:
@@ -58,7 +58,7 @@ jobs:
         enable_compile_tests: false
         python_version: "3.11"
         models: ${{ inputs.models || 'pytorch' }}
-        deployment: dev
+        deployment: prod
         generate_test_summary: false
 
     run-tests312:
@@ -70,7 +70,7 @@ jobs:
         enable_compile_tests: false
         python_version: "3.12"
         models: ${{ inputs.models || 'pytorch' }}
-        deployment: dev
+        deployment: prod
         generate_test_summary: false
 
     run-tests313:
@@ -82,7 +82,7 @@ jobs:
         enable_compile_tests: false
         python_version: "3.13"
         models: ${{ inputs.models || 'pytorch' }}
-        deployment: dev
+        deployment: prod
         generate_test_summary: false
 
     generate_test_summary:
