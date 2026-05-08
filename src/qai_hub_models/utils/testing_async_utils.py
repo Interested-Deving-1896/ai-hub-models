@@ -25,10 +25,7 @@ from qai_hub_models.scorecard import (
     ScorecardDevice,
     ScorecardProfilePath,
 )
-from qai_hub_models.scorecard.artifacts import (
-    ScorecardArtifact,
-    get_async_test_job_cache_artifact,
-)
+from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.device import cs_universal
 from qai_hub_models.scorecard.envvars import (
     DisableWorkbenchJobTimeoutEnvvar,
@@ -37,8 +34,9 @@ from qai_hub_models.scorecard.errors import CachedScorecardJobError
 from qai_hub_models.scorecard.execution_helpers import get_async_job_cache_name
 from qai_hub_models.scorecard.results.scorecard_job import ScorecardJob
 from qai_hub_models.scorecard.results.yaml import (
+    CompileScorecardJobYaml,
     ScorecardJobYaml,
-    get_scorecard_job_yaml,
+    get_scorecard_job_yaml_type,
 )
 from qai_hub_models.utils.asset_loaders import load_yaml, qaihm_temp_dir
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
@@ -165,12 +163,12 @@ def assert_success_or_cache_job(
         return  # For models where precision varies per-component, some components may not have jobs (e.g., float components in quantization)
 
     assert job is not None
-    cache_path = get_async_test_job_cache_artifact(job._job_type).path
-    cache = get_scorecard_job_yaml(job_type=job._job_type)
+    yaml_type = get_scorecard_job_yaml_type(job._job_type)
+    cache = yaml_type()
     cache.set_job_id(
         job.job_id, path, model_id, device, precision, component, graph_name
     )
-    cache.to_file(cache_path, append=True)
+    cache.to_file(yaml_type.ARTIFACT_TYPE.path, append=True)
 
 
 @overload
@@ -306,8 +304,11 @@ def fetch_async_test_job(
     if isinstance(cache_path, ScorecardJobYaml):
         job_yaml = cache_path
     else:
-        job_yaml = get_scorecard_job_yaml(
-            job_type, cache_path or get_async_test_job_cache_artifact(job_type).path
+        yaml_type = get_scorecard_job_yaml_type(job_type)
+        job_yaml = (
+            yaml_type.from_file(cache_path, create_empty_if_no_file=True)
+            if cache_path
+            else yaml_type.from_test_artifacts()
         )
     scorecard_job: ScorecardJob = job_yaml.get_job(
         path,
@@ -491,8 +492,11 @@ def fetch_async_test_jobs(
 
     # Parse the YAML cache file once, rather than re-reading it per component.
     if not isinstance(cache_path, ScorecardJobYaml):
-        cache_path = get_scorecard_job_yaml(
-            job_type, cache_path or get_async_test_job_cache_artifact(job_type).path
+        yaml_type = get_scorecard_job_yaml_type(job_type)
+        cache_path = (
+            yaml_type.from_file(cache_path, create_empty_if_no_file=True)
+            if cache_path
+            else yaml_type.from_test_artifacts()
         )
 
     def _fetch(
@@ -684,7 +688,7 @@ class CompileJobsAreIdenticalCache(BaseQAIHMConfig):
                 path,
                 device,
                 component_names,
-                ScorecardArtifact.COMPILE_YAML.intermediates_path,
+                CompileScorecardJobYaml.from_intermediates(),
             )
 
             current_compile_jobs = fetch_async_test_jobs(

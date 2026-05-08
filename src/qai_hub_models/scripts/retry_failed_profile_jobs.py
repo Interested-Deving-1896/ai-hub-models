@@ -286,7 +286,7 @@ def main() -> None:
     print(f"Loading profile jobs from: {profile_jobs_file}")
 
     # Load the profile jobs YAML
-    profile_yaml = ProfileScorecardJobYaml.from_file(profile_jobs_file)
+    profile_yaml = ProfileScorecardJobYaml.from_test_artifacts()
 
     hub_client = get_scorecard_client_or_raise(args.deployment)
     print(f"Successfully initialized Hub client for deployment: {args.deployment}")
@@ -485,8 +485,8 @@ def main() -> None:
 
     # Save the updated YAML if changes were made
     if changes_made:
-        print(f"Saving updated profile jobs YAML to: {profile_jobs_file}")
-        profile_yaml.to_file(profile_jobs_file)
+        print(f"Saving updated profile jobs YAML to: {profile_yaml.path}")
+        profile_yaml.to_file()
         print("Profile jobs YAML updated with new job IDs")
 
     # Write flaky jobs info to output file if specified

@@ -152,7 +152,7 @@ if __name__ == "__main__":
                 )
             except UserError as e:
                 print(f"Failed to submit compile job for model `{config.id}`: {e}")
-        compile_results.to_file(compile_ids)
+        compile_results.to_file()
 
     elif enable_profile or enable_inference:
         compile_results = CompileScorecardJobYaml.from_file(
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                 )
             except UserError as e:
                 print(f"Failed to submit profile job for model `{config.id}`: {e}")
-        profile_results.to_file(profile_ids)
+        profile_results.to_file()
 
     if enable_inference:
         assert compile_results  # for mypy
@@ -209,4 +209,4 @@ if __name__ == "__main__":
                 )
             except UserError as e:
                 print(f"Failed to submit inference job for model `{config.id}`: {e}")
-        inference_results.to_file(inference_ids)
+        inference_results.to_file()

@@ -182,9 +182,7 @@ and success is validated all at once in the end using these tests.
     reason="No quantize jobs file found",
 )
 def test_quantize_jobs_success() -> None:
-    job_ids = QuantizeScorecardJobYaml.from_file(
-        ScorecardArtifact.QUANTIZE_YAML.path
-    ).job_id_mapping
+    job_ids = QuantizeScorecardJobYaml.from_test_artifacts().job_id_mapping
     _verify_jobs_successful(job_ids, "quantize")
 
 
@@ -193,9 +191,7 @@ def test_quantize_jobs_success() -> None:
     reason="No compile jobs file found",
 )
 def test_compile_jobs_success() -> None:
-    job_ids = CompileScorecardJobYaml.from_file(
-        ScorecardArtifact.COMPILE_YAML.path
-    ).job_id_mapping
+    job_ids = CompileScorecardJobYaml.from_test_artifacts().job_id_mapping
     _verify_jobs_successful(job_ids, "compile")
 
 
@@ -204,9 +200,7 @@ def test_compile_jobs_success() -> None:
     reason="No link jobs file found",
 )
 def test_link_jobs_success() -> None:
-    job_ids = LinkScorecardJobYaml.from_file(
-        ScorecardArtifact.LINK_YAML.path
-    ).job_id_mapping
+    job_ids = LinkScorecardJobYaml.from_test_artifacts().job_id_mapping
     _verify_jobs_successful(job_ids, "link")
 
 
@@ -214,9 +208,7 @@ def test_link_jobs_success() -> None:
     not ScorecardArtifact.PROFILE_YAML.exists(), reason="No profile jobs found"
 )
 def test_profile_jobs_success() -> None:
-    job_ids = ProfileScorecardJobYaml.from_file(
-        ScorecardArtifact.PROFILE_YAML.path
-    ).job_id_mapping
+    job_ids = ProfileScorecardJobYaml.from_test_artifacts().job_id_mapping
     _verify_jobs_successful(job_ids, "profile")
 
 
@@ -224,7 +216,5 @@ def test_profile_jobs_success() -> None:
     not ScorecardArtifact.INFERENCE_YAML.exists(), reason="No inference jobs found"
 )
 def test_inference_jobs_success() -> None:
-    job_ids = InferenceScorecardJobYaml.from_file(
-        ScorecardArtifact.INFERENCE_YAML.path
-    ).job_id_mapping
+    job_ids = InferenceScorecardJobYaml.from_test_artifacts().job_id_mapping
     _verify_jobs_successful(job_ids, "inference")

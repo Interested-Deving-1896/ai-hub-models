@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Generic, Literal, TypeVar, overload
+from typing import ClassVar, Generic, TypeVar
 
 import qai_hub as hub
 import ruamel.yaml
@@ -20,6 +20,7 @@ from qai_hub_models.configs.release_assets_yaml import (
 )
 from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.models.common import Precision
+from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.device import ScorecardDevice, cs_universal
 from qai_hub_models.scorecard.execution_helpers import (
     get_async_job_cache_name,
@@ -88,28 +89,49 @@ class ToolVersionsByPathYaml(BaseQAIHMConfig):
 class ScorecardJobYaml(
     Generic[ScorecardJobTypeVar, ScorecardPathOrNoneTypeVar, ModelSummaryTypeVar]
 ):
+    ARTIFACT_TYPE: ClassVar[ScorecardArtifact]
     scorecard_job_type: type[ScorecardJobTypeVar]
     scorecard_path_type: type[ScorecardPathOrNoneTypeVar]
     scorecard_model_summary_type: type[ModelSummaryTypeVar]
 
-    def __init__(self, job_id_mapping: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        job_id_mapping: dict[str, str] | None = None,
+        path: str | os.PathLike | None = None,
+    ) -> None:
         self.job_id_mapping = job_id_mapping or {}
+        self.path = Path(path) if path else None
+        assert hasattr(self, "ARTIFACT_TYPE"), (
+            f"{type(self)} does not define classvar ARTIFACT_TYPE"
+        )
 
     @classmethod
     def from_file(
-        cls, config_path: str | Path, create_empty_if_no_file: bool = False
+        cls, config_path: str | os.PathLike, create_empty_if_no_file: bool = False
     ) -> Self:
         """Read yaml files."""
         if not os.path.exists(config_path):
             if create_empty_if_no_file:
-                return cls()
+                return cls(path=config_path)
             raise FileNotFoundError(f"File not found with job ids at {config_path}")
 
         yaml = ruamel.yaml.YAML()
         with open(config_path) as file:
-            return cls(yaml.load(file))
+            return cls(yaml.load(file), config_path)
 
-    def to_file(self, path: str | Path, append: bool = False) -> None:
+    @classmethod
+    def from_intermediates(cls) -> Self:
+        return cls.from_file(
+            cls.ARTIFACT_TYPE.intermediates_path, create_empty_if_no_file=True
+        )
+
+    @classmethod
+    def from_test_artifacts(cls) -> Self:
+        return cls.from_file(cls.ARTIFACT_TYPE.path, create_empty_if_no_file=True)
+
+    def to_file(self, path: str | Path | None = None, append: bool = False) -> None:
+        path = path or self.path
+        assert path is not None
         if len(self.job_id_mapping) > 0:
             with open(path, "a" if append else "w") as yaml_file:
                 ruamel.yaml.YAML().dump(self.job_id_mapping, yaml_file)
@@ -312,6 +334,7 @@ class ScorecardJobYaml(
 class QuantizeScorecardJobYaml(
     ScorecardJobYaml[QuantizeScorecardJob, None, ModelQuantizeSummary]
 ):
+    ARTIFACT_TYPE = ScorecardArtifact.QUANTIZE_YAML
     scorecard_job_type = QuantizeScorecardJob
     scorecard_path_type = type(None)
     scorecard_model_summary_type = ModelQuantizeSummary
@@ -373,6 +396,7 @@ class QuantizeScorecardJobYaml(
 class CompileScorecardJobYaml(
     ScorecardJobYaml[CompileScorecardJob, ScorecardCompilePath, ModelCompileSummary]
 ):
+    ARTIFACT_TYPE = ScorecardArtifact.COMPILE_YAML
     scorecard_job_type = CompileScorecardJob
     scorecard_path_type = ScorecardCompilePath
     scorecard_model_summary_type = ModelCompileSummary
@@ -446,6 +470,7 @@ class LinkScorecardJobYaml(
     later if needed.
     """
 
+    ARTIFACT_TYPE = ScorecardArtifact.LINK_YAML
     scorecard_job_type = LinkScorecardJob
     scorecard_path_type = ScorecardCompilePath
     scorecard_model_summary_type = ModelCompileSummary
@@ -454,6 +479,7 @@ class LinkScorecardJobYaml(
 class ProfileScorecardJobYaml(
     ScorecardJobYaml[ProfileScorecardJob, ScorecardProfilePath, ModelPerfSummary]
 ):
+    ARTIFACT_TYPE = ScorecardArtifact.PROFILE_YAML
     scorecard_job_type = ProfileScorecardJob
     scorecard_path_type = ScorecardProfilePath
     scorecard_model_summary_type = ModelPerfSummary
@@ -462,120 +488,27 @@ class ProfileScorecardJobYaml(
 class InferenceScorecardJobYaml(
     ScorecardJobYaml[InferenceScorecardJob, ScorecardProfilePath, ModelInferenceSummary]
 ):
+    ARTIFACT_TYPE = ScorecardArtifact.INFERENCE_YAML
     scorecard_job_type = InferenceScorecardJob
     scorecard_path_type = ScorecardProfilePath
     scorecard_model_summary_type = ModelInferenceSummary
 
 
-@overload
-def get_scorecard_job_yaml(
-    job_type: Literal[hub.JobType.COMPILE], path: str | Path | None = None
-) -> CompileScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml(
-    job_type: Literal[hub.JobType.PROFILE], path: str | Path | None = None
-) -> ProfileScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml(
-    job_type: Literal[hub.JobType.INFERENCE], path: str | Path | None = None
-) -> InferenceScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml(
-    job_type: Literal[hub.JobType.QUANTIZE], path: str | Path | None = None
-) -> QuantizeScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml(
-    job_type: Literal[hub.JobType.LINK], path: str | Path | None = None
-) -> LinkScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml(
-    job_type: hub.JobType, path: str | Path | None = None
-) -> ScorecardJobYaml: ...
-
-
-def get_scorecard_job_yaml(
-    job_type: hub.JobType, path: str | Path | None = None
-) -> ScorecardJobYaml:
-    """Loads the appropriate Scorecard job cache for the type of the given job."""
+def get_scorecard_job_yaml_type(job_type: hub.JobType) -> type[ScorecardJobYaml]:
+    """Get the ScorecardJobYaml subclass for a given job type."""
     if job_type == hub.JobType.COMPILE:
-        return (
-            CompileScorecardJobYaml()
-            if not path
-            else CompileScorecardJobYaml.from_file(path, create_empty_if_no_file=True)
-        )
+        return CompileScorecardJobYaml
     if job_type == hub.JobType.PROFILE:
-        return (
-            ProfileScorecardJobYaml()
-            if not path
-            else ProfileScorecardJobYaml.from_file(path, create_empty_if_no_file=True)
-        )
+        return ProfileScorecardJobYaml
     if job_type == hub.JobType.INFERENCE:
-        return (
-            InferenceScorecardJobYaml()
-            if not path
-            else InferenceScorecardJobYaml.from_file(path, create_empty_if_no_file=True)
-        )
+        return InferenceScorecardJobYaml
     if job_type == hub.JobType.QUANTIZE:
-        return (
-            QuantizeScorecardJobYaml()
-            if not path
-            else QuantizeScorecardJobYaml.from_file(path, create_empty_if_no_file=True)
-        )
+        return QuantizeScorecardJobYaml
     if job_type == hub.JobType.LINK:
-        return (
-            LinkScorecardJobYaml()
-            if not path
-            else LinkScorecardJobYaml.from_file(path, create_empty_if_no_file=True)
-        )
+        return LinkScorecardJobYaml
     raise NotImplementedError(
         f"No file for storing test jobs of type {job_type.display_name}"
     )
-
-
-@overload
-def get_scorecard_job_yaml_from_job(
-    job: hub.CompileJob, path: str | Path | None = None
-) -> CompileScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml_from_job(
-    job: hub.ProfileJob, path: str | Path | None = None
-) -> ProfileScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml_from_job(
-    job: hub.InferenceJob, path: str | Path | None = None
-) -> InferenceScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml_from_job(
-    job: hub.QuantizeJob, path: str | Path | None = None
-) -> QuantizeScorecardJobYaml: ...
-
-
-@overload
-def get_scorecard_job_yaml_from_job(
-    job: hub.LinkJob, path: str | Path | None = None
-) -> LinkScorecardJobYaml: ...
-
-
-def get_scorecard_job_yaml_from_job(
-    job: hub.Job, path: str | Path | None = None
-) -> ScorecardJobYaml:
-    return get_scorecard_job_yaml(job._job_type, path)
 
 
 class ScorecardAssetYaml(BaseQAIHMConfig):

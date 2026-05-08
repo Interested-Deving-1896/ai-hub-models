@@ -34,7 +34,6 @@ from qai_hub_models.scorecard import (
 from qai_hub_models.scorecard.artifacts import (
     INTERMEDIATES_DIR,
     ScorecardArtifact,
-    get_async_test_job_cache_artifact,
 )
 from qai_hub_models.scorecard.device import cs_universal
 from qai_hub_models.scorecard.envvars import (
@@ -45,6 +44,7 @@ from qai_hub_models.scorecard.execution_helpers import (
     get_async_job_cache_name,
 )
 from qai_hub_models.scorecard.results.yaml import (
+    CompileScorecardJobYaml,
     QAIHMModelReleaseAssets,
     ScorecardAssetYaml,
     ToolVersionsByPathYaml,
@@ -249,7 +249,7 @@ def patch_hub_with_cached_jobs(
         and isinstance(component_names, list)
         and QAIHMModelCodeGen.from_model(model_id).has_multi_graph
     ):
-        compile_cache_path = get_async_test_job_cache_artifact(hub.JobType.COMPILE).path
+        compile_cache_path = CompileScorecardJobYaml.ARTIFACT_TYPE.path
         if compile_cache_path.exists():
             compile_yaml_data = load_yaml(compile_cache_path)
             resolved: dict[str, list[str] | None] = {}

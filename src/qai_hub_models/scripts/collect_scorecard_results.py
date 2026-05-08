@@ -679,25 +679,11 @@ if __name__ == "__main__":
     # Load Base YAMLs
     if using_prod_hub:
         # Load previous scorecard state
-        quantize_job_yamls = QuantizeScorecardJobYaml.from_file(
-            ScorecardArtifact.QUANTIZE_YAML.intermediates_path,
-            create_empty_if_no_file=True,
-        )
-        compile_job_yamls = CompileScorecardJobYaml.from_file(
-            ScorecardArtifact.COMPILE_YAML.intermediates_path,
-            create_empty_if_no_file=True,
-        )
-        link_job_yamls = LinkScorecardJobYaml.from_file(
-            ScorecardArtifact.LINK_YAML.intermediates_path, create_empty_if_no_file=True
-        )
-        profile_job_yamls = ProfileScorecardJobYaml.from_file(
-            ScorecardArtifact.PROFILE_YAML.intermediates_path,
-            create_empty_if_no_file=True,
-        )
-        inference_job_yamls = InferenceScorecardJobYaml.from_file(
-            ScorecardArtifact.INFERENCE_YAML.intermediates_path,
-            create_empty_if_no_file=True,
-        )
+        quantize_job_yamls = QuantizeScorecardJobYaml.from_intermediates()
+        compile_job_yamls = CompileScorecardJobYaml.from_intermediates()
+        link_job_yamls = LinkScorecardJobYaml.from_intermediates()
+        profile_job_yamls = ProfileScorecardJobYaml.from_intermediates()
+        inference_job_yamls = InferenceScorecardJobYaml.from_intermediates()
 
         # Erase jobs for models we're collecting results for, if applicable
         if args.ignore_existing_intermediate_jobs:
@@ -841,26 +827,16 @@ if __name__ == "__main__":
 
     # Write jobs and environment to intermediates folder
     if using_prod_hub:
-        quantize_job_yamls.to_file(ScorecardArtifact.QUANTIZE_YAML.intermediates_path)
-        compile_job_yamls.to_file(ScorecardArtifact.COMPILE_YAML.intermediates_path)
-        link_job_yamls.to_file(ScorecardArtifact.LINK_YAML.intermediates_path)
-        profile_job_yamls.to_file(ScorecardArtifact.PROFILE_YAML.intermediates_path)
-        inference_job_yamls.to_file(ScorecardArtifact.INFERENCE_YAML.intermediates_path)
-        print(
-            f"Quantize Job IDs written to {ScorecardArtifact.QUANTIZE_YAML.intermediates_path}"
-        )
-        print(
-            f"Compile Job IDs written to {ScorecardArtifact.COMPILE_YAML.intermediates_path}"
-        )
-        print(
-            f"Link Job IDs written to {ScorecardArtifact.LINK_YAML.intermediates_path}"
-        )
-        print(
-            f"Profile Job IDs written to {ScorecardArtifact.PROFILE_YAML.intermediates_path}"
-        )
-        print(
-            f"Inference Job IDs written to {ScorecardArtifact.INFERENCE_YAML.intermediates_path}"
-        )
+        quantize_job_yamls.to_file()
+        compile_job_yamls.to_file()
+        link_job_yamls.to_file()
+        profile_job_yamls.to_file()
+        inference_job_yamls.to_file()
+        print(f"Quantize Job IDs written to {quantize_job_yamls.path}")
+        print(f"Compile Job IDs written to {compile_job_yamls.path}")
+        print(f"Link Job IDs written to {link_job_yamls.path}")
+        print(f"Profile Job IDs written to {profile_job_yamls.path}")
+        print(f"Inference Job IDs written to {inference_job_yamls.path}")
 
         try:
             shutil.copy(
@@ -879,7 +855,7 @@ if __name__ == "__main__":
                 ScorecardArtifact.ENVIRONMENT_FILE.intermediates_path,
             )
             print(
-                f"Test envvars written to to {ScorecardArtifact.ENVIRONMENT_FILE.intermediates_path}"
+                f"Test envvars written to {ScorecardArtifact.ENVIRONMENT_FILE.intermediates_path}"
             )
         except (shutil.SameFileError, FileNotFoundError):
             pass

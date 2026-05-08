@@ -14,7 +14,6 @@ import torch
 import torchvision  # noqa: F401
 
 from qai_hub_models.scorecard import ScorecardProfilePath
-from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.envvars import (
     ArtifactsDirEnvvar,
     DeploymentEnvvar,
@@ -23,10 +22,7 @@ from qai_hub_models.scorecard.envvars import (
     StaticModelsDirEnvvar,
 )
 from qai_hub_models.scorecard.execution_helpers import get_async_job_cache_name
-from qai_hub_models.scorecard.results.yaml import (
-    InferenceScorecardJobYaml,
-    get_scorecard_job_yaml,
-)
+from qai_hub_models.scorecard.results.yaml import InferenceScorecardJobYaml
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -135,10 +131,7 @@ def main() -> None:
             evaluate_model_accuracy(
                 model_id,
                 args.deployment,
-                get_scorecard_job_yaml(
-                    hub.JobType.INFERENCE,
-                    ScorecardArtifact.INFERENCE_YAML.path,
-                ),
+                InferenceScorecardJobYaml.from_test_artifacts(),
             )
         except Exception as e:
             exceptions.append(f"{model_id}: {e}")
