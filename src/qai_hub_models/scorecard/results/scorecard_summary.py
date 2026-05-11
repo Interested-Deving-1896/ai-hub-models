@@ -332,7 +332,6 @@ class ModelTestConfig:
             model_supported_paths,
             model_passing_paths,
             cj.can_use_quantize_job,
-            include_mirror_devices=True,
         )
         inference_tests = get_evaluation_parameterized_pytest_config(
             model_id,

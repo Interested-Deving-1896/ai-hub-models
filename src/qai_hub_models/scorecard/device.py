@@ -139,7 +139,6 @@ class ScorecardDevice:
                     or supports_profile_path in device.profile_paths
                 )
                 and (form_factors is None or device.form_factor in form_factors)
-                and (is_mirror is None or bool(device.mirror_device) == is_mirror)
             )
         ]
 
@@ -180,7 +179,6 @@ class ScorecardDevice:
         disabled_models: list[str] | None = None,
         compile_paths: list[ScorecardCompilePath] | None = None,
         profile_paths: list[ScorecardProfilePath] | None = None,
-        mirror_device: ScorecardDevice | None = None,
         npu_count: int | None = None,
         register: bool = True,
         is_default: bool = False,
@@ -202,8 +200,6 @@ class ScorecardDevice:
             The set of compile paths valid for this device. If unset, will use the default set of paths for this device's form factor.
         profile_paths
             The set of profile paths valid for this device. If unset, will use the default set of paths for this device's form factor.
-        mirror_device
-            If set, jobs are not run on this device. Instead, results for this will "mirror" of the given device.
         npu_count
             How many NPUs this device has. If undefined, uses the NPU count of the mirror device or defaults to 1.
         register
@@ -214,29 +210,11 @@ class ScorecardDevice:
         if register and name in ScorecardDevice._registry:
             raise ValueError("Device " + name + "already registered.")
 
-        if mirror_device:
-            assert not compile_paths, (
-                "Compile paths should not be set, mirror devices will use the mirror device settings."
-            )
-            assert not profile_paths, (
-                "Profile paths should not be set, mirror devices will use the mirror device settings."
-            )
-            assert not disabled_models, (
-                "Disabled models should not be set, mirror devices will use the mirror device settings."
-            )
-            assert not execution_device_name, (
-                "Execution device is not applicable when mirroring results of a different device."
-            )
-
         self.name = name
-        self.disabled_models: list[str] = (
-            mirror_device.disabled_models if mirror_device else (disabled_models or [])
-        )
         self.reference_device_name = reference_device_name
         self.execution_device_name = execution_device_name
         self._compile_paths = compile_paths
         self._profile_paths = profile_paths
-        self.mirror_device: ScorecardDevice | None = mirror_device
         self._npu_count = npu_count
         self.is_default = is_default
 
@@ -359,8 +337,6 @@ class ScorecardDevice:
         """Returns the number of NPUs on this device."""
         if self._npu_count is not None:
             return self._npu_count
-        if self.mirror_device:
-            return self.mirror_device.npu_count
         return 1
 
     @cached_property
@@ -452,32 +428,20 @@ class ScorecardDevice:
     @cached_property
     def supports_fp16_npu(self) -> bool:
         """Whether this device's NPU supports FP16 inference."""
-        if self.mirror_device:
-            return self.mirror_device.supports_fp16_npu
-
         return "htp-supports-fp16:true" in self.reference_device.attributes
 
     @cached_property
     def supports_weight_sharing(self) -> bool:
         """Whether this device's NPU supports FP16 inference."""
-        if self.mirror_device:
-            return self.mirror_device.supports_weight_sharing
-
         return "htp-supports-weight-sharing:true" in self.reference_device.attributes
 
     def npu_supports_precision(self, precision: Precision) -> bool:
         """Whether this device's NPU supports the given quantization spec."""
-        if self.mirror_device:
-            return self.mirror_device.npu_supports_precision(precision)
-
         return not precision.has_float_activations or self.supports_fp16_npu
 
     @cached_property
     def supported_runtimes(self) -> list[TargetRuntime]:
         """All runtimes supported by this device."""
-        if self.mirror_device:
-            return self.mirror_device.supported_runtimes
-
         supports_qnn = False
         runtimes: list[TargetRuntime] = []
         for attr in self.reference_device.attributes:
@@ -512,9 +476,6 @@ class ScorecardDevice:
         because we don't want to test them in scorecard. For example, we don't
         run ONNX on auto devices even though this is supported by AI Hub Workbench.
         """
-        if self.mirror_device:
-            return self.mirror_device.profile_paths
-
         if self._profile_paths is not None:
             return self._profile_paths
 
@@ -566,9 +527,6 @@ class ScorecardDevice:
     @cached_property
     def compile_paths(self) -> list[ScorecardCompilePath]:
         """All compile paths supported by this device."""
-        if self.mirror_device:
-            return self.mirror_device.compile_paths
-
         if self._compile_paths is not None:
             return self._compile_paths
 
@@ -694,12 +652,6 @@ cs_6490 = ScorecardDevice(
 cs_6690 = ScorecardDevice(
     name="cs_6690",
     reference_device_name="Dragonwing Q-6690 MTP",
-)
-
-cs_8275 = ScorecardDevice(
-    name="cs_8275",
-    reference_device_name="QCS8275 (Proxy)",
-    mirror_device=cs_auto_monaco_7255,
 )
 
 cs_8550 = ScorecardDevice(name="cs_8550", reference_device_name="QCS8550 (Proxy)")

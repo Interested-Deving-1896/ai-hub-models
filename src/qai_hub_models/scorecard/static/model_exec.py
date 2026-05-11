@@ -125,11 +125,7 @@ def for_each_static_model_test_parameterization(
             else ScorecardDevice.all_devices()
         )
         for device in devices:
-            if (
-                not device.enabled
-                or not device.npu_supports_precision(precision)
-                or device.mirror_device
-            ):
+            if not device.enabled or not device.npu_supports_precision(precision):
                 continue
             if (
                 isinstance(sc_path, ScorecardCompilePath)

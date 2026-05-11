@@ -22,7 +22,6 @@ WEBSITE_CHIPSET_ORDER = [
     "qualcomm-qcs6490",
     "qualcomm-qcs8250",
     "qualcomm-qcs8275",
-    "qualcomm-qcs8275-proxy",
     "qualcomm-qcs8265p",
     "qualcomm-qcs8265p-proxy",
     "qualcomm-qcs8550",

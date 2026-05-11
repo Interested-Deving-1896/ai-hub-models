@@ -287,7 +287,6 @@ def get_model_test_parameterizations(
     can_use_quantize_job: bool = True,
     devices: list[ScorecardDevice] | None = None,
     include_unsupported_paths: bool | None = None,
-    include_mirror_devices: bool = False,
 ) -> list[tuple[Precision, ScorecardPathTypeVar, ScorecardDevice]]:
     """
     Get a list of parameterizations for testing a model.
@@ -310,9 +309,6 @@ def get_model_test_parameterizations(
     include_unsupported_paths
         If true, all enabled paths will be included, instead of the ones compatible with
         parameter supported_paths.
-    include_mirror_devices
-        If true, mirror devices will be included in the output.
-        Jobs are never run on "mirror" devices. Instead, results are copied ("mirrored") from a different device.
 
     Returns
     -------
@@ -347,11 +343,7 @@ def get_model_test_parameterizations(
             for device in (
                 devices if devices is not None else ScorecardDevice.all_devices()
             ):
-                if (
-                    not device.enabled
-                    or not device.npu_supports_precision(precision)
-                    or (not include_mirror_devices and device.mirror_device is not None)
-                ):
+                if not device.enabled or not device.npu_supports_precision(precision):
                     continue
                 if (
                     isinstance(sc_path, ScorecardCompilePath)
@@ -424,7 +416,6 @@ def get_compile_parameterized_pytest_config(
     enabled_test_paths: dict[Precision, list[TargetRuntime]],
     passing_test_paths: dict[Precision, list[TargetRuntime]],
     can_use_quantize_job: bool = True,
-    include_mirror_devices: bool = False,
 ) -> list[tuple[Precision, ScorecardCompilePath, ScorecardDevice]]:
     """Get a pytest parameterization list of all enabled (device, compile path) pairs."""
     return get_model_test_parameterizations(
@@ -433,7 +424,6 @@ def get_compile_parameterized_pytest_config(
         passing_test_paths,
         ScorecardCompilePath,
         can_use_quantize_job,
-        include_mirror_devices=include_mirror_devices,
     )
 
 
@@ -442,7 +432,6 @@ def get_link_parameterized_pytest_config(
     enabled_test_paths: dict[Precision, list[TargetRuntime]],
     passing_test_paths: dict[Precision, list[TargetRuntime]],
     can_use_quantize_job: bool = True,
-    include_mirror_devices: bool = False,
 ) -> list[tuple[Precision, ScorecardCompilePath, ScorecardDevice]]:
     """
     Get a pytest parameterization list of all enabled (precision, compile path, device)
@@ -457,7 +446,6 @@ def get_link_parameterized_pytest_config(
         passing_test_paths,
         ScorecardCompilePath,
         can_use_quantize_job,
-        include_mirror_devices=include_mirror_devices,
     )
     # Filter to only runtimes that use hub.link()
     return [
@@ -472,7 +460,6 @@ def get_profile_parameterized_pytest_config(
     enabled_test_paths: dict[Precision, list[TargetRuntime]],
     passing_test_paths: dict[Precision, list[TargetRuntime]],
     can_use_quantize_job: bool = True,
-    include_mirror_devices: bool = False,
 ) -> list[tuple[Precision, ScorecardProfilePath, ScorecardDevice]]:
     """Get a pytest parameterization list of all enabled (device, profile path) pairs."""
     return get_model_test_parameterizations(
@@ -481,7 +468,6 @@ def get_profile_parameterized_pytest_config(
         passing_test_paths,
         ScorecardProfilePath,
         can_use_quantize_job,
-        include_mirror_devices=include_mirror_devices,
     )
 
 
