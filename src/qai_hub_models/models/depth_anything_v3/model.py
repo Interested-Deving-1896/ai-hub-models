@@ -79,8 +79,8 @@ class DepthAnythingV3(DepthEstimationModel):
         out = self.model(image)
         return out["depth"]
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 518,
         width: int = 518,

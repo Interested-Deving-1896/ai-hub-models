@@ -406,13 +406,13 @@ class GraphNamesYaml(ScorecardYamlFile[list[str]]):
     ARTIFACT_TYPE = ScorecardArtifact.GRAPH_NAMES
 
     @staticmethod
-    def _key(model_id: str, component_name: str) -> str:
-        return f"{model_id}_{component_name}"
+    def _key(model_id: str, component_name: str | None = None) -> str:
+        return f"{model_id}_{component_name}" if component_name else model_id
 
     def set(self, model_id: str, component_name: str, graph_names: list[str]) -> None:
         self.mapping[self._key(model_id, component_name)] = graph_names
 
-    def get(self, model_id: str, component_name: str) -> list[str] | None:
+    def get(self, model_id: str, component_name: str | None = None) -> list[str] | None:
         return self.mapping.get(self._key(model_id, component_name))
 
 

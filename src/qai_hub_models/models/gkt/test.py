@@ -26,7 +26,7 @@ EXPECTED_OUTPUT = CachedWebModelAsset.from_asset_store(
 @skip_clone_repo_check
 def test_task() -> None:
     model = GKT.from_pretrained()
-    h, w = GKT.get_input_spec()["image"][0][3:]
+    h, w = model.get_input_spec()["image"][0][3:]
     app = GKTApp(model, ckpt_name="vehicle", target_height=h, target_width=w)
 
     cam_paths = {k: str(v.fetch()) for k, v in CAMERAS.items()}
@@ -44,7 +44,7 @@ def test_trace() -> None:
     model = GKT.from_pretrained()
     input_spec = model.get_input_spec()
     traced_model = model.convert_to_torchscript(input_spec)
-    h, w = GKT.get_input_spec()["image"][0][3:]
+    h, w = model.get_input_spec()["image"][0][3:]
     app = GKTApp(traced_model, ckpt_name="vehicle", target_height=h, target_width=w)
 
     cam_paths = {k: str(v.fetch()) for k, v in CAMERAS.items()}

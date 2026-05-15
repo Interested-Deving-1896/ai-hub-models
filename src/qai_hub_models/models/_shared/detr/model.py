@@ -134,8 +134,8 @@ class DETR(BaseModel):
 
         return boxes, scores, labels
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 640,
         width: int = 640,
@@ -156,12 +156,10 @@ class DETR(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
-        return list(DETR.get_output_spec().keys())
+    def get_output_names(self) -> list[str]:
+        return list(self.get_output_spec().keys())
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -171,8 +169,7 @@ class DETR(BaseModel):
             "classes": TensorSpec(io_type=IoType.TENSOR),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(

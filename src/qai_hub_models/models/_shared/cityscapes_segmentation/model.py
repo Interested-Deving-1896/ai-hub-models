@@ -61,8 +61,8 @@ class CityscapesSegmentor(BaseModel):
         """
         return self.model(normalize_image_torchvision(image))
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 1024,
         width: int = 2048,
@@ -83,8 +83,7 @@ class CityscapesSegmentor(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "mask": TensorSpec(
                 io_type=IoType.TENSOR,
@@ -93,12 +92,10 @@ class CityscapesSegmentor(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask"]
 
     def _sample_inputs_impl(

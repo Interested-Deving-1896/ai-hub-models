@@ -84,8 +84,8 @@ class EasyOCRDetector(BaseModel):
             return self.model.model(image, training=False)[0]
         raise NotImplementedError("Unknown detector model")
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 608,
         width: int = 800,
@@ -102,12 +102,10 @@ class EasyOCRDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["results"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -163,8 +161,8 @@ class EasyOCRRecognizer(BaseModel):
         """
         return self.model((image - 0.5) / 0.5, None)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         max_detection_height: int = 64,
         max_detection_width: int = 800,
@@ -181,12 +179,10 @@ class EasyOCRRecognizer(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["output_preds"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 

@@ -38,7 +38,7 @@ def depth_estimation_demo(
     validate_on_device_demo_args(args, model_id)
 
     # Load image
-    (_, _, height, width) = model_cls.get_input_spec()["image"][0]
+    (_, _, height, width) = model.get_input_spec()["image"][0]
     image = load_image(args.image)
     print("Model Loaded")
 

@@ -86,8 +86,7 @@ class HRNetFace(BaseModel):
         """
         return self.model(normalize_image_torchvision(image))
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["heatmaps"]
 
     def get_evaluator(self) -> BaseEvaluator:
@@ -101,8 +100,8 @@ class HRNetFace(BaseModel):
     def calibration_dataset_name() -> str:
         return "cofw"
 
-    @staticmethod
     def get_input_spec(
+        self,
         height: int = 256,
         width: int = 256,
     ) -> InputSpec:
@@ -122,6 +121,5 @@ class HRNetFace(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]

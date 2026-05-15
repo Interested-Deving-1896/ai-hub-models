@@ -110,8 +110,8 @@ class PSPNet(CityscapesSegmentor):
         input_tensor = torch.cat([image, image.flip(3)], 0)
         return self.model(input_tensor)[0].unsqueeze(0)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 473,
         width: int = 473,
@@ -132,16 +132,13 @@ class PSPNet(CityscapesSegmentor):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["mask"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask"]
 
     def _sample_inputs_impl(

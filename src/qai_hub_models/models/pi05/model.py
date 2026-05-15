@@ -225,7 +225,7 @@ class Pi05PaliGemmaVision(LoadPolicyMixin, BaseModel):
         return paligemma.embed_image(image)
 
     @classmethod
-    def get_input_spec(
+    def get_input_spec_static(
         cls,
         batch_size: int = 1,
     ) -> InputSpec:
@@ -243,9 +243,18 @@ class Pi05PaliGemmaVision(LoadPolicyMixin, BaseModel):
             ),
         )
 
+    def get_input_spec(
+        self,
+        batch_size: int = 1,
+    ) -> InputSpec:
+        return self.get_input_spec_static(batch_size)
+
     @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names_static() -> list[str]:
         return ["img_embed"]
+
+    def get_output_names(self) -> list[str]:
+        return self.get_output_names_static()
 
 
 class _Pi05CachedExportMixin:
@@ -390,8 +399,7 @@ class Pi05PaliGemmaVisionQuantizable(  # type: ignore[misc]
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         return cast(torch.Tensor, AIMETOnnxQuantizableMixin.forward(self, image))
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16
 
 
@@ -423,8 +431,7 @@ class Pi05PaliGemmaTokenEmbed(LoadPolicyMixin, BaseModel):
           masked = attn + full_attn_4d
     """
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.float
 
     def __init__(self, model: PI05Policy) -> None:
@@ -606,7 +613,7 @@ class Pi05PaliGemmaTokenEmbed(LoadPolicyMixin, BaseModel):
         )
 
     @classmethod
-    def get_input_spec(
+    def get_input_spec_static(
         cls,
         batch_size: int = 1,
     ) -> InputSpec:
@@ -637,6 +644,12 @@ class Pi05PaliGemmaTokenEmbed(LoadPolicyMixin, BaseModel):
 
         return spec
 
+    def get_input_spec(
+        self,
+        batch_size: int = 1,
+    ) -> InputSpec:
+        return self.get_input_spec_static(batch_size)
+
     def _sample_inputs_impl(
         self, input_spec: InputSpec | None = None, **kwargs: Any
     ) -> dict[str, list[Any]]:
@@ -652,7 +665,7 @@ class Pi05PaliGemmaTokenEmbed(LoadPolicyMixin, BaseModel):
         return result
 
     @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names_static() -> list[str]:
         return [
             "prefix_emb",
             "prefix_att_2d",
@@ -662,6 +675,9 @@ class Pi05PaliGemmaTokenEmbed(LoadPolicyMixin, BaseModel):
             "suffix_cos",
             "full_att_4d",
         ]
+
+    def get_output_names(self) -> list[str]:
+        return self.get_output_names_static()
 
     def convert_to_hub_source_model(
         self,
@@ -1178,7 +1194,7 @@ class Pi05ActionExpert(LoadPolicyMixin, BaseModel):
         )
 
     @classmethod
-    def get_input_spec(
+    def get_input_spec_static(
         cls,
         batch_size: int = 1,
     ) -> InputSpec:
@@ -1232,9 +1248,15 @@ class Pi05ActionExpert(LoadPolicyMixin, BaseModel):
             )
         return spec
 
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
+        return self.get_input_spec_static(batch_size)
+
     @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names_static() -> list[str]:
         return ["action_emb"]
+
+    def get_output_names(self) -> list[str]:
+        return self.get_output_names_static()
 
 
 class Pi05PaliGemmaBackboneBase(LoadPolicyMixin, BaseModel):
@@ -1407,7 +1429,7 @@ class Pi05PaliGemmaBackboneBase(LoadPolicyMixin, BaseModel):
         return tuple(flat_out)
 
     @classmethod
-    def get_input_spec(
+    def get_input_spec_static(
         cls,
         batch_size: int = 1,
     ) -> InputSpec:
@@ -1451,11 +1473,14 @@ class Pi05PaliGemmaBackboneBase(LoadPolicyMixin, BaseModel):
             ),
         )
 
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.layer_range)
+    def get_input_spec(
+        self,
+        batch_size: int = 1,
+    ) -> InputSpec:
+        return self.get_input_spec_static(batch_size)
 
     @staticmethod
-    def get_output_names(layer_range: tuple[int, int]) -> list[str]:
+    def get_output_names_static(layer_range: tuple[int, int]) -> list[str]:
         # Generic placeholders for 6 layers. Concrete subclasses return
         # exactly 6 K and 6 V caches each, matching the range length.
         names = []
@@ -1465,6 +1490,9 @@ class Pi05PaliGemmaBackboneBase(LoadPolicyMixin, BaseModel):
         names.extend([f"k_cache_l{i}" for i in layer_ids])
         names.extend([f"v_cache_l{i}" for i in layer_ids])
         return names
+
+    def get_output_names(self) -> list[str]:
+        return self.get_output_names_static((0, 6))
 
 
 class Pi05PaliGemmaBackbone(Pi05PaliGemmaBackboneBase):
@@ -1481,8 +1509,7 @@ class Pi05PaliGemmaBackboneQuantizable(  # type: ignore[misc]
     model_id = MODEL_ID
     model_asset_version = MODEL_ASSET_VERSION
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w4a16
 
     def __init__(
@@ -1563,11 +1590,10 @@ class Pi05PaliGemmaBackboneQuantizable(  # type: ignore[misc]
         )
 
     def _get_output_names_for_instance(self) -> list[str]:
-        return Pi05PaliGemmaBackboneBase.get_output_names((0, 18))
+        return Pi05PaliGemmaBackboneBase.get_output_names_static((0, 18))
 
-    @staticmethod
-    def get_output_names() -> list[str]:
-        return Pi05PaliGemmaBackboneBase.get_output_names((0, 18))
+    def get_output_names(self) -> list[str]:
+        return Pi05PaliGemmaBackboneBase.get_output_names_static((0, 18))
 
 
 class Pi05ActionExpertQuantizable(
@@ -1579,8 +1605,7 @@ class Pi05ActionExpertQuantizable(
     model_asset_version = MODEL_ASSET_VERSION
     default_subfolder = "action_expert"
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16
 
     def __init__(

@@ -111,20 +111,12 @@ class YoloV8Detector(Yolo):
         boxes, scores, classes = yolo_detect_postprocess(boxes, scores)
         return boxes, scores, classes
 
-    @staticmethod
-    def get_output_names(
-        include_postprocessing: bool = True, split_output: bool = False
-    ) -> list[str]:
-        if include_postprocessing:
-            return list(YoloV8Detector.get_output_spec().keys())
-        if split_output:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
+            return list(self.get_output_spec().keys())
+        if self.split_output:
             return ["boxes", "scores"]
         return ["detector_output"]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(
-            self.include_postprocessing, self.split_output
-        )
 
     def get_hub_quantize_options(
         self, precision: Precision, other_options: str | None = None
@@ -140,8 +132,7 @@ class YoloV8Detector(Yolo):
             options += " --range_scheme min_max"
         return options
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10
 

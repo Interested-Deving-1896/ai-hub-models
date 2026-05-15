@@ -112,7 +112,6 @@ These have default implementations but can be overridden:
 | Method | Description |
 |--------|-------------|
 | `_sample_inputs_impl()` | Provide real sample inputs instead of random data. Important for more accurate PSNR data, since `export.py` runs a single sample inference and reports the PSNR difference between torch and device. |
-| `_get_input_spec_for_instance()` | Instance-specific input spec (when shapes depend on instance vars) |
 | `get_channel_last_inputs()` / `get_channel_last_outputs()` | Inputs/outputs to transpose for on-device performance. Highly recommended for 4D tensors (especially image tensors). |
 | `get_hub_compile_options()` / `get_hub_profile_options()` | Custom AI Hub Workbench flags |
 | `get_unsupported_reason()` | Mark specific device attributes that can't be supported. Rarely defined in practice; only necessary if a specific Hexagon version is required for advanced models. |

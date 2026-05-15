@@ -72,8 +72,7 @@ class OpusMTEncoder(BaseModel):
         """
         return self.encoder(input_ids, encoder_attention_mask)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type)). This can be
         used to submit profiling job on Qualcomm AI Hub.
@@ -89,8 +88,7 @@ class OpusMTEncoder(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names(num_layers: int = 6) -> list[str]:
+    def get_output_names(self, num_layers: int = 6) -> list[str]:
         """Returns the output names for the encoder."""
         output_names = []
         for layer_idx in range(num_layers):
@@ -145,8 +143,8 @@ class OpusMTDecoder(BaseModel):
             input_ids, encoder_attention_mask, position, *past_key_values
         )
 
-    @staticmethod
     def get_input_spec(
+        self,
         num_layers: int = 6,
         attention_dim: int = 512,
         num_heads: int = 8,
@@ -186,8 +184,7 @@ class OpusMTDecoder(BaseModel):
 
         return specs
 
-    @staticmethod
-    def get_output_names(num_layers: int = 6) -> list[str]:
+    def get_output_names(self, num_layers: int = 6) -> list[str]:
         """Returns the output names for the decoder."""
         output_names = ["logits"]
         for layer_idx in range(num_layers):

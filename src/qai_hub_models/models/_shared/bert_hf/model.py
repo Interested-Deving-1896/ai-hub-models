@@ -56,8 +56,8 @@ class BaseBertModel(BaseModel):
         masked_logits = logits[batch_indices, mask_indices]
         return masked_logits.argmax(dim=-1)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         sample_length: int = 384,
     ) -> InputSpec:
@@ -76,8 +76,7 @@ class BaseBertModel(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["token_id"]
 
     def get_hub_compile_options(

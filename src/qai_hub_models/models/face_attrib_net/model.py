@@ -544,8 +544,8 @@ class FaceAttribNet(BaseModel):
         faceattribnet_model.eval()
         return faceattribnet_model
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 128,
         width: int = 128,
@@ -566,8 +566,7 @@ class FaceAttribNet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         """
         Return list of output names associated with forward function
 
@@ -578,8 +577,7 @@ class FaceAttribNet(BaseModel):
         """
         return ["probability"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         """
         Return name string for "channel-last" input
 

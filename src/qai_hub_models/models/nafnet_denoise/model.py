@@ -69,8 +69,8 @@ class NafNetDeNoise(NAFNetModel):
 
         return cls(nafnet_model)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 256,
@@ -79,8 +79,7 @@ class NafNetDeNoise(NAFNetModel):
             "image": ((batch_size, 3, height, width), "float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["denoised_image"]
 
     def _sample_inputs_impl(
@@ -93,12 +92,10 @@ class NafNetDeNoise(NAFNetModel):
         input_image = app_to_net_image_inputs(image)[1].numpy()
         return {"image": [input_image]}
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["denoised_image"]
 
     @staticmethod

@@ -21,8 +21,8 @@ class SelfieSegmentor(BaseModel):
     MASK_THRESHOLD: float  # Threshold above which a pixel is classified as foreground in the binary mask output by the model.
     DEFAULT_HW: tuple[int, int] = (256, 256)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = DEFAULT_HW[0],
         width: int = DEFAULT_HW[1],
@@ -39,8 +39,7 @@ class SelfieSegmentor(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "mask": TensorSpec(
                 io_type=IoType.TENSOR,
@@ -48,12 +47,10 @@ class SelfieSegmentor(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask"]
 
     def get_evaluator(self) -> BaseEvaluator:

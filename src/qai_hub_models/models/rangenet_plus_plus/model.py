@@ -103,24 +103,21 @@ class RangeNetPlusPlus(BaseModel):
         logits = self.model(range_image)
         return torch.argmax(logits, dim=1).byte()
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = INPUT_HEIGHT,
         width: int = INPUT_WIDTH,
     ) -> InputSpec:
         return {"range_image": ((batch_size, INPUT_CHANNELS, height, width), "float32")}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["mask"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["range_image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask"]
 
     def _sample_inputs_impl(

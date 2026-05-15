@@ -44,7 +44,6 @@ class ConditionalDETRResNet50(DETR):
         image_height, image_width = self.get_input_spec()["image"][0][2:]
         return DetectionEvaluator(image_height, image_width, score_threshold=0.4)
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10

@@ -15,7 +15,6 @@ from PIL import Image
 from qai_hub_models.models.track_anything.external_repos.track_anything.tracker.inference.memory_manager import (
     MemoryManager,
 )
-from qai_hub_models.models.track_anything.model import TrackAnythingEncodeValue
 from qai_hub_models.utils.draw import create_color_map
 from qai_hub_models.utils.image_processing import resize_pad, undo_resize_pad
 
@@ -54,6 +53,7 @@ class TrackAnythingApp:
             tuple[torch.Tensor, torch.Tensor],
         ],
         config: dict,
+        model_input_shape: tuple[int, int] = (320, 576),
     ) -> None:
         """
         Parameters
@@ -68,11 +68,14 @@ class TrackAnythingApp:
             TrackAnything Segment. Must match input and output of qai_hub_models.models.track_anything.model.TrackAnythingSegment
         config
             TrackAnything model's config
+        model_input_shape
+            (height, width) of the model input.
         """
         self.EncodeKeyWithShrinkage = EncodeKeyWithShrinkage
         self.EncodeValue = EncodeValue
         self.EncodeKeyWithoutShrinkage = EncodeKeyWithoutShrinkage
         self.Segment = Segment
+        self.model_input_shape = model_input_shape
         config["top_k"] = None
         self.memory = MemoryManager(config=config)
 
@@ -114,7 +117,7 @@ class TrackAnythingApp:
 
         # preprocess
         h, w, _ = frames[0].shape[-3:]
-        model_h, model_w = TrackAnythingEncodeValue.get_input_spec()["image"][0][-2:]
+        model_h, model_w = self.model_input_shape
         for frame_numpy in frames:
             frame = torch.from_numpy(frame_numpy).permute(2, 0, 1).float() / 255.0
             frame, scale, pad = resize_pad(frame.unsqueeze(0), (model_h, model_w))

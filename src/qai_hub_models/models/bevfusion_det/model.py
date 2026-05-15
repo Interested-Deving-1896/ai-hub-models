@@ -131,9 +131,8 @@ class BEVFusionEncoder1(BaseModel):
         x = self.neck(x)
         return x[0]
 
-    @staticmethod
     def get_input_spec(
-        batch_size: int = 1, height: int = 256, width: int = 704
+        self, batch_size: int = 1, height: int = 256, width: int = 704
     ) -> InputSpec:
         return {
             "imgs": TensorSpec(
@@ -143,8 +142,7 @@ class BEVFusionEncoder1(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["feature_map"]
 
 
@@ -198,9 +196,8 @@ class BEVFusionEncoder2(BaseModel):
         x, lengths, geom_feats = bev_pool(x, geom_feats, ranks)
         return x, lengths, geom_feats
 
-    @staticmethod
     def get_input_spec(
-        batch_size: int = 1, height: int = 256, width: int = 704
+        self, batch_size: int = 1, height: int = 256, width: int = 704
     ) -> InputSpec:
         return {
             "img": TensorSpec(
@@ -230,8 +227,7 @@ class BEVFusionEncoder2(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["pooled_features", "lengths", "geom_feats"]
 
     def get_hub_compile_options(
@@ -298,9 +294,8 @@ class BEVFusionEncoder3(BaseModel):
         x = out.permute(0, 3, 1, 2).contiguous()
         return self.vtransform.downsample(x)  # type: ignore[operator]
 
-    @staticmethod
     def get_input_spec(
-        batch_size: int = 1, height: int = 256, width: int = 704
+        self, batch_size: int = 1, height: int = 256, width: int = 704
     ) -> InputSpec:
         return {
             "segment": TensorSpec(
@@ -315,8 +310,7 @@ class BEVFusionEncoder3(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["bev_grid"]
 
     def get_hub_compile_options(
@@ -378,9 +372,8 @@ class BEVFusionDecoder(BaseModel):
 
         return torch.cat(tensors, dim=1)
 
-    @staticmethod
     def get_input_spec(
-        batch_size: int = 1, height: int = 128, width: int = 128
+        self, batch_size: int = 1, height: int = 128, width: int = 128
     ) -> InputSpec:
         return {
             "x": TensorSpec(
@@ -390,8 +383,7 @@ class BEVFusionDecoder(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["outputs"]
 
     def get_hub_compile_options(

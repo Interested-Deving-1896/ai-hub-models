@@ -64,8 +64,8 @@ class CavaFace(BaseModel):
         norm = torch.norm(embeddings, dim=1, keepdim=True) + 1e-9
         return embeddings / norm
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 112,
         width: int = 112,
@@ -82,10 +82,8 @@ class CavaFace(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["embeddings"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]

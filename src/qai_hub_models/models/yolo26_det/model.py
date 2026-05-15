@@ -113,22 +113,12 @@ class Yolo26Detector(Yolo):
         boxes, scores, classes = yolo_detect_postprocess(boxes, scores)
         return boxes, scores, classes
 
-    @staticmethod
-    def get_output_names(
-        include_postprocessing: bool = True,
-        split_output: bool = False,
-    ) -> list[str]:
-        if include_postprocessing:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
             return ["boxes", "scores", "class_idx"]
-        if split_output:
+        if self.split_output:
             return ["boxes", "scores"]
         return ["detector_output"]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(
-            self.include_postprocessing,
-            self.split_output,
-        )
 
     def get_evaluator(self) -> BaseEvaluator:
         # This is imported here so segmentation models don't have to install

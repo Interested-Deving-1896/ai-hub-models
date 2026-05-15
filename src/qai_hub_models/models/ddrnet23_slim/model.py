@@ -79,8 +79,8 @@ class DDRNet(CityscapesSegmentor):
 
         return cls(ddrnetslim_model)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 1024,
         width: int = 2048,
@@ -116,16 +116,13 @@ class DDRNet(CityscapesSegmentor):
             target_runtime, precision, other_compile_options, device, context_graph_name
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["mask"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask"]
 
     def _sample_inputs_impl(

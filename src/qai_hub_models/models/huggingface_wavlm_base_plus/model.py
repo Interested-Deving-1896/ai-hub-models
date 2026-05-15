@@ -80,8 +80,8 @@ class HuggingFaceWavLMBasePlus(BaseModel):
             attention_mask = torch.ones(x.shape, dtype=torch.long, device=x.device)
         return self.model(x, attention_mask=attention_mask)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         sample_length: int = 160000,
     ) -> InputSpec:
@@ -95,8 +95,7 @@ class HuggingFaceWavLMBasePlus(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["output"]
 
     def _sample_inputs_impl(

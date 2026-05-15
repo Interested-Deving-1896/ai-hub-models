@@ -34,7 +34,7 @@ def test_face_app() -> None:
     expected_out = load_numpy(expected_output)
     model = HRNetFace.from_pretrained()
     app = HRNetFaceApp(model)
-    (_, _, height, width) = HRNetFace.get_input_spec()["image"][0]
+    (_, _, height, width) = model.get_input_spec()["image"][0]
     image = image.resize((width, height))
     actual_output = app.predict_face_keypoints(image, raw_output=True)[0]
     assert isinstance(actual_output, np.ndarray)

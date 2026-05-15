@@ -89,8 +89,8 @@ class Detectron2ProposalGenerator(Detectron2):
 
         return feature["res4"], proposals[0], pred_objectness_logits[0]
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 800,
         width: int = 800,
@@ -111,12 +111,10 @@ class Detectron2ProposalGenerator(Detectron2):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["feature", "proposals", "score"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -184,9 +182,8 @@ class Detectron2ROIHead(Detectron2):
         scores = scores[:, torch.arange(indices.shape[0]), indices]
         return boxes, scores, classes
 
-    @staticmethod
     def get_input_spec(
-        height: int = 50, width: int = 50, num_boxes: int = 200
+        self, height: int = 50, width: int = 50, num_boxes: int = 200
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -205,12 +202,10 @@ class Detectron2ROIHead(Detectron2):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
-        return list(Detectron2ROIHead.get_output_spec().keys())
+    def get_output_names(self) -> list[str]:
+        return list(self.get_output_spec().keys())
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -220,8 +215,7 @@ class Detectron2ROIHead(Detectron2):
             "classes": TensorSpec(io_type=IoType.TENSOR),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["features"]
 
     def get_hub_compile_options(

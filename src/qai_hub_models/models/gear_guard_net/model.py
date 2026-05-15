@@ -312,8 +312,8 @@ class GearGuardNet(BaseModel):
         model.eval()
         return model
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 320,
         width: int = 192,
@@ -334,12 +334,10 @@ class GearGuardNet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["boxes", "scores", "class_idx"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def get_evaluator(self) -> BaseEvaluator:

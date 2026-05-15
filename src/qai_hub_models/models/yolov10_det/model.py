@@ -115,8 +115,7 @@ class YoloV10Detector(Yolo):
         return boxes, scores, classes
 
     # Overrides Yolo.get_output_spec(): YoloV10 returns "classes" (not "class_idx") — see forward()
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -133,23 +132,14 @@ class YoloV10Detector(Yolo):
             ),
         }
 
-    @staticmethod
-    def get_output_names(
-        include_postprocessing: bool = True, split_output: bool = False
-    ) -> list[str]:
-        if include_postprocessing:
-            return list(YoloV10Detector.get_output_spec().keys())
-        if split_output:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
+            return list(self.get_output_spec().keys())
+        if self.split_output:
             return ["boxes", "scores"]
         return ["detector_output"]
 
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(
-            self.include_postprocessing, self.split_output
-        )
-
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10
 

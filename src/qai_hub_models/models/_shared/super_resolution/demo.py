@@ -49,8 +49,13 @@ def super_resolution_demo(
     validate_on_device_demo_args(args, model_id)
 
     # Load image & model
+    inference_model = demo_model_from_cli_args(
+        model_cls,
+        model_id,
+        args,
+    )
     image = load_image(args.image)
-    input_spec = model_cls.get_input_spec()
+    input_spec = inference_model.get_input_spec()
 
     # Make sure the input image is consistent with the model.
     # Since we are demonstrating super-resolution, we do not want to do any
@@ -64,11 +69,6 @@ def super_resolution_demo(
         )
         sys.exit(1)
 
-    inference_model = demo_model_from_cli_args(
-        model_cls,
-        model_id,
-        args,
-    )
     app = SuperResolutionApp(inference_model)  # type: ignore[arg-type]
     print("Model Loaded")
     pred_images = app.upscale_image(image)

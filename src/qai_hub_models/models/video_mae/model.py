@@ -61,8 +61,8 @@ class VideoMAE(KineticsClassifier):
         out = self.model(video.transpose(1, 2), return_dict=False)
         return out[0]
 
-    @staticmethod
     def get_input_spec(
+        self,
         num_frames: int = 16,
     ) -> InputSpec:
         """

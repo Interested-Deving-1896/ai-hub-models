@@ -88,8 +88,7 @@ class TextEncoderBase(BaseModel, FromPretrainedMixin):
             "tokens": TensorSpec(shape=(batch_size, cls.seq_len), dtype="int32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["text_embedding"]
 
 
@@ -208,12 +207,10 @@ class UnetBase(BaseModel, FromPretrainedMixin):
     ) -> torch.Tensor:
         return self.model(latent, time_emb, text_emb)
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["latent"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["output_latent"]
 
     @classmethod
@@ -230,8 +227,7 @@ class UnetBase(BaseModel, FromPretrainedMixin):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["output_latent"]
 
 
@@ -332,12 +328,10 @@ class VaeDecoderBase(BaseModel, FromPretrainedMixin):
 
         return AutoencoderKLDecoder(model)
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["latent"]
 
-    @staticmethod
-    def get_input_spec(batch_size: int = 1) -> InputSpec:
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -346,8 +340,7 @@ class VaeDecoderBase(BaseModel, FromPretrainedMixin):
             "latent": TensorSpec(shape=(batch_size, 4, 64, 64), dtype="float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["image"]
 
 

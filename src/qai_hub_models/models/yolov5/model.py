@@ -79,8 +79,7 @@ class YoloV5(Yolo):
         boxes, scores, classes = yolo_detect_postprocess(boxes, scores)
         return boxes, scores, classes
 
-    @staticmethod
-    def get_output_names(include_postprocessing: bool = True) -> list[str]:
+    def get_output_names(self, include_postprocessing: bool = True) -> list[str]:
         if include_postprocessing:
             return ["boxes", "scores", "class_idx"]
         return ["detector_output"]

@@ -34,9 +34,10 @@ OUTPUT_IMAGE_ASSET = CachedWebModelAsset.from_asset_store(
 # Verify that the output from Torch is as expected.
 @skip_clone_repo_check
 def test_task() -> None:
+    model = HRNET_W48_OCR.from_pretrained()
     app = CityscapesSegmentationApp(
-        HRNET_W48_OCR.from_pretrained(),
-        to_hub_input_specs(HRNET_W48_OCR.get_input_spec()),
+        model,
+        to_hub_input_specs(model.get_input_spec()),
     )
     # fetch and load images
     image = TEST_CITYSCAPES_LIKE_IMAGE_ASSET.fetch()
@@ -53,9 +54,10 @@ def test_task() -> None:
 @pytest.mark.trace
 @skip_clone_repo_check
 def test_trace() -> None:
+    model = HRNET_W48_OCR.from_pretrained()
     app = CityscapesSegmentationApp(
-        HRNET_W48_OCR.from_pretrained().convert_to_torchscript(),
-        to_hub_input_specs(HRNET_W48_OCR.get_input_spec()),
+        model.convert_to_torchscript(),
+        to_hub_input_specs(model.get_input_spec()),
     )
     # fetch and load images
     image = TEST_CITYSCAPES_LIKE_IMAGE_ASSET.fetch()

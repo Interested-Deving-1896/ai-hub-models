@@ -72,8 +72,8 @@ class SuperResolutionModel(BaseModel):
         """
         return self.model(image)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 128,
         width: int = 128,
@@ -94,8 +94,7 @@ class SuperResolutionModel(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "upscaled_image": TensorSpec(
                 io_type=IoType.IMAGE,
@@ -106,12 +105,10 @@ class SuperResolutionModel(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["upscaled_image"]
 
     def _sample_inputs_impl(

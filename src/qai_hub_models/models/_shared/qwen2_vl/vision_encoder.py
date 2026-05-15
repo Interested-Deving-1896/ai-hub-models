@@ -366,8 +366,26 @@ class Qwen2VLVisionEncoder(BaseModel):
 
         return veg
 
-    @staticmethod
     def get_input_spec(
+        self,
+        image_height: int = 336,
+        image_width: int = 504,
+        num_images: int = 1,
+        patch_size: int = 14,
+        temporal_patch_size: int = 2,
+        in_channels: int = 3,
+    ) -> InputSpec:
+        return self.get_static_input_spec(
+            image_height,
+            image_width,
+            num_images,
+            patch_size,
+            temporal_patch_size,
+            in_channels,
+        )
+
+    @staticmethod
+    def get_static_input_spec(
         image_height: int = 336,
         image_width: int = 504,
         num_images: int = 1,
@@ -408,8 +426,7 @@ class Qwen2VLVisionEncoder(BaseModel):
             "full_attention_mask": ((1, seq_len, seq_len), "float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["vision_embeddings"]
 
     def get_sample_inputs(self) -> dict[str, torch.Tensor]:

@@ -70,7 +70,7 @@ def gkt_demo(
 
     model = demo_model_from_cli_args(model_type, model_id, args)
     validate_on_device_demo_args(args, model_id)
-    h, w = GKT.get_input_spec()["image"][0][3:]
+    h, w = GKT.from_pretrained().get_input_spec()["image"][0][3:]
     app = GKTApp(
         model,  # type: ignore[arg-type]
         ckpt_name="vehicle",

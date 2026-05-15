@@ -34,7 +34,7 @@ KEYPOINT_COORDS_GT = CachedWebModelAsset.from_asset_store(
 def test_task() -> None:
     image = load_image(IMAGE_ADDRESS)
     model = PosenetMobilenet.from_pretrained()
-    h, w = PosenetMobilenet.get_input_spec()["image"][0][2:]
+    h, w = model.get_input_spec()["image"][0][2:]
     app = PosenetApp(model, h, w)
     pose_scores, keypoint_scores, keypoint_coords = cast(
         tuple[np.ndarray, np.ndarray, np.ndarray], app.predict(image, raw_output=True)

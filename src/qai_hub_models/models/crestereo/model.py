@@ -109,8 +109,8 @@ class CREStereo(BaseModel):
             target_runtime, other_profile_options
         )
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 240,
         width: int = 320,
@@ -151,6 +151,5 @@ class CREStereo(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["disparity"]

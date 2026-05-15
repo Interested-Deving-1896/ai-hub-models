@@ -136,12 +136,11 @@ class CenterNetPose(CenterNet):
         hm_hp = torch.sigmoid(hm_hp)
         return hm, wh, hps, reg, hm_hp, hm_offset
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["hm", "wh", "hps", "reg", "hm_hp", "hm_offset"]
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 256,
@@ -190,6 +189,5 @@ class CenterNetPose(CenterNet):
     def calibration_dataset_name() -> str:
         return "cocobody"
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]

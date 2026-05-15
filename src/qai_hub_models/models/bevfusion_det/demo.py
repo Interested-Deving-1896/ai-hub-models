@@ -67,6 +67,8 @@ def main(is_test: bool = False) -> None:
     validate_on_device_demo_args(args, MODEL_ID)
 
     heads = model.decoder.heads
+    enc1_shape = model.encoder1.get_input_spec()["imgs"][0]
+    input_shape = (enc1_shape[-2], enc1_shape[-1])
     if args.eval_mode == EvalMode.ON_DEVICE:
         enc1, enc2, enc3, dec = demo_model_components_from_cli_args(
             BEVFusion, MODEL_ID, args
@@ -79,6 +81,7 @@ def main(is_test: bool = False) -> None:
             num_classes=heads.num_classes,
             task_heads=heads.task_heads,
             get_bboxes=heads.get_bboxes,
+            model_input_shape=input_shape,
         )
     else:
         app = BEVFusionApp(
@@ -89,6 +92,7 @@ def main(is_test: bool = False) -> None:
             num_classes=heads.num_classes,
             task_heads=heads.task_heads,
             get_bboxes=heads.get_bboxes,
+            model_input_shape=input_shape,
         )
 
     # Load inputs

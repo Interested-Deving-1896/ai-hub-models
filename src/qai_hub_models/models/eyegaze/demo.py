@@ -50,18 +50,18 @@ def eyegaze_demo(
         help="eye side; if 'right', yaw is flipped per source evaluation",
     )
     args = parser.parse_args([] if is_test else None)
-    model = cast(EyeGaze, demo_model_from_cli_args(model_type, model_id, args))
+    model = demo_model_from_cli_args(model_type, model_id, args)
     validate_on_device_demo_args(args, model_id)
 
     # Load and preprocess image
-    (_, height, width) = model_type.get_input_spec()["image"][0]
+    (_, height, width) = model.get_input_spec()["image"][0]
     orig_image = load_image(args.image)
     image = orig_image.resize((width, height))
 
     image_np = np.array(image.convert("L"))
 
     # Initialize app and run inference
-    app = EyeGazeApp(model)
+    app = EyeGazeApp(model)  # type: ignore[arg-type]
     print("Model Loaded")
     output = cast(Image.Image, app.predict_gaze_angle(image_np, side=args.side))
 

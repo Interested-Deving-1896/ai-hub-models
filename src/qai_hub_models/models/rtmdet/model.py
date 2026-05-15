@@ -134,17 +134,12 @@ class RTMDet(Yolo):
         class_idx = result_box[:, :, 4]
         return boxes, scores, class_idx.to(torch.int8)
 
-    @staticmethod
-    def get_output_names(include_postprocessing: bool = True) -> list[str]:
-        if include_postprocessing:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
             return ["boxes", "scores", "class_idx"]
         return ["detector_output"]
 
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.include_postprocessing)
-
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 8
 

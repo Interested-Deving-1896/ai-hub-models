@@ -56,8 +56,7 @@ class YamNet(BaseModel):
         """
         return self.model(audio)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
         #
         # This can be used with the qai_hub python API to declare
@@ -84,8 +83,7 @@ class YamNet(BaseModel):
         preprocessed_tensor = input_tensor[0:1, :, :, :]
         return {"audio": [preprocessed_tensor.numpy()]}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["class_scores"]
 
     @staticmethod

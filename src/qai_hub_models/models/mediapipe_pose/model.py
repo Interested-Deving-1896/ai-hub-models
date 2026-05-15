@@ -195,8 +195,7 @@ class PoseDetector(BaseModel):
             include_postprocessing,
         )
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the pose detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -213,8 +212,7 @@ class PoseDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["box_coords_1", "box_coords_2", "box_scores_1", "box_scores_2"]
 
     def get_hub_quantize_options(
@@ -225,8 +223,7 @@ class PoseDetector(BaseModel):
             return options
         return options + " --range_scheme min_max"
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(
@@ -290,8 +287,7 @@ class PoseLandmarkDetector(BaseModel):
         pose_regressor.load_weights(str(MEDIAPIPE_REPO_DIR / landmark_detector_weights))
         return cls(pose_regressor)
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the pose landmark detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -308,12 +304,10 @@ class PoseLandmarkDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["scores", "landmarks"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(

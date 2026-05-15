@@ -187,8 +187,8 @@ class SuperPoint(BaseModel):
             sampled.reshape(b, num_images, k, self.DESCRIPTOR_DIM),
         )
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         num_images: int = 2,
         height: int = 480,
@@ -200,8 +200,7 @@ class SuperPoint(BaseModel):
         )
         return {"image": ((batch_size, num_images, 1, height, width), "float32")}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["keypoints", "scores", "descriptors"]
 
     @staticmethod

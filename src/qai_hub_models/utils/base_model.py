@@ -58,16 +58,9 @@ def get_input_spec_params(
     model: HubModel | type[HubModel],
 ) -> dict[str, inspect.Parameter]:
     """Return the non-self parameters of get_input_spec, ignoring variadic params (*args, **kwargs)."""
-    get_input_spec_args = inspect.signature(model._get_input_spec_for_instance)
-    if isinstance(model, type):
-        default_args = ["self", "args", "kwargs"]
-    else:
-        default_args = ["args", "kwargs"]
-    if list(get_input_spec_args.parameters.keys()) == default_args:
-        # Use get_input_spec args if get_input_spec_for_instance is not defined.
-        get_input_spec_args = inspect.signature(model.get_input_spec)
+    get_input_spec_args = inspect.signature(model.get_input_spec)
     params = dict(get_input_spec_args.parameters)
-    for arg in ["self", "cls", "args", "kwargs"]:
+    for arg in ["self", "args", "kwargs"]:
         params.pop(arg, None)
     return params
 
@@ -149,8 +142,6 @@ class CollectionModel(Generic[ComponentT]):
                     f"of {expected_class.__name__}, got {type(arg).__name__}"
                 )
             self.components[name] = arg
-
-        self.get_input_spec = self._get_input_spec_for_instance
 
     @classmethod
     def add_component(
@@ -332,41 +323,7 @@ class CollectionModel(Generic[ComponentT]):
         """
         return
 
-    @classmethod
     def get_input_spec(
-        cls,
-        per_component_kwargs: ComponentGroup[dict[str, Any]] | None = None,
-        **kwargs: Any,
-    ) -> ComponentGroup[InputSpec]:
-        """Return input specifications for every component.
-
-        Parameters
-        ----------
-        per_component_kwargs
-            Per-component keyword arguments to pass to each component's ``get_input_spec()``.
-            These values supercede those in global kwargs.
-        **kwargs
-            Args to be distributed among all components. An entry is used if a
-            component's get_input_spec() has parameters that match keys in the dict.
-
-        Returns
-        -------
-        ComponentGroup[InputSpec]
-            Keyed by component_name.
-        """
-        per_component_kwargs = get_components_input_spec_kwargs(
-            cls, per_component_kwargs, kwargs
-        )
-        return ComponentGroup(
-            {
-                comp_name: component.get_input_spec(
-                    **per_component_kwargs.get(comp_name, {})
-                )
-                for comp_name, component in cls.component_classes.items()
-            }
-        )
-
-    def _get_input_spec_for_instance(
         self,
         per_component_kwargs: ComponentGroup[dict[str, Any]] | None = None,
         **kwargs: Any,
@@ -407,69 +364,10 @@ class HubModel(HubModelProtocol):
         super().__init_subclass__(**kwargs)
         if "get_output_spec" in cls.__dict__ and "get_output_names" not in cls.__dict__:
 
-            def _get_output_names() -> list[str]:
-                return list(cls.get_output_spec().keys())
+            def _get_output_names(self: Any) -> list[str]:
+                return list(self.get_output_spec().keys())
 
-            cls.get_output_names = staticmethod(_get_output_names)
-
-    def __init__(self) -> None:
-        # If a child class implements _get_input_spec_for_instance(),
-        # then calling `get_input_spec` on the instance will redirect to it.
-        if self._get_input_spec_for_instance.__module__ != __name__:
-            self.get_input_spec = self._get_input_spec_for_instance
-        if self._get_output_names_for_instance.__module__ != __name__:
-            self.get_output_names = self._get_output_names_for_instance
-        if self._get_channel_last_inputs_for_instance.__module__ != __name__:
-            self.get_channel_last_inputs = self._get_channel_last_inputs_for_instance
-        if self._get_channel_last_outputs_for_instance.__module__ != __name__:
-            self.get_channel_last_outputs = self._get_channel_last_outputs_for_instance
-
-    def _get_input_spec_for_instance(self, *args: Any, **kwargs: Any) -> InputSpec:
-        """
-        Get the input specifications for an instance of this model.
-
-        Typically this will pre-fill inputs of get_input_spec
-        with values determined by instance members of the model class.
-
-        If this function is implemented by a child class, the initializer for BaseModel
-        will automatically override get_input_spec with this function
-        when the class is instantiated.
-        """
-        raise NotImplementedError
-
-    def _get_output_names_for_instance(self, *args: Any, **kwargs: Any) -> list[str]:
-        """
-        Get the output names for an instance of this model.
-
-        If this function is implemented by a child class, the initializer for BaseModel
-        will automatically override get_output_names with this function
-        when the class is instantiated.
-        """
-        raise NotImplementedError
-
-    def _get_channel_last_inputs_for_instance(
-        self, *args: Any, **kwargs: Any
-    ) -> list[str]:
-        """
-        Get the channel last input names for an instance of this model.
-
-        If this function is implemented by a child class, the initializer for BaseModel
-        will automatically override get_channel_last_inputs with this function
-        when the class is instantiated.
-        """
-        raise NotImplementedError
-
-    def _get_channel_last_outputs_for_instance(
-        self, *args: Any, **kwargs: Any
-    ) -> list[str]:
-        """
-        Get the channel last output names for an instance of this model.
-
-        If this function is implemented by a child class, the initializer for BaseModel
-        will automatically override get_channel_last_outputs with this function
-        when the class is instantiated.
-        """
-        raise NotImplementedError
+            cls.get_output_names = _get_output_names
 
     def sample_inputs(
         self,
@@ -557,24 +455,21 @@ class HubModel(HubModelProtocol):
 
         return other_link_options
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         """
         A list of input names that should be transposed to channel-last format
             for the on-device model in order to improve performance.
         """
         return []
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         """
         A list of output names that should be transposed to channel-last format
             for the on-device model in order to improve performance.
         """
         return []
 
-    @staticmethod
-    def get_output_spec() -> OutputSpec:
+    def get_output_spec(self) -> OutputSpec:
         """
         Returns a map from `{output_name -> TensorSpec}` with semantic metadata
         for each output tensor (e.g. io_type, bbox format, description).
@@ -583,8 +478,7 @@ class HubModel(HubModelProtocol):
         """
         return {}
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         """
         If this is a component in a component model, the parent model may declare
         a "variable" precision, where different components use different precisions.
@@ -810,8 +704,7 @@ class BaseModel(
         all_options += precision_options
         return all_options
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """
         Returns the Lite-MP percentage value for the specified mixed precision quantization.
 
@@ -863,8 +756,7 @@ class MultiGraphBaseModel(BaseModel):
     re-derive the graph/spec mapping.
     """
 
-    @staticmethod
-    def get_input_spec(*args: Any, **kwargs: Any) -> MultiGraphGroup[InputSpec]:
+    def get_input_spec(self, *args: Any, **kwargs: Any) -> MultiGraphGroup[InputSpec]:
         """Return input specifications keyed by graph name.
 
         Parameters
@@ -1090,49 +982,7 @@ class MultiGraphPretrainedCollectionModel(
 ):
     """Collection model where some or all components have multiple graphs."""
 
-    @classmethod
     def get_input_spec(
-        cls,
-        per_component_kwargs: ComponentGroup[dict[str, Any]] | None = None,
-        **kwargs: Any,
-    ) -> MultiGraphComponentGroup[InputSpec]:
-        """Return input specifications for every component and graph.
-
-        For ``MultiGraphBaseModel`` components the inner dict is the
-        component's own ``get_input_spec()`` (graph_name -> InputSpec).
-        For plain ``BaseModel`` components, a single-entry is
-        synthesized with graph_name=None.
-
-        Parameters
-        ----------
-        per_component_kwargs
-            Per-component keyword arguments to pass to each component's
-            ``get_input_spec()``, or a dict that will apply to all components.
-            These values supercede those in global kwargs.
-        **kwargs
-            Args to be distributed among all components. An entry is used if a
-            component's get_input_spec() has parameters that match keys in the dict.
-
-        Returns
-        -------
-        MultiGraphComponentGroup[InputSpec]
-            Keyed by (component_name, graph_name | None).
-        """
-        per_component_kwargs = get_components_input_spec_kwargs(
-            cls, per_component_kwargs, kwargs
-        )
-        out: MultiGraphComponentGroup[InputSpec] = MultiGraphComponentGroup()
-        for comp_name, component in cls.component_classes.items():
-            if issubclass(component, MultiGraphBaseModel):
-                for graph_name, spec in component.get_input_spec(
-                    **per_component_kwargs.get(comp_name, {})
-                ).items():
-                    out[(comp_name, graph_name)] = spec
-            else:
-                out[(comp_name, None)] = component.get_input_spec()
-        return out
-
-    def _get_input_spec_for_instance(
         self,
         per_component_kwargs: ComponentGroup[dict[str, Any]] | None = None,
         **kwargs: Any,

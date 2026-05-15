@@ -74,8 +74,8 @@ class UltralyticsSingleClassSegmentor(BaseModel):
 
         return boxes, scores.squeeze(1), mask_coeffs.permute(0, 2, 1), mask_protos
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = DEFAULT_ULTRALYTICS_IMAGE_INPUT_HW,
         width: int = DEFAULT_ULTRALYTICS_IMAGE_INPUT_HW,
@@ -92,8 +92,7 @@ class UltralyticsSingleClassSegmentor(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -108,12 +107,10 @@ class UltralyticsSingleClassSegmentor(BaseModel):
             "mask_protos": TensorSpec(io_type=IoType.TENSOR),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask_protos"]
 
 
@@ -135,8 +132,8 @@ class UltralyticsMulticlassSegmentor(BaseModel):
         else:
             raise NotImplementedError()
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = DEFAULT_ULTRALYTICS_IMAGE_INPUT_HW,
         width: int = DEFAULT_ULTRALYTICS_IMAGE_INPUT_HW,
@@ -153,8 +150,7 @@ class UltralyticsMulticlassSegmentor(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -173,12 +169,10 @@ class UltralyticsMulticlassSegmentor(BaseModel):
             "mask_protos": TensorSpec(io_type=IoType.TENSOR),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["mask_protos"]
 
     def forward(

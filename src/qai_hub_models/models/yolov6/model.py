@@ -83,17 +83,12 @@ class YoloV6(Yolo):
             else predictions
         )
 
-    @staticmethod
-    def get_output_names(include_postprocessing: bool = True) -> list[str]:
-        if include_postprocessing:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
             return ["boxes", "scores", "class_idx"]
         return ["detector_output"]
 
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.include_postprocessing)
-
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10
 

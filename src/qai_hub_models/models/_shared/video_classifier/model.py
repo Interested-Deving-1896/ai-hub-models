@@ -78,8 +78,8 @@ class KineticsClassifier(BaseModel):
         video = (video - self.input_mean) / self.input_std
         return self.model(video)
 
-    @staticmethod
     def get_input_spec(
+        self,
         num_frames: int = 16,
     ) -> InputSpec:
         """
@@ -118,8 +118,7 @@ class KineticsClassifier(BaseModel):
             input_tensor = input_tensor[:, :, :num_frames]
         return {"video": [input_tensor.numpy()]}
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "class_probs": TensorSpec(
                 io_type=IoType.TENSOR,
@@ -127,8 +126,7 @@ class KineticsClassifier(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["video"]
 
     def get_evaluator(self) -> BaseEvaluator:

@@ -57,15 +57,18 @@ class MobileSAMEncoder(BaseModel):
         x = (image - self.sam.pixel_mean) * (1 / self.sam.pixel_std)
         return self.sam.image_encoder(x)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
-        encoder_img_height: int = 1024,  # self.sam.image_encoder.img_size
-        encoder_img_width: int = 1024,  # self.sam.image_encoder.img_size
     ) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, encoder_img_height, encoder_img_width),
+                shape=(
+                    batch_size,
+                    3,
+                    self.sam.image_encoder.img_size,
+                    self.sam.image_encoder.img_size,
+                ),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -75,26 +78,13 @@ class MobileSAMEncoder(BaseModel):
             ),
         }
 
-    def _get_input_spec_for_instance(
-        self,
-        batch_size: int = 1,
-    ) -> InputSpec:
-        return self.__class__.get_input_spec(
-            batch_size,
-            self.sam.image_encoder.img_size,
-            self.sam.image_encoder.img_size,
-        )
-
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["image_embeddings"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["image_embeddings"]
 
     @classmethod
@@ -179,27 +169,8 @@ class MobileSAMDecoder(BaseModel):
 
         return masks, scores
 
-    def _get_input_spec_for_instance(
-        self: MobileSAMDecoder,
-        has_mask_input: bool = False,
-        num_of_points: int = 1,
-    ) -> InputSpec:
-        """
-        Override for model.get_input_spec() when called on instances of this class.
-
-        The initializer for BaseModel will automatically override get_input_spec
-        with this function when the class is instantiated.
-        """
-        return self.__class__.get_input_spec(
-            has_mask_input,
-            num_of_points,
-            self.model.prompt_encoder.embed_dim,
-            self.embed_size[0],
-            self.embed_size[1],
-        )
-
-    @staticmethod
     def get_input_spec(
+        self,
         has_mask_input: bool = False,
         num_of_points: int = 1,
         embed_dim: int = 256,
@@ -243,19 +214,16 @@ class MobileSAMDecoder(BaseModel):
             )
         return input_spec
 
-    @staticmethod
-    def get_channel_last_inputs(has_mask_input: bool = False) -> list[str]:
+    def get_channel_last_inputs(self, has_mask_input: bool = False) -> list[str]:
         out = ["image_embeddings"]
         if has_mask_input:
             out.append("mask_input")
         return out
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["masks"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["masks", "scores"]
 
     @classmethod

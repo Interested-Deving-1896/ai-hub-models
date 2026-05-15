@@ -13,7 +13,6 @@ import torch
 from PIL import Image
 
 from qai_hub_models.datasets.common import BaseDataset, DatasetMetadata, DatasetSplit
-from qai_hub_models.models._shared.super_resolution.model import SuperResolutionModel
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.input_spec import InputSpec
 
@@ -45,9 +44,12 @@ class BSD300Dataset(BaseDataset):
 
         BaseDataset.__init__(self, self.bsd_path, split, input_spec)
         self.scaling_factor = scaling_factor
-        input_spec = input_spec or SuperResolutionModel.get_input_spec()
-        self.input_height = input_spec["image"][0][2]
-        self.input_width = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.input_height = input_spec["image"][0][2]
+            self.input_width = input_spec["image"][0][3]
+        else:
+            self.input_height = 128
+            self.input_width = 128
         self.image_files = sorted(os.listdir(self.images_path))
 
     def _validate_data(self) -> bool:

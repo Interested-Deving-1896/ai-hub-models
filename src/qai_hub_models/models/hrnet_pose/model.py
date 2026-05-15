@@ -96,8 +96,8 @@ class HRNetPose(BaseModel):
     ) -> SampleInputsType:
         return {"image": [load_numpy(SAMPLE_INPUTS)]}
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 192,
@@ -114,16 +114,13 @@ class HRNetPose(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["heatmaps"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["heatmaps"]
 
     def get_evaluator(self) -> BaseEvaluator:

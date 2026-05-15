@@ -73,7 +73,8 @@ def facemap_3dmm_demo(
 
     print("Model Loaded")
 
-    app = FaceMap_3DMMApp(model)  # type: ignore[arg-type]
+    shape = model_cls.from_pretrained().get_input_spec()["image"][0]
+    app = FaceMap_3DMMApp(model, model_input_shape=(shape[-2], shape[-1]))  # type: ignore[arg-type]
 
     # Get face bounding box info (from file or face detector)
     x0, x1, y0, y1 = (

@@ -88,36 +88,20 @@ class HfWhisperEncoder(BaseModel):
         assert self.encoder is not None, "model is None"
         return self.encoder(input_features)[0]
 
-    @staticmethod
-    def get_input_spec(num_mel_bin: int = 80) -> InputSpec:
-        """
-        Returns the input specification (name -> (shape, type). This can be
-        used to submit profiling job on Qualcomm AI Hub Workbench.
-        """
+    def get_input_spec(self) -> InputSpec:
         return {
             "input_features": TensorSpec(
-                shape=(1, num_mel_bin, MELS_AUDIO_LEN),
+                shape=(1, self.config.num_mel_bins, MELS_AUDIO_LEN),
                 dtype="float32",
             ),
         }
 
-    def _get_input_spec_for_instance(self) -> InputSpec:
-        return self.__class__.get_input_spec(
-            self.config.num_mel_bins,
-        )
-
-    @staticmethod
-    def get_output_names(
-        num_blocks: int = 12,
-    ) -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             f"{prefix}_cache_cross_{i}"
-            for i in range(num_blocks)
+            for i in range(self.config.decoder_layers)
             for prefix in ("k", "v")
         ]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.config.decoder_layers)
 
     @classmethod
     def from_pretrained(cls, hf_whisper_version: str = "openai/whisper-base") -> Self:
@@ -249,16 +233,10 @@ class HfWhisperDecoder(BaseModel):
         )
         return logits, kv_cache_self_new
 
-    @staticmethod
-    def get_input_spec(
-        num_blocks: int = 12,
-        attention_dim: int = 768,
-        num_heads: int = 12,
-    ) -> InputSpec:
-        """
-        Returns the input specification (name -> (shape, type). This can be
-        used to submit profiling job on Qualcomm AI Hub Workbench.
-        """
+    def get_input_spec(self) -> InputSpec:
+        num_blocks = self.config.decoder_layers
+        attention_dim = self.config.d_model
+        num_heads = self.config.decoder_attention_heads
         specs: InputSpec = {
             "input_ids": TensorSpec(shape=(1, 1), dtype="int32"),
             "attention_mask": TensorSpec(
@@ -289,28 +267,14 @@ class HfWhisperDecoder(BaseModel):
         specs.update(kv_cache_self)
         specs.update(kv_cache_cross)
         specs["position_ids"] = TensorSpec(shape=(1,), dtype="int32")
-
         return specs
 
-    def _get_input_spec_for_instance(self) -> InputSpec:
-        return self.__class__.get_input_spec(
-            self.config.decoder_layers,
-            self.config.d_model,
-            self.config.decoder_attention_heads,
-        )
-
-    @staticmethod
-    def get_output_names(
-        num_blocks: int = 12,
-    ) -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["logits"] + [
             f"{prefix}_cache_self_{i}_out"
-            for i in range(num_blocks)
+            for i in range(self.num_blocks)
             for prefix in ("k", "v")
         ]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.num_blocks)
 
     @classmethod
     def from_pretrained(cls, hf_whisper_version: str = "openai/whisper-base") -> Self:

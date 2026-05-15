@@ -12,7 +12,6 @@ import numpy as np
 import torch
 from PIL import Image
 
-from qai_hub_models.models.centernet_3d.model import CenterNet3D
 from qai_hub_models.models.centernet_3d.util import ddd_post_process
 from qai_hub_models.utils.bounding_box_processing_3d import compute_box_3d, draw_3d_bbox
 from qai_hub_models.utils.draw import draw_box_from_corners
@@ -65,6 +64,7 @@ class CenterNet3DApp:
             torch.Tensor,
         ],
         max_dets: int = 100,
+        model_input_shape: tuple[int, int] = (384, 1280),
     ) -> None:
         """
         Initialize CenterNet3DApp
@@ -78,10 +78,13 @@ class CenterNet3DApp:
             into detected objects/detections.
         max_dets
             Maximum number of detections per image.
+        model_input_shape
+            (height, width) of the model input.
         """
         self.model = model
         self.decode = decode
         self.max_dets = max_dets
+        self.model_input_shape = model_input_shape
         self.vis_threshold = 0.3
         self.out_bev_size = 384
         self.world_size = 64
@@ -124,7 +127,7 @@ class CenterNet3DApp:
                 Tuple containing image with 3d bounding boxes and bev image.
         """
         image_array = np.array(image)
-        h, w = CenterNet3D.get_input_spec()["image"][0][2:]
+        h, w = self.model_input_shape
         height, width = image_array.shape[0:2]
         c = np.array([width / 2, height / 2])
         s = np.array([width, height])

@@ -60,9 +60,11 @@ def main(is_test: bool = False) -> None:
     validate_on_device_demo_args(args, MODEL_ID)
 
     # Load
+    shape = inference_model.get_input_spec()["image"][0]
     app = BEVDetApp(
         model,  # type: ignore[arg-type]
         inference_model.bboxcoder,
+        model_input_shape=(shape[-2], shape[-1]),
     )
 
     cam_paths = {

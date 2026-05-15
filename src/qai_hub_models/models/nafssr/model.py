@@ -110,8 +110,8 @@ class NAFSSR(NAFNetModel):
         """
         return self.model(l_image, r_image)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 128,
         width: int = 128,
@@ -134,16 +134,13 @@ class NAFSSR(NAFNetModel):
         img_r = transforms.ToTensor()(r_img).unsqueeze(0)
         return {"l_image": [img_l.numpy()], "r_image": [img_r.numpy()]}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["upscaled_left", "upscaled_right"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["l_image", "r_image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["upscaled_left", "upscaled_right"]
 
     @staticmethod

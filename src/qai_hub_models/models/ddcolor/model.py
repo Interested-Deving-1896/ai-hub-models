@@ -44,8 +44,8 @@ class DDColor(BaseModel):
         """
         return self.model(image)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 256,
@@ -66,12 +66,10 @@ class DDColor(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["output"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def get_evaluator(self) -> BaseEvaluator:
@@ -93,8 +91,7 @@ class DDColor(BaseModel):
     def calibration_dataset_name() -> str:
         return "imagenette_colorization"
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for mixed precision quantization."""
         return 10.0
 

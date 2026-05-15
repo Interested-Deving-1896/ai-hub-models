@@ -63,8 +63,8 @@ class Pointnet(BaseModel):
         """
         return self.model(image)
 
-    @staticmethod
     def get_input_spec(
+        self,
         num_points: int = 1024,
     ) -> InputSpec:
         return {
@@ -75,6 +75,5 @@ class Pointnet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["x", "crit_idxs", "A_feat"]

@@ -238,8 +238,8 @@ class BEVDet(BaseModel):
 
         return reg, height, dim, rot, vel, heatmap
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         num_cam: int = 6,
         height: int = 256,
@@ -277,8 +277,7 @@ class BEVDet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["reg", "height", "dim", "rot", "vel", "heatmap"]
 
     def _sample_inputs_impl(
@@ -338,7 +337,6 @@ class BEVDet(BaseModel):
     def calibration_dataset_name() -> str:
         return "nuscenes"
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 30

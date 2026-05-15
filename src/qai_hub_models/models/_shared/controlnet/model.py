@@ -156,16 +156,13 @@ class ControlUnetBase(BaseModel, FromPretrainedMixin):
             controlnet_midblock,
         )
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["output_latent"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["output_latent"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return (
             ["latent"]
             + [f"controlnet_downblock{i}" for i in range(12)]
@@ -329,14 +326,12 @@ class ControlNetBase(BaseModel, FromPretrainedMixin):
     ) -> tuple[torch.Tensor, ...]:
         return self.model(latent, time_emb, text_emb, image_cond)
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["latent", "image_cond"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         # All outputs are channel last
-        return ControlNetBase.get_output_names()
+        return self.get_output_names()
 
     @classmethod
     def get_input_spec(
@@ -361,8 +356,7 @@ class ControlNetBase(BaseModel, FromPretrainedMixin):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [f"down_block_{i}" for i in range(12)] + ["mid_block"]
 
     @staticmethod

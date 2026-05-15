@@ -816,13 +816,15 @@ def demo_model_from_cli_args(
     """
     is_on_device = "eval_mode" in cli_args and cli_args.eval_mode == EvalMode.ON_DEVICE
     inference_model: FromPretrainedTypeVar | OnDeviceModel
+    inference_model = model_from_cli_args(model_cls, cli_args)
     if is_on_device and issubclass(model_cls, BaseModel):
+        assert isinstance(inference_model, BaseModel)
         device: hub.Device = cli_args.device
         if cli_args.hub_model_id:
             model_from_hub = hub.get_model(cli_args.hub_model_id)
             inference_model = OnDeviceModel(
                 model_from_hub,
-                list(model_cls.get_input_spec().keys()),
+                list(inference_model.get_input_spec().keys()),
                 device,
                 cli_args.inference_options,
             )
@@ -838,7 +840,7 @@ def demo_model_from_cli_args(
                 additional_kwargs,
                 component,
             )
-            input_names = list(model_cls.get_input_spec().keys())
+            input_names = list(inference_model.get_input_spec().keys())
             inference_model = OnDeviceModel(
                 target_model,
                 input_names,
@@ -851,8 +853,6 @@ def demo_model_from_cli_args(
                 + "\n"
             )
 
-    else:
-        inference_model = model_from_cli_args(model_cls, cli_args)
     return inference_model
 
 

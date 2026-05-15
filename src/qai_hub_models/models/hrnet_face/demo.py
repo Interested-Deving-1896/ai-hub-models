@@ -41,7 +41,7 @@ def hrnet_face_demo(model_cls: type[HRNetFace], is_test: bool = False) -> None:
     model = demo_model_from_cli_args(model_cls, MODEL_ID, args)
 
     # Load image
-    (_, _, height, width) = model_cls.get_input_spec()["image"][0]
+    (_, _, height, width) = model_cls.from_pretrained().get_input_spec()["image"][0]
     orig_image = load_image(args.image)
     image = orig_image.resize((width, height))
 

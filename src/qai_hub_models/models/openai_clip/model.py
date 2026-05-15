@@ -85,8 +85,8 @@ class OpenAIClip(BaseModel):
 
         return image_features @ text_features.t()
 
-    @staticmethod
     def get_input_spec(
+        self,
         image_batch_size: int = 1,
         image_height: int = 224,
         image_width: int = 224,
@@ -114,12 +114,10 @@ class OpenAIClip(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["logits_per_image"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     @classmethod

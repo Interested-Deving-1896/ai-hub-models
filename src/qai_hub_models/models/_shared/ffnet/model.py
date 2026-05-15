@@ -95,13 +95,13 @@ class FFNetLowRes(FFNet):
         instance.model.pre_downsampling = False  # type: ignore[assignment]
         return instance
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 512,
         width: int = 1024,
     ) -> InputSpec:
-        return FFNet.get_input_spec(batch_size, height, width)
+        return super().get_input_spec(batch_size, height, width)
 
     @staticmethod
     def eval_datasets() -> list[str]:

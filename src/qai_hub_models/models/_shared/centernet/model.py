@@ -61,8 +61,8 @@ class CenterNet(BaseModel):
 
         return compile_options
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 512,
         width: int = 512,

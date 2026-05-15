@@ -15,16 +15,13 @@ from qai_hub_models.utils.input_spec import InputSpec, IoType, TensorSpec
 
 
 class DepthEstimationModel(BaseModel):
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["depth_estimates"]
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "depth_estimates": TensorSpec(
                 io_type=IoType.TENSOR,

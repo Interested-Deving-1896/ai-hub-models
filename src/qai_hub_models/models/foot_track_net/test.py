@@ -39,8 +39,9 @@ def test_task() -> None:
     atol = 5
     rtol = 0.1
 
-    app = FootTrackNet_App(FootTrackNet.from_pretrained())
-    (_, _, height, width) = FootTrackNet.get_input_spec()["image"][0]
+    model = FootTrackNet.from_pretrained()
+    app = FootTrackNet_App(model)
+    (_, _, height, width) = model.get_input_spec()["image"][0]
     image, *_ = pil_resize_pad(load_image(INPUT_IMAGE_ADDRESS), (height, width))
     objs_face, objs_person = app.predict_bbox_landmarks(image)
 
@@ -100,8 +101,9 @@ def test_trace() -> None:
     diff_tol = 0.1
     atol = 5
     rtol = 0.1
-    app = FootTrackNet_App(FootTrackNet.from_pretrained().convert_to_torchscript())
-    (_, _, height, width) = FootTrackNet.get_input_spec()["image"][0]
+    model = FootTrackNet.from_pretrained()
+    app = FootTrackNet_App(model.convert_to_torchscript())
+    (_, _, height, width) = model.get_input_spec()["image"][0]
     image, *_ = pil_resize_pad(load_image(INPUT_IMAGE_ADDRESS), (height, width))
     objs_face, objs_person = app.predict_bbox_landmarks(image)
 

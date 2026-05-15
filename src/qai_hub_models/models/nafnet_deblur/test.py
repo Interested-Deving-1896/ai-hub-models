@@ -31,7 +31,8 @@ def test_task() -> None:
     image = load_image(IMAGE_ADDRESS)
     output_image = load_image(OUTPUT_IMAGE_ADDRESS)
 
-    app = NAFNetApp(NafNetDeBlur.from_pretrained(), NafNetDeBlur.get_input_spec())
+    model = NafNetDeBlur.from_pretrained()
+    app = NAFNetApp(model, model.get_input_spec())
 
     restored_image = app.restore_image(image)
 
@@ -49,9 +50,10 @@ def test_trace() -> None:
     image = load_image(IMAGE_ADDRESS)
     output_image = load_image(OUTPUT_IMAGE_ADDRESS)
 
+    model = NafNetDeBlur.from_pretrained()
     app = NAFNetApp(
-        NafNetDeBlur.from_pretrained().convert_to_torchscript(),
-        NafNetDeBlur.get_input_spec(),
+        model.convert_to_torchscript(),
+        model.get_input_spec(),
     )
     restored_image = app.restore_image(image)
 

@@ -163,12 +163,15 @@ def main(is_test: bool = False) -> None:
         encode_key_without_shrinkage = wrapper.EncodeKeyWithoutShrinkage
         segment = wrapper.Segment
 
+    enc_shape = wrapper.EncodeValue.get_input_spec()["image"][0]
+    input_shape = (enc_shape[-2], enc_shape[-1])
     app = TrackAnythingApp(
         encode_key_with_shrinkage,  # type: ignore[arg-type]
         encode_value,  # type: ignore[arg-type]
         encode_key_without_shrinkage,  # type: ignore[arg-type]
         segment,  # type: ignore[arg-type]
         wrapper.config,
+        model_input_shape=input_shape,
     )
 
     # Run inference

@@ -112,8 +112,7 @@ class CenterNet2D(CenterNet):
         hm = torch.sigmoid(hm)
         return hm, wh, reg
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["hm", "wh", "reg"]
 
     def _sample_inputs_impl(
@@ -148,6 +147,5 @@ class CenterNet2D(CenterNet):
     def calibration_dataset_name() -> str:
         return "coco"
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]

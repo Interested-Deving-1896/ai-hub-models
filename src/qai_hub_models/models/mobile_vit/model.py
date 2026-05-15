@@ -53,8 +53,7 @@ class MobileVIT(ImagenetClassifier):
     def forward(self, image_tensor: torch.Tensor) -> torch.Tensor:
         return self.net(image_tensor, return_dict=False)[0]
 
-    @staticmethod
-    def get_input_spec(batch_size: int = 1) -> InputSpec:
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         return {
             "image_tensor": TensorSpec(
                 shape=(batch_size, 3, 256, 256),

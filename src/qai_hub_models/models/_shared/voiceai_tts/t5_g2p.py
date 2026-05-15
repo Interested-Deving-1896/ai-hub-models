@@ -89,8 +89,7 @@ class T5Encoder(BaseModel):
 
         return outputs
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -102,8 +101,7 @@ class T5Encoder(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names(num_blocks: int = NUM_DECODER_BLOCKS) -> list[str]:
+    def get_output_names(self, num_blocks: int = NUM_DECODER_BLOCKS) -> list[str]:
         names = []
         for i in range(num_blocks):
             names.append(f"block_{i}_cross_key_states")
@@ -115,8 +113,7 @@ class T5Encoder(BaseModel):
         t5model = T5ForConditionalGeneration.from_pretrained(CHARSIU_MODEL_ID).eval()
         return cls(t5model)
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16
 
 
@@ -236,13 +233,11 @@ class T5Decoder(BaseModel):
         logits = self.model.lm_head(hidden_states)  # type: ignore[operator]
         return logits, *present_key_values
 
-    @staticmethod
-    def get_input_spec(
-        n_heads: int = 6,
-        dim_per_head: int = 64,
-        q_len: int = MAX_NUM_INPUT_IDS,
-        num_blocks: int = NUM_DECODER_BLOCKS,
-    ) -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
+        n_heads = self.block[0].layer[0].SelfAttention.n_heads
+        dim_per_head = self.block[0].layer[0].SelfAttention.key_value_proj_dim
+        q_len = self.max_num_input_ids
+        num_blocks = len(self.block)
         specs: InputSpec = {
             "input_ids": TensorSpec(shape=(1, 1), dtype="int32"),
             "encoder_attention_mask": TensorSpec(shape=(1, q_len), dtype="int32"),
@@ -267,30 +262,17 @@ class T5Decoder(BaseModel):
             )
         return specs
 
-    def _get_input_spec_for_instance(self) -> InputSpec:
-        return self.__class__.get_input_spec(
-            n_heads=self.block[0].layer[0].SelfAttention.n_heads,
-            dim_per_head=self.block[0].layer[0].SelfAttention.key_value_proj_dim,
-            q_len=self.max_num_input_ids,
-            num_blocks=len(self.block),
-        )
-
-    @staticmethod
-    def get_output_names(num_blocks: int = NUM_DECODER_BLOCKS) -> list[str]:
+    def get_output_names(self) -> list[str]:
         names = ["logits"]
-        for i in range(num_blocks):
+        for i in range(len(self.block)):
             names.append(f"block_{i}_present_self_key_states")
             names.append(f"block_{i}_present_self_value_states")
         return names
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(num_blocks=len(self.block))
 
     @classmethod
     def from_pretrained(cls) -> Self:
         t5model = T5ForConditionalGeneration.from_pretrained(CHARSIU_MODEL_ID).eval()
         return cls(t5model, MAX_NUM_INPUT_IDS)
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16

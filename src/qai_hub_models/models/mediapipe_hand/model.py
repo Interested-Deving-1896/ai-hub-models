@@ -179,8 +179,7 @@ class HandDetector(BaseModel):
             include_postprocessing,
         )
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the hand detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -197,12 +196,10 @@ class HandDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["box_coords", "box_scores"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(
@@ -238,8 +235,7 @@ class HandLandmarkDetector(BaseModel):
         hand_regressor.load_weights(str(MEDIAPIPE_REPO_DIR / landmark_detector_weights))
         return cls(hand_regressor)
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the hand landmark detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -256,12 +252,10 @@ class HandLandmarkDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["scores", "lr", "landmarks"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(

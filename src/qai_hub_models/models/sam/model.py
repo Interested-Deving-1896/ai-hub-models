@@ -135,22 +135,19 @@ class SAMEncoderPart(BaseModel):
 
         return x
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
-        encoder_img_height: int = 1024,  # self.sam.image_encoder.img_size
-        encoder_img_width: int = 1024,  # self.sam.image_encoder.img_size
-        include_embedding: bool = True,
-        embedding_size: int = 768,
     ) -> InputSpec:
-        # Get the input specification ordered (name -> (shape, type)) pairs for this model.
-        #
-        # This can be used with the qai_hub python API to declare
-        # the model input specification upon submitting a profile job.
-        if include_embedding:
+        if self.include_embedding:
             return {
                 "image": TensorSpec(
-                    shape=(batch_size, 3, encoder_img_height, encoder_img_width),
+                    shape=(
+                        batch_size,
+                        3,
+                        self.sam.image_encoder.img_size,
+                        self.sam.image_encoder.img_size,
+                    ),
                     dtype="float32",
                     io_type=IoType.IMAGE,
                     value_range=(0.0, 1.0),
@@ -161,57 +158,31 @@ class SAMEncoderPart(BaseModel):
             }
         return {
             "x": TensorSpec(
-                shape=(batch_size, 64, 64, embedding_size),
+                shape=(
+                    batch_size,
+                    64,
+                    64,
+                    self.sam.image_encoder.blocks[0].attn.in_feature,
+                ),
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
         }
 
-    def _get_input_spec_for_instance(
-        self,
-        batch_size: int = 1,
-    ) -> InputSpec:
-        """Override for model.get_input_spec() when called on instances of this class."""
-        return self.__class__.get_input_spec(
-            batch_size,
-            self.sam.image_encoder.img_size,
-            self.sam.image_encoder.img_size,
-            self.include_embedding,
-            self.sam.image_encoder.blocks[0].attn.in_feature,
-        )
-
-    @staticmethod
-    def get_channel_last_inputs(include_embedding: bool = True) -> list[str]:
-        if include_embedding:
-            return list(
-                SAMEncoderPart.get_input_spec(
-                    include_embedding=include_embedding
-                ).keys()
-            )
+    def get_channel_last_inputs(self) -> list[str]:
+        if self.include_embedding:
+            return list(self.get_input_spec().keys())
         return []
 
-    def _get_channel_last_inputs_for_instance(self) -> list[str]:
-        return self.__class__.get_channel_last_inputs(self.include_embedding)
+    def get_channel_last_outputs(self) -> list[str]:
+        return ["image_embeddings"] if self.include_neck else []
 
-    @staticmethod
-    def get_channel_last_outputs(include_neck: bool = True) -> list[str]:
-        # Output of encoder parts should not be channel last.
-        # This actually inserts a transpose when one is not needed.
-        return ["image_embeddings"] if include_neck else []
-
-    def _get_channel_last_outputs_for_instance(self) -> list[str]:
-        return self.__class__.get_channel_last_outputs(self.include_neck)
-
-    @staticmethod
-    def get_output_names(include_neck: bool = True) -> list[str]:
+    def get_output_names(self) -> list[str]:
         return (
             ["image_embeddings"]
-            if include_neck
+            if self.include_neck
             else ["intermediate_SAM_encoder_output"]
         )
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return SAMEncoderPart.get_output_names(self.include_neck)
 
     @classmethod
     def from_pretrained(cls, model_type: str = BASE_MODEL_TYPE) -> Self:
@@ -299,27 +270,8 @@ class SAMDecoder(BaseModel):
 
         return masks, scores
 
-    def _get_input_spec_for_instance(
-        self: SAMDecoder,
-        has_mask_input: bool = False,
-        num_of_points: int = 2,
-    ) -> InputSpec:
-        """
-        Override for model.get_input_spec() when called on instances of this class.
-
-        The initializer for BaseModel will automatically override get_input_spec
-        with this function when the class is instantiated.
-        """
-        return self.__class__.get_input_spec(
-            has_mask_input,
-            num_of_points,
-            self.model.prompt_encoder.embed_dim,
-            self.embed_size[0],
-            self.embed_size[1],
-        )
-
-    @staticmethod
     def get_input_spec(
+        self,
         has_mask_input: bool = False,
         num_of_points: int = 2,
         embed_dim: int = 256,
@@ -363,19 +315,16 @@ class SAMDecoder(BaseModel):
             )
         return input_spec
 
-    @staticmethod
-    def get_channel_last_inputs(has_mask_input: bool = False) -> list[str]:
+    def get_channel_last_inputs(self, has_mask_input: bool = False) -> list[str]:
         out = ["image_embeddings"]
         if has_mask_input:
             out.append("mask_input")
         return out
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["masks"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["masks", "scores"]
 
     @classmethod

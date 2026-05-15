@@ -83,11 +83,7 @@ class YoloR(Yolo):
             return detect_postprocess(predictions[0])
         return (predictions[0], torch.zeros(1), torch.zeros(1))
 
-    @staticmethod
-    def get_output_names(include_postprocessing: bool = True) -> list[str]:
-        if include_postprocessing:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
             return ["boxes", "scores", "class_idx"]
         return ["detector_output", "dummy_score", "dummy_class"]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.include_postprocessing)

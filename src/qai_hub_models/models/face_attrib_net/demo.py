@@ -69,7 +69,7 @@ def face_attrib_net_demo(
     orig_image = load_image(args.image)
     print("Model loaded")
 
-    input_spec = FaceAttribNet.get_input_spec()["image"][0]
+    input_spec = FaceAttribNet.from_pretrained().get_input_spec()["image"][0]
     model_input_shape = input_spec[-2], input_spec[-1]
     app = app_cls(model, model_input_shape)  # type: ignore[arg-type]
     output = app.run_inference_on_image(orig_image)

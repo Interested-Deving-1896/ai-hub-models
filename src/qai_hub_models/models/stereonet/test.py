@@ -47,8 +47,8 @@ def run_source_model(
     return pred.squeeze().numpy().astype(np.float32)
 
 
-def _run_test(model: StereoNet | torch.jit.ScriptModule) -> None:
-    *_, height, width = StereoNet.get_input_spec()["image"][0]
+def _run_test(model: StereoNet | torch.jit.ScriptModule, spec_model: StereoNet) -> None:
+    *_, height, width = spec_model.get_input_spec()["image"][0]
     left = load_image(DEFAULT_LEFT_IMAGE)
     right = load_image(DEFAULT_RIGHT_IMAGE)
     exp_disp = run_source_model(left, right, height=height, width=width)
@@ -67,13 +67,15 @@ def _run_test(model: StereoNet | torch.jit.ScriptModule) -> None:
 
 @skip_clone_repo_check
 def test_task() -> None:
-    _run_test(StereoNet.from_pretrained())
+    model = StereoNet.from_pretrained()
+    _run_test(model, model)
 
 
 @skip_clone_repo_check
 @pytest.mark.trace
 def test_trace() -> None:
-    _run_test(StereoNet.from_pretrained().convert_to_torchscript())
+    model = StereoNet.from_pretrained()
+    _run_test(model.convert_to_torchscript(), model)
 
 
 @skip_clone_repo_check

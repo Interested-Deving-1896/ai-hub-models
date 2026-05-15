@@ -79,43 +79,21 @@ class VariableIODummyModel(BaseModel):
 
         return tuple(out) if len(out) != 1 else out[0]
 
-    @classmethod
-    def get_input_spec(
-        cls, num_inputs: int = 1, shape: tuple[int, ...] = DEFAULT_IO_SHAPE
-    ) -> InputSpec:
-        return {f"in{i}": (shape, "float32") for i in range(num_inputs)}
+    def get_input_spec(self) -> InputSpec:
+        return {f"in{i}": (self.shape, "float32") for i in range(self.num_inputs)}
 
-    def _get_input_spec_for_instance(self) -> InputSpec:
-        return self.__class__.get_input_spec(self.num_inputs, self.shape)
+    def get_output_names(self) -> list[str]:
+        return [f"out{i}" for i in range(self.num_outputs)]
 
-    @staticmethod
-    def get_output_names(num_outputs: int = 1) -> list[str]:
-        return [f"out{i}" for i in range(num_outputs)]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.num_outputs)
-
-    @classmethod
-    def get_channel_last_inputs(
-        cls, num_inputs: int = 1, shape: tuple[int, ...] = DEFAULT_IO_SHAPE
-    ) -> list[str]:
-        if len(shape) == 4:
-            return list(cls.get_input_spec(num_inputs, shape).keys())
+    def get_channel_last_inputs(self) -> list[str]:
+        if len(self.shape) == 4:
+            return list(self.get_input_spec().keys())
         return []
 
-    def _get_channel_last_inputs_for_instance(self) -> list[str]:
-        return self.__class__.get_channel_last_inputs(self.num_inputs, self.shape)
-
-    @classmethod
-    def get_channel_last_outputs(
-        cls, num_outputs: int = 1, shape: tuple[int, ...] = DEFAULT_IO_SHAPE
-    ) -> list[str]:
-        if len(shape) == 4:
-            return cls.get_output_names(num_outputs)
+    def get_channel_last_outputs(self) -> list[str]:
+        if len(self.shape) == 4:
+            return self.get_output_names()
         return []
-
-    def _get_channel_last_outputs_for_instance(self) -> list[str]:
-        return self.__class__.get_channel_last_outputs(self.num_outputs, self.shape)
 
 
 class DummyEvaluator(BaseEvaluator):

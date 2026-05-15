@@ -40,8 +40,7 @@ class PromptProcessor_Part1(BasePrecompiledModel):
     def from_precompiled(cls) -> PromptProcessor_Part1:
         return PromptProcessor_Part1(get_cached_asset(part=1))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "input_ids": ((1, 128), "int32"),
             "past_key_1_in": ((8, 1, 128, 3968), "uint8"),
@@ -65,8 +64,7 @@ class PromptProcessor_Part1(BasePrecompiledModel):
             "attention_mask": ((1, 1, 128, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             *get_kv_cache_names(start=0, end=8),
             "_model_layers_7_Add_1_Add_output_0",
@@ -95,8 +93,7 @@ class PromptProcessor_Part2(BasePrecompiledModel):
     def from_precompiled(cls) -> PromptProcessor_Part2:
         return PromptProcessor_Part2(get_cached_asset(part=2))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "_model_layers_7_Add_1_Add_output_0": ((1, 128, 4096), "uint16"),
             "past_key_9_in": ((8, 1, 128, 3968), "uint8"),
@@ -120,8 +117,7 @@ class PromptProcessor_Part2(BasePrecompiledModel):
             "attention_mask": ((1, 1, 128, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             *get_kv_cache_names(start=8, end=16),
             "_model_layers_15_Add_1_Add_output_0",
@@ -150,8 +146,7 @@ class PromptProcessor_Part3(BasePrecompiledModel):
     def from_precompiled(cls) -> PromptProcessor_Part3:
         return PromptProcessor_Part3(get_cached_asset(part=3))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "_model_layers_15_Add_1_Add_output_0": ((1, 128, 4096), "uint16"),
             "past_key_17_in": ((8, 1, 128, 3968), "uint8"),
@@ -175,8 +170,7 @@ class PromptProcessor_Part3(BasePrecompiledModel):
             "attention_mask": ((1, 1, 128, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             *get_kv_cache_names(start=16, end=24),
             "_model_layers_23_Add_1_Add_output_0",
@@ -205,8 +199,7 @@ class PromptProcessor_Part4(BasePrecompiledModel):
     def from_precompiled(cls) -> PromptProcessor_Part4:
         return PromptProcessor_Part4(get_cached_asset(part=4))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "_model_layers_23_Add_1_Add_output_0": ((1, 128, 4096), "uint16"),
             "past_key_25_in": ((8, 1, 128, 3968), "uint8"),
@@ -230,8 +223,7 @@ class PromptProcessor_Part4(BasePrecompiledModel):
             "attention_mask": ((1, 1, 128, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [*get_kv_cache_names(start=24, end=32), "logits"]
 
     def get_hub_profile_options(
@@ -257,8 +249,7 @@ class TokenGenerator_Part1(BasePrecompiledModel):
     def from_precompiled(cls) -> TokenGenerator_Part1:
         return TokenGenerator_Part1(get_cached_asset(part=1))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "input_ids": ((1, 1), "int32"),
             "past_key_1_in": ((8, 1, 128, 4095), "uint8"),
@@ -282,8 +273,7 @@ class TokenGenerator_Part1(BasePrecompiledModel):
             "attention_mask": ((1, 1, 1, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             *get_kv_cache_names(start=0, end=8),
             "_model_layers_7_Add_1_Add_output_0",
@@ -312,8 +302,7 @@ class TokenGenerator_Part2(BasePrecompiledModel):
     def from_precompiled(cls) -> TokenGenerator_Part2:
         return TokenGenerator_Part2(get_cached_asset(part=2))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "_model_layers_7_Add_1_Add_output_0": ((1, 1, 4096), "uint16"),
             "past_key_9_in": ((8, 1, 128, 4095), "uint8"),
@@ -337,8 +326,7 @@ class TokenGenerator_Part2(BasePrecompiledModel):
             "attention_mask": ((1, 1, 1, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             *get_kv_cache_names(start=8, end=16),
             "_model_layers_15_Add_1_Add_output_0",
@@ -367,8 +355,7 @@ class TokenGenerator_Part3(BasePrecompiledModel):
     def from_precompiled(cls) -> TokenGenerator_Part3:
         return TokenGenerator_Part3(get_cached_asset(part=3))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "_model_layers_15_Add_1_Add_output_0": ((1, 1, 4096), "uint16"),
             "past_key_17_in": ((8, 1, 128, 4095), "uint8"),
@@ -392,8 +379,7 @@ class TokenGenerator_Part3(BasePrecompiledModel):
             "attention_mask": ((1, 1, 1, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             *get_kv_cache_names(start=16, end=24),
             "_model_layers_23_Add_1_Add_output_0",
@@ -422,8 +408,7 @@ class TokenGenerator_Part4(BasePrecompiledModel):
     def from_precompiled(cls) -> TokenGenerator_Part4:
         return TokenGenerator_Part4(get_cached_asset(part=4))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         return {
             "_model_layers_23_Add_1_Add_output_0": ((1, 1, 4096), "uint16"),
             "past_key_25_in": ((8, 1, 128, 4095), "uint8"),
@@ -447,8 +432,7 @@ class TokenGenerator_Part4(BasePrecompiledModel):
             "attention_mask": ((1, 1, 1, 4096), "uint16"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [*get_kv_cache_names(start=24, end=32), "logits"]
 
     def get_hub_profile_options(

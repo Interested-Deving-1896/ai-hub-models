@@ -85,8 +85,8 @@ class FOMMDetector(BaseModel):
     def from_pretrained(cls) -> Self:
         return cls(FOMM.get_fomm_model()[1])
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 256,
@@ -107,12 +107,10 @@ class FOMMDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["keypoints", "jacobian"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -174,8 +172,8 @@ class FOMMGenerator(BaseModel):
     def from_pretrained(cls) -> Self:
         return cls(FOMM.get_fomm_model()[0])
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 256,
@@ -216,12 +214,10 @@ class FOMMGenerator(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["output_image"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 

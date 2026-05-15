@@ -28,8 +28,8 @@ MASK_ADDRESS = CachedWebModelAsset.from_asset_store(
 
 
 class RepaintModel(BaseModel):
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 512,
         width: int = 512,
@@ -54,8 +54,7 @@ class RepaintModel(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "painted_image": TensorSpec(
                 io_type=IoType.IMAGE,
@@ -66,12 +65,10 @@ class RepaintModel(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image", "mask"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["painted_image"]
 
     def _sample_inputs_impl(

@@ -1182,8 +1182,8 @@ class LLMBase(BaseModel, LLMConfigEditor, ABC):
         self.attention_mask_min_clip = attention_mask_min_clip
         self.attention_mask_multiplier = attention_mask_multiplier
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict,
         sequence_length: int,
         context_length: int,
@@ -1561,8 +1561,8 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             del self.quant_sim
             self.quant_sim = None
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict,
         sequence_length: int,
         context_length: int,
@@ -2466,8 +2466,8 @@ class LLM_QNN(LLMConfigEditor, BaseModel, ABC):
     def release(self) -> None:
         self.part_models.clear()
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict,
         sequence_length: int,
         context_length: int,

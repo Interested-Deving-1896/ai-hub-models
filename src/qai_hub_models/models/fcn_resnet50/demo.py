@@ -48,7 +48,7 @@ def fcn_resnet50_demo(model_cls: type[FCN_ResNet50], is_test: bool = False) -> N
     # This FCN ResNet 50 demo comes from
     # https://pytorch.org/hub/pytorch_vision_fcn_resnet101/
     # load image
-    (_, _, height, width) = model_cls.get_input_spec()["image"][0]
+    (_, _, height, width) = model_cls.from_pretrained().get_input_spec()["image"][0]
     orig_image = load_image(args.image)
     image, scale, padding = pil_resize_pad(orig_image, (height, width))
     input_image = image.convert("RGB")

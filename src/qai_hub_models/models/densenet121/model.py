@@ -21,7 +21,6 @@ class DenseNet(ImagenetClassifier):
         net = tv_models.densenet121(weights=weights)
         return cls(net)
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10

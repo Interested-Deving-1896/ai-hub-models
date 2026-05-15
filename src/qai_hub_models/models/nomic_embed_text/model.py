@@ -150,42 +150,21 @@ class NomicEmbedText(BaseModel):
             input_mask_expanded.sum(1), min=1e-9
         )
 
-    @staticmethod
-    def get_input_spec(
-        batch_size: int = 1,
-        sequence_length: int = 128,
-    ) -> InputSpec:
-        """
-        Parameters
-        ----------
-        batch_size
-            Batch size for inference.
-        sequence_length
-            Sequence length for the model.
-
-        Returns
-        -------
-        InputSpec
-            Input specification for the model.
-        """
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         return {
             "input_tokens": TensorSpec(
-                shape=(batch_size, sequence_length),
+                shape=(batch_size, self.seq_length),
                 dtype="int32",
                 io_type=IoType.TENSOR,
             ),
             "attention_masks": TensorSpec(
-                shape=(batch_size, sequence_length),
+                shape=(batch_size, self.seq_length),
                 dtype="int32",
                 io_type=IoType.TENSOR,
             ),
         }
 
-    def _get_input_spec_for_instance(self, batch_size: int = 1) -> InputSpec:
-        return NomicEmbedText.get_input_spec(batch_size, self.seq_length)
-
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["embeddings"]
 
     def get_evaluator(self) -> BaseEvaluator:

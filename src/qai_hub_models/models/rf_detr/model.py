@@ -58,8 +58,8 @@ class RF_DETR(DETR):
         torch_model.optimize_for_inference(compile=False)
         return cls(torch_model.model.inference_model)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = DEFAULT_RESOLUTION,
         width: int = DEFAULT_RESOLUTION,
@@ -68,4 +68,4 @@ class RF_DETR(DETR):
         Returns the input specification (name -> (shape, type). This can be
         used to submit profiling job on Qualcomm® AI Hub Workbench.
         """
-        return DETR.get_input_spec(batch_size, height, width)
+        return super().get_input_spec(batch_size, height, width)

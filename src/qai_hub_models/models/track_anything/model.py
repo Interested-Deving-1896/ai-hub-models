@@ -87,8 +87,8 @@ class TrackAnythingEncodeKeyWithShrinkage(TrackAnything):
 
         return key, shrinkage, selection, f16
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 320,
         width: int = 576,
@@ -105,12 +105,10 @@ class TrackAnythingEncodeKeyWithShrinkage(TrackAnything):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["key", "shrinkage", "selection", "f16"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -160,8 +158,8 @@ class TrackAnythingEncodeValue(TrackAnything):
         )
         return pred_prob_with_bg, value, hidden
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 320,
         width: int = 576,
@@ -193,12 +191,10 @@ class TrackAnythingEncodeValue(TrackAnything):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["masks", "value", "hidden"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -236,8 +232,8 @@ class TrackAnythingEncodeKeyWithoutShrinkage(TrackAnything):
         )
         return key, selection, f16, f8, f4
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 320,
         width: int = 576,
@@ -254,12 +250,10 @@ class TrackAnythingEncodeKeyWithoutShrinkage(TrackAnything):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["key", "selection", "f16", "f8", "f4"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -310,8 +304,8 @@ class TrackAnythingSegment(TrackAnything):
 
         return pred_prob_with_bg, hidden
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 320,
         width: int = 576,
@@ -344,8 +338,7 @@ class TrackAnythingSegment(TrackAnything):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["masks", "hidden"]
 
 

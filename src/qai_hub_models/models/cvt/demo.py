@@ -15,6 +15,7 @@ from qai_hub_models.utils.args import (
     demo_model_from_cli_args,
     get_model_cli_parser,
     get_on_device_demo_parser,
+    model_from_cli_args,
     validate_on_device_demo_args,
 )
 from qai_hub_models.utils.asset_loaders import (
@@ -70,11 +71,12 @@ def cvt_demo(
     camera_metadata = load_json(cam_metadata.fetch())
 
     # Process model inference
+    h, w = model_from_cli_args(model_type, args).get_input_spec()["image"][0][3:]
+
     def process_model(ckpt_name: str) -> list[Image.Image] | torch.Tensor:
         args.ckpt_name = ckpt_name
         model = demo_model_from_cli_args(model_type, model_id, args)
         validate_on_device_demo_args(args, model_id)
-        h, w = CVT.get_input_spec()["image"][0][3:]
         app = CVTApp(
             model,  # type: ignore[arg-type]
             ckpt_name=ckpt_name,

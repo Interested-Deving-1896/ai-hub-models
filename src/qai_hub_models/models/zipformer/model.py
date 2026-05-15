@@ -73,8 +73,7 @@ class ZipformerEncoder(BaseModel):
         output = self.encoder_proj(output)
         return output, tuple(new_states)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -188,8 +187,7 @@ class ZipformerEncoder(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return (
             ["encoder_out"]
             + [f"new_cached_len_{i}" for i in range(5)]
@@ -247,8 +245,7 @@ class ZipformerEncoder(BaseModel):
             compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
         return compile_options
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16
 
 
@@ -275,8 +272,7 @@ class ZipformerDecoder(BaseModel):
         decoder_output = decoder_output.squeeze(1)
         return self.decoder_proj(decoder_output)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -285,8 +281,7 @@ class ZipformerDecoder(BaseModel):
             y=TensorSpec(shape=(1, 2), dtype="int32", io_type=IoType.TENSOR),
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["decoder_out"]
 
     @classmethod
@@ -318,8 +313,7 @@ class ZipformerDecoder(BaseModel):
             compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
         return compile_options
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w16a16
 
 
@@ -345,8 +339,7 @@ class ZipformerJoiner(BaseModel):
         logit = encoder_out + decoder_out
         return self.output_linear(torch.tanh(logit))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -360,8 +353,7 @@ class ZipformerJoiner(BaseModel):
             ),
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["logit"]
 
     @classmethod
@@ -387,8 +379,7 @@ class ZipformerJoiner(BaseModel):
             context_graph_name="joiner_model",
         )
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w16a16
 
 

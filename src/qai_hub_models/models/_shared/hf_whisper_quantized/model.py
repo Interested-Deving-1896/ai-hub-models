@@ -100,7 +100,7 @@ class WhisperEncoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperEncoder)
             aimet_encodings_path = encodings_path
         else:
             # Create a temporary ONNX model from the pre-trained encoder
-            specs = fp_encoder._get_input_spec_for_instance()
+            specs = fp_encoder.get_input_spec()
             dummy_input = tuple(make_torch_inputs(specs))
             # Create a temporary directory for the ONNX model
             with qaihm_temp_dir() as tempdir:
@@ -112,7 +112,7 @@ class WhisperEncoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperEncoder)
                     temp_model_path,
                     export_params=True,
                     input_names=list(specs.keys()),
-                    output_names=fp_encoder._get_output_names_for_instance(),
+                    output_names=fp_encoder.get_output_names(),
                 )
                 # Simplify the ONNX model
                 onnx_model, _ = simplify(temp_model_path)
@@ -213,7 +213,7 @@ class WhisperDecoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperDecoder)
             aimet_encodings_path = encodings_path
         else:
             # Create a temporary ONNX model from the pre-trained decoder
-            specs = fp_decoder._get_input_spec_for_instance()
+            specs = fp_decoder.get_input_spec()
             dummy_input = tuple(make_torch_inputs(specs))
             # Create a temporary directory for the ONNX model
             with qaihm_temp_dir() as tempdir:
@@ -225,7 +225,7 @@ class WhisperDecoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperDecoder)
                     temp_model_path,
                     export_params=True,
                     input_names=list(specs.keys()),
-                    output_names=fp_decoder._get_output_names_for_instance(),
+                    output_names=fp_decoder.get_output_names(),
                 )
                 # Simplify the ONNX model
                 onnx_model, _ = simplify(temp_model_path)

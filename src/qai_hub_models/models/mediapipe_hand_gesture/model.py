@@ -743,8 +743,7 @@ class HandLandmarkDetector(BaseModel):
         hand_regressor.eval()
         return hand_regressor
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the hand landmark detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -761,12 +760,10 @@ class HandLandmarkDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["landmarks", "scores", "lr", "world_landmarks"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(
@@ -1008,8 +1005,7 @@ class CannedGestureClassifier(BaseModel):
         )
         return model
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the gesture classifier.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -1027,8 +1023,7 @@ class CannedGestureClassifier(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["Identity"]
 
     def _sample_inputs_impl(

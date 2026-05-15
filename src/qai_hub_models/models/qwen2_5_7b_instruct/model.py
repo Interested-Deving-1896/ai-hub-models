@@ -137,12 +137,11 @@ class Qwen2_5_7B_Instruct(LlamaMixin):
         # No calibration data needed
         return None
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return Qwen2Base._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,

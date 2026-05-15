@@ -64,9 +64,11 @@ class Midas(DepthEstimationModel):
         model.load_state_dict(weights_dict)
         return cls(model, height, width)
 
-    @staticmethod
     def get_input_spec(
-        batch_size: int = 1, height: int = DEFAULT_HEIGHT, width: int = DEFAULT_WIDTH
+        self,
+        batch_size: int = 1,
+        height: int = DEFAULT_HEIGHT,
+        width: int = DEFAULT_WIDTH,
     ) -> InputSpec:
         return {
             "image": TensorSpec(

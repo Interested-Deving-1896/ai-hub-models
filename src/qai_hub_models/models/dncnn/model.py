@@ -80,8 +80,8 @@ class DnCNN(BaseModel):
         denoised = self.model(image)
         return torch.clamp(denoised, 0.0, 1.0)
 
-    @staticmethod
     def get_input_spec(
+        self,
         height: int = DEFAULT_INPUT_HEIGHT,
         width: int = DEFAULT_INPUT_WIDTH,
     ) -> InputSpec:
@@ -97,16 +97,13 @@ class DnCNN(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["denoised_image"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["denoised_image"]
 
     @staticmethod

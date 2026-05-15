@@ -16,7 +16,6 @@ from qai_hub_models.datasets.common import (
     BaseDataset,
     DatasetSplit,
 )
-from qai_hub_models.models.facemap_3dmm.model import FaceMap_3DMM
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.private_asset_loaders import CachedPrivateDatasetAsset
 
@@ -46,9 +45,12 @@ class FaceMap3DMMDataset(BaseDataset):
         self.gt_path = self.data_path
 
         self.input_data_zip = input_data_zip
-        input_spec = input_spec or FaceMap_3DMM.get_input_spec()
-        self.input_height = input_spec["image"][0][2]
-        self.input_width = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.input_height = input_spec["image"][0][2]
+            self.input_width = input_spec["image"][0][3]
+        else:
+            self.input_height = 128
+            self.input_width = 128
         BaseDataset.__init__(self, self.data_path, split=split)
 
     def __getitem__(

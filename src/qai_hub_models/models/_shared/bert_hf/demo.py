@@ -37,7 +37,7 @@ def bert_demo(
     parser.add_argument(
         "--max-seq-length",
         type=int,
-        default=model_type.get_input_spec()["input_tokens"][0][1],
+        default=0,
         help="Maximum sequence length for tokenization",
     )
     args = parser.parse_args([] if is_test else None)
@@ -46,7 +46,12 @@ def bert_demo(
     # Load model and create app
     model = demo_model_from_cli_args(model_type, model_id, args)
     tokenizer = model_type.from_pretrained().tokenizer
-    app = BaseBertApp(model, tokenizer, max_seq_length=args.max_seq_length)  # type: ignore[arg-type]
+    app = BaseBertApp(
+        model,  # type: ignore[arg-type]
+        tokenizer,  # type: ignore[arg-type]
+        max_seq_length=args.max_seq_length
+        or model.get_input_spec()["input_tokens"][0][1],
+    )
     results = app.fill_mask(args.text)
     if not is_test:
         print(f"Input: {args.text}")

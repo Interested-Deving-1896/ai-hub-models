@@ -113,8 +113,7 @@ class Encoder(BaseModel):
         self.dp = OptimizedDurationPredictor(self.model.dp)
         self.speaker_id = next(iter(tts_object.hps.data.spk2id.values()))
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -160,8 +159,7 @@ class Encoder(BaseModel):
             dic[input_name] = [inputs_list[i].numpy()]
         return dic
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["y_lengths", "x_mask", "m_p", "logs_p", "g", "w_ceil"]
 
     def forward(
@@ -415,8 +413,7 @@ class Encoder(BaseModel):
             compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
         return compile_options
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.float
 
 
@@ -475,8 +472,7 @@ class Flow(BaseModel):
         z_p = m_p + noise * torch.exp(logs_p) * noise_scale
         return self.flow.forward(z_p, y_mask, g, reverse=True)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -515,14 +511,13 @@ class Flow(BaseModel):
         See the `sample_inputs` doc for the expected format.
         """
         rng = np.random.default_rng(seed=123)
-        specs = input_spec or type(self).get_input_spec()
+        specs = input_spec or self.get_input_spec()
         return {
             name: [rng.normal(size=shape).astype(dtype)]
             for name, (shape, dtype) in specs.items()
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["z"]
 
     def get_hub_compile_options(
@@ -546,8 +541,7 @@ class Flow(BaseModel):
             context_graph_name="flow",
         )
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16
 
 
@@ -573,8 +567,7 @@ class Decoder(BaseModel):
         assert callable(self.model.dec)
         return self.model.dec(z, g=g)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -587,8 +580,7 @@ class Decoder(BaseModel):
             "g": TensorSpec(shape=(1, SPEAKER_EMBED_DIM, 1), dtype="float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["audio"]
 
     def get_hub_compile_options(
@@ -609,8 +601,7 @@ class Decoder(BaseModel):
             context_graph_name="decoder",
         )
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.w8a16
 
 
@@ -633,8 +624,7 @@ class T5Encoder(_T5EncoderBase):
             context_graph_name="charsiu_encoder",
         )
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.float
 
 
@@ -657,8 +647,7 @@ class T5Decoder(_T5DecoderBase):
             context_graph_name="charsiu_decoder",
         )
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.float
 
 
@@ -723,8 +712,7 @@ class BertWrapper(BaseModel):
         )
         return encoder_outputs.hidden_states[-3]
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -735,8 +723,7 @@ class BertWrapper(BaseModel):
             "token_type_ids": TensorSpec(shape=(1, MAX_BERT_TOKENS), dtype="int32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["hidden_states"]
 
     def get_hub_compile_options(
@@ -758,8 +745,7 @@ class BertWrapper(BaseModel):
             compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
         return compile_options
 
-    @staticmethod
-    def component_precision() -> Precision:
+    def component_precision(self) -> Precision:
         return Precision.float
 
 

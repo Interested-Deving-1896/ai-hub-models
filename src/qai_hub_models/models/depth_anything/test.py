@@ -25,8 +25,9 @@ OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
 # Verify that the output from Torch is as expected.
 @skip_clone_repo_check
 def test_task() -> None:
-    (_, _, height, width) = DepthAnything.get_input_spec()["image"][0]
-    app = DepthEstimationApp(DepthAnything.from_pretrained(), height, width)
+    model = DepthAnything.from_pretrained()
+    (_, _, height, width) = model.get_input_spec()["image"][0]
+    app = DepthEstimationApp(model, height, width)
     original_image = load_image(INPUT_IMAGE_ADDRESS)
     output_image = app.estimate_depth(original_image)
     output_image_oracle = load_image(OUTPUT_IMAGE_ADDRESS)
@@ -39,9 +40,9 @@ def test_task() -> None:
 @pytest.mark.trace
 @skip_clone_repo_check
 def test_trace() -> None:
-    (_, _, height, width) = DepthAnything.get_input_spec()["image"][0]
-    traced_model = DepthAnything.from_pretrained().convert_to_torchscript()
-    app = DepthEstimationApp(traced_model, height, width)
+    model = DepthAnything.from_pretrained()
+    (_, _, height, width) = model.get_input_spec()["image"][0]
+    app = DepthEstimationApp(model.convert_to_torchscript(), height, width)
     original_image = load_image(INPUT_IMAGE_ADDRESS)
     output_image = app.estimate_depth(original_image)
     output_image_oracle = load_image(OUTPUT_IMAGE_ADDRESS)

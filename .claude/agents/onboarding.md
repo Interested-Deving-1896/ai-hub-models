@@ -61,7 +61,6 @@ Each model lives in `qai_hub_models/models/<model_id>/` and requires:
 
    **Optional overrides (have default implementations):**
    - `_sample_inputs_impl()` - provide real sample inputs instead of random data
-   - `_get_input_spec_for_instance()` - instance-specific input spec (when shapes depend on instance vars)
    - `get_channel_last_inputs()` / `get_channel_last_outputs()` - inputs/outputs to transpose for on-device performance
    - `get_hub_compile_options()` / `get_hub_profile_options()` - custom AI Hub flags
    - `get_unsupported_reason()` - marks specific device attributes that can't be supported by this model (eg hexagon version)

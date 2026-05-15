@@ -137,32 +137,19 @@ def _get_components_and_graph_names(
     component_graph_names: ComponentGroup[list[str]] | None = None
 
     if isinstance(model, type):
+        # A model does not support getting the input spec without being instantiated.
+        # Try to collect the cached graph names from disk instead.
         if issubclass(model, CollectionModel):
             components = model.component_class_names
             if issubclass(model, MultiGraphPretrainedCollectionModel):
-                try:
-                    model_input_specs = model.get_input_spec()
-                    component_graph_names = ComponentGroup(
-                        {
-                            cn: [
-                                x
-                                for x in model_input_specs.by_component(cn)
-                                if x is not None
-                            ]
-                            for cn in components
-                        }
-                    )
-                except NotImplementedError:
-                    # This model does not support getting the input spec without being instantiated.
-                    # (special case that applies only for LLMs)
-                    gn_cache = GraphNamesYaml.from_test_artifacts()
-                    cgns = {cn: gn_cache.get(model_id, cn) for cn in components}
-                    component_graph_names = ComponentGroup(
-                        {k: v for k, v in cgns.items() if v is not None}
-                    )
-
+                gn_cache = GraphNamesYaml.from_test_artifacts()
+                cgns = {cn: gn_cache.get(model_id, cn) for cn in components}
+                component_graph_names = ComponentGroup(
+                    {k: v for k, v in cgns.items() if v is not None}
+                )
         elif issubclass(model, MultiGraphBaseModel):
-            graph_names = list(model.get_input_spec())
+            graph_names = GraphNamesYaml.from_test_artifacts().get(model_id)
+
     elif isinstance(model, CollectionModel):
         components = model.component_class_names
         cgn: dict[str, list[str]] = {}

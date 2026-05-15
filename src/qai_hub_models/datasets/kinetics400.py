@@ -11,7 +11,6 @@ import pandas as pd
 import torch
 
 from qai_hub_models.datasets.common import BaseDataset, DatasetMetadata, DatasetSplit
-from qai_hub_models.models._shared.video_classifier.model import KineticsClassifier
 from qai_hub_models.models._shared.video_classifier.utils import (
     get_class_name_kinetics_400,
     preprocess_video_224,
@@ -105,8 +104,7 @@ class Kinetics400Dataset(BaseDataset):
             os.path.join("annotations", f"{self.split_str}.csv"),
         )
         self.videos_folder = self.videos_asset.extracted_path
-        input_spec = input_spec or KineticsClassifier.get_input_spec()
-        self.video_dim = input_spec["video"][0][-1]
+        self.video_dim = input_spec["video"][0][-1] if input_spec else 112
         assert self.video_dim in [112, 224], "Video dimension must be 112 or 224."
         BaseDataset.__init__(
             self, str(self.videos_folder), split=split, input_spec=input_spec

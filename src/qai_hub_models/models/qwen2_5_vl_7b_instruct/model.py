@@ -207,12 +207,22 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
         cls.cache_store(instance, cache_key)
         return instance
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return Qwen2VLTextBase._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
+        llm_config: dict | None = None,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+        llm_io_type: LLMIOType = LLMIOType.genie_input_embeds,
+    ) -> InputSpec:
+        return self.get_static_input_spec(
+            llm_config, sequence_length, context_length, llm_io_type
+        )
+
+    @staticmethod
+    def get_static_input_spec(
         llm_config: dict | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -358,12 +368,11 @@ class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
         # defined in _shared/qwen2_vl/model.py.
         return (-250.0, 1.0)
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return Qwen2VLTextBase._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -386,7 +395,7 @@ class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
         InputSpec
             Input specification for the model.
         """
-        return Qwen2_5_VL_7B_PreSplit.get_input_spec(
+        return Qwen2_5_VL_7B_PreSplit.get_static_input_spec(
             llm_config=llm_config,
             sequence_length=sequence_length,
             context_length=context_length,
@@ -553,19 +562,18 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
             self._full_attention_mask,  # type: ignore[arg-type]
         )
 
-    @staticmethod
     def get_input_spec(
+        self,
         image_height: int = DEFAULT_IMAGE_HEIGHT,
         image_width: int = DEFAULT_IMAGE_WIDTH,
     ) -> InputSpec:
-        return Qwen2VLVisionEncoder.get_input_spec(
+        return Qwen2VLVisionEncoder.get_static_input_spec(
             image_height=image_height,
             image_width=image_width,
             patch_size=VISION_PATCH_SIZE,
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["image_features"]
 
     def preferred_hub_source_model_format(
@@ -881,11 +889,7 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
             )
         return cls(presplit, precision=precision, context_lengths=context_lengths)
 
-    def get_input_spec(self, **kwargs: Any) -> InputSpec:
-        """Return input spec for this split part, read from ONNX model inputs."""
-        return self._get_input_spec_for_instance()
-
-    def _get_input_spec_for_instance(
+    def get_input_spec(
         self,
         seq_len: int | None = None,
         context_length: int | None = None,
@@ -963,13 +967,11 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
 
         for ctx_len in self._context_lengths:
             # Token generation: seq_len=1
-            spec_tok = self._get_input_spec_for_instance(
-                seq_len=1, context_length=ctx_len
-            )
+            spec_tok = self.get_input_spec(seq_len=1, context_length=ctx_len)
             specs.append((spec_tok, self._genie_graph_name(1, ctx_len)))
 
             # Prompt processing: seq_len=sequence_length (e.g. 128)
-            spec_prompt = self._get_input_spec_for_instance(
+            spec_prompt = self.get_input_spec(
                 seq_len=prompt_seq_len, context_length=ctx_len
             )
             specs.append((spec_prompt, self._genie_graph_name(prompt_seq_len, ctx_len)))

@@ -14,7 +14,6 @@ from qai_hub_models.datasets.common import (
     BaseDataset,
     DatasetSplit,
 )
-from qai_hub_models.models.mediapipe_hand.model import HandDetector
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset, load_image
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs
 from qai_hub_models.utils.input_spec import InputSpec
@@ -51,10 +50,12 @@ class PalmDetectorDataset(BaseDataset):
         self.images_path = self.data_path / IMAGES_DIR_NAME
         self.roi_path = self.data_path / ROI_DIR_NAME
         self.annotations_path = self.data_path / ANNOTATIONS_NAME
-        if input_spec is None:
-            input_spec = HandDetector.get_input_spec()
-        self.input_height = input_spec["image"][0][2]
-        self.input_width = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.input_height = input_spec["image"][0][2]
+            self.input_width = input_spec["image"][0][3]
+        else:
+            self.input_height = 256
+            self.input_width = 256
         BaseDataset.__init__(self, self.data_path, split)
         # Load annotations CSV
         self.annotations_db = self._load_annotations_db()

@@ -44,7 +44,7 @@ def main(is_test: bool = False) -> None:
     validate_on_device_demo_args(args, MODEL_ID)
 
     # Get model input dimensions
-    input_spec = SuperPoint.get_input_spec()
+    input_spec = SuperPoint.from_pretrained().get_input_spec()
     (_, _, _, height, width) = input_spec["image"][0]
 
     # Load images — SuperPointApp handles resize and grayscale conversion internally

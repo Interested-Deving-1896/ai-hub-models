@@ -30,7 +30,9 @@ def ddcolor_demo(
         help="image file path or URL",
     )
     args = parser.parse_args([] if is_test else None)
-    app = DDColorApp(model.from_pretrained())
+    instance = model.from_pretrained()
+    shape = instance.get_input_spec()["image"][0]
+    app = DDColorApp(instance, model_input_shape=(shape[-2], shape[-1]))
     print("Model Loaded")
 
     image = load_image(args.image)

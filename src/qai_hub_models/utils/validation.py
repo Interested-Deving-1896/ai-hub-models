@@ -8,7 +8,12 @@ from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
 from qai_hub_models.datasets import _ALL_DATASETS_IMPORT_ERRORS, DATASET_NAME_MAP
 from qai_hub_models.models.common import Precision
 from qai_hub_models.utils.base_app import CollectionAppProtocol
-from qai_hub_models.utils.base_model import BaseModel, CollectionModel
+from qai_hub_models.utils.base_model import (
+    BaseModel,
+    CollectionModel,
+    MultiGraphPretrainedCollectionModel,
+    PretrainedCollectionModel,
+)
 from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
 
 
@@ -20,36 +25,32 @@ def _quantized_precision_names(code_gen: QAIHMModelCodeGen) -> list[str]:
     return [str(p) for p in code_gen.supported_precisions if p != Precision.float]
 
 
-def validate_io_names(model_cls: type[BaseModel]) -> list[str]:
+def validate_io_names(instance: BaseModel) -> list[str]:
     """
     Validate channel-last declarations match actual I/O names
     and that names don't contain dashes.
 
     Parameters
     ----------
-    model_cls
-        The model class to validate.
+    instance
+        The model instance to validate.
 
     Returns
     -------
     list[str]
         Error messages for each failing check.
     """
-    try:
-        input_spec = model_cls.get_input_spec()
-    except (TypeError, NotImplementedError):
-        # get_input_spec requires an instance (e.g. LLM part models)
-        return []
-    output_names = model_cls.get_output_names()
+    input_spec = instance.get_input_spec()
+    output_names = instance.get_output_names()
 
     errors = [
         f"Channel-last input '{name}' not found in input spec: {list(input_spec.keys())}"
-        for name in model_cls.get_channel_last_inputs()
+        for name in instance.get_channel_last_inputs()
         if name not in input_spec
     ]
     errors.extend(
         f"Channel-last output '{name}' not found in output names: {output_names}"
-        for name in model_cls.get_channel_last_outputs()
+        for name in instance.get_channel_last_outputs()
         if name not in output_names
     )
     errors.extend(
@@ -67,14 +68,16 @@ def validate_io_names(model_cls: type[BaseModel]) -> list[str]:
     return errors
 
 
-def validate_io_names_collection(model_cls: type[CollectionModel]) -> list[str]:
+def validate_io_names_collection(
+    model: PretrainedCollectionModel | MultiGraphPretrainedCollectionModel,
+) -> list[str]:
     """
     Run I/O name validation on each component of a collection model.
 
     Parameters
     ----------
-    model_cls
-        The collection model class to validate.
+    model
+        The collection model to validate.
 
     Returns
     -------
@@ -82,18 +85,17 @@ def validate_io_names_collection(model_cls: type[CollectionModel]) -> list[str]:
         Error messages for each failing check, prefixed with the component name.
     """
     errors: list[str] = []
-    for comp_name, component_cls in model_cls.component_classes.items():
-        if not issubclass(component_cls, BaseModel):
+    for comp_name, component in model.components.items():
+        if not isinstance(component, BaseModel):
             continue
         errors.extend(
-            f"[component '{comp_name}'] {err}"
-            for err in validate_io_names(component_cls)
+            f"[component '{comp_name}'] {err}" for err in validate_io_names(component)
         )
     return errors
 
 
 def validate_calibration_dataset(
-    model_cls: type[BaseModel],
+    model: BaseModel,
     code_gen: QAIHMModelCodeGen,
 ) -> list[str]:
     """
@@ -102,8 +104,8 @@ def validate_calibration_dataset(
 
     Parameters
     ----------
-    model_cls
-        The model class to validate.
+    model
+        The model instance to validate.
     code_gen
         The model's code-gen.yaml configuration.
 
@@ -119,7 +121,7 @@ def validate_calibration_dataset(
     if not quantized_precisions:
         return []
 
-    dataset_name = model_cls.calibration_dataset_name()
+    dataset_name = model.calibration_dataset_name()
     if dataset_name is None:
         return [
             f"Model supports quantized precisions {quantized_precisions} "
@@ -178,16 +180,14 @@ def validate_calibration_dataset_collection(
     return []
 
 
-def validate_eval_datasets(
-    model_cls: type[BaseModel | CollectionModel],
-) -> list[str]:
+def validate_eval_datasets(model: BaseModel | CollectionModel) -> list[str]:
     """
     Validate that all names returned by eval_datasets() are registered.
 
     Parameters
     ----------
-    model_cls
-        The model class to validate.
+    model
+        The model instance to validate.
 
     Returns
     -------
@@ -197,21 +197,21 @@ def validate_eval_datasets(
     return [
         f"eval_datasets() includes '{name}', which is not "
         "registered in qai_hub_models/datasets/__init__.py."
-        for name in model_cls.eval_datasets()
+        for name in model.eval_datasets()
         if not _is_known_dataset(name)
     ]
 
 
 def validate_eval_datasets_have_evaluator(
-    model_cls: type[BaseModel],
+    model: BaseModel,
 ) -> list[str]:
     """
     Validate that models with eval datasets implement get_evaluator().
 
     Parameters
     ----------
-    model_cls
-        The model class to validate.
+    model
+        The model instance to validate.
 
     Returns
     -------
@@ -219,23 +219,23 @@ def validate_eval_datasets_have_evaluator(
         Error messages if eval_datasets() is non-empty but
         get_evaluator() is not overridden.
     """
-    if not model_cls.eval_datasets():
+    if not model.eval_datasets():
         return []
-    if model_cls.get_evaluator is BaseModel.get_evaluator:
+    if model.get_evaluator is BaseModel.get_evaluator:
         return ["eval_datasets() is non-empty but get_evaluator() is not implemented."]
     return []
 
 
-def _litemp_implemented(model_cls: type[BaseModel], precision: Precision) -> bool:
+def _litemp_implemented(model: BaseModel, precision: Precision) -> bool:
     try:
-        model_cls.get_hub_litemp_percentage(precision)
+        model.get_hub_litemp_percentage(precision)
     except NotImplementedError:
         return False
     return True
 
 
 def validate_mixed_precision_litemp(
-    model_cls: type[BaseModel],
+    model: BaseModel,
     code_gen: QAIHMModelCodeGen,
 ) -> list[str]:
     """
@@ -244,8 +244,8 @@ def validate_mixed_precision_litemp(
 
     Parameters
     ----------
-    model_cls
-        The model class to validate.
+    model
+        The model instance to validate.
     code_gen
         The model's code-gen.yaml configuration.
 
@@ -263,25 +263,25 @@ def validate_mixed_precision_litemp(
         f"Precision {p} uses mixed precision (override_type) "
         "but get_hub_litemp_percentage() raises NotImplementedError."
         for p in mixed_precisions
-        if not _litemp_implemented(model_cls, p)
+        if not _litemp_implemented(model, p)
     ]
 
 
-def validate_labels_file(model_cls: type[BaseModel]) -> list[str]:
+def validate_labels_file(model: BaseModel) -> list[str]:
     """
     Validate that the labels file declared by the model exists on disk.
 
     Parameters
     ----------
-    model_cls
-        The model class to validate.
+    model
+        The model instance to validate.
 
     Returns
     -------
     list[str]
         Error messages if the labels file is missing.
     """
-    labels_name = model_cls.get_labels_file_name()
+    labels_name = model.get_labels_file_name()
     if labels_name is None:
         return []
     labels_path = QAIHM_PACKAGE_ROOT / "labels" / labels_name
@@ -293,16 +293,16 @@ def validate_labels_file(model_cls: type[BaseModel]) -> list[str]:
     return []
 
 
-def _component_precision_implemented(component_cls: type[BaseModel]) -> bool:
+def _component_precision_implemented(component: BaseModel) -> bool:
     try:
-        component_cls.component_precision()
+        component.component_precision()
     except NotImplementedError:
         return False
     return True
 
 
 def validate_component_precision(
-    model_cls: type[CollectionModel],
+    model: CollectionModel,
     code_gen: QAIHMModelCodeGen,
 ) -> list[str]:
     """
@@ -313,8 +313,8 @@ def validate_component_precision(
 
     Parameters
     ----------
-    model_cls
-        The collection model class to validate.
+    model
+        The collection model to validate.
     code_gen
         The model's code-gen.yaml configuration.
 
@@ -332,20 +332,20 @@ def validate_component_precision(
         return []
 
     errors: list[str] = []
-    for comp_name, component_cls in model_cls.component_classes.items():
-        if not issubclass(component_cls, BaseModel):
+    for comp_name, component in model.components.items():
+        if not isinstance(component, BaseModel):
             continue
-        if not _component_precision_implemented(component_cls):
+        if not _component_precision_implemented(component):
             errors.append(
                 f"[component '{comp_name}'] Collection model declares mixed precision "
                 "but component does not implement component_precision()."
             )
             continue
-        comp_precision = component_cls.component_precision()
+        comp_precision = component.component_precision()
         if (
             isinstance(comp_precision, Precision)
             and comp_precision.override_type is not None
-            and not _litemp_implemented(component_cls, comp_precision)
+            and not _litemp_implemented(component, comp_precision)
         ):
             errors.append(
                 f"[component '{comp_name}'] Component precision {comp_precision} "
@@ -356,7 +356,9 @@ def validate_component_precision(
 
 
 def perform_runtime_model_validation(
-    model_cls: type[BaseModel | CollectionModel],
+    model_cls: type[
+        BaseModel | PretrainedCollectionModel | MultiGraphPretrainedCollectionModel
+    ],
     model_id: str,
     app_cls: type | None = None,
 ) -> None:
@@ -386,18 +388,19 @@ def perform_runtime_model_validation(
     code_gen = QAIHMModelCodeGen.from_model(model_id)
     errors: list[str] = []
 
-    if issubclass(model_cls, CollectionModel):
-        errors.extend(validate_io_names_collection(model_cls))
+    model = model_cls.from_pretrained()
+    if isinstance(model, CollectionModel):
+        errors.extend(validate_io_names_collection(model))
         errors.extend(validate_calibration_dataset_collection(code_gen, app_cls))
-        errors.extend(validate_component_precision(model_cls, code_gen))
+        errors.extend(validate_component_precision(model, code_gen))
     else:
-        errors.extend(validate_io_names(model_cls))
-        errors.extend(validate_calibration_dataset(model_cls, code_gen))
-        errors.extend(validate_mixed_precision_litemp(model_cls, code_gen))
-        errors.extend(validate_labels_file(model_cls))
-        errors.extend(validate_eval_datasets_have_evaluator(model_cls))
+        errors.extend(validate_io_names(model))
+        errors.extend(validate_calibration_dataset(model, code_gen))
+        errors.extend(validate_mixed_precision_litemp(model, code_gen))
+        errors.extend(validate_labels_file(model))
+        errors.extend(validate_eval_datasets_have_evaluator(model))
 
-    errors.extend(validate_eval_datasets(model_cls))
+    errors.extend(validate_eval_datasets(model))
 
     if errors:
         header = (

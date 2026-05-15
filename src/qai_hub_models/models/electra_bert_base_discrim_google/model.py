@@ -74,8 +74,8 @@ class ElectraBertBaseDiscrimGoogle(BaseBertModel):
     def get_dataset_class(cls, tokenizer_name: str) -> type:
         return ElectraWikiTextMasked
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         sample_length: int = 384,
     ) -> InputSpec:
@@ -92,8 +92,7 @@ class ElectraBertBaseDiscrimGoogle(BaseBertModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["predictions"]
 
 

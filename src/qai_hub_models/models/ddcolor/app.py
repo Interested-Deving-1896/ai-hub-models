@@ -12,14 +12,17 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
-from qai_hub_models.models.ddcolor.model import DDColor
-
 
 class DDColorApp:
     """Wraps DDColor model for image preprocessing and postprocessing."""
 
-    def __init__(self, model: Callable[[torch.Tensor], torch.Tensor]) -> None:
+    def __init__(
+        self,
+        model: Callable[[torch.Tensor], torch.Tensor],
+        model_input_shape: tuple[int, int] = (256, 256),
+    ) -> None:
         self.model = model
+        self.model_input_shape = model_input_shape
 
     def predict(self, *args: Any, **kwargs: Any) -> Image.Image:
         """
@@ -66,7 +69,7 @@ class DDColorApp:
         orig_l = cv2.cvtColor(img, cv2.COLOR_RGB2Lab)[:, :, :1]  # (h, w, 1)
 
         # Resize and convert image to grayscale
-        height_resized, width_resized = DDColor.get_input_spec()["image"][0][-2:]
+        height_resized, width_resized = self.model_input_shape
         img_resized = cv2.resize(img, (width_resized, height_resized))
         img_l = cv2.cvtColor(img_resized, cv2.COLOR_RGB2Lab)[:, :, :1]
         img_gray_lab = np.concatenate(

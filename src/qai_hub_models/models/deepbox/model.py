@@ -47,8 +47,8 @@ class Yolo2DDetection(YoloV3):
     [bounding boxes & keypoints, box & keypoint scores]
     """
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 224,
         width: int = 640,
@@ -120,8 +120,8 @@ class VGG3DDetection(BaseModel):
         out = self.model(norm_image_bgr)
         return out[0], out[1], out[2]
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 224,
         width: int = 224,
@@ -142,12 +142,10 @@ class VGG3DDetection(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["orient", "conf", "dim"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 

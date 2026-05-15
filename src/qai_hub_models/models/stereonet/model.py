@@ -159,8 +159,8 @@ class StereoNet(BaseModel):
         std = (torch.tensor([61.9625, 62.0313]) / 255).view(1, 2, 1, 1)
         return self.model((image - mean) / std)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 786,
         width: int = 490,
@@ -173,8 +173,7 @@ class StereoNet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["disparity"]
 
     def get_hub_compile_options(
@@ -194,10 +193,8 @@ class StereoNet(BaseModel):
             target_runtime, precision, other_compile_options, device, context_graph_name
         )
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["disparity"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]

@@ -108,8 +108,7 @@ class ImagenetClassifier(BaseModel):
     def get_evaluator(self) -> BaseEvaluator:
         return ClassificationEvaluator()
 
-    @staticmethod
-    def get_input_spec(batch_size: int = 1) -> InputSpec:
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         return {
             "image_tensor": TensorSpec(
                 shape=(batch_size, 3, IMAGENET_DIM, IMAGENET_DIM),
@@ -122,8 +121,7 @@ class ImagenetClassifier(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "class_logits": TensorSpec(
                 io_type=IoType.TENSOR,
@@ -138,8 +136,7 @@ class ImagenetClassifier(BaseModel):
         tensor = IMAGENET_TRANSFORM(image).unsqueeze(0)
         return dict(image_tensor=[tensor.numpy()])
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image_tensor"]
 
     @staticmethod

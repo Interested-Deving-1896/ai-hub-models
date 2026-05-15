@@ -63,8 +63,8 @@ class DeepLabV3Model(BaseModel):
             model_out = model_out["out"]
         return model_out.argmax(1).byte()
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 520,
         width: int = 520,
@@ -85,8 +85,7 @@ class DeepLabV3Model(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "mask": TensorSpec(
                 io_type=IoType.TENSOR,
@@ -94,8 +93,7 @@ class DeepLabV3Model(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(

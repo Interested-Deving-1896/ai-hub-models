@@ -64,8 +64,8 @@ class SegformerBase(BaseModel):
         """
         return self.model(normalize_image_torchvision(image_tensor), return_dict=False)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 512,
         width: int = 512,
@@ -86,16 +86,13 @@ class SegformerBase(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["class_logits"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["class_logits"]
 
     def _sample_inputs_impl(

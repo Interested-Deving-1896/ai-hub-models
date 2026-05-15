@@ -44,7 +44,7 @@ def movenet_demo(model_cls: type[Movenet], is_test: bool = False) -> None:
 
     print("Model Loaded")
 
-    h, w = model_cls.get_input_spec()["image"][0][2:4]
+    h, w = model_cls.from_pretrained().get_input_spec()["image"][0][2:4]
     app = MovenetApp(
         model,  # type: ignore[arg-type]
         h,

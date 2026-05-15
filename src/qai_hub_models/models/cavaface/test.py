@@ -25,7 +25,7 @@ EXCEPTED_OUTPUT = CachedWebModelAsset.from_asset_store(
 def test_task() -> None:
     image = load_image(INPUT_IMAGE_ADDRESS_1)
     model = CavaFace.from_pretrained()
-    _, _, h, w = CavaFace.get_input_spec()["image"][0]
+    _, _, h, w = model.get_input_spec()["image"][0]
     app = CavaFaceApp(model, h, w)
     output = app.predict_features(image)
     np.testing.assert_allclose(

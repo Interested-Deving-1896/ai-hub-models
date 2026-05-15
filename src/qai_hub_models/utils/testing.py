@@ -245,7 +245,9 @@ def get_and_sync_datasets_cache_dir(
     if not has_channel_transpose:
         folder_name += "_nt"
     assert issubclass(model_cls, BaseModel)
-    dataset_folder_name = get_folder_name(dataset_name, model_cls.get_input_spec())
+    dataset_folder_name = get_folder_name(
+        dataset_name, model_cls.from_pretrained().get_input_spec()
+    )
     dir_path = ArtifactsDirEnvvar.get() / folder_name / dataset_folder_name
     if dir_path.exists():
         return dir_path
@@ -431,7 +433,8 @@ def get_hub_val_dataset(
         "CollectionModel is not yet supported by this function."
     )
     dataset_ids = load_yaml(ids_file)
-    input_spec = model_cls.get_input_spec()
+    instance = model_cls.from_pretrained()
+    input_spec = instance.get_input_spec()
     folder_name = get_folder_name(dataset_name, input_spec)
     input_key, gt_key = get_val_dataset_id_keys(folder_name, apply_channel_transpose)
     if dataset_ids and input_key in dataset_ids:
@@ -442,7 +445,7 @@ def get_hub_val_dataset(
     input_entries, gt_entries = dataset_entries_from_batch(
         batch,
         list(input_spec.keys()),
-        model_cls.get_channel_last_inputs() if apply_channel_transpose else [],
+        instance.get_channel_last_inputs() if apply_channel_transpose else [],
     )
 
     input_dataset = hub.upload_dataset(input_entries)

@@ -371,7 +371,7 @@ class MediapipeSelfie(SelfieSegmentor):
 
         return self.sigmoid(self.transpose_conv(x))
 
-    def _get_input_spec_for_instance(self) -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         if self.image_type == "square":
             return {"image": ((1, 3, *self.DEFAULT_HW), "float32")}
         return {"image": ((1, 3, 144, self.DEFAULT_HW[0]), "float32")}

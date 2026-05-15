@@ -100,8 +100,8 @@ class DeeplabXception(DeepLabV3Model):
             model_out = model_out[0]
         return model_out.argmax(1).byte()
 
-    @staticmethod
     def get_input_spec(
+        self,
         height: int = 480,
         width: int = 520,
     ) -> InputSpec:

@@ -15,7 +15,6 @@ import torch
 if TYPE_CHECKING:
     from PIL.Image import Image
 
-from qai_hub_models.models.facemap_3dmm.model import FaceMap_3DMM
 from qai_hub_models.models.facemap_3dmm.utils import (
     project_landmark,
     transform_landmark_coordinates,
@@ -37,8 +36,13 @@ class FaceMap_3DMMApp:
         * Display the output lanrmarks on the image
     """
 
-    def __init__(self, model: Callable[[torch.Tensor], torch.Tensor]) -> None:
+    def __init__(
+        self,
+        model: Callable[[torch.Tensor], torch.Tensor],
+        model_input_shape: tuple[int, int] = (128, 128),
+    ) -> None:
         self.model = model
+        self.model_input_shape = model_input_shape
 
     def predict(self, *args: Any, **kwargs: Any) -> tuple[torch.Tensor, np.ndarray]:
         return self.landmark_prediction(*args, **kwargs)
@@ -79,7 +83,7 @@ class FaceMap_3DMMApp:
         """
         [image], _ = app_to_net_image_inputs(pixel_values_or_image)
 
-        resized_height, resized_width = FaceMap_3DMM.get_input_spec()["image"][0][2:]
+        resized_height, resized_width = self.model_input_shape
 
         CHW_fp32_torch_crop_image = (
             torch.from_numpy(

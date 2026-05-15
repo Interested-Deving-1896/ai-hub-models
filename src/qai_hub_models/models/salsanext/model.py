@@ -95,8 +95,8 @@ class SalsaNext(BaseModel):
         lidar_input, _ = self.load_lidar_bin(str(INPUT_LIDAR_ADDRESS))
         return {"lidar": [lidar_input.numpy()]}
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 64,
         width: int = 2048,
@@ -115,12 +115,10 @@ class SalsaNext(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["predict"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["lidar"]
 
     @staticmethod

@@ -137,20 +137,20 @@ def load_episode_batch(
 
 _COMPONENT_SPEC: dict[str, tuple[list[str], list[str]]] = {
     "vision_encoder": (
-        list(Pi05PaliGemmaVision.get_input_spec().keys()),
-        Pi05PaliGemmaVision.get_output_names(),
+        list(Pi05PaliGemmaVision.get_input_spec_static().keys()),
+        Pi05PaliGemmaVision.get_output_names_static(),
     ),
     "token_emb": (
-        list(Pi05PaliGemmaTokenEmbed.get_input_spec().keys()),
-        Pi05PaliGemmaTokenEmbed.get_output_names(),
+        list(Pi05PaliGemmaTokenEmbed.get_input_spec_static().keys()),
+        Pi05PaliGemmaTokenEmbed.get_output_names_static(),
     ),
     "backbone": (
-        list(Pi05PaliGemmaBackbone.get_input_spec().keys()),
-        Pi05PaliGemmaBackboneBase.get_output_names((0, 18)),
+        list(Pi05PaliGemmaBackbone.get_input_spec_static().keys()),
+        Pi05PaliGemmaBackboneBase.get_output_names_static((0, 18)),
     ),
     "action_expert": (
-        list(Pi05ActionExpert.get_input_spec().keys()),
-        Pi05ActionExpert.get_output_names(),
+        list(Pi05ActionExpert.get_input_spec_static().keys()),
+        Pi05ActionExpert.get_output_names_static(),
     ),
 }
 

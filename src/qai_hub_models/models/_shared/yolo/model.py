@@ -133,8 +133,8 @@ class Yolo(BaseModel):
             image_height, image_width, score_threshold=0.25, nms_iou_threshold=0.7
         )
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = DEFAULT_YOLO_IMAGE_INPUT_HW,
         width: int = DEFAULT_YOLO_IMAGE_INPUT_HW,
@@ -151,8 +151,7 @@ class Yolo(BaseModel):
             )
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -181,8 +180,7 @@ class Yolo(BaseModel):
             image = image.resize((w, h))
         return {"image": [app_to_net_image_inputs(image)[1].numpy()]}
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     @staticmethod

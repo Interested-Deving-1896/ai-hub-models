@@ -76,7 +76,7 @@ class YoloV7(Yolo):
             split_output,
         )
 
-    def _get_input_spec_for_instance(self, batch_size: int = 1) -> InputSpec:
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         return super().get_input_spec(
             batch_size, self.yolov7_detector.h, self.yolov7_detector.w
         )
@@ -129,20 +129,12 @@ class YoloV7(Yolo):
 
         return detect_postprocess_split_input(*detector_output)
 
-    @staticmethod
-    def get_output_names(
-        include_postprocessing: bool = True, split_output: bool = False
-    ) -> list[str]:
-        if include_postprocessing:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
             return ["boxes", "scores", "class_idx"]
-        if split_output:
+        if self.split_output:
             return ["boxes_xy", "boxes_wh", "scores"]
         return ["detector_output"]
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(
-            self.include_postprocessing, self.split_output
-        )
 
     def get_hub_quantize_options(
         self, precision: Precision, other_options: str | None = None
@@ -158,8 +150,7 @@ class YoloV7(Yolo):
             options += " --range_scheme min_max"
         return options
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10
 

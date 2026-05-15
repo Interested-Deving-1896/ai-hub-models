@@ -229,8 +229,8 @@ class FootTrackNet(BaseModel):
         model.eval()
         return model
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 480,
         width: int = 640,
@@ -252,16 +252,13 @@ class FootTrackNet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["heatmap", "bbox", "landmark", "landmark_visibility"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["heatmap", "bbox", "landmark", "landmark_visibility"]
 
     def get_evaluator(self) -> BaseEvaluator:

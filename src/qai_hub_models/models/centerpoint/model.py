@@ -167,8 +167,7 @@ class CenterPoint(BaseModel):
         pred = self.model(example, return_loss=False)[0]
         return pred["batch_box_preds"], pred["batch_hm"]
 
-    @staticmethod
-    def get_input_spec(num_voxels: int = 5268) -> InputSpec:
+    def get_input_spec(self, num_voxels: int = 5268) -> InputSpec:
         """
         Returns the expected input specification for the model.
 
@@ -203,8 +202,7 @@ class CenterPoint(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         """
         Returns the names of the output tensors produced by the model.
 

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 import os
-from abc import abstractmethod
 from functools import lru_cache
 
 import torch
@@ -87,8 +86,7 @@ class Encoder(BaseModel):
         super().__init__()
         self.gen = gen
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -98,8 +96,7 @@ class Encoder(BaseModel):
             "x_lengths": TensorSpec(shape=(1,), dtype="int32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["x_encoded", "m_p", "logs_p", "x_mask"]
 
     def forward(
@@ -222,8 +219,7 @@ class SDP(BaseModel):
         y_lengths = torch.sum(torch.sum(w_ceil, dim=2), dim=1)
         return y_lengths, w_ceil
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -237,8 +233,7 @@ class SDP(BaseModel):
             "noise_scale_w": TensorSpec(shape=(1,), dtype="float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["y_lengths", "w_ceil"]
 
     @classmethod
@@ -303,8 +298,7 @@ class Flow(BaseModel):
         z_p = m_p + self.fixed_noise * torch.exp(logs_p) * noise_scale  # type: ignore [operator]
         return self.flow(z_p, y_mask, g=None, reverse=True)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -323,8 +317,7 @@ class Flow(BaseModel):
             "noise_scale": TensorSpec(shape=(1,), dtype="float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["z"]
 
     @classmethod
@@ -367,8 +360,7 @@ class Decoder(BaseModel):
         """
         return self.dec(z, g=None)
 
-    @staticmethod
-    def get_input_spec() -> InputSpec:
+    def get_input_spec(self) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
         used to submit compiling job on Qualcomm AI Hub Workbench.
@@ -377,8 +369,7 @@ class Decoder(BaseModel):
             "z": TensorSpec(shape=(1, ENCODER_HIDDEN_DIM, DEC_SEQ_LEN), dtype="float32")
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["audio"]
 
     @classmethod
@@ -423,9 +414,8 @@ class PiperTTS(PretrainedCollectionModel):
         self.charsiu_decoder = charsiu_decoder
 
     @classmethod
-    @abstractmethod
     def get_language(cls) -> TTSLanguage:
-        pass
+        return TTSLanguage.ENGLISH
 
     @classmethod
     def from_pretrained(cls) -> Self:

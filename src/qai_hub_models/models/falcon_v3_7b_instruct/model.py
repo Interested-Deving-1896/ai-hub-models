@@ -141,12 +141,11 @@ class Falcon3_7B(Llama3Base):
             _skip_optimizations=_skip_optimizations,
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return Llama3Base._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -282,12 +281,11 @@ class Falcon3_7B_AIMETOnnx(Llama3Base_AIMETOnnx):
             use_dynamic_shapes=use_dynamic_shapes,
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return Llama3Base._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -324,8 +322,22 @@ class Falcon3_7B_AIMETOnnx(Llama3Base_AIMETOnnx):
 class Falcon3_7B_QNN(Llama3Base_QNN):
     num_layers_per_split: int = NUM_LAYERS_PER_SPLIT
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return Llama3Base._get_output_names(NUM_LAYERS)
 
-    get_input_spec = staticmethod(Falcon3_7B.get_input_spec)
+    def get_input_spec(
+        self,
+        llm_config: dict,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
+    ) -> InputSpec:
+        return Llama3Base._get_input_spec(
+            num_hidden_layers=llm_config["num_hidden_layers"],
+            sequence_length=sequence_length,
+            context_length=context_length,
+            hidden_size=llm_config["hidden_size"],
+            num_key_value_heads=llm_config["num_key_value_heads"],
+            num_attention_heads=llm_config["num_attention_heads"],
+            llm_io_type=llm_io_type,
+        )

@@ -17,7 +17,6 @@ with patch_mmdet_no_build_deps():
     from mmdet.models.task_modules import BaseBBoxCoder
 from PIL import Image
 
-from qai_hub_models.models.bevdet.model import BEVDet
 from qai_hub_models.utils.bounding_box_processing_3d import (
     circle_nms,
     draw_3d_bbox,
@@ -73,6 +72,7 @@ class BEVDetApp:
             ],
         ],
         bbox_coder: BaseBBoxCoder,
+        model_input_shape: tuple[int, int] = (256, 704),
         score_threshold: float = 0.4,
         nms_threshold: float = 4.0,
         nms_post_max_size: int = 500,
@@ -86,6 +86,8 @@ class BEVDetApp:
             BEVDet Model.
         bbox_coder
             CenterPointBBoxCoder for BEVDet Model.
+        model_input_shape
+            (height, width) of the model input.
         score_threshold
             Default is 0.4.
         nms_threshold
@@ -95,6 +97,7 @@ class BEVDetApp:
         """
         self.model = model
         self.bbox_coder = bbox_coder
+        self.model_input_shape = model_input_shape
         self.score_threshold = score_threshold
         self.nms_threshold = nms_threshold
         self.nms_post_max_size = nms_post_max_size
@@ -240,7 +243,7 @@ class BEVDetApp:
         images_tensor_list = []
         for img in images_list:
             W, H = img.size
-            fH, fW = BEVDet.get_input_spec()["image"][0][-2:]
+            fH, fW = self.model_input_shape
 
             resize = float(fW) / float(W)
             resize_dims = (int(W * resize), int(H * resize))

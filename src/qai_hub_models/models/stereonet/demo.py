@@ -60,7 +60,7 @@ def main(is_test: bool = False) -> None:
     left = load_image(args.stereo_left)
     right = load_image(args.stereo_right)
 
-    h, w = StereoNet.get_input_spec()["image"][0][2:]
+    h, w = StereoNet.from_pretrained().get_input_spec()["image"][0][2:]
     app = StereoNetApp(model, height=h, width=w)  # type: ignore[arg-type]
     out_image = app.predict_disparity(left, right, crop=args.crop)
     assert isinstance(out_image, Image.Image)

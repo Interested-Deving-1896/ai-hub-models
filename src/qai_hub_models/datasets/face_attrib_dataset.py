@@ -14,7 +14,7 @@ from qai_hub_models.datasets.common import (
     BaseDataset,
     DatasetSplit,
 )
-from qai_hub_models.models.face_attrib_net.model import OUT_NAMES, FaceAttribNet
+from qai_hub_models.models.face_attrib_net.model import OUT_NAMES
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.private_asset_loaders import CachedPrivateDatasetAsset
@@ -92,9 +92,12 @@ class FaceAttribDataset(BaseDataset):
         self.gt_list: list[int] = []
         self.attr_index_list: list[int] = []
 
-        input_spec = input_spec or FaceAttribNet.get_input_spec()
-        self.input_height = input_spec["image"][0][2]
-        self.input_width = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.input_height = input_spec["image"][0][2]
+            self.input_width = input_spec["image"][0][3]
+        else:
+            self.input_height = 128
+            self.input_width = 128
         BaseDataset.__init__(self, self.data_path, split)
 
     def getitem_image(self, index: int) -> tuple[torch.Tensor, Path]:

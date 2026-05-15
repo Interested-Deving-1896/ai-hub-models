@@ -123,8 +123,8 @@ class ACT(BaseModel):
         image = normalize_image_torchvision(image)
         return self.model(qpos, image.unsqueeze(1), env_state=None)[0]
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 480,
         width: int = 640,
@@ -168,6 +168,5 @@ class ACT(BaseModel):
             target_runtime, precision, other_compile_options, device, context_graph_name
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["actions"]

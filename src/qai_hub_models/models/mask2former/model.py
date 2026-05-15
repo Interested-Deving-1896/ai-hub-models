@@ -93,8 +93,8 @@ class Mask2Former(BaseModel):
         (class_pred_scores, class_pred_labels) = F.softmax(class_logits, dim=-1).max(-1)
         return class_pred_scores, class_pred_labels, mask_logits
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 384,
         width: int = 384,
@@ -115,16 +115,13 @@ class Mask2Former(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["scores", "labels", "masks"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["masks"]
 
     def get_hub_compile_options(

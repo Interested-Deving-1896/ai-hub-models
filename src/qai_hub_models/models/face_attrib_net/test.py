@@ -27,9 +27,10 @@ OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
 
 # Verify that the output from Torch is as expected.
 def test_task() -> None:
-    input_spec = FaceAttribNet.get_input_spec()["image"][0]
+    model = FaceAttribNet.from_pretrained()
+    input_spec = model.get_input_spec()["image"][0]
     model_input_shape = input_spec[-2], input_spec[-1]
-    app = FaceAttribNetApp(FaceAttribNet.from_pretrained(), model_input_shape)
+    app = FaceAttribNetApp(model, model_input_shape)
     original_image = load_image(INPUT_IMAGE_ADDRESS)
     output_test = app.run_inference_on_image(original_image)
     output_reference = load_json(OUTPUT_IMAGE_ADDRESS)

@@ -44,9 +44,8 @@ FromPrecompiledTypeVar = TypeVar(
 class HubModelProtocol(Protocol):
     """All AI Hub Models must, at minimum, implement this interface."""
 
-    @staticmethod
     @abstractmethod
-    def get_input_spec(*args: Any, **kwargs: Any) -> InputSpec:
+    def get_input_spec(self, *args: Any, **kwargs: Any) -> InputSpec:
         """
         Returns a map from `{input_name -> (shape, dtype)}`
         specifying the shape and dtype for each input argument.
@@ -74,9 +73,8 @@ class HubModelProtocol(Protocol):
         """
         ...
 
-    @staticmethod
     @abstractmethod
-    def get_output_names(*args: Any, **kwargs: Any) -> list[str]:
+    def get_output_names(self, *args: Any, **kwargs: Any) -> list[str]:
         """
         List of output names. If there are multiple outputs, the order of the names
             should match the order of tuple returned by the model.

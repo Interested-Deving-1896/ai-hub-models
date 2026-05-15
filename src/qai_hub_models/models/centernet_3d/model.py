@@ -130,8 +130,8 @@ class CenterNet3D(CenterNet):
 
         return hm, dep, rot, dim, wh, reg
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 384,
         width: int = 1280,
@@ -152,8 +152,7 @@ class CenterNet3D(CenterNet):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["hm", "dep", "rot", "dim", "wh", "reg"]
 
     def _sample_inputs_impl(
@@ -180,8 +179,7 @@ class CenterNet3D(CenterNet):
     def calibration_dataset_name() -> str:
         return "kitti"
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 

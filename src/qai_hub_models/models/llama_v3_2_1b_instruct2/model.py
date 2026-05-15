@@ -185,13 +185,23 @@ class Llama3_2_1B_PreSplit(
         cls.cache_store(instance, cache_key)
         return instance
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         """Get output names for the full model."""
         return Llama3DynamicBase._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
+        llm_config: dict | None = None,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
+    ) -> InputSpec:
+        return self.get_static_input_spec(
+            llm_config, sequence_length, context_length, llm_io_type
+        )
+
+    @staticmethod
+    def get_static_input_spec(
         llm_config: dict | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -266,8 +276,7 @@ class Llama3_2_1B_QuantizablePreSplit(  # type: ignore[misc]
     num_splits = NUM_SPLITS
     num_layers_per_split = NUM_LAYERS_PER_SPLIT
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         """Get output names for the full model."""
         return Llama3DynamicBase._get_output_names(NUM_LAYERS)
 
@@ -280,9 +289,8 @@ class Llama3_2_1B_QuantizablePreSplit(  # type: ignore[misc]
             )
         return super()._postprocess_full_onnx_bundle(bundle)
 
-    @classmethod
     def get_input_spec(
-        cls,
+        self,
         llm_config: dict | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -305,7 +313,7 @@ class Llama3_2_1B_QuantizablePreSplit(  # type: ignore[misc]
         InputSpec
             Input specification for the model.
         """
-        return cls.FPModel.get_input_spec(
+        return self.FPModel.get_static_input_spec(
             llm_config=llm_config,
             sequence_length=sequence_length,
             context_length=context_length,
@@ -378,15 +386,15 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
             )
         return cls(presplit, precision=precision)
 
-    @staticmethod
     def get_default_input_spec(
+        self,
         llm_config: dict | None = None,
         sequence_length: int = 1,  # Default to token generator mode
         context_length: int = DEFAULT_CONTEXT_LENGTH,
         llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
     ) -> InputSpec:
         """Get default input spec for the full model (class-level convenience)."""
-        return Llama3_2_1B_PreSplit.get_input_spec(
+        return Llama3_2_1B_PreSplit.get_static_input_spec(
             llm_config=llm_config,
             sequence_length=sequence_length,
             context_length=context_length,
@@ -665,13 +673,7 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
             other_profile_options=other_profile_options,
         )
 
-    @staticmethod
-    def get_input_spec() -> MultiGraphGroup[InputSpec]:
-        raise NotImplementedError(
-            "You must instantiate this model to determine the spec."
-        )
-
-    def _get_input_spec_for_instance(
+    def get_input_spec(
         self,
         context_length: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
         sequence_length: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,

@@ -137,8 +137,8 @@ class SimpleBev(BaseModel):
         """
         return self.model(rgb_camXs, pix_T_cams, cam0_T_camXs, self.vox_util_)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 224 * 2,
         width: int = 400 * 2,
@@ -165,8 +165,7 @@ class SimpleBev(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             "raw_e_results",
             "feat_e_results",
@@ -175,12 +174,10 @@ class SimpleBev(BaseModel):
             "offset_e_results",
         ]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["cam0_T_camXs"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["offset_e_results"]
 
 

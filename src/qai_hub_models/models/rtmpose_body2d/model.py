@@ -101,8 +101,8 @@ class RTMPosebody2d(BaseModel):
     ) -> SampleInputsType:
         return {"image": [load_numpy(SAMPLE_INPUTS)]}
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 192,
@@ -123,12 +123,11 @@ class RTMPosebody2d(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["pred_x", "pred_y"]
 
     def get_evaluator(self) -> BaseEvaluator:
-        h, w = RTMPosebody2d.get_input_spec()["image"][0][2:]
+        h, w = self.get_input_spec()["image"][0][2:]
         return WholeBodyPoseEvaluator(h, w)
 
     @staticmethod

@@ -378,8 +378,8 @@ class Llama2_PromptProcessor_1(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -393,8 +393,7 @@ class Llama2_PromptProcessor_1(LlamaMixin):
             "position_ids_sin": ((1, 1, input_seq_length, POS_EMBED_DIM), "float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=1, model_split_map=MODEL_SPLIT_MAP
         )
@@ -404,8 +403,8 @@ class Llama2_PromptProcessor_1(LlamaMixin):
             past_key_val_heads=NUM_KEY_VAL_HEADS,
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -419,7 +418,7 @@ class Llama2_PromptProcessor_1(LlamaMixin):
         if data is not None:
             return data
 
-        _, input_seq_len = Llama2_PromptProcessor_1.get_input_spec()["input_ids"][0]
+        _, input_seq_len = self.get_input_spec()["input_ids"][0]
 
         tokenizer = get_tokenizer()
         prompt = get_input_prompt_with_tags(DEFAULT_USER_PROMPT)
@@ -459,10 +458,10 @@ class Llama2_PromptProcessor_1(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model and input spec."""
         if input_spec is None:
-            input_spec = Llama2_PromptProcessor_1.get_input_spec()
+            input_spec = self.get_input_spec()
 
         _, input_seq_len = input_spec["input_ids"][0]
-        return Llama2_PromptProcessor_1.get_model_data(input_seq_len=input_seq_len)
+        return self.get_model_data(input_seq_len=input_seq_len)
 
 
 class Llama2_PromptProcessor_2(LlamaMixin):
@@ -486,8 +485,8 @@ class Llama2_PromptProcessor_2(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -504,8 +503,7 @@ class Llama2_PromptProcessor_2(LlamaMixin):
             "position_ids_sin": ((1, 1, input_seq_length, POS_EMBED_DIM), "float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=2, model_split_map=MODEL_SPLIT_MAP
         )
@@ -515,8 +513,8 @@ class Llama2_PromptProcessor_2(LlamaMixin):
             past_key_val_heads=NUM_KEY_VAL_HEADS,
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -531,7 +529,9 @@ class Llama2_PromptProcessor_2(LlamaMixin):
             return data
 
         model = Llama2_PromptProcessor_1.from_pretrained()
-        inputs = Llama2_PromptProcessor_1.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_1.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         output = model(*inputs.values())
         del model
 
@@ -557,10 +557,10 @@ class Llama2_PromptProcessor_2(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_PromptProcessor_2.get_input_spec()
+            input_spec = self.get_input_spec()
 
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_PromptProcessor_2.get_model_data(input_seq_len=input_seq_len)
+        return self.get_model_data(input_seq_len=input_seq_len)
 
 
 class Llama2_PromptProcessor_3(LlamaMixin):
@@ -584,8 +584,8 @@ class Llama2_PromptProcessor_3(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -602,8 +602,7 @@ class Llama2_PromptProcessor_3(LlamaMixin):
             "position_ids_sin": ((1, 1, input_seq_length, POS_EMBED_DIM), "float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=3, model_split_map=MODEL_SPLIT_MAP
         )
@@ -613,8 +612,8 @@ class Llama2_PromptProcessor_3(LlamaMixin):
             past_key_val_heads=NUM_KEY_VAL_HEADS,
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -629,7 +628,9 @@ class Llama2_PromptProcessor_3(LlamaMixin):
             return data
 
         model = Llama2_PromptProcessor_2.from_pretrained()
-        inputs = Llama2_PromptProcessor_2.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_2.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         output = model(*inputs.values())
         del model
 
@@ -655,10 +656,10 @@ class Llama2_PromptProcessor_3(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_PromptProcessor_3.get_input_spec()
+            input_spec = self.get_input_spec()
 
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_PromptProcessor_3.get_model_data(input_seq_len=input_seq_len)
+        return self.get_model_data(input_seq_len=input_seq_len)
 
 
 class Llama2_PromptProcessor_4(LlamaMixin):
@@ -682,8 +683,8 @@ class Llama2_PromptProcessor_4(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -700,8 +701,7 @@ class Llama2_PromptProcessor_4(LlamaMixin):
             "position_ids_sin": ((1, 1, input_seq_length, POS_EMBED_DIM), "float32"),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=4, model_split_map=MODEL_SPLIT_MAP
         )
@@ -712,8 +712,8 @@ class Llama2_PromptProcessor_4(LlamaMixin):
             output_name="logits",
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -728,7 +728,9 @@ class Llama2_PromptProcessor_4(LlamaMixin):
             return data
 
         model = Llama2_PromptProcessor_3.from_pretrained()
-        inputs = Llama2_PromptProcessor_3.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_3.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         output = model(*inputs.values())
 
         new_inputs = {}
@@ -753,10 +755,10 @@ class Llama2_PromptProcessor_4(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_PromptProcessor_4.get_input_spec()
+            input_spec = self.get_input_spec()
 
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_PromptProcessor_4.get_model_data(input_seq_len=input_seq_len)
+        return self.get_model_data(input_seq_len=input_seq_len)
 
 
 #
@@ -794,8 +796,8 @@ class Llama2_TokenGenerator_1(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -833,8 +835,7 @@ class Llama2_TokenGenerator_1(LlamaMixin):
                 )
         return input_spec
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=1, model_split_map=MODEL_SPLIT_MAP
         )
@@ -844,8 +845,8 @@ class Llama2_TokenGenerator_1(LlamaMixin):
             past_key_val_heads=NUM_KEY_VAL_HEADS,
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -860,7 +861,9 @@ class Llama2_TokenGenerator_1(LlamaMixin):
         if data is not None:
             return data
 
-        inputs = Llama2_PromptProcessor_1.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_1.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_PromptProcessor_1.from_pretrained()
         output = model(*inputs.values())
         del model
@@ -938,11 +941,11 @@ class Llama2_TokenGenerator_1(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_TokenGenerator_1.get_input_spec()
+            input_spec = self.get_input_spec()
 
         # Attention mask is of shape [B, 1, TargetSeqLen, SourceSeqLen]
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_TokenGenerator_1.get_model_data(
+        return self.get_model_data(
             input_seq_len=input_seq_len,
         )
 
@@ -977,8 +980,8 @@ class Llama2_TokenGenerator_2(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -1019,8 +1022,7 @@ class Llama2_TokenGenerator_2(LlamaMixin):
                 )
         return input_spec
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=2, model_split_map=MODEL_SPLIT_MAP
         )
@@ -1030,8 +1032,8 @@ class Llama2_TokenGenerator_2(LlamaMixin):
             past_key_val_heads=NUM_KEY_VAL_HEADS,
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -1046,12 +1048,16 @@ class Llama2_TokenGenerator_2(LlamaMixin):
         if data is not None:
             return data
 
-        inputs = Llama2_PromptProcessor_2.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_2.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_PromptProcessor_2.from_pretrained()
         output = model(*inputs.values())
         del model
 
-        inputs = Llama2_TokenGenerator_1.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_TokenGenerator_1.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_TokenGenerator_1.from_pretrained()  # type: ignore[assignment]
         output_tg = model(*inputs.values())  # type: ignore[misc]
         del model
@@ -1090,10 +1096,10 @@ class Llama2_TokenGenerator_2(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_TokenGenerator_2.get_input_spec()
+            input_spec = self.get_input_spec()
 
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_TokenGenerator_2.get_model_data(
+        return self.get_model_data(
             input_seq_len=input_seq_len,
         )
 
@@ -1128,8 +1134,8 @@ class Llama2_TokenGenerator_3(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -1170,8 +1176,7 @@ class Llama2_TokenGenerator_3(LlamaMixin):
                 )
         return input_spec
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=3, model_split_map=MODEL_SPLIT_MAP
         )
@@ -1181,8 +1186,8 @@ class Llama2_TokenGenerator_3(LlamaMixin):
             past_key_val_heads=NUM_KEY_VAL_HEADS,
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -1197,12 +1202,16 @@ class Llama2_TokenGenerator_3(LlamaMixin):
         if data is not None:
             return data
 
-        inputs = Llama2_PromptProcessor_3.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_3.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_PromptProcessor_3.from_pretrained()
         output = model(*inputs.values())
         del model
 
-        inputs = Llama2_TokenGenerator_2.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_TokenGenerator_2.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_TokenGenerator_2.from_pretrained()  # type: ignore[assignment]
         output_tg = model(*inputs.values())  # type: ignore[misc]
         del model
@@ -1241,10 +1250,10 @@ class Llama2_TokenGenerator_3(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_TokenGenerator_3.get_input_spec()
+            input_spec = self.get_input_spec()
 
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_TokenGenerator_3.get_model_data(
+        return self.get_model_data(
             input_seq_len=input_seq_len,
         )
 
@@ -1279,8 +1288,8 @@ class Llama2_TokenGenerator_4(LlamaMixin):
         )
         return cls(model, encoding_path)
 
-    @staticmethod
     def get_input_spec(
+        self,
         input_seq_length: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
@@ -1321,8 +1330,7 @@ class Llama2_TokenGenerator_4(LlamaMixin):
                 )
         return input_spec
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         layers_start, layers_end = get_hidden_layer_range_from_split(
             split_part=4, model_split_map=MODEL_SPLIT_MAP
         )
@@ -1333,8 +1341,8 @@ class Llama2_TokenGenerator_4(LlamaMixin):
             output_name="logits",
         )
 
-    @staticmethod
     def get_model_data(
+        self,
         input_seq_len: int = DEFAULT_INPUT_SEQ_LEN,
     ) -> dict[str, torch.Tensor]:
         data = load_input_cached_data(
@@ -1349,12 +1357,16 @@ class Llama2_TokenGenerator_4(LlamaMixin):
         if data is not None:
             return data
 
-        inputs = Llama2_PromptProcessor_4.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_PromptProcessor_4.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_PromptProcessor_4.from_pretrained()
         output = model(*inputs.values())
         del model
 
-        inputs = Llama2_TokenGenerator_3.get_model_data(input_seq_len=input_seq_len)
+        inputs = Llama2_TokenGenerator_3.from_pretrained().get_model_data(
+            input_seq_len=input_seq_len
+        )
         model = Llama2_TokenGenerator_3.from_pretrained()  # type: ignore[assignment]
         output_tg = model(*inputs.values())  # type: ignore[misc]
         del model
@@ -1393,7 +1405,7 @@ class Llama2_TokenGenerator_4(LlamaMixin):
     ) -> dict[str, torch.Tensor] | None:
         """Calibration dataset for this model."""
         if input_spec is None:
-            input_spec = Llama2_TokenGenerator_4.get_input_spec()
+            input_spec = self.get_input_spec()
 
         input_seq_len = input_spec["attention_mask"][0][-1]
-        return Llama2_TokenGenerator_4.get_model_data(input_seq_len=input_seq_len)
+        return self.get_model_data(input_seq_len=input_seq_len)

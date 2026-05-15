@@ -54,8 +54,8 @@ class DepthAnythingV2(DepthEstimationModel):
         out = self.model(image, return_dict=False)
         return out[0].unsqueeze(1)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 518,
         width: int = 518,

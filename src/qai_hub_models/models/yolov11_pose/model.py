@@ -118,17 +118,12 @@ class YoloV11PoseDetector(Yolo):
 
         return boxes, scores, kpts
 
-    @staticmethod
-    def get_output_names(include_postprocessing: bool = True) -> list[str]:
-        if include_postprocessing:
+    def get_output_names(self) -> list[str]:
+        if self.include_postprocessing:
             return ["boxes", "scores", "keypoints"]
         return ["raw_boxes", "raw_scores", "raw_keypoints"]
 
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.include_postprocessing)
-
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -156,8 +151,7 @@ class YoloV11PoseDetector(Yolo):
             options += " --range_scheme min_max"
         return options
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         return 10
 
     def get_evaluator(self) -> BaseEvaluator:

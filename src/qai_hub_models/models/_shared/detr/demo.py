@@ -41,10 +41,7 @@ def detr_demo(
 
     # Load image & model
     detr = demo_model_from_cli_args(model_cls, model_id, args)
-    if isinstance(detr, model_cls):
-        input_spec = detr.get_input_spec()
-    else:
-        input_spec = model_cls.get_input_spec()
+    input_spec = detr.get_input_spec()
     (h, w) = input_spec["image"][0][2:]
 
     # Run app to scores, labels and boxes

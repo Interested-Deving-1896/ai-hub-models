@@ -207,12 +207,11 @@ class Gemma_3n_E2B(LLMBase):
             _skip_optimizations=skip_optimizations,
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return LLMBase._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict[str, Any],
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -315,12 +314,11 @@ class Gemma_3n_E2B_AIMETOnnx(LLM_AIMETOnnx):
             use_dynamic_shapes=use_dynamic_shapes,
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return LLMBase._get_output_names(NUM_LAYERS)
 
-    @staticmethod
     def get_input_spec(
+        self,
         llm_config: dict[str, Any],
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -357,8 +355,22 @@ class Gemma_3n_E2B_AIMETOnnx(LLM_AIMETOnnx):
 class Gemma_3n_E2B_QNN(LLM_QNN):
     num_layers_per_split: int = NUM_LAYERS_PER_SPLIT
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return LLMBase._get_output_names(NUM_LAYERS)
 
-    get_input_spec = staticmethod(Gemma_3n_E2B.get_input_spec)
+    def get_input_spec(
+        self,
+        llm_config: dict[str, Any],
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
+    ) -> InputSpec:
+        return LLMBase._get_input_spec(
+            num_hidden_layers=llm_config["num_hidden_layers"],
+            sequence_length=sequence_length,
+            context_length=context_length,
+            hidden_size=llm_config["hidden_size"],
+            num_key_value_heads=llm_config["num_key_value_heads"],
+            num_attention_heads=llm_config["num_attention_heads"],
+            llm_io_type=llm_io_type,
+        )

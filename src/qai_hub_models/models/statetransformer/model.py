@@ -144,8 +144,7 @@ class StateTransformer(BaseModel):
         traj_scores = torch.ones([traj_logits.shape[0], 1]).to(traj_logits.device)
         return traj_logits, traj_scores
 
-    @staticmethod
-    def get_input_spec(batch_size: int = 1) -> InputSpec:
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         """
         Returns the input specification for the model.
 
@@ -196,12 +195,10 @@ class StateTransformer(BaseModel):
             target_runtime, precision, other_compile_options, device, context_graph_name
         )
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["high_res_raster", "low_res_raster"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         """
         Returns the names of the model outputs.
 

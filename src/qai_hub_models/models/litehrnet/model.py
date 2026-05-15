@@ -124,8 +124,8 @@ class LiteHRNet(BaseModel):
 
         return keypoints, scores, heatmaps
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 256,
         width: int = 192,
@@ -167,8 +167,7 @@ class LiteHRNet(BaseModel):
 
         return compile_options
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["keypoints", "scores", "heatmaps"]
 
     def get_evaluator(self) -> BaseEvaluator:

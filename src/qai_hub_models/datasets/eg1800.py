@@ -11,7 +11,6 @@ import torch
 from PIL import Image
 
 from qai_hub_models.datasets.common import BaseDataset, DatasetMetadata, DatasetSplit
-from qai_hub_models.models.sinet.model import SINet
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs
 from qai_hub_models.utils.input_spec import InputSpec
@@ -38,9 +37,12 @@ class eg1800SegmentationDataset(BaseDataset):
 
         BaseDataset.__init__(self, self.eg1800_path, split)
 
-        input_spec = input_spec or SINet.get_input_spec()
-        self.input_height = input_spec["image"][0][2]
-        self.input_width = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.input_height = input_spec["image"][0][2]
+            self.input_width = input_spec["image"][0][3]
+        else:
+            self.input_height = 256
+            self.input_width = 256
 
     def _validate_data(self) -> bool:
         self.image_dir = self.eg1800_path / "images_data_crop"

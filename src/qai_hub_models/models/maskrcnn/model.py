@@ -139,8 +139,8 @@ class MaskRCNNProposalGenerator(BaseModel):
             objectness_final,
         )
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 800,
         width: int = 800,
@@ -161,8 +161,7 @@ class MaskRCNNProposalGenerator(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             "features_0",
             "features_1",
@@ -172,8 +171,7 @@ class MaskRCNNProposalGenerator(BaseModel):
             "objectness_logits",
         ]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -326,9 +324,8 @@ class MaskRCNNROIHead(BaseModel):
 
         return boxes_tensor, scores_tensor, labels_tensor, masks_tensor
 
-    @staticmethod
     def get_input_spec(
-        height: int = 200, width: int = 200, num_boxes: int = 200
+        self, height: int = 200, width: int = 200, num_boxes: int = 200
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -362,8 +359,7 @@ class MaskRCNNROIHead(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,
@@ -384,8 +380,7 @@ class MaskRCNNROIHead(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["features_0", "features_1", "features_2", "features_3"]
 
     def get_hub_compile_options(

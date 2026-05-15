@@ -52,7 +52,7 @@ def test_trace() -> None:
 
     # Collect output via app for traced model
     img = load_image(INPUT_IMAGE_ADDRESS)
-    (_, _, height, width) = SegformerBase.get_input_spec()["image"][0]
+    (_, _, height, width) = net.get_input_spec()["image"][0]
     img_resized = img.resize((width, height))
     app = SegmentationApp(trace)
     out_imgs = cast(list[Image], app.predict(img_resized))

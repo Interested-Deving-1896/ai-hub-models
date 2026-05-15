@@ -15,7 +15,6 @@ from qai_hub_models.models._shared.hf_whisper.model import (
     HfWhisper,
     HfWhisperDecoder,
     HfWhisperEncoder,
-    InputSpec,
 )
 from qai_hub_models.models.common import Precision, TargetRuntime
 from qai_hub_models.utils.base_model import CollectionModel
@@ -32,10 +31,6 @@ class DistilWhisperEncoder(HfWhisperEncoder):
     def from_pretrained(cls) -> DistilWhisperEncoder:
         model = DistilWhisper.load_whisper_model()
         return cls(model.config, model.get_encoder())
-
-    @staticmethod
-    def get_input_spec(num_mel_bin: int = 80) -> InputSpec:
-        return HfWhisperEncoder.get_input_spec(num_mel_bin)
 
     def get_hub_compile_options(
         self,
@@ -62,14 +57,6 @@ class DistilWhisperDecoder(HfWhisperDecoder):
     def from_pretrained(cls) -> DistilWhisperDecoder:
         model = DistilWhisper.load_whisper_model()
         return cls(model.config, model.get_decoder())
-
-    @staticmethod
-    def get_input_spec(
-        num_blocks: int = 4,
-        attention_dim: int = 768,
-        num_heads: int = 12,
-    ) -> InputSpec:
-        return HfWhisperDecoder.get_input_spec(num_blocks, attention_dim, num_heads)
 
     def get_hub_compile_options(
         self,

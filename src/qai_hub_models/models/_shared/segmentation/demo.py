@@ -37,7 +37,7 @@ def segmentation_demo(
     model = demo_model_from_cli_args(model_type, model_id, args)
     validate_on_device_demo_args(args, model_id)
 
-    (_, _, height, width) = model_type.get_input_spec()["image"][0]
+    (_, _, height, width) = model.get_input_spec()["image"][0]
     orig_image = load_image(args.image)
     image, scale, padding = pil_resize_pad(
         orig_image, (height, width), pad_mode=pad_mode

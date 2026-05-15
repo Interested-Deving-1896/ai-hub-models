@@ -57,8 +57,7 @@ class EyeGaze(BaseModel):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         return self.model(image)
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["heatmaps", "landmarks", "gaze_pitchyaw"]
 
     def get_hub_compile_options(
@@ -99,8 +98,8 @@ class EyeGaze(BaseModel):
     def calibration_dataset_name() -> str:
         return "mpiigaze"
 
-    @staticmethod
     def get_input_spec(
+        self,
         height: int = 96,
         width: int = 160,
     ) -> InputSpec:

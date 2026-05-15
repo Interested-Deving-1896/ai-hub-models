@@ -46,7 +46,7 @@ def posenet_demo(model_cls: type[PosenetMobilenet], is_test: bool = False) -> No
     image = load_image(args.image)
     print("Model Loaded")
 
-    h, w = model_cls.get_input_spec()["image"][0][2:]
+    h, w = model_cls.from_pretrained().get_input_spec()["image"][0][2:]
 
     # OnDeviceModel is underspecified to have a fully-baked type here
     app = PosenetApp(

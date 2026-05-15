@@ -29,7 +29,7 @@ def main(is_test: bool = False) -> None:
     model = demo_model_from_cli_args(CenterNet2D, MODEL_ID, args)
     validate_on_device_demo_args(args, MODEL_ID)
 
-    (_, _, height, width) = CenterNet2D.get_input_spec()["image"][0]
+    (_, _, height, width) = inference_model.get_input_spec()["image"][0]
     # Load
     app = CenterNet2DApp(
         model,  # type: ignore[arg-type]

@@ -74,8 +74,8 @@ class FaceMap_3DMM(BaseModel):
         """
         return self.model(image * 255)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 128,
         width: int = 128,
@@ -101,12 +101,10 @@ class FaceMap_3DMM(BaseModel):
             image = image.resize((w, h))
         return {"image": [app_to_net_image_inputs(image)[1].numpy()]}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["parameters_3dmm"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def get_evaluator(self) -> BaseEvaluator:

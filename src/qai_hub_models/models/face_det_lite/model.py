@@ -187,8 +187,8 @@ class FaceDetLite(BaseModel):
 
         return FaceDetLite_model
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 480,
         width: int = 640,
@@ -209,16 +209,13 @@ class FaceDetLite(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["heatmap", "bbox", "landmark"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["input"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["heatmap", "bbox", "landmark"]
 
     def get_evaluator(self) -> BaseEvaluator:
@@ -233,8 +230,7 @@ class FaceDetLite(BaseModel):
     def calibration_dataset_name() -> str:
         return "face_det_lite"
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """
         Returns the Lite-MP percentage value for the specified mixed precision quantization.
         The returned value is a constant 20.0.

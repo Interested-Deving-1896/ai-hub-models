@@ -28,9 +28,11 @@ def main(is_test: bool = False) -> None:
     validate_on_device_demo_args(args, MODEL_ID)
 
     # Load
+    shape = inference_model.get_input_spec()["image"][0]
     app = CenterNet3DApp(
         model,  # type: ignore[arg-type]
         inference_model.decode,
+        model_input_shape=(shape[-2], shape[-1]),
     )
 
     image = load_image(IMAGE.fetch())

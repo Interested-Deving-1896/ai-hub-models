@@ -146,8 +146,7 @@ class Resnet34SSD(Yolo):
             image = image.resize((w, h))
         return {"image": [app_to_net_image_inputs(image)[1].numpy()]}
 
-    @staticmethod
-    def get_input_spec(batch_size: int = 1) -> InputSpec:
+    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         """
         Specify the expected input format for the model.
 
@@ -173,18 +172,15 @@ class Resnet34SSD(Yolo):
             ),
         }
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
     def get_output_names(
-        include_postprocessing: bool = True, split_output: bool = False
+        self, include_postprocessing: bool = True, split_output: bool = False
     ) -> list[str]:
-        return list(Resnet34SSD.get_output_spec().keys())
+        return list(self.get_output_spec().keys())
 
-    @staticmethod
-    def get_output_spec() -> dict[str, TensorSpec]:
+    def get_output_spec(self) -> dict[str, TensorSpec]:
         return {
             "boxes": TensorSpec(
                 io_type=IoType.BBOX,

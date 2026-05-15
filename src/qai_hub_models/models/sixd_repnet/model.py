@@ -114,20 +114,18 @@ class RetinaFaceDetector(BaseModel):
         )
         return bbox_regressions, classifications, landmark_regressions
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 640,
         width: int = 640,
     ) -> InputSpec:
         return {"image": ((batch_size, 3, height, width), "float32")}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["bbox_regressions", "classifications", "landmark_regressions"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 
@@ -181,20 +179,18 @@ class PoseEstimator(BaseModel):
         """
         return self.model(normalize_image_torchvision(image))
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = INPUT_IMAGE_DIM,
         width: int = INPUT_IMAGE_DIM,
     ) -> InputSpec:
         return {"image": ((batch_size, 3, height, width), "float32")}
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["rotation_matrix"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
 

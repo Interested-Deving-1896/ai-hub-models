@@ -307,8 +307,7 @@ class FaceDetector(BaseModel):
             include_postprocessing,
         )
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the face detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -325,12 +324,10 @@ class FaceDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["box_coords_1", "box_coords_2", "box_scores_1", "box_scores_2"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(
@@ -376,8 +373,7 @@ class FaceLandmarkDetector(BaseModel):
             )
         return cls(face_regressor)
 
-    @staticmethod
-    def get_input_spec(batch_size: int = BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = BATCH_SIZE) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type) of the face landmark detector.
         This can be used to submit profiling job on Qualcomm AI Hub Workbench.
@@ -394,12 +390,10 @@ class FaceLandmarkDetector(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["scores", "landmarks"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def _sample_inputs_impl(

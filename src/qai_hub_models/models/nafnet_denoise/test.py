@@ -31,7 +31,8 @@ def test_task() -> None:
     image = load_image(IMAGE_ADDRESS)
     output_image = load_image(OUTPUT_IMAGE_ADDRESS)
 
-    app = NAFNetApp(NafNetDeNoise.from_pretrained(), NafNetDeNoise.get_input_spec())
+    model = NafNetDeNoise.from_pretrained()
+    app = NAFNetApp(model, model.get_input_spec())
     restored_image = app.restore_image(image)
 
     np.testing.assert_allclose(
@@ -47,9 +48,10 @@ def test_trace() -> None:
     image = load_image(IMAGE_ADDRESS)
     output_image = load_image(OUTPUT_IMAGE_ADDRESS)
 
+    model = NafNetDeNoise.from_pretrained()
     app = NAFNetApp(
-        NafNetDeNoise.from_pretrained().convert_to_torchscript(),
-        NafNetDeNoise.get_input_spec(),
+        model.convert_to_torchscript(),
+        model.get_input_spec(),
     )
     restored_image = app.restore_image(image)
     np.testing.assert_allclose(

@@ -25,7 +25,7 @@ EXCEPTED_OUTPUT = CachedWebModelAsset.from_asset_store(
 def test_task() -> None:
     image = load_image(INPUT_IMAGE_ADDRESS)
     model = EyeGaze.from_pretrained()
-    _, h, w = EyeGaze.get_input_spec()["image"][0]
+    _, h, w = model.get_input_spec()["image"][0]
     image = image.resize((w, h))
     image_np = np.array(image.convert("L"))
     app = EyeGazeApp(model)

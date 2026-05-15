@@ -91,8 +91,7 @@ class CVT(BaseModel):
         )
         return out["bev"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["bev"]
 
     def get_hub_compile_options(
@@ -115,8 +114,7 @@ class CVT(BaseModel):
     def get_evaluator(self) -> BaseEvaluator:
         return NuscenesBevSegmentationEvaluator()
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 4
 
@@ -128,8 +126,8 @@ class CVT(BaseModel):
     def calibration_dataset_name() -> str:
         return "nuscenes_bev_cvt"
 
-    @staticmethod
     def get_input_spec(
+        self,
         num_frames: int = 6,
         height: int = 224,
         width: int = 480,

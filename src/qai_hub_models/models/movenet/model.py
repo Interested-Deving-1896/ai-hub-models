@@ -74,8 +74,8 @@ class Movenet(BaseModel):
         image = image * 255  # Model expects float values in the range [0.0, 255.0]
         return self.model(image)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 192,
         width: int = 192,
@@ -92,12 +92,10 @@ class Movenet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["kpt_with_conf"]
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def get_hub_profile_options(
@@ -123,7 +121,6 @@ class Movenet(BaseModel):
     def calibration_dataset_name() -> str:
         return "cocobody"
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization"""
         return 2

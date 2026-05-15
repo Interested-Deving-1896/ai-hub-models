@@ -120,8 +120,8 @@ class GKT(BaseModel):
         z = self.model.to_logits(y)
         return z.split(1, dim=1)[0]
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         num_cams: int = 6,
         height: int = 224,
@@ -155,8 +155,7 @@ class GKT(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["bev"]
 
     def get_evaluator(self) -> BaseEvaluator:
@@ -170,7 +169,6 @@ class GKT(BaseModel):
     def calibration_dataset_name() -> str:
         return "nuscenes_bev_gkt"
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10

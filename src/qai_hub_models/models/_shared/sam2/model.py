@@ -139,20 +139,10 @@ class SAM2Encoder(BaseModel, ABC):
             sparse_embedding,
         )
 
-    @staticmethod
-    def get_input_spec(
-        batch_size: int = 1,
-        num_points: int = 2,
-        encoder_img_height: int = 1024,  # self.sam2.image_size
-        encoder_img_width: int = 1024,  # self.sam2.image_size
-    ) -> InputSpec:
-        # Get the input specification ordered (name -> (shape, type)) pairs for this model.
-        #
-        # This can be used with the qai_hub python API to declare
-        # the model input specification upon submitting a profile job.
+    def get_input_spec(self, batch_size: int = 1, num_points: int = 2) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, encoder_img_height, encoder_img_width),
+                shape=(batch_size, 3, self.sam2.image_size, self.sam2.image_size),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -170,24 +160,13 @@ class SAM2Encoder(BaseModel, ABC):
             ),
         }
 
-    def _get_input_spec_for_instance(
-        self, batch_size: int = 1, num_points: int = 2
-    ) -> InputSpec:
-        """Override for model.get_input_spec() when called on instances of this class."""
-        return self.__class__.get_input_spec(
-            batch_size, num_points, self.sam2.image_size, self.sam2.image_size
-        )
-
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["image_embeddings", "high_res_features1", "high_res_features2"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             "image_embeddings",
             "high_res_features1",
@@ -195,8 +174,7 @@ class SAM2Encoder(BaseModel, ABC):
             "sparse_embedding",
         ]
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10
 
@@ -266,28 +244,8 @@ class SAM2Decoder(BaseModel, ABC):
         )
         return low_res_masks, iou_predictions
 
-    def _get_input_spec_for_instance(
-        self,
-        num_points: int = 2,
-    ) -> InputSpec:
-        """
-        Override for model.get_input_spec() when called on instances of this class.
-
-        The initializer for BaseModel will automatically override get_input_spec
-        with this function when the class is instantiated.
-        """
-        return self.__class__.get_input_spec(
-            num_points,
-            self.prompt_encoder_embed_dim,
-            self._bb_feat_sizes[2],
-            self._bb_feat_sizes[1],
-            self._bb_feat_sizes[0],
-            self.high_res_features1_dim,
-            self.high_res_features2_dim,
-        )
-
-    @staticmethod
     def get_input_spec(
+        self,
         num_points: int = 2,
         embed_dim: int = 256,
         image_embedding: tuple = (64, 64),
@@ -321,20 +279,16 @@ class SAM2Decoder(BaseModel, ABC):
         }
         return input_spec
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image_embeddings", "high_res_features1", "high_res_features2"]
 
-    @staticmethod
-    def get_channel_last_outputs() -> list[str]:
+    def get_channel_last_outputs(self) -> list[str]:
         return ["masks"]
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["masks", "scores"]
 
-    @staticmethod
-    def get_hub_litemp_percentage(_: Precision) -> float:
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
         """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
         return 10
 

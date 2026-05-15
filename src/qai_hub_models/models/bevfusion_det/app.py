@@ -13,9 +13,6 @@ import torch
 from PIL import Image
 from pyquaternion import Quaternion
 
-from qai_hub_models.models.bevfusion_det.model import (
-    BEVFusionEncoder1,
-)
 from qai_hub_models.utils.bounding_box_processing_3d import (
     compute_corners,
     draw_3d_bbox,
@@ -50,6 +47,7 @@ class BEVFusionApp:
         num_classes: list[int] | Any,
         task_heads: list[Any] | Any,
         get_bboxes: Callable[..., Any] | Any,
+        model_input_shape: tuple[int, int] = (256, 704),
         score_threshold: float = 0.4,
         nms_threshold: float = 4.0,
         nms_post_max_size: int = 83,
@@ -82,6 +80,8 @@ class BEVFusionApp:
             Bound method ``heads.get_bboxes`` from CenterHead.
             Called with the unpacked prediction dicts to decode raw outputs into
             bounding boxes, scores, and labels.
+        model_input_shape
+            (height, width) of the model input.
         score_threshold
             Score threshold, default is 0.4.
         nms_threshold
@@ -96,6 +96,7 @@ class BEVFusionApp:
         self.num_classes = num_classes
         self.task_heads = task_heads
         self.get_bboxes = get_bboxes
+        self.model_input_shape = model_input_shape
         self.score_threshold = score_threshold
         self.nms_threshold = nms_threshold
         self.nms_post_max_size = nms_post_max_size
@@ -319,7 +320,7 @@ class BEVFusionApp:
         post_tran_list = []
         for img in images:
             W, H = img.size
-            fH, fW = BEVFusionEncoder1.get_input_spec()["imgs"][0][-2:]
+            fH, fW = self.model_input_shape
             resize = 0.48
             resize_dims = (int(W * resize), int(H * resize))
             newW, newH = resize_dims

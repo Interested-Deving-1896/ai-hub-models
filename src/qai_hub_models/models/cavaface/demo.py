@@ -57,7 +57,7 @@ def cavaface_demo(
 
     # Load model & image
     model = demo_model_from_cli_args(model_type, model_id, args)
-    (height, width) = model_type.get_input_spec()["image"][0][2:]
+    (height, width) = model.get_input_spec()["image"][0][2:]
     image1 = load_image(args.image1)
 
     app = CavaFaceApp(model, height, width)  # type: ignore[arg-type]

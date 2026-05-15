@@ -55,7 +55,7 @@ def main(is_test: bool = False) -> None:
     left_orig = load_image(args.stereo_left)
     right_orig = load_image(args.stereo_right)
 
-    h, w = CREStereo.get_input_spec()["left_image"][0][2:]
+    h, w = CREStereo.from_pretrained().get_input_spec()["left_image"][0][2:]
 
     app = CREStereoApp(model=model, height=h, width=w)  # type: ignore[arg-type]
 

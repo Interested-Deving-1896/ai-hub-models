@@ -17,7 +17,6 @@ from qai_hub_models.datasets.common import (
     DatasetMetadata,
     DatasetSplit,
 )
-from qai_hub_models.models.gear_guard_net.model import GearGuardNet
 from qai_hub_models.utils.asset_loaders import (
     ASSET_CONFIG,
 )
@@ -95,10 +94,12 @@ class CocoPPEDataset(BaseDataset):
 
         BaseDataset.__init__(self, self.data_path, split, input_spec)
         # input_spec is (h, w) and target_image_size is (w, h)
-        input_spec = input_spec or GearGuardNet.get_input_spec()
-
-        self.target_h = input_spec["image"][0][2]
-        self.target_w = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.target_h = input_spec["image"][0][2]
+            self.target_w = input_spec["image"][0][3]
+        else:
+            self.target_h = 320
+            self.target_w = 192
         self.max_boxes = 1
 
     def __getitem__(

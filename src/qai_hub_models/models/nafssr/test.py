@@ -38,7 +38,8 @@ def test_task() -> None:
     output_image_l = load_image(SR_IMAGE_L)
     output_image_r = load_image(SR_IMAGE_R)
 
-    app = NAFSSRApp(NAFSSR.from_pretrained(), NAFSSR.get_input_spec(), SCALING_FACTOR)
+    model = NAFSSR.from_pretrained()
+    app = NAFSSRApp(model, model.get_input_spec(), SCALING_FACTOR)
     app_output_image_l, app_output_image_r = app.restore_image(l_img, r_img)
 
     np.testing.assert_allclose(
@@ -64,9 +65,10 @@ def test_trace() -> None:
     output_image_l = load_image(SR_IMAGE_L)
     output_image_r = load_image(SR_IMAGE_R)
 
+    model = NAFSSR.from_pretrained()
     app = NAFSSRApp(
-        NAFSSR.from_pretrained().convert_to_torchscript(),
-        NAFSSR.get_input_spec(),
+        model.convert_to_torchscript(),
+        model.get_input_spec(),
         SCALING_FACTOR,
     )
     app_output_image_l, app_output_image_r = app.restore_image(l_img, r_img)

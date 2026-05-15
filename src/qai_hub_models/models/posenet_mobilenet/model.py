@@ -81,8 +81,8 @@ class PosenetMobilenet(BaseModel):
         max_vals = F.max_pool2d(raw_output[0], 3, stride=1, padding=1)
         return (*raw_output, max_vals)
 
-    @staticmethod
     def get_input_spec(
+        self,
         batch_size: int = 1,
         height: int = 513,
         width: int = 257,
@@ -99,8 +99,7 @@ class PosenetMobilenet(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return [
             "heatmaps_result",
             "offsets_result",
@@ -114,8 +113,7 @@ class PosenetMobilenet(BaseModel):
     ) -> SampleInputsType:
         return {"image": [load_numpy(SAMPLE_INPUTS)]}
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["image"]
 
     def get_evaluator(self) -> BaseEvaluator:
@@ -130,8 +128,7 @@ class PosenetMobilenet(BaseModel):
     def calibration_dataset_name() -> str:
         return "cocobody"
 
-    @staticmethod
-    def get_hub_litemp_percentage(precision: Precision) -> float:
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
         """
         Returns the Lite-MP percentage value for the specified mixed precision quantization.
 

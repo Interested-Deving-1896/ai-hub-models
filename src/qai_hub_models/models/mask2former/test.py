@@ -60,7 +60,7 @@ def test_trace() -> None:
 
     # Collect output via app for traced model
     img = load_image(INPUT_IMAGE_ADDRESS)
-    (_, _, height, width) = Mask2Former.get_input_spec()["image"][0]
+    (_, _, height, width) = net.get_input_spec()["image"][0]
     img_resized = img.resize((height, width))
     app = Mask2FormerApp(trace)
     out_imgs = app.predict(img_resized)

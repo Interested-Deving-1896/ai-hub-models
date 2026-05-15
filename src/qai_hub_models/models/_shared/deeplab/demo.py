@@ -39,7 +39,8 @@ def deeplabv3_demo(
     args = parser.parse_args([] if is_test else None)
     validate_on_device_demo_args(args, model_id)
 
-    input_spec = model_type.get_input_spec()
+    inference_model = demo_model_from_cli_args(model_type, model_id, args)
+    input_spec = inference_model.get_input_spec()
 
     # load image and model
     (_, _, height, width) = input_spec["image"][0]

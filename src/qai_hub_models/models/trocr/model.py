@@ -99,8 +99,7 @@ class TrOCREncoder(BaseModel):
 
         return (*kv_cache,)  # convert list to tuple for export
 
-    @staticmethod
-    def get_input_spec(batch_size: int = TROCR_BATCH_SIZE) -> InputSpec:
+    def get_input_spec(self, batch_size: int = TROCR_BATCH_SIZE) -> InputSpec:
         # Get the input specification ordered (name -> (shape, type)) pairs for this model.
         #
         # This can be used with the qai_hub python API to declared
@@ -117,18 +116,12 @@ class TrOCREncoder(BaseModel):
             ),
         }
 
-    @staticmethod
-    def get_output_names(
-        num_decoder_layers: int = DEFAULT_NUM_DECODER_LAYERS,
-    ) -> list[str]:
+    def get_output_names(self) -> list[str]:
         output_names = []
-        for i in range(num_decoder_layers):
+        for i in range(len(self.decoder.model.decoder.layers)):
             output_names.append(f"kv_cache_key_{i}")
             output_names.append(f"kv_cache_val_{i}")
         return output_names
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(len(self.decoder.model.decoder.layers))
 
     @classmethod
     def from_pretrained(cls) -> Self:
@@ -138,8 +131,7 @@ class TrOCREncoder(BaseModel):
             cast(TrOCRForCausalLM, source_model.decoder),
         )
 
-    @staticmethod
-    def get_channel_last_inputs() -> list[str]:
+    def get_channel_last_inputs(self) -> list[str]:
         return ["pixel_values"]
 
 
@@ -256,32 +248,26 @@ class TrOCRDecoder(BaseModel):
             *out_kv_cache,
         )
 
-    @staticmethod
-    def get_input_spec(
-        batch_size: int = TROCR_BATCH_SIZE,
-        decoder_attention_heads: int = 8,
-        embeddings_per_head: int = 32,
-        num_decoder_layers: int = DEFAULT_NUM_DECODER_LAYERS,
-        max_decode_len: int = MAX_DECODE_LEN,
-    ) -> InputSpec:
-        """
-        Returns the input specification (name -> (shape, type). This can be
-        used to submit profiling job on Qualcomm AI Hub Workbench.
-        """
+    def get_output_names(self) -> list[str]:
+        output_names = ["next_token"]
+        for i in range(self.num_decoder_layers):
+            output_names.append(f"kv_cache_key_{i}")
+            output_names.append(f"kv_cache_val_{i}")
+        return output_names
+
+    def get_input_spec(self, batch_size: int = TROCR_BATCH_SIZE) -> InputSpec:
         attn_cache_shape = (
             batch_size,
-            decoder_attention_heads,
-            max_decode_len - 1,
-            embeddings_per_head,
+            self.decoder_attention_heads,
+            MAX_DECODE_LEN - 1,
+            self.embeddings_per_head,
         )
-
         cross_attn_cache_shape = (
             batch_size,
-            decoder_attention_heads,
-            578,  # TODO: Can we get this programatically?
-            embeddings_per_head,
+            self.decoder_attention_heads,
+            578,
+            self.embeddings_per_head,
         )
-
         decoder_input_specs: InputSpec = {
             "input_ids": TensorSpec(
                 shape=(1, 1),
@@ -294,7 +280,7 @@ class TrOCRDecoder(BaseModel):
                 io_type=IoType.TENSOR,
             ),
         }
-        for i in range(num_decoder_layers):
+        for i in range(self.num_decoder_layers):
             decoder_input_specs[f"kv_{i}_attn_key"] = TensorSpec(
                 shape=attn_cache_shape,
                 dtype="float32",
@@ -315,31 +301,7 @@ class TrOCRDecoder(BaseModel):
                 dtype="float32",
                 io_type=IoType.TENSOR,
             )
-
         return decoder_input_specs
-
-    @staticmethod
-    def get_output_names(
-        num_decoder_layers: int = DEFAULT_NUM_DECODER_LAYERS,
-    ) -> list[str]:
-        output_names = ["next_token"]
-        for i in range(num_decoder_layers):
-            output_names.append(f"kv_cache_key_{i}")
-            output_names.append(f"kv_cache_val_{i}")
-        return output_names
-
-    def _get_output_names_for_instance(self) -> list[str]:
-        return self.__class__.get_output_names(self.num_decoder_layers)
-
-    def _get_input_spec_for_instance(
-        self, batch_size: int = TROCR_BATCH_SIZE
-    ) -> InputSpec:
-        return self.__class__.get_input_spec(
-            batch_size,
-            self.decoder_attention_heads,
-            self.embeddings_per_head,
-            self.num_decoder_layers,
-        )
 
     @classmethod
     def from_pretrained(cls) -> Self:

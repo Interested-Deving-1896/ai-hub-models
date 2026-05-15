@@ -51,13 +51,12 @@ class HumanFacesDataset(BaseDataset):
         self.data_path = self.images_path.parent
         self.input_data_zip = input_data_zip
 
-        if input_spec is None:
-            # Local import to prevent circular dependency
-            from qai_hub_models.models.mediapipe_face.model import FaceDetector
-
-            input_spec = FaceDetector.get_input_spec()
-        self.img_height = input_spec["image"][0][2]
-        self.img_width = input_spec["image"][0][3]
+        if input_spec is not None:
+            self.img_height = input_spec["image"][0][2]
+            self.img_width = input_spec["image"][0][3]
+        else:
+            self.img_height = 256
+            self.img_width = 256
         self.scale_width = 1.0 / self.img_width
         self.scale_height = 1.0 / self.img_height
         BaseDataset.__init__(self, self.data_path, split=split)
