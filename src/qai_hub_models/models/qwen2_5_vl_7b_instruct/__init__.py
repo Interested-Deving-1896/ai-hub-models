@@ -17,7 +17,16 @@ from qai_hub_models.models._shared.qwen2_vl.model import (
 )
 
 from .model import (
+    DEFAULT_PRECISION,
+    HF_REPO_NAME,
+    HIDDEN_SIZE,
+    MIN_MEMORY_RECOMMENDED,
     MODEL_ID,
+    NUM_ATTN_HEADS,
+    NUM_KEY_VALUE_HEADS,
+    NUM_LAYERS,
+    NUM_LAYERS_PER_SPLIT,
+    NUM_SPLITS,
     Qwen2_5_VL_7B_Collection,
     Qwen2_5_VL_7B_Part1_Of_5,
     Qwen2_5_VL_7B_Part2_Of_5,
@@ -34,7 +43,16 @@ VisionEncoder = Qwen2_5_VL_7B_VisionEncoder
 Model = Qwen2_5_VL_7B_Collection
 
 __all__ = [
+    "DEFAULT_PRECISION",
+    "HF_REPO_NAME",
+    "HIDDEN_SIZE",
+    "MIN_MEMORY_RECOMMENDED",
     "MODEL_ID",
+    "NUM_ATTN_HEADS",
+    "NUM_KEY_VALUE_HEADS",
+    "NUM_LAYERS",
+    "NUM_LAYERS_PER_SPLIT",
+    "NUM_SPLITS",
     "Model",
     "PositionProcessor",
     "Qwen2_5_VL_7B_Collection",

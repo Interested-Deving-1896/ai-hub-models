@@ -17,6 +17,7 @@ Architecture:
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 
 # isort: off
@@ -24,8 +25,6 @@ import logging
 with contextlib.suppress(ImportError, ModuleNotFoundError):
     from aimet_onnx.quantsim import QuantizationSimModel, load_encodings_to_sim
 # isort: on
-import gc
-import json
 import os
 import shutil
 import tempfile
@@ -37,7 +36,6 @@ import numpy as np
 import onnx
 import onnxruntime
 import torch
-from qai_hub.client import Device
 from typing_extensions import Self
 
 from qai_hub_models.configs.model_metadata import ModelMetadata
@@ -45,14 +43,18 @@ from qai_hub_models.models._shared.llm.common import LLMIOType
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     DEFAULT_SEQUENCE_LENGTH,
+    DynamicPreSplitOnnxMixin,
     DynamicQuantizablePreSplitMixin,
+    LLMDynamic_AIMETOnnx,
     SingleSlotCacheMixin,
     get_onnx_model,
 )
-from qai_hub_models.models._shared.llm.split_onnx_utils.utils import split_onnx
+from qai_hub_models.models._shared.llm.model import (
+    DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
+)
 from qai_hub_models.models._shared.qwen2_vl.model import (
+    Qwen2VLDynamic_AIMETOnnx,
     Qwen2VLTextBase,
-    Qwen2VLTextBase_AIMETOnnx,
 )
 from qai_hub_models.models._shared.qwen2_vl.vision_encoder import (
     Qwen2VLVisionEncoder,
@@ -66,14 +68,21 @@ from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_model import (
     BaseModel,
     CollectionModel,
-    PretrainedCollectionModel,
+    Device,
+    MultiGraphBaseModel,
+    MultiGraphPretrainedCollectionModel,
     TargetRuntime,
 )
+from qai_hub_models.utils.checkpoint import CheckpointType
+from qai_hub_models.utils.export_result import MultiGraphGroup
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.llm_helpers import export_embedding_weights_from_tensor
 from qai_hub_models.utils.onnx.helpers import ONNXBundle, mock_torch_onnx_inference
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_EXPORT_CONTEXT_LENGTHS = [512, 1024, 2048]
+DEFAULT_EXPORT_SEQUENCE_LENGTHS = GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS
 
 # Model identification
 MODEL_ID = __name__.split(".")[-2]
@@ -123,7 +132,9 @@ SPLIT_MODEL_NAME = "Qwen2_5_VL_7B"
 # ---------------------------------------------------------------------------
 
 
-class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
+class Qwen2_5_VL_7B_PreSplit(
+    SingleSlotCacheMixin, DynamicPreSplitOnnxMixin, Qwen2VLTextBase
+):
     """
     FP PreSplit for Qwen2.5-VL-7B.
 
@@ -133,6 +144,15 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
     """
 
     min_memory_recommended = MIN_MEMORY_RECOMMENDED
+    split_model_name = SPLIT_MODEL_NAME
+    num_splits = NUM_SPLITS
+    num_layers_per_split = NUM_LAYERS_PER_SPLIT
+    split_embedding = False
+
+    model_id = MODEL_ID
+    model_asset_version = MODEL_ASSET_VERSION
+    default_checkpoint = DEFAULT_CHECKPOINT
+    default_precision = DEFAULT_PRECISION
 
     @classmethod
     def attention_mask_min_clip_and_multiplier(
@@ -151,14 +171,7 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, checkpoint=checkpoint, **kwargs)  # type: ignore[misc]
-        self.onnx_splits: dict[int, ONNXBundle] = {}
-        self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
-
-    def __del__(self) -> None:
-        if hasattr(self, "_temp_dir") and self._temp_dir is not None:
-            with contextlib.suppress(Exception):
-                self._temp_dir.cleanup()
+        super().__init__(*args, checkpoint=checkpoint, **kwargs)
 
     def _verify_ckpt(self) -> None:
         super()._verify_ckpt()
@@ -185,8 +198,6 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
         cache_key = str(checkpoint)
         cached = cls.cache_lookup(cache_key)
         if cached is not None:
-            cached.sequence_length = sequence_length
-            cached.context_length = context_length
             return cached
 
         attention_mask_min_clip, _ = cls.attention_mask_min_clip_and_multiplier()
@@ -207,7 +218,8 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
         cls.cache_store(instance, cache_key)
         return instance
 
-    def get_output_names(self) -> list[str]:
+    @staticmethod
+    def get_output_names() -> list[str]:
         return Qwen2VLTextBase._get_output_names(NUM_LAYERS)
 
     def get_input_spec(
@@ -264,20 +276,8 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
             llm_io_type=llm_io_type,
         )
 
-    def convert_to_onnx_and_split(
-        self,
-        part_id: int = 1,
-    ) -> ONNXBundle:
-        """Convert to ONNX and split into parts. Results are cached."""
-        if part_id in self.onnx_splits:
-            return self.onnx_splits[part_id]
-
-        if self._temp_dir is None:
-            self._temp_dir = tempfile.TemporaryDirectory()
-
-        temp_path = Path(self._temp_dir.name)
-
-        # Export full ONNX model with dynamic shapes
+    def get_full_onnx_bundle(self, temp_path: Path) -> ONNXBundle:
+        """Export full ONNX from PyTorch with dynamic shapes."""
         onnx_dir = temp_path / "full_dynamic"
         onnx_dir.mkdir(parents=True, exist_ok=True)
         onnx_path = onnx_dir / "model.onnx"
@@ -290,39 +290,7 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
             llm_io_type=self.llm_io_type,
             use_dynamic_shapes=True,
         )
-
-        full_bundle = ONNXBundle.from_bundle_path(onnx_dir, "model")
-
-        # Split (no embedding split for VLM - uses inputs_embeds)
-        split_output_dir = temp_path / "splits_dynamic"
-        split_output_dir.mkdir(parents=True, exist_ok=True)
-
-        split_bundles = split_onnx(
-            onnxfile=full_bundle,
-            modelname="Qwen2_5_VL_7B",
-            num_splits=NUM_SPLITS,
-            num_layers_per_split=NUM_LAYERS_PER_SPLIT,
-            output_dir=str(split_output_dir),
-            split_embedding=False,
-        )
-
-        for i, bundle in enumerate(split_bundles):
-            self.onnx_splits[i + 1] = bundle
-
-        return self.onnx_splits[part_id]
-
-    def free_memory(self) -> None:
-        if hasattr(self, "model") and self.model is not None:
-            self.model.to("cpu")
-            del self.model
-            self.model = None  # type: ignore[assignment]
-        self.onnx_splits.clear()
-        if self._temp_dir is not None:
-            self._temp_dir.cleanup()
-            self._temp_dir = None
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        return ONNXBundle.from_bundle_path(onnx_dir, "model")
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +300,7 @@ class Qwen2_5_VL_7B_PreSplit(SingleSlotCacheMixin, Qwen2VLTextBase):
 
 class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
     DynamicQuantizablePreSplitMixin["Qwen2_5_VL_7B_PreSplit"],
-    Qwen2VLTextBase_AIMETOnnx,
+    Qwen2VLDynamic_AIMETOnnx,
 ):
     """
     Quantizable PreSplit for Qwen2.5-VL-7B.
@@ -368,11 +336,24 @@ class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
         # defined in _shared/qwen2_vl/model.py.
         return (-250.0, 1.0)
 
-    def get_output_names(self) -> list[str]:
+    @staticmethod
+    def get_output_names() -> list[str]:
         return Qwen2VLTextBase._get_output_names(NUM_LAYERS)
 
     def get_input_spec(
         self,
+        llm_config: dict | None = None,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+        llm_io_type: LLMIOType = LLMIOType.genie_input_embeds,
+    ) -> InputSpec:
+        return self.get_static_input_spec(
+            llm_config, sequence_length, context_length, llm_io_type
+        )
+
+    @classmethod
+    def get_static_input_spec(
+        cls,
         llm_config: dict | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
@@ -395,7 +376,7 @@ class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
         InputSpec
             Input specification for the model.
         """
-        return Qwen2_5_VL_7B_PreSplit.get_static_input_spec(
+        return cls.FPModel.get_static_input_spec(
             llm_config=llm_config,
             sequence_length=sequence_length,
             context_length=context_length,
@@ -409,10 +390,7 @@ class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
     ) -> None:
         """Save calibrated checkpoint with ONNX, encodings, and embedding weights."""
         if fp_model is None:
-            fp_model = Qwen2_5_VL_7B_PreSplit.from_pretrained(
-                sequence_length=self.sequence_length,
-                context_length=self.context_length,
-            )
+            fp_model = Qwen2_5_VL_7B_PreSplit.from_pretrained()
         super().save_calibrated_checkpoint(output_checkpoint, fp_model)
 
         # VLM-specific: embedding table is needed for on-device LUT encoder
@@ -454,6 +432,31 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
         precision: Precision = Precision.float,
         **kwargs: Any,
     ) -> Qwen2_5_VL_7B_VisionEncoder:
+        """
+        Load the vision encoder.
+
+        Parameters
+        ----------
+        checkpoint
+            Path to checkpoint or "DEFAULT" to download.
+        device
+            Device for computation.
+        image_height
+            Height of input image in pixels. Must be divisible by
+            patch_size * spatial_merge_size (14 * 2 = 28).
+        image_width
+            Width of input image in pixels. Must be divisible by
+            patch_size * spatial_merge_size (14 * 2 = 28).
+        precision
+            Model precision (float for FP, w4a16 for quantized).
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Qwen2_5_VL_7B_VisionEncoder
+            Loaded vision encoder instance.
+        """
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -567,13 +570,38 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
         image_height: int = DEFAULT_IMAGE_HEIGHT,
         image_width: int = DEFAULT_IMAGE_WIDTH,
     ) -> InputSpec:
+        return self.get_static_input_spec(image_height, image_width)
+
+    @staticmethod
+    def get_static_input_spec(
+        image_height: int = DEFAULT_IMAGE_HEIGHT,
+        image_width: int = DEFAULT_IMAGE_WIDTH,
+    ) -> InputSpec:
+        """
+        Get input spec for the vision encoder.
+
+        Parameters
+        ----------
+        image_height
+            Height of input image in pixels. Must be divisible by
+            patch_size * spatial_merge_size (14 * 2 = 28).
+        image_width
+            Width of input image in pixels. Must be divisible by
+            patch_size * spatial_merge_size (14 * 2 = 28).
+
+        Returns
+        -------
+        InputSpec
+            Input specification dictionary.
+        """
         return Qwen2VLVisionEncoder.get_static_input_spec(
             image_height=image_height,
             image_width=image_width,
             patch_size=VISION_PATCH_SIZE,
         )
 
-    def get_output_names(self) -> list[str]:
+    @staticmethod
+    def get_output_names() -> list[str]:
         return ["image_features"]
 
     def preferred_hub_source_model_format(
@@ -833,7 +861,7 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
 # ---------------------------------------------------------------------------
 
 
-class Qwen2_5_VL_7B_PartBase(BaseModel):
+class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
     """
     Unified Part base: handles both FP and Quantizable modes based on precision.
 
@@ -847,12 +875,10 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
         self,
         presplit: Qwen2_5_VL_7B_PreSplit | Qwen2_5_VL_7B_QuantizablePreSplit,
         precision: Precision = DEFAULT_PRECISION,
-        context_lengths: list[int] | None = None,
     ) -> None:
         super().__init__()
         self._presplit = presplit
         self._precision = precision
-        self._context_lengths = context_lengths or [presplit.context_length]
         self._quant_sim: QuantizationSimModel | None = None
         self._fp_session: onnxruntime.InferenceSession | None = None
 
@@ -864,34 +890,49 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
     def from_pretrained(
         cls,
         checkpoint: str | Path = "DEFAULT",
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        precision: Precision = DEFAULT_PRECISION,
         host_device: torch.device | None = None,
-        _skip_quantsim_creation: bool = False,
-        context_lengths: list[int] | None = None,
+        _skip_quantsim_creation: bool = True,
         **kwargs: Any,
     ) -> Self:
-        if precision == Precision.float:
+        """Create Part by getting or creating the appropriate PreSplit (cached)."""
+        checkpoint_type = CheckpointType.from_checkpoint(checkpoint)
+        if not checkpoint_type.is_aimet_onnx():
             presplit: Qwen2_5_VL_7B_PreSplit | Qwen2_5_VL_7B_QuantizablePreSplit = (
                 Qwen2_5_VL_7B_PreSplit.from_pretrained(
-                    sequence_length=sequence_length,
-                    context_length=context_length,
                     host_device=host_device,
                 )
             )
+            precision = Precision.float
         else:
+            precision = checkpoint_type.precision(
+                DEFAULT_PRECISION, checkpoint=checkpoint
+            )
             presplit = Qwen2_5_VL_7B_QuantizablePreSplit.from_pretrained(
                 precision=precision,
                 checkpoint=checkpoint,
                 host_device=host_device,
                 _skip_quantsim_creation=_skip_quantsim_creation,
             )
-        return cls(presplit, precision=precision, context_lengths=context_lengths)
+        return cls(presplit, precision=precision)
 
-    def get_input_spec(
+    @staticmethod
+    def get_default_input_spec(
+        llm_config: dict | None = None,
+        sequence_length: int = 1,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+        llm_io_type: LLMIOType = LLMIOType.genie_input_embeds,
+    ) -> InputSpec:
+        """Get default input spec for the full model (class-level convenience)."""
+        return Qwen2_5_VL_7B_PreSplit.get_static_input_spec(
+            llm_config=llm_config,
+            sequence_length=sequence_length,
+            context_length=context_length,
+            llm_io_type=llm_io_type,
+        )
+
+    def _get_single_graph_input_spec(
         self,
-        seq_len: int | None = None,
+        sequence_length: int | None = None,
         context_length: int | None = None,
     ) -> InputSpec:
         """Get input spec for this specific Part instance.
@@ -900,12 +941,12 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
         input_embeds + attention_mask + KV cache for its layers.
         Names are read from the actual split ONNX model.
         """
-        if seq_len is None:
-            seq_len = self._presplit.sequence_length
+        if sequence_length is None:
+            sequence_length = self._presplit.sequence_length
         if context_length is None:
             context_length = self._presplit.context_length
         head_dim = HIDDEN_SIZE // NUM_ATTN_HEADS
-        kv_seq_len = context_length - seq_len
+        kv_seq_len = context_length - sequence_length
 
         onnx_input_names = self._get_onnx_input_names()
         spec: InputSpec = {}
@@ -923,60 +964,28 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
                 )
             elif name == "attention_mask":
                 spec[name] = (
-                    (1, 1, seq_len, context_length),
+                    (1, 1, sequence_length, context_length),
                     "float32",
                 )
             elif name == "inputs_embeds":
                 spec[name] = (
-                    (1, seq_len, HIDDEN_SIZE),
+                    (1, sequence_length, HIDDEN_SIZE),
                     "float32",
                 )
             elif name in ("position_ids_cos", "position_ids_sin"):
                 embed_dim = head_dim // 2
                 spec[name] = (
-                    (1, 1, seq_len, embed_dim),
+                    (1, 1, sequence_length, embed_dim),
                     "float32",
                 )
             else:
                 # Intermediate hidden state from previous part
                 spec[name] = (
-                    (1, seq_len, HIDDEN_SIZE),
+                    (1, sequence_length, HIDDEN_SIZE),
                     "float32",
                 )
 
         return spec
-
-    def _genie_graph_name(self, seq_len: int, context_length: int | None = None) -> str:
-        """Build a QNN context graph name that genie-app can parse.
-
-        Format: ``{token|prompt}_ar{seq_len}_cl{ctx_len}_{part}_of_{total}``
-        """
-        ctx_len = context_length or self._presplit.context_length
-        prefix = "token" if seq_len == 1 else "prompt"
-        return f"{prefix}_ar{seq_len}_cl{ctx_len}_{self.part_id}_of_{NUM_SPLITS}"
-
-    def get_compile_specs(self) -> list[tuple[InputSpec, str | None]]:
-        """Return compile specs for token-generation (seq_len=1) and
-        prompt-processing (seq_len=sequence_length) at each context length.
-
-        Each spec gets a unique graph name so they are linked into a single
-        multi-graph context binary.
-        """
-        prompt_seq_len = self._presplit.sequence_length
-        specs: list[tuple[InputSpec, str | None]] = []
-
-        for ctx_len in self._context_lengths:
-            # Token generation: seq_len=1
-            spec_tok = self.get_input_spec(seq_len=1, context_length=ctx_len)
-            specs.append((spec_tok, self._genie_graph_name(1, ctx_len)))
-
-            # Prompt processing: seq_len=sequence_length (e.g. 128)
-            spec_prompt = self.get_input_spec(
-                seq_len=prompt_seq_len, context_length=ctx_len
-            )
-            specs.append((spec_prompt, self._genie_graph_name(prompt_seq_len, ctx_len)))
-
-        return specs
 
     def get_output_names(self) -> list[str]:
         return [
@@ -992,12 +1001,20 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
     def _sample_inputs_impl(
         self, input_spec: InputSpec | None = None
     ) -> SampleInputsType:
+        """Get sample inputs for this specific part only.
+
+        Uses actual ONNX input names read from the split model at runtime.
+        When called from the multi-graph sample_inputs path, input_spec
+        carries the per-graph shapes so we derive seq_len from it.
+        """
+        seq_len = self._presplit.sequence_length
+        if input_spec is not None and "inputs_embeds" in input_spec:
+            seq_len = input_spec["inputs_embeds"][0][1]  # shape (1, seq_len, hidden)
+
         full_inputs = self._presplit._sample_inputs_impl()
         onnx_input_names = self._get_onnx_input_names()
 
         result: SampleInputsType = {}
-        seq_len = self._presplit.sequence_length
-
         for name in onnx_input_names:
             if name in full_inputs:
                 result[name] = full_inputs[name]
@@ -1041,32 +1058,19 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
         assert isinstance(self._presplit, Qwen2_5_VL_7B_QuantizablePreSplit)
         _hd = self._presplit.host_device
         host_device = _hd if isinstance(_hd, torch.device) else torch.device("cpu")
+        providers = self._presplit.get_ort_providers(host_device)
 
-        # Suppress verbose AIMET logs and prints during per-part QuantSim
-        quant_logger = logging.getLogger("Quant")
-        prev_level = quant_logger.level
-        quant_logger.setLevel(logging.WARNING)
-        import io
-        import sys as _sys
+        self._quant_sim = LLMDynamic_AIMETOnnx._build_quantsim(onnx_model, providers)
+        LLMDynamic_AIMETOnnx._apply_precision_activations(
+            self._quant_sim, self._precision
+        )
 
-        _real_stdout = _sys.stdout
-        _sys.stdout = io.StringIO()
-        try:
-            # Use the same QuantSim creation as the full model (W4A16 config,
-            # proper quant scheme, config file) instead of bare defaults (8-bit).
-            self._quant_sim = Qwen2_5_VL_7B_QuantizablePreSplit.create_quantsim(
-                onnx_model, host_device, self._precision
+        if onnx_bundle.aimet_encodings_path is not None:
+            load_encodings_to_sim(
+                self._quant_sim,
+                str(onnx_bundle.aimet_encodings_path),
+                strict=False,
             )
-
-            if onnx_bundle.aimet_encodings_path is not None:
-                load_encodings_to_sim(
-                    self._quant_sim,
-                    str(onnx_bundle.aimet_encodings_path),
-                    strict=False,
-                )
-        finally:
-            _sys.stdout = _real_stdout
-            quant_logger.setLevel(prev_level)
 
         return self._quant_sim
 
@@ -1109,12 +1113,11 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
         external_onnx_weights: bool = False,
         output_names: list[str] | None = None,
     ) -> str:
-        # Use a neutral name — the ONNX is exported with dynamic shapes,
-        # so one upload serves both token and prompt compile specs.
-        model_name = f"{self.part_id}_of_{NUM_SPLITS}"
+        model_name = self.__class__.__name__
 
         ext = ".aimet" if self._is_quantized else ".onnx"
-        out_dir = Path(output_path) / f"{model_name}{ext}"
+        precision_suffix = f"_{self._precision}" if self._is_quantized else ""
+        out_dir = Path(output_path) / f"{model_name}{precision_suffix}{ext}"
         if (out_dir / f"{model_name}.onnx").exists():
             return str(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -1131,37 +1134,62 @@ class Qwen2_5_VL_7B_PartBase(BaseModel):
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
-        precision: Precision = DEFAULT_PRECISION,
+        precision: Precision,
         other_compile_options: str = "",
         device: Device | None = None,
-        context_graph_name: str | None = None,
-    ) -> str:
-        return BaseModel.get_hub_compile_options(
-            self,
-            target_runtime=target_runtime,
-            precision=precision,
-            other_compile_options=other_compile_options,
-            device=device,
-            context_graph_name=context_graph_name,
+    ) -> MultiGraphGroup[str]:
+        other_compile_options += " --quantize_full_type w8a16 --quantize_io"
+        return super().get_hub_compile_options(
+            target_runtime, precision, other_compile_options, device
         )
 
     def get_hub_profile_options(
         self,
         target_runtime: TargetRuntime,
         other_profile_options: str = "",
-        context_graph_name: str | None = None,
-    ) -> str:
+    ) -> MultiGraphGroup[str]:
+        """Get profile options keyed by graph name."""
         if self._is_quantized:
-            return self._presplit.get_hub_profile_options(
-                target_runtime=target_runtime,
-                other_profile_options=other_profile_options,
-                context_graph_name=context_graph_name,
-            )
-        return super().get_hub_profile_options(
+            out: MultiGraphGroup[str] = MultiGraphGroup()
+            for graph_name in self.get_input_spec():
+                out[graph_name] = self._presplit.get_hub_profile_options(
+                    target_runtime=target_runtime,
+                    other_profile_options=other_profile_options,
+                    context_graph_name=graph_name,
+                )
+            return out
+        return MultiGraphBaseModel.get_hub_profile_options(
+            self,
             target_runtime=target_runtime,
             other_profile_options=other_profile_options,
-            context_graph_name=context_graph_name,
         )
+
+    def get_input_spec(
+        self,
+        context_length: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
+        sequence_length: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
+    ) -> MultiGraphGroup[InputSpec]:
+        """
+        Get input specs for all (context_length, sequence_length) graph variants.
+
+        Parameters
+        ----------
+        context_length
+            List of context lengths for which to compile.
+        sequence_length
+            List of input sequence lengths for which to compile.
+
+        Returns
+        -------
+        MultiGraphGroup[InputSpec]
+            Input specs keyed by graph name.
+        """
+        specs: MultiGraphGroup[InputSpec] = MultiGraphGroup()
+        for ctx_len in context_length:
+            for seq_len in sequence_length:
+                graph_name = f"ar{seq_len}_cl{ctx_len}_{self.part_id}_of_{NUM_SPLITS}"
+                specs[graph_name] = self._get_single_graph_input_spec(seq_len, ctx_len)
+        return specs
 
 
 class Qwen2_5_VL_7B_Part1_Of_5(Qwen2_5_VL_7B_PartBase):
@@ -1199,60 +1227,93 @@ class Qwen2_5_VL_7B_Part5_Of_5(Qwen2_5_VL_7B_PartBase):
 # ---------------------------------------------------------------------------
 
 
-@CollectionModel.add_component(Qwen2_5_VL_7B_VisionEncoder, "vision_encoder")
-@CollectionModel.add_component(Qwen2_5_VL_7B_Part1_Of_5, "part1_of_5")
-@CollectionModel.add_component(Qwen2_5_VL_7B_Part2_Of_5, "part2_of_5")
-@CollectionModel.add_component(Qwen2_5_VL_7B_Part3_Of_5, "part3_of_5")
-@CollectionModel.add_component(Qwen2_5_VL_7B_Part4_Of_5, "part4_of_5")
-@CollectionModel.add_component(Qwen2_5_VL_7B_Part5_Of_5, "part5_of_5")
-class Qwen2_5_VL_7B_Collection(PretrainedCollectionModel):
+@CollectionModel.add_component(
+    Qwen2_5_VL_7B_VisionEncoder,
+    "vision_encoder",
+)
+@CollectionModel.add_component(
+    Qwen2_5_VL_7B_Part1_Of_5, "part1_of_5", cli_args_prefix=""
+)
+@CollectionModel.add_component(
+    Qwen2_5_VL_7B_Part2_Of_5, "part2_of_5", cli_args_prefix=""
+)
+@CollectionModel.add_component(
+    Qwen2_5_VL_7B_Part3_Of_5, "part3_of_5", cli_args_prefix=""
+)
+@CollectionModel.add_component(
+    Qwen2_5_VL_7B_Part4_Of_5, "part4_of_5", cli_args_prefix=""
+)
+@CollectionModel.add_component(
+    Qwen2_5_VL_7B_Part5_Of_5, "part5_of_5", cli_args_prefix=""
+)
+class Qwen2_5_VL_7B_Collection(MultiGraphPretrainedCollectionModel):
     """
     Unified Collection with 5 text Parts + 1 Vision Encoder for Qwen2.5-VL-7B.
 
     Supports both FP and Quantizable modes based on precision parameter.
-    All Parts share the same PreSplit via class-level cache.
+    All Parts share the same PreSplit via class-level cache for memory efficiency.
     """
 
     _checkpoint: str
-    _hub_device: Any
 
     @classmethod
     def from_pretrained(
         cls,
         checkpoint: str | Path = "DEFAULT",
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        precision: Precision = DEFAULT_PRECISION,
         host_device: torch.device | None = None,
-        _skip_quantsim_creation: bool = False,
-        context_lengths: list[int] | None = None,
+        _skip_quantsim_creation: bool = True,
         **kwargs: Any,
     ) -> Self:
-        part_kwargs = dict(
+        """
+        Create Collection with all parts + Vision Encoder.
+
+        Parameters
+        ----------
+        checkpoint
+            Path to checkpoint with ONNX + encodings, or ``"DEFAULT"``
+            to create from HuggingFace.
+        host_device
+            Device for computation.
+        _skip_quantsim_creation
+            Skip QuantSim creation (for testing).
+        **kwargs
+            Additional keyword arguments passed to parent.
+
+        Returns
+        -------
+        Self
+            The Collection with all Parts.
+        """
+        checkpoint_type = CheckpointType.from_checkpoint(checkpoint)
+        precision = (
+            checkpoint_type.precision(DEFAULT_PRECISION, checkpoint=checkpoint)
+            if checkpoint_type.is_aimet_onnx()
+            else Precision.float
+        )
+
+        part_kwargs: dict[str, Any] = dict(
             checkpoint=checkpoint,
-            sequence_length=sequence_length,
-            context_length=context_length,
-            precision=precision,
             host_device=host_device,
             _skip_quantsim_creation=_skip_quantsim_creation,
-            context_lengths=context_lengths,
         )
-        # component_classes is a list on the current branch but becomes
-        # dict[str, type] after rebasing onto dev/david/llm3.
-        comp_classes = (
-            cls.component_classes.values()
-            if isinstance(cls.component_classes, dict)
-            else cls.component_classes
-        )
-        components = [
-            comp_cls.from_pretrained(**part_kwargs) for comp_cls in comp_classes
-        ]
-        instance = cls(*components)
+        parts: list[BaseModel] = []
+        for part_cls in cls.component_classes.values():
+            if issubclass(part_cls, Qwen2_5_VL_7B_VisionEncoder):
+                parts.append(
+                    part_cls.from_pretrained(
+                        checkpoint=checkpoint,
+                        device=host_device,
+                        precision=precision,
+                    )
+                )
+            else:
+                parts.append(part_cls.from_pretrained(**part_kwargs))
+        instance = cls(*parts)
         # Use the resolved checkpoint path (not the "DEFAULT" sentinel) so
         # downstream supplementary-file copies find tokenizer.json etc.
         resolved_checkpoint: str | Path = checkpoint
         if isinstance(checkpoint, str) and checkpoint.startswith("DEFAULT"):
-            for comp in components:
+            for comp in parts:
                 presplit = getattr(comp, "_presplit", None)
                 ckpt = getattr(presplit, "checkpoint", None)
                 if ckpt is not None:
@@ -1306,31 +1367,31 @@ class Qwen2_5_VL_7B_Collection(PretrainedCollectionModel):
         )
 
         # --- HTP backend extension config ---
-        hub_device = getattr(self, "_hub_device", None)
-        if hub_device is not None:
-            device_info: dict[str, str] = {}
-            attrs = hub_device.attributes
-            for attr in [attrs] if isinstance(attrs, str) else attrs:
-                if ":" in attr:
-                    key, value = attr.split(":", 1)
-                    device_info[key] = value
-            if save_htp_config_for_genie_bundle(device_info, output_dir):
-                metadata.supplementary_files["htp_backend_ext_config.json"] = (
-                    "HTP backend extension config for Genie."
-                )
+        device_info: dict[str, str] = {}
+        if metadata.chipset_attributes:
+            ca = metadata.chipset_attributes
+            if ca.htp_version is not None:
+                device_info["hexagon"] = f"v{ca.htp_version}"
+            if ca.soc_model is not None:
+                device_info["soc-model"] = str(ca.soc_model)
+        if save_htp_config_for_genie_bundle(device_info, output_dir):
+            metadata.supplementary_files["htp_backend_ext_config.json"] = (
+                "HTP backend extension config for Genie."
+            )
 
         # --- Genie config (text-dec-htp.json equivalent) ---
-        # Get context_lengths, image_processor, and llm_config from a text Part's presplit
-        context_lengths: list[int] = []
+        context_length: int = 0
+        for file_meta in metadata.model_files.values():
+            if "attention_mask" in file_meta.inputs:
+                attn_shape = file_meta.inputs["attention_mask"].shape
+                context_length = max(context_length, attn_shape[3])
+
         image_processor = None
         llm_config = None
         for comp in self.components.values():
             if isinstance(comp, Qwen2_5_VL_7B_PartBase):
                 presplit = comp._presplit
-                context_lengths = comp._context_lengths
                 image_processor = getattr(presplit, "_image_processor", None)
-                # FP presplit stores the full VLM config; quantized presplit
-                # only has text_config.  Either works for genie config generation.
                 llm_config = getattr(
                     presplit, "_original_llm_config", presplit.llm_config
                 )
@@ -1372,12 +1433,9 @@ class Qwen2_5_VL_7B_Collection(PretrainedCollectionModel):
         if rope_scaling is not None and "mrope_section" in rope_scaling:
             vlm_rope_config["mrope-section"] = rope_scaling["mrope_section"]
 
-        if not context_lengths:
-            context_lengths = [DEFAULT_CONTEXT_LENGTH]
-
         # text-generator.json: used by genie-app-script.txt (genie-app VLM pipeline)
         genie_config = create_genie_config(
-            context_length=max(context_lengths),
+            context_length=context_length,
             llm_config=text_config,
             embedding_type="rope",
             model_list=model_list,
@@ -1394,7 +1452,7 @@ class Qwen2_5_VL_7B_Collection(PretrainedCollectionModel):
 
         # genie_config.json: same content with "dialog" key for genie-t2t-run
         dialog_config = create_genie_config(
-            context_length=max(context_lengths),
+            context_length=context_length,
             llm_config=text_config,
             embedding_type="rope",
             model_list=model_list,
@@ -1549,7 +1607,7 @@ class Qwen2_5_VL_7B_Collection(PretrainedCollectionModel):
 
         metadata.genie = GenieMetadata(
             chat_template=GenieChatTemplate(**chat_spec),
-            context_lengths=context_lengths,
+            context_lengths=[context_length],
             supports_streaming=True,
             supports_vision=True,
             supports_thinking=False,

@@ -942,10 +942,18 @@ def get_collection_model_input_spec_parser(
         cli_prefix = comp_cls.cli_args_prefix
         if cli_prefix:
             cli_prefix += "-"
+
+        input_spec_docs = {
+            param.name: "\n".join(param.desc)
+            for param in FunctionDoc(func=comp_cls.get_input_spec)["Parameters"]
+        }
+
         for param_name, param in params.items():
             cli_name = f"--{cli_prefix.replace('_', '-')}{param_name.replace('_', '-')}"
             resolved_type = _resolve_param_type(param, comp_cls)
-            if not comp_cls.cli_args_prefix:
+            if input_spec_docs.get(param_name):
+                help_text = input_spec_docs[param_name]
+            elif not comp_cls.cli_args_prefix:
                 help_text = f"Set {param_name}"
             else:
                 help_text = f"Set {param_name} for {comp_name}"

@@ -1670,6 +1670,9 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
 
         _fp_tokenizer = fp_model.tokenizer if fp_model is not None else None
         _fp_llm_config = fp_model.llm_config if fp_model is not None else None
+        _fp_embedding_weights = None
+        if fp_model is not None and hasattr(fp_model, "_embedding_weights"):
+            _fp_embedding_weights = fp_model._embedding_weights
 
         if not _skip_quantsim_creation:
             if AIMET_ONNX_INSTALLED:
@@ -1780,7 +1783,16 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             init_kwargs["sequence_length"] = sequence_length
             init_kwargs["context_length"] = context_length
 
-        return cls(**init_kwargs)
+        instance = cls(**init_kwargs)
+
+        # Re-attach the embedding weights
+        if (
+            _fp_embedding_weights is not None
+            and getattr(instance, "_embedding_weights", None) is None
+        ):
+            instance._embedding_weights = _fp_embedding_weights
+
+        return instance
 
     @classmethod
     def attention_mask_min_clip_and_multiplier(

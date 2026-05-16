@@ -32,6 +32,7 @@ from qai_hub_models.models._shared.llm.common import LLMIOType
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     DEFAULT_SEQUENCE_LENGTH,
+    LLMDynamic_AIMETOnnx,
 )
 from qai_hub_models.models._shared.qwen2.model import (
     Qwen2Base,
@@ -964,6 +965,12 @@ class Qwen2VLTextBase_AIMETOnnx(Qwen2Base_AIMETOnnx):
                 encodings_path, encodings_path, str(bundle.onnx_graph_path)
             )
         return bundle
+
+
+class Qwen2VLDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx, Qwen2VLTextBase_AIMETOnnx):
+    """Dynamic-shape variant of Qwen2VLTextBase_AIMETOnnx."""
+
+    FPModel = Qwen2VLTextBase
 
 
 class Qwen2VLTextBase_QNN(Qwen2Base_QNN):

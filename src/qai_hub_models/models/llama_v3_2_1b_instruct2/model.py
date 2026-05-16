@@ -341,15 +341,10 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
         self,
         presplit: Llama3_2_1B_PreSplit | Llama3_2_1B_QuantizablePreSplit,
         precision: Precision = DEFAULT_PRECISION,
-        sequence_lengths: list[int] | None = None,
     ) -> None:
         super().__init__()
         self._presplit = presplit
         self._precision = precision
-        # Genie needs both ar128 (prompt) and ar1 (token) models in the bundle.
-        # The ONNX uses dynamic shapes so one export works for all seq_lens;
-        # compile_model/link_model already iterate over multiple graphs per Part.
-        self._sequence_lengths = sequence_lengths or [presplit.sequence_length]
         self._quant_sim: QuantizationSimModel | None = None
         self._fp_session: onnxruntime.InferenceSession | None = None
 
