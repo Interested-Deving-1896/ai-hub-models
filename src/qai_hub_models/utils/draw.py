@@ -5,9 +5,12 @@
 
 from __future__ import annotations
 
+import math
+
 import cv2
 import numpy as np
 import torch
+from PIL import Image, ImageDraw
 from torch.types import Number
 
 
@@ -277,3 +280,46 @@ def create_color_map(
         for idx, rgb in colors.items():
             color_map[idx] = rgb
     return color_map
+
+
+def draw_obb_on_image(
+    image: Image.Image,
+    boxes_xywh: torch.Tensor,
+    angles: torch.Tensor,
+    color: tuple[int, int, int] = (0, 255, 0),
+    width: int = 2,
+) -> None:
+    """
+    Draw Oriented Bounding Boxes on a PIL image.
+    boxes_xywh: [N, 4]
+    angles: [N] (radians)
+    """
+    draw = ImageDraw.Draw(image)
+
+    for i in range(len(boxes_xywh)):
+        x_c, y_c, w, h = boxes_xywh[i].tolist()
+        angle = angles[i].item()
+
+        # 1. Define unrotated corners relative to center
+        # Top-Left, Top-Right, Bottom-Right, Bottom-Left
+        corners = [
+            (-w / 2, -h / 2),
+            (w / 2, -h / 2),
+            (w / 2, h / 2),
+            (-w / 2, h / 2),
+        ]
+
+        # 2. Rotate and Translate
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        poly_points = []
+        for cx, cy in corners:
+            # Rotate
+            rx = cx * cos_a - cy * sin_a
+            ry = cx * sin_a + cy * cos_a
+            # Translate
+            poly_points.append((rx + x_c, ry + y_c))
+
+        # 3. Draw Polygon
+        draw.polygon(poly_points, outline=color, width=width)

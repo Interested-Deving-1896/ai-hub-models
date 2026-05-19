@@ -16,14 +16,18 @@ from torchvision.transforms import Resize
 
 from qai_hub_models.datasets.coco_keypoints import COCO_SKELETON
 from qai_hub_models.models._shared.yolo.utils import detect_postprocess
-from qai_hub_models.utils.bounding_box_processing import batched_nms
+from qai_hub_models.utils.bounding_box_processing import (
+    batched_nms,
+    rotated_batched_nms,
+)
 from qai_hub_models.utils.draw import (
     create_color_map,
     draw_box_from_xyxy,
     draw_connections,
+    draw_obb_on_image,
     draw_points,
 )
-from qai_hub_models.utils.image_processing import app_to_net_image_inputs
+from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 
 
 class YoloObjectDetectionApp:
@@ -63,7 +67,7 @@ class YoloObjectDetectionApp:
             Yolo object detection model.
 
             Inputs:
-                Tensor of shape (N H W C x float32) with range [0, 1] and RGB channel layout.
+                Tensor of shape (N C H W x float32) with range [0, 1] and RGB channel layout.
 
             Outputs:
                 boxes: Tensor of shape [batch, num preds, 4] where 4 == (x1, y1, x2, y2).
@@ -316,9 +320,12 @@ class YoloSegmentationApp:
         self.input_height = input_height
         self.input_width = input_width
 
-    def check_image_size(self, pixel_values: torch.Tensor) -> bool:
+    def check_image_size(self, pixel_values: torch.Tensor) -> None:
         """Verify image size is valid model input."""
-        return all(s % 32 == 0 for s in pixel_values.shape[-2:])
+        if not all(s % 32 == 0 for s in pixel_values.shape[-2:]):
+            raise ValueError(
+                f"Image spatial dimensions must be multiples of 32, got {pixel_values.shape[-2:]}"
+            )
 
     def preprocess_input(self, pixel_values: torch.Tensor) -> torch.Tensor:
         img_size = (self.input_height, self.input_width)
@@ -765,3 +772,186 @@ class YoloPoseApp:
             predicted_images.append(Image.fromarray(img))
 
         return predicted_images
+
+
+class YoloOBBApp:
+    """
+    This class consists of light-weight "app code" that is required to perform end to end inference
+    with Yolo OBB (Oriented Bounding Box) models.
+
+    The app works with following models:
+        * YoloV8-OBB
+
+    For a given image input, the app will:
+        * pre-process the image (convert to range[0, 1])
+        * Run Yolo inference
+        * Post-process output Non Maximum Suppression rotated
+        * Draw the predicted oriented bounding boxes on the input image
+    """
+
+    def __init__(
+        self,
+        model: Callable[
+            [torch.Tensor],
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
+        ],
+        nms_score_threshold: float = 0.5,
+        nms_iou_threshold: float = 0.1,
+        input_height: int = 640,
+        input_width: int = 640,
+    ) -> None:
+        """
+        Initialize a YoloOBBApp application.
+
+        Parameters
+        ----------
+        model
+            Yolo OBB model
+
+            Inputs:
+                Tensor of shape (N C H W x float32) with range [0, 1] and RGB channel layout.
+
+            Outputs:
+                boxes: torch.Tensor
+                    Bounding box locations (xywh). Shape is [batch, num preds, 4].
+                angles: torch.Tensor
+                    Box rotation angle in radians. Shape is [batch, num_preds].
+                scores: torch.Tensor
+                    Class scores multiplied by confidence: Shape is [batch, num_preds].
+                classes: torch.Tensor
+                    Shape is [batch, num_preds] where the last dim is the index of the most probable class.
+
+        nms_score_threshold
+            Score threshold for non maximum suppression.
+
+        nms_iou_threshold
+            Intersection over Union threshold for non maximum suppression.
+
+        input_height
+            Input height for the model.
+
+        input_width
+            Input width for the model.
+        """
+        self.model = model
+        self.nms_score_threshold = nms_score_threshold
+        self.nms_iou_threshold = nms_iou_threshold
+        self.input_height = input_height
+        self.input_width = input_width
+
+    def check_image_size(self, pixel_values: torch.Tensor) -> None:
+        """Verify image size is valid model input."""
+        if not all(s % 32 == 0 for s in pixel_values.shape[-2:]):
+            raise ValueError(
+                f"Image spatial dimensions must be multiples of 32, got {pixel_values.shape[-2:]}"
+            )
+
+    def preprocess_input(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        scaled_img, _, _ = resize_pad(
+            pixel_values, (self.input_height, self.input_width)
+        )
+        return scaled_img
+
+    def predict(
+        self, *args: Any, **kwargs: Any
+    ) -> (
+        tuple[
+            list[torch.Tensor],
+            list[torch.Tensor],
+            list[torch.Tensor],
+            list[torch.Tensor],
+        ]
+        | list[Image.Image]
+    ):
+        return self.predict_obb_from_image(*args, **kwargs)
+
+    def predict_obb_from_image(
+        self,
+        pixel_values_or_image: (
+            torch.Tensor | np.ndarray | Image.Image | list[Image.Image]
+        ),
+        raw_output: bool = False,
+    ) -> (
+        tuple[
+            list[torch.Tensor],
+            list[torch.Tensor],
+            list[torch.Tensor],
+            list[torch.Tensor],
+        ]
+        | list[Image.Image]
+    ):
+        """
+        From the provided image or tensor, predict the oriented bounding boxes & classes of objects.
+
+        Parameters
+        ----------
+        pixel_values_or_image
+            PIL image
+            or
+            numpy array (N H W C x uint8) or (H W C x uint8) -- both RGB channel layout
+            or
+            pyTorch tensor (N C H W x fp32, value range is [0, 1]), RGB channel layout
+
+        raw_output
+            See "returns" doc section for details.
+
+        Returns
+        -------
+        output : tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]] | list[Image.Image]
+            If raw_output is True, returns:
+                boxes : list[torch.Tensor]
+                    Bounding box locations per batch.
+                    List element shape is [num preds, 4] where 4 == (x_center, y_center, w, h).
+                scores : list[torch.Tensor]
+                    Confidence score per box.
+                    List element shape is [num_preds].
+                angles : list[torch.Tensor]
+                    Rotation angles corresponding to each bounding box (in radians).
+                    List element shape is [num_preds]
+                class_idx : list[torch.Tensor]
+                    Shape is [num_preds] where the values are the indices of the most probable class of the prediction.
+
+            If raw_output is False, returns:
+                images : list[Image.Image]
+                    A list of predicted RGB, [H, W, C] images.
+                    Each image will have oriented bounding boxes drawn.
+        """
+        # Input Prep
+        _, NCHW_fp32_torch_frames = app_to_net_image_inputs(pixel_values_or_image)
+
+        NCHW_fp32_torch_frames = self.preprocess_input(NCHW_fp32_torch_frames)
+        self.check_image_size(NCHW_fp32_torch_frames)
+
+        # 1. Run prediction
+        # Expecting:
+        # boxes:  [Batch, N, 4] (cx, cy, w, h)
+        # angles: [Batch, N, 1] (radians)
+        # scores: [Batch, C, N] OR [Batch, N, C] (class probabilities)
+        pred_boxes, pred_angles, pred_scores, pred_class_idx = self.model(
+            NCHW_fp32_torch_frames
+        )
+
+        final_boxes, final_scores, final_angles, final_classes = rotated_batched_nms(
+            pred_boxes_xywh=pred_boxes,
+            pred_angles_rad=pred_angles,
+            pred_scores=pred_scores,
+            pred_class_idx=pred_class_idx,
+            score_thr=self.nms_score_threshold,
+            iou_thr=self.nms_iou_threshold,
+            class_aware=True,
+            canonicalize=False,
+        )
+        out_images = []
+        if not raw_output:
+            for i in range(len(final_boxes)):
+                img_np = (
+                    NCHW_fp32_torch_frames[i].permute(1, 2, 0).clamp(0, 1).cpu().numpy()
+                    * 255.0
+                ).astype(np.uint8)
+                img_pil = Image.fromarray(img_np)
+                if final_boxes[i].numel() > 0:
+                    draw_obb_on_image(img_pil, final_boxes[i], final_angles[i])
+                out_images.append(img_pil)
+            return out_images
+
+        return final_boxes, final_scores, final_angles, final_classes

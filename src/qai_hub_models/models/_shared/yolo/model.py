@@ -119,6 +119,56 @@ def yolo_segment_postprocess(
     return boxes, scores, masks, class_idx
 
 
+def yolo_obb_postprocess(
+    boxes: torch.Tensor,
+    angles: torch.Tensor,
+    scores: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Post processing to break newer ultralytics yolo-obb models detector output
+    into multiple, consumable tensors.
+
+    Parameters
+    ----------
+    boxes
+        Shape is [batch, 4, num_preds] where 4 == [x_center, y_center, w, h]
+    angles
+        Shape is [batch, 1, num_preds] (in radians)
+    scores
+        Shape is [batch, num_classes, num_preds]
+
+    Returns
+    -------
+    boxes : torch.Tensor
+        Bounding box locations.
+        Shape is [batch, num_preds, 4] where 4 == (x_center, y_center, w, h).
+    angles : torch.Tensor
+        Box rotation angle in radians. Shape is [batch, num_preds, 1].
+    scores : torch.Tensor
+        Class scores multiplied by confidence. Shape is [batch, num_preds].
+    class_idx : torch.Tensor
+        Shape is [batch, num_preds] where the last dim is the index of the most probable class.
+    """
+    # 1. Permute to [Batch, Num_Preds, Channels]
+    boxes = torch.permute(boxes, [0, 2, 1])
+    angles = torch.permute(angles, [0, 2, 1])
+    scores = torch.permute(scores, [0, 2, 1])
+
+    # 2. TODO(13933) Revert once QNN issues with ReduceMax are fixed
+    # Workaround: QNN ReduceMax fails on single-element last dim.
+    # Safe because all supported OBB models have num_classes > 1.
+    if scores.shape[-1] == 1:
+        scores = torch.nn.functional.pad(scores, (0, 1))
+
+    # 3. Get class ID of most likely score.
+    # scores is [Batch, Num_Preds], class_idx is [Batch, Num_Preds]
+    # Get class ID of most likely score.
+    scores, class_idx = torch.max(scores, -1, keepdim=False)
+
+    # Cast classes to int8 for imsdk compatibility
+    return boxes, angles, scores, class_idx.to(torch.uint8)
+
+
 class Yolo(BaseModel):
     # All image input spatial dimensions should be a multiple of this stride.
     STRIDE_MULTIPLE = 32

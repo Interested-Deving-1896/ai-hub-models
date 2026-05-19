@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import math
+
 import cv2
 import numpy as np
 import torch
@@ -441,3 +443,148 @@ def get_bbox_iou_matrix(
                     ua = (boxes[n, 2] - boxes[n, 0]) * (boxes[n, 3] - boxes[n, 1])
                 overlaps[n, k] = iw * ih / ua
     return overlaps
+
+
+def _wrap_pi(theta: torch.Tensor) -> torch.Tensor:
+    return (theta + math.pi) % (2 * math.pi) - math.pi
+
+
+def canonicalize_xywhr_radians(xywhr: torch.Tensor) -> torch.Tensor:
+    """
+    Canonicalize representation (cx,cy,w,h,theta[radians]) without changing geometry:
+      enforce w >= h by swapping and adding pi/2, then wrap to (-pi, pi]
+    Helps eliminate slight “extra rotation” appearance and improves matching stability.
+    """
+    out = xywhr.clone()
+    w, h, t = out[..., 2], out[..., 3], out[..., 4]
+    swap = h > w
+    out[..., 2] = torch.where(swap, h, w)
+    out[..., 3] = torch.where(swap, w, h)
+    out[..., 4] = torch.where(swap, t + math.pi / 2.0, t)
+    out[..., 4] = _wrap_pi(out[..., 4])
+    return out
+
+
+def rotated_batched_nms(
+    pred_boxes_xywh: torch.Tensor,  # (B,N,4) center-based xywh
+    pred_angles_rad: torch.Tensor,  # (B,N,1) or (B,N) radians
+    pred_scores: torch.Tensor,  # (B,N)
+    pred_class_idx: torch.Tensor,  # (B,N)
+    score_thr: float,
+    iou_thr: float,
+    class_aware: bool = True,
+    canonicalize: bool = False,
+) -> tuple[
+    list[torch.Tensor], list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]
+]:
+    """
+    Common rotated NMS for both evaluator and demo.
+
+    Returns per-image lists:
+      boxes_xywh: (K,4) torch.float32
+      angles_rad: (K,)  torch.float32  (still radians!)
+      scores:     (K,)  torch.float32
+      classes:    (K,)  torch.int64
+
+    Uses probiou-based greedy NMS to match Ultralytics OBB evaluation exactly.
+    """
+    # Normalize angles to (B,N)
+    ang = pred_angles_rad[..., 0] if pred_angles_rad.ndim == 3 else pred_angles_rad
+
+    # Optional canonicalization on the *representation* (still radians)
+    if canonicalize:
+        xywhr = torch.cat([pred_boxes_xywh, ang.unsqueeze(-1)], dim=-1)
+        xywhr = canonicalize_xywhr_radians(xywhr)
+        pred_boxes_xywh = xywhr[..., :4]
+        ang = xywhr[..., 4]
+
+    boxes_t = pred_boxes_xywh.detach().cpu().float()  # (B,N,4)
+    ang_t = ang.detach().cpu().float()  # (B,N)
+    scores_t = pred_scores.detach().cpu().float()  # (B,N)
+    cls_t = pred_class_idx.detach().cpu().long()  # (B,N)
+
+    B = boxes_t.shape[0]
+
+    out_boxes: list[torch.Tensor] = []
+    out_scores: list[torch.Tensor] = []
+    out_angles: list[torch.Tensor] = []
+    out_classes: list[torch.Tensor] = []
+
+    for i in range(B):
+        b = boxes_t[i]  # (N,4)
+        a = ang_t[i]  # (N,)
+        s = scores_t[i]  # (N,)
+        c = cls_t[i]  # (N,)
+
+        m = s > score_thr
+        if not m.any():
+            out_boxes.append(torch.empty((0, 4), dtype=torch.float32))
+            out_scores.append(torch.empty((0,), dtype=torch.float32))
+            out_angles.append(torch.empty((0,), dtype=torch.float32))
+            out_classes.append(torch.empty((0,), dtype=torch.int64))
+            continue
+
+        fb, fa, fs, fc = b[m], a[m], s[m], c[m]
+
+        keep_ = _probiou_nms(fb, fa, fs, fc, iou_thr, class_aware)
+
+        if keep_.numel() == 0:
+            out_boxes.append(torch.empty((0, 4), dtype=torch.float32))
+            out_scores.append(torch.empty((0,), dtype=torch.float32))
+            out_angles.append(torch.empty((0,), dtype=torch.float32))
+            out_classes.append(torch.empty((0,), dtype=torch.int64))
+            continue
+
+        out_boxes.append(fb[keep_])
+        out_scores.append(fs[keep_])
+        out_angles.append(fa[keep_])
+        out_classes.append(fc[keep_])
+
+    return out_boxes, out_scores, out_angles, out_classes
+
+
+def _probiou_nms(
+    boxes: torch.Tensor,
+    angles: torch.Tensor,
+    scores: torch.Tensor,
+    classes: torch.Tensor,
+    iou_thr: float,
+    class_aware: bool,
+) -> torch.Tensor:
+    """
+    Greedy NMS using batch_probiou, matching Ultralytics OBB evaluation.
+    Returns indices (into the input arrays) of kept boxes, sorted by score descending.
+    """
+    order = torch.argsort(scores, descending=True)
+    boxes_r = torch.cat([boxes, angles.unsqueeze(-1)], dim=-1)  # (N,5) xywhr
+
+    if class_aware:
+        kept: list[int] = []
+        for cls_id in classes.unique():
+            cls_mask = classes == cls_id
+            cls_idx = order[cls_mask[order]]
+            kept.extend(_greedy_probiou(boxes_r, cls_idx, iou_thr).tolist())
+        if not kept:
+            return torch.empty((0,), dtype=torch.long)
+        kept_t = torch.tensor(kept, dtype=torch.long)
+        return kept_t[torch.argsort(scores[kept_t], descending=True)]
+    return _greedy_probiou(boxes_r, order, iou_thr)
+
+
+def _greedy_probiou(
+    boxes_r: torch.Tensor,
+    order: torch.Tensor,
+    iou_thr: float,
+) -> torch.Tensor:
+    """Greedy NMS over a single set of pre-sorted indices using probiou."""
+    from ultralytics.utils.metrics import batch_probiou
+
+    keep: list[int] = []
+    for idx in order.tolist():
+        if not keep:
+            keep.append(idx)
+            continue
+        iou = batch_probiou(boxes_r[idx].unsqueeze(0), boxes_r[keep])
+        if iou.max().item() < iou_thr:
+            keep.append(idx)
+    return torch.tensor(keep, dtype=torch.long)

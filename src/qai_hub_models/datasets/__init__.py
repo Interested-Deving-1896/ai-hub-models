@@ -174,6 +174,7 @@ _try_import_dataset(".coco_keypoints", "CocoKeypointsDataset")
 _try_import_dataset(".sidd", "SIDDDataset")
 _try_import_dataset(".reds", "REDSDataset")
 _try_import_dataset(".flickr1024", "Flickr1024Dataset")
+_try_import_dataset(".dota128", "Dota128Dataset")
 
 
 def get_dataset_from_name(

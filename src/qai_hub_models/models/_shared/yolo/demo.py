@@ -10,6 +10,7 @@ from collections.abc import Callable
 from PIL import Image
 
 from qai_hub_models.models._shared.yolo.app import (
+    YoloOBBApp,
     YoloObjectDetectionApp,
     YoloPoseApp,
     YoloSegmentationApp,
@@ -165,3 +166,63 @@ def yolo_pose_estimation_demo(
             output_filename,
             "keypoints",
         )
+
+
+def yolo_obb_demo(
+    model_type: type[BaseModel],
+    model_id: str,
+    app_type: Callable[..., YoloOBBApp],
+    default_image: str | CachedWebAsset,
+    stride_multiple: int | None = None,
+    is_test: bool = False,
+    default_score_threshold: float = 0.5,
+) -> None:
+    # Demo parameters
+    parser = get_model_cli_parser(model_type)
+    parser = get_on_device_demo_parser(parser, add_output_dir=True)
+
+    image_help = "image file path or URL."
+    if stride_multiple:
+        image_help = (
+            f"{image_help} Image spatial dimensions (x and y) must be multiples "
+            f"of {stride_multiple}."
+        )
+
+    parser.add_argument("--image", type=str, default=default_image, help=image_help)
+    parser.add_argument(
+        "--score-threshold",
+        type=float,
+        default=default_score_threshold,
+        help="Score threshold for OBB NonMaximumSuppression",
+    )
+    parser.add_argument(
+        "--iou-threshold",
+        type=float,
+        default=0.1,
+        help="Rotated IoU threshold for OBB NonMaximumSuppression",
+    )
+
+    args = parser.parse_args([] if is_test else None)
+
+    validate_on_device_demo_args(args, model_id)
+
+    model = demo_model_from_cli_args(model_type, model_id, args)
+
+    # OBB-specific app (handles rotated boxes internally)
+    app = app_type(
+        model,
+        args.score_threshold,
+        args.iou_threshold,
+    )
+
+    print("OBB Model Loaded")
+
+    image = load_image(args.image)
+
+    pred_images = app.predict_obb_from_image(image)
+
+    out = pred_images[0]
+    assert isinstance(out, Image.Image)
+
+    if not is_test:
+        display_or_save_image(out, args.output_dir, "yolo_obb_demo_output.png")
