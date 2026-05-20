@@ -1,0 +1,104 @@
+name: Sync lm_driver from AIMET
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Tuesday at 9:00 AM PST (17:00 UTC)
+    - cron: '0 17 * * 2'
+
+concurrency:
+  group: sync-lm-driver
+
+env:
+  SOURCE_REPO: https://github.com/qualcomm/aimet.git
+  SOURCE_BRANCH: develop
+  SOURCE_DIR: GenAILab/qai_hub_lm/models
+  TARGET_DIR: src/qai_hub_models/models/_shared/lm_driver
+
+jobs:
+  sync:
+    name: Sync lm_driver subtree
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure git
+        run: |
+          git config user.name "qaihm-bot_QCOM"
+          git config user.email "qaihm_bot@qti.qualcomm.com"
+
+      - name: Fetch AIMET source and sync lm_driver
+        run: |
+          set -euo pipefail
+
+          TMPDIR=$(mktemp -d)
+          trap 'rm -rf "$TMPDIR"' EXIT
+
+          # Clone AIMET sparse (only the source directory)
+          git clone --depth=1 --filter=blob:none --sparse \
+            --branch "$SOURCE_BRANCH" "$SOURCE_REPO" "$TMPDIR/aimet"
+          cd "$TMPDIR/aimet"
+          git sparse-checkout set "$SOURCE_DIR"
+          cd -
+
+          # Sync files from AIMET into target directory
+          mkdir -p "$TARGET_DIR"
+          rsync -a --delete "$TMPDIR/aimet/$SOURCE_DIR/" "$TARGET_DIR"/
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit & Push Changes
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          PR_REF_NAME: dev/qaihm_bot/sync-lm-driver-${{ github.run_id }}
+        run: |
+          git checkout -b "$PR_REF_NAME"
+          git add src/qai_hub_models/models/_shared/lm_driver/
+          git commit -m "Sync lm_driver from AIMET develop
+
+          Automated subtree sync of GenAILab/qai_hub_lm/models from
+          github.com/qualcomm/aimet (develop branch)." -n
+          git push --set-upstream origin "$PR_REF_NAME" -f
+
+      - name: Create PR
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v9
+        env:
+          PR_REF_NAME: dev/qaihm_bot/sync-lm-driver-${{ github.run_id }}
+        with:
+          github-token: ${{ secrets.STAGING_GH_TOKEN }}
+          script: |
+            const { repo, owner } = context.repo;
+            const result = await github.rest.pulls.create({
+              title: '[Automated] Sync lm_driver from AIMET develop',
+              owner,
+              repo,
+              head: process.env.PR_REF_NAME,
+              base: 'main',
+              body: [
+                '## Summary',
+                '- Automated sync of `src/qai_hub_models/models/_shared/lm_driver/` from AIMET',
+                '- Source: `GenAILab/qai_hub_lm/models/` on `develop` branch',
+                '',
+                'This PR was created automatically by the sync-lm-driver workflow.',
+              ].join('\n')
+            });
+            await github.request(`POST /repos/${owner}/${repo}/pulls/${result.data.number}/requested_reviewers`, {
+              owner,
+              repo,
+              pull_number: result.data.number,
+              team_reviewers: ['ai-hub-models-reviewers'],
+            });
+            console.log(`PR created: ${result.data.html_url}`);
