@@ -37,13 +37,11 @@ from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
 
 from qai_hub_models.evaluators.base_evaluators import _DataLoader
-from qai_hub_models.models.common import (
-    Precision,
-    SampleInputsType,
-)
-from qai_hub_models.models.protocols import PretrainedHubModelProtocol
+from qai_hub_models.models.common import Precision, SampleInputsType
+from qai_hub_models.models.protocols import FromPrecompiledProtocol
 from qai_hub_models.utils.aimet.aimet_dummy_model import zip_aimet_model
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, qaihm_temp_dir
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.dataset_util import dataset_entries_to_dataloader
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.onnx.helpers import ONNXBundle, mock_torch_onnx_inference
@@ -128,7 +126,7 @@ def set_aimet_log_level(log_level: int) -> Generator[None, None, None]:
             AimetLogger.set_area_logger_level(area, level)
 
 
-class AIMETOnnxQuantizableMixin(PretrainedHubModelProtocol):
+class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
     """
     Mixin that allows a model to be quantized & exported to disk using AIMET.
     Inheritor must implement BaseModel for this mixin to function.

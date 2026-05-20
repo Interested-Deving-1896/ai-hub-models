@@ -20,21 +20,15 @@ These are type checked at compile time.
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from pathlib import Path
 from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
 
-from qai_hub.client import Device
-from qai_hub.public_rest_api import DatasetEntries
+from typing_extensions import Self
 
-from qai_hub_models.evaluators.base_evaluators import _DataLoader
+from qai_hub_models.evaluators.base_evaluators import BaseEvaluator, _DataLoader
 from qai_hub_models.models.common import (
-    Precision,
-    SampleInputsType,
     SourceModelFormat,
     TargetRuntime,
 )
-from qai_hub_models.utils.input_spec import InputSpec
 
 FromPretrainedTypeVar = TypeVar("FromPretrainedTypeVar", bound="FromPretrainedProtocol")
 FromPrecompiledTypeVar = TypeVar(
@@ -42,51 +36,23 @@ FromPrecompiledTypeVar = TypeVar(
 )
 
 
-class HubModelProtocol(Protocol):
-    """All AI Hub Models must, at minimum, implement this interface."""
-
-    @abstractmethod
-    def get_input_spec(self, *args: Any, **kwargs: Any) -> InputSpec:
-        """
-        Returns a map from `{input_name -> (shape, dtype)}`
-        specifying the shape and dtype for each input argument.
-        """
-        ...
-
-    @abstractmethod
-    def sample_inputs(
-        self,
-        input_spec: InputSpec | None = None,
-        use_channel_last_format: bool = True,
-    ) -> SampleInputsType:
-        """
-        Returns a set of sample inputs for the model. Or, for component models,
-        a dictionary of sample inputs indexed by the component name.
-
-        For each input name in the model, a list of numpy arrays is provided.
-        If the returned set is batch N, all input names must contain exactly N numpy arrays.
-
-        This is a default implementation that returns a single random data array
-        for each input name based on the shapes and dtypes in `get_input_spec`.
-
-        A subclass may choose to override this and fetch a batch of real input data
-        from a data source.
-        """
-        ...
-
-    @abstractmethod
-    def get_output_names(self, *args: Any, **kwargs: Any) -> list[str]:
-        """
-        List of output names. If there are multiple outputs, the order of the names
-            should match the order of tuple returned by the model.
-        """
-        ...
-
-
+@runtime_checkable
 class QuantizableModelProtocol(Protocol):
+    """Minimum required methods to export a model that can be quantized."""
+
+    @staticmethod
+    def calibration_dataset_name() -> str | None:
+        """
+        Name of the dataset to use for calibration when quantizing the model.
+
+        Must be registered in qai_hub_models/datasets/__init__.py
+        """
+
+
+@runtime_checkable
+class AIMETQuantizableModelProtocol(QuantizableModelProtocol, Protocol):
     """Methods required for a model to be quantizable."""
 
-    @abstractmethod
     def quantize(
         self,
         data: _DataLoader,
@@ -130,12 +96,10 @@ class QuantizableModelProtocol(Protocol):
         """
         ...
 
-    @abstractmethod
-    def get_calibration_data(
-        self,
-        input_spec: InputSpec | None = None,
-    ) -> DatasetEntries | None:
-        """Calibration dataset for this model and input spec."""
+    def preferred_hub_source_model_format(
+        self, target_runtime: TargetRuntime
+    ) -> SourceModelFormat:
+        """Source model format preferred for conversion on AI Hub Workbench."""
         ...
 
 
@@ -144,9 +108,8 @@ T_co = TypeVar("T_co", covariant=True)
 
 @runtime_checkable
 class ExecutableModelProtocol(Protocol, Generic[T_co]):
-    """Classes follow this protocol if they are executable."""
+    """Models follow this protocol if they can be quantized using AI Hub Models."""
 
-    @abstractmethod
     def __call__(self, *args: Any, **kwargs: Any) -> T_co:
         """Execute the model and return its output."""
         ...
@@ -154,13 +117,10 @@ class ExecutableModelProtocol(Protocol, Generic[T_co]):
 
 @runtime_checkable
 class FromPretrainedProtocol(Protocol):
-    """Models follow this protocol if they can be initiated from a pretrained torch model."""
+    """Models follow this protocol if they can be initiated from a pretrained model."""
 
     @classmethod
-    @abstractmethod
-    def from_pretrained(
-        cls: type[FromPretrainedTypeVar], *args: Any, **kwargs: Any
-    ) -> FromPretrainedTypeVar:
+    def from_pretrained(cls, *args: Any, **kwargs: Any) -> Self:
         """
         Utility function that helps users get up and running with a default
         pretrained model. While this function may take arguments, all arguments
@@ -170,67 +130,34 @@ class FromPretrainedProtocol(Protocol):
         ...
 
 
-class PretrainedHubModelProtocol(HubModelProtocol, FromPretrainedProtocol, Protocol):
-    """All pretrained AI Hub Models must, at minimum, implement this interface."""
-
-    @abstractmethod
-    def convert_to_torchscript(
-        self, input_spec: InputSpec | None = None, check_trace: bool = True
-    ) -> Any:
-        """
-        Converts the torch module to a torchscript trace, which
-        is the format expected by qai hub.
-
-        This is a default implementation that may be overriden by a subclass.
-        """
-        ...
-
-    def convert_to_hub_source_model(
-        self,
-        target_runtime: TargetRuntime,
-        output_path: str | Path,
-        input_spec: InputSpec | None = None,
-        check_trace: bool = True,
-        external_onnx_weights: bool = False,
-        output_names: list[str] | None = None,
-    ) -> str | None: ...
-
-    def get_hub_compile_options(
-        self,
-        target_runtime: TargetRuntime,
-        precision: Precision,
-        other_compile_options: str = "",
-        device: Device | None = None,
-        context_graph_name: str | None = None,
-    ) -> str:
-        """AI Hub Workbench compile options recommended for the model."""
-        ...
-
-    def preferred_hub_source_model_format(
-        self, target_runtime: TargetRuntime
-    ) -> SourceModelFormat:
-        """Source model format preferred for conversion on AI Hub Workbench."""
-        ...
-
-    def get_hub_quantize_options(
-        self, precision: Precision, other_options: str | None = None
-    ) -> str:
-        """AI Hub Workbench quantize options recommended for the model."""
-        ...
-
-
 class FromPrecompiledProtocol(Protocol):
-    """Models follow this protocol if they can be initiated from a precompiled torch model."""
+    """Models follow this protocol if they can be initiated from a precompiled model."""
 
     @classmethod
-    @abstractmethod
-    def from_precompiled(
-        cls: type[FromPrecompiledTypeVar], *args: Any, **kwargs: Any
-    ) -> FromPrecompiledTypeVar:
+    def from_precompiled(cls, *args: Any, **kwargs: Any) -> Self:
         """
         Utility function that helps users get up and running with a default
         precompiled model. While this function may take arguments, all arguments
         should have default values specified, so that all classes can be invoked
         with `cls.from_precompiled()` and always have it return something reasonable.
         """
+        ...
+
+
+@runtime_checkable
+class EvaluatableModelProtocol(ExecutableModelProtocol, Protocol):
+    """Models follow this protocol if they can be evaluated using AI Hub Models."""
+
+    @staticmethod
+    def eval_datasets() -> list[str]:
+        """
+        Returns list of strings with names of all datasets on which
+        this model can be evaluated.
+
+        All names must be registered in qai_hub_models/datasets/__init__.py
+        """
+        ...
+
+    def get_evaluator(self) -> BaseEvaluator:
+        """Gets a class for evaluating output of this model."""
         ...

@@ -37,12 +37,11 @@ from qai_hub_models.utils.args import (
     get_model_kwargs,
 )
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
-from qai_hub_models.utils.base_model import (
-    BaseModel,
-    MultiGraphPretrainedCollectionModel,
+from qai_hub_models.utils.base_multi_graph_model import (
+    MultiGraphCollectionModel,
+    MultiGraphWorkbenchModel,
 )
 from qai_hub_models.utils.checkpoint import CheckpointType
-from qai_hub_models.utils.compare import torch_inference
 from qai_hub_models.utils.export_result import (
     ComponentGroup,
     MultiGraphCollectionExportResult,
@@ -53,7 +52,6 @@ from qai_hub_models.utils.input_spec import InputSpec, to_hub_input_specs
 from qai_hub_models.utils.onnx.helpers import download_and_unzip_workbench_onnx_model
 from qai_hub_models.utils.path_helpers import get_next_free_path
 from qai_hub_models.utils.printing import (
-    print_inference_metrics,
     print_profile_metrics_from_job,
     print_tool_versions,
 )
@@ -64,7 +62,7 @@ from qai_hub_models.utils.qai_hub_helpers import (
 
 
 def compile_model(
-    model: MultiGraphPretrainedCollectionModel,
+    model: MultiGraphCollectionModel,
     model_name: str,
     device: hub.Device,
     target_runtime: TargetRuntime,
@@ -84,22 +82,38 @@ def compile_model(
     for component_name in components or Model.component_class_names:
         component = model.components[component_name]
         # Trace the model
-        model_to_compile = component.convert_to_hub_source_model(
-            target_runtime, output_path, None
-        )
-        # Upload the source model once so every per-graph compile job reuses
-        # the same asset instead of re-uploading the .aimet / ONNX bundle.
-        uploaded_model = hub.upload_model(model_to_compile)  # type: ignore[arg-type]
+        shared_uploaded_model: hub.Model | None = None
+        if (
+            isinstance(component, MultiGraphWorkbenchModel)
+            and component.shared_source_model
+        ):
+            source_model_path = model.convert_to_hub_source_model(
+                component_name, component.graph_names[0], output_path, target_runtime
+            )
+            shared_uploaded_model = hub.upload_model(str(source_model_path))
         for graph_name, graph_input_spec in all_input_specs.by_component(
             component_name
         ).items():
+            if shared_uploaded_model:
+                uploaded_model = shared_uploaded_model
+            else:
+                source_model_path = model.convert_to_hub_source_model(
+                    component_name,
+                    graph_name,
+                    output_path,
+                    target_runtime,
+                    graph_input_spec,
+                )
+                uploaded_model = hub.upload_model(str(source_model_path))
             print(f"Optimizing model {component_name} to run on-device")
             submitted_compile_job = hub.submit_compile_job(
                 model=uploaded_model,
                 input_specs=to_hub_input_specs(graph_input_spec),
                 device=device,
                 name=f"{model_name}_{component_name}",
-                options=all_compile_options.by_component(component_name)[graph_name],
+                options=all_compile_options.by_component(component_name).get(
+                    graph_name, ""
+                ),
             )
             compile_jobs[(component_name, graph_name)] = cast(
                 hub.client.CompileJob, submitted_compile_job
@@ -111,7 +125,7 @@ def link_model(
     compiled_models: MultiGraphComponentGroup[hub.Model],
     device: hub.Device,
     model_name: str,
-    model: MultiGraphPretrainedCollectionModel,
+    model: MultiGraphCollectionModel,
     target_runtime: TargetRuntime,
     extra_options: str = "",
 ) -> ComponentGroup[hub.client.LinkJob]:
@@ -204,7 +218,7 @@ def inference_model(
 
 def download_model(
     output_dir: os.PathLike | str,
-    model: MultiGraphPretrainedCollectionModel,
+    model: MultiGraphCollectionModel,
     runtime: TargetRuntime,
     precision: Precision,
     tool_versions: ToolVersions,
@@ -440,9 +454,6 @@ def export_model(
     per_component_profile_options = model.get_hub_profile_options(
         target_runtime, profile_options
     )
-    per_component_inference_inputs = model.sample_inputs(
-        use_channel_last_format=target_runtime.channel_last_native_execution
-    )
 
     # 3. Profiles the model performance on a real device
     profile_result: MultiGraphComponentGroup[hub.client.ProfileJob] | None = None
@@ -456,16 +467,7 @@ def export_model(
         )
 
     # 4. Inferences the model on sample inputs
-    inference_result: MultiGraphComponentGroup[hub.client.InferenceJob] | None = None
-    if not skip_inferencing:
-        inference_result = inference_model(
-            per_component_inference_inputs,
-            model_name,
-            device,
-            per_component_profile_options,
-            target_models,
-            components,
-        )
+    inference_result = None
 
     # 5. Extracts relevant tool (eg. SDK) versions used to compile and profile this model
     tool_versions: ToolVersions | None = None
@@ -510,26 +512,6 @@ def export_model(
             assert pj.wait().success, "Job failed: " + pj.url
             profile_data: dict[str, Any] = pj.download_profile()
             print_profile_metrics_from_job(pj, profile_data)
-
-    if not skip_summary and inference_result is not None:
-        all_specs = model.get_input_spec()
-        for (component_name, graph_name), graph_input_spec in all_specs.items():
-            component = model.components[component_name]
-            ij = inference_result[(component_name, graph_name)]
-            sample_inputs = BaseModel.sample_inputs(
-                component, graph_input_spec, use_channel_last_format=False
-            )
-            torch_out = torch_inference(
-                component,
-                sample_inputs,
-                return_channel_last_output=target_runtime.channel_last_native_execution,
-            )
-            assert ij.wait().success, "Job failed: " + ij.url
-            ij_output = ij.download_output_data()
-            assert ij_output is not None
-            print_inference_metrics(
-                ij, ij_output, torch_out, component.get_output_names()
-            )
 
     if not skip_summary:
         print_tool_versions(tool_versions, tool_versions_are_from_device_job)

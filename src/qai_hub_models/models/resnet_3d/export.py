@@ -32,10 +32,11 @@ from qai_hub_models.utils import quantization as quantization_utils
 from qai_hub_models.utils.args import (
     export_parser,
     get_export_model_name,
+    get_input_spec_kwargs,
     get_model_kwargs,
 )
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
-from qai_hub_models.utils.base_model import BaseModel, get_input_spec_kwargs
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.compare import torch_inference
 from qai_hub_models.utils.export_result import ExportResult
 from qai_hub_models.utils.export_without_hub_access import export_without_hub_access

@@ -17,8 +17,14 @@ Architecture:
 from __future__ import annotations
 
 import contextlib
+import itertools
 import json
 import logging
+
+from qai_hub_models.utils.base_multi_graph_model import (
+    MultiGraphCollectionModel,
+    MultiGraphWorkbenchModel,
+)
 
 # isort: off
 # This verifies aimet is installed, and this must be included first.
@@ -70,9 +76,6 @@ from qai_hub_models.models.common import (
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_model import (
     BaseModel,
-    CollectionModel,
-    MultiGraphBaseModel,
-    MultiGraphPretrainedCollectionModel,
 )
 from qai_hub_models.utils.checkpoint import CheckpointType
 from qai_hub_models.utils.export_result import MultiGraphGroup
@@ -601,8 +604,7 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
             patch_size=VISION_PATCH_SIZE,
         )
 
-    @staticmethod
-    def get_output_names() -> list[str]:
+    def get_output_names(self) -> list[str]:
         return ["image_features"]
 
     def preferred_hub_source_model_format(
@@ -863,7 +865,7 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
 # ---------------------------------------------------------------------------
 
 
-class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
+class Qwen2_5_VL_7B_PartBase(MultiGraphWorkbenchModel):
     """
     Unified Part base: handles both FP and Quantizable modes based on precision.
 
@@ -877,12 +879,33 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
         self,
         presplit: Qwen2_5_VL_7B_PreSplit | Qwen2_5_VL_7B_QuantizablePreSplit,
         precision: Precision = DEFAULT_PRECISION,
+        context_lengths: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
+        sequence_lengths: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
     ) -> None:
         super().__init__()
         self._presplit = presplit
         self._precision = precision
         self._quant_sim: QuantizationSimModel | None = None
         self._fp_session: onnxruntime.InferenceSession | None = None
+        self._context_lengths = context_lengths
+        self._sequence_lengths = sequence_lengths
+        self._graph_names: dict[str, tuple[int, int]] = {
+            f"ar{seq_len}_cl{ctx_len}_{self.part_id}_of_{NUM_SPLITS}": (
+                seq_len,
+                ctx_len,
+            )
+            for seq_len, ctx_len in itertools.product(
+                self._sequence_lengths, self._context_lengths
+            )
+        }
+
+    @property
+    def shared_source_model(self) -> bool:
+        return True
+
+    @property
+    def graph_names(self) -> list[str]:
+        return list(self._graph_names.keys())
 
     @property
     def _is_quantized(self) -> bool:
@@ -894,6 +917,8 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
         checkpoint: str | Path = "DEFAULT",
         host_device: torch.device | None = None,
         _skip_quantsim_creation: bool = True,
+        context_lengths: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
+        sequence_lengths: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
         **kwargs: Any,
     ) -> Self:
         """Create Part by getting or creating the appropriate PreSplit (cached)."""
@@ -915,7 +940,12 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
                 host_device=host_device,
                 _skip_quantsim_creation=_skip_quantsim_creation,
             )
-        return cls(presplit, precision=precision)
+        return cls(
+            presplit,
+            precision=precision,
+            sequence_lengths=sequence_lengths,
+            context_lengths=context_lengths,
+        )
 
     @staticmethod
     def get_default_input_spec(
@@ -932,11 +962,8 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
             llm_io_type=llm_io_type,
         )
 
-    def _get_single_graph_input_spec(
-        self,
-        sequence_length: int | None = None,
-        context_length: int | None = None,
-    ) -> InputSpec:
+    def get_graph_input_spec(self, graph_name: str) -> InputSpec:
+        sequence_length, context_length = self._graph_names[graph_name]
         """Get input spec for this specific Part instance.
 
         VLM Parts don't have a separate embedding split. Part 1 takes
@@ -989,7 +1016,7 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
 
         return spec
 
-    def get_output_names(self) -> list[str]:
+    def get_graph_output_names(self, graph_name: str) -> list[str]:
         return [
             name.replace("/", "_").replace(".", "_")
             for name in self._get_onnx_output_names()
@@ -1106,22 +1133,19 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
         session = self._get_fp_session()
         return mock_torch_onnx_inference(session, *args, **kwargs)
 
-    def convert_to_hub_source_model(
+    def convert_graph_to_hub_source_model(
         self,
-        target_runtime: TargetRuntime,
-        output_path: str | Path,
+        graph_name: str,
+        output_path: str | os.PathLike,
         input_spec: InputSpec | None = None,
-        check_trace: bool = True,
-        external_onnx_weights: bool = False,
-        output_names: list[str] | None = None,
-    ) -> str:
+    ) -> Path | None:
         model_name = self.__class__.__name__
 
         ext = ".aimet" if self._is_quantized else ".onnx"
         precision_suffix = f"_{self._precision}" if self._is_quantized else ""
         out_dir = Path(output_path) / f"{model_name}{precision_suffix}{ext}"
         if (out_dir / f"{model_name}.onnx").exists():
-            return str(out_dir)
+            return out_dir
         out_dir.mkdir(parents=True, exist_ok=True)
 
         onnx_bundle = self._get_onnx_bundle()
@@ -1131,7 +1155,7 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
             copy=True,
         )
 
-        return str(out_dir)
+        return out_dir
 
     def get_hub_compile_options(
         self,
@@ -1153,45 +1177,17 @@ class Qwen2_5_VL_7B_PartBase(MultiGraphBaseModel):
         """Get profile options keyed by graph name."""
         if self._is_quantized:
             out: MultiGraphGroup[str] = MultiGraphGroup()
-            for graph_name in self.get_input_spec():
+            for graph_name in self.graph_names:
                 out[graph_name] = self._presplit.get_hub_profile_options(
                     target_runtime=target_runtime,
                     other_profile_options=other_profile_options,
                     context_graph_name=graph_name,
                 )
             return out
-        return MultiGraphBaseModel.get_hub_profile_options(
-            self,
+        return super().get_hub_profile_options(
             target_runtime=target_runtime,
             other_profile_options=other_profile_options,
         )
-
-    def get_input_spec(
-        self,
-        context_length: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
-        sequence_length: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
-    ) -> MultiGraphGroup[InputSpec]:
-        """
-        Get input specs for all (context_length, sequence_length) graph variants.
-
-        Parameters
-        ----------
-        context_length
-            List of context lengths for which to compile.
-        sequence_length
-            List of input sequence lengths for which to compile.
-
-        Returns
-        -------
-        MultiGraphGroup[InputSpec]
-            Input specs keyed by graph name.
-        """
-        specs: MultiGraphGroup[InputSpec] = MultiGraphGroup()
-        for ctx_len in context_length:
-            for seq_len in sequence_length:
-                graph_name = f"ar{seq_len}_cl{ctx_len}_{self.part_id}_of_{NUM_SPLITS}"
-                specs[graph_name] = self._get_single_graph_input_spec(seq_len, ctx_len)
-        return specs
 
 
 class Qwen2_5_VL_7B_Part1_Of_5(Qwen2_5_VL_7B_PartBase):
@@ -1229,26 +1225,26 @@ class Qwen2_5_VL_7B_Part5_Of_5(Qwen2_5_VL_7B_PartBase):
 # ---------------------------------------------------------------------------
 
 
-@CollectionModel.add_component(
+@MultiGraphCollectionModel.add_component(
     Qwen2_5_VL_7B_VisionEncoder,
     "vision_encoder",
 )
-@CollectionModel.add_component(
+@MultiGraphCollectionModel.add_component(
     Qwen2_5_VL_7B_Part1_Of_5, "part1_of_5", cli_args_prefix=""
 )
-@CollectionModel.add_component(
+@MultiGraphCollectionModel.add_component(
     Qwen2_5_VL_7B_Part2_Of_5, "part2_of_5", cli_args_prefix=""
 )
-@CollectionModel.add_component(
+@MultiGraphCollectionModel.add_component(
     Qwen2_5_VL_7B_Part3_Of_5, "part3_of_5", cli_args_prefix=""
 )
-@CollectionModel.add_component(
+@MultiGraphCollectionModel.add_component(
     Qwen2_5_VL_7B_Part4_Of_5, "part4_of_5", cli_args_prefix=""
 )
-@CollectionModel.add_component(
+@MultiGraphCollectionModel.add_component(
     Qwen2_5_VL_7B_Part5_Of_5, "part5_of_5", cli_args_prefix=""
 )
-class Qwen2_5_VL_7B_Collection(MultiGraphPretrainedCollectionModel):
+class Qwen2_5_VL_7B_Collection(MultiGraphCollectionModel):
     """
     Unified Collection with 5 text Parts + 1 Vision Encoder for Qwen2.5-VL-7B.
 
@@ -1264,6 +1260,8 @@ class Qwen2_5_VL_7B_Collection(MultiGraphPretrainedCollectionModel):
         checkpoint: str | Path = "DEFAULT",
         host_device: torch.device | None = None,
         _skip_quantsim_creation: bool = True,
+        sequence_lengths: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
+        context_lengths: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
         **kwargs: Any,
     ) -> Self:
         """
@@ -1278,6 +1276,10 @@ class Qwen2_5_VL_7B_Collection(MultiGraphPretrainedCollectionModel):
             Device for computation.
         _skip_quantsim_creation
             Skip QuantSim creation (for testing).
+        sequence_lengths
+            Sequence lengths to compile for.
+        context_lengths
+            Context lengths to compile for.
         **kwargs
             Additional keyword arguments passed to parent.
 
@@ -1298,7 +1300,7 @@ class Qwen2_5_VL_7B_Collection(MultiGraphPretrainedCollectionModel):
             host_device=host_device,
             _skip_quantsim_creation=_skip_quantsim_creation,
         )
-        parts: list[BaseModel] = []
+        parts: list[BaseModel | MultiGraphWorkbenchModel] = []
         for part_cls in cls.component_classes.values():
             if issubclass(part_cls, Qwen2_5_VL_7B_VisionEncoder):
                 parts.append(
@@ -1306,6 +1308,8 @@ class Qwen2_5_VL_7B_Collection(MultiGraphPretrainedCollectionModel):
                         checkpoint=checkpoint,
                         device=host_device,
                         precision=precision,
+                        sequence_lengths=sequence_lengths,
+                        context_lengths=context_lengths,
                     )
                 )
             else:

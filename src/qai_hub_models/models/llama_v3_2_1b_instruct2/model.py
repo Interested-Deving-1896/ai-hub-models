@@ -16,9 +16,12 @@ Architecture:
 from __future__ import annotations
 
 import contextlib
+import itertools
 import json
 import logging
 import os
+
+from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
 
 # isort: off
 # This verifies aimet is installed, and this must be included first.
@@ -61,16 +64,10 @@ from qai_hub_models.models._shared.llm.model import (
 from qai_hub_models.models.common import (
     Precision,
     SampleInputsType,
-    SourceModelFormat,
     TargetRuntime,
 )
-from qai_hub_models.utils.base_model import (
-    CollectionModel,
-    MultiGraphBaseModel,
-    MultiGraphPretrainedCollectionModel,
-)
+from qai_hub_models.utils.base_multi_graph_model import MultiGraphCollectionModel
 from qai_hub_models.utils.checkpoint import CheckpointType
-from qai_hub_models.utils.export_result import MultiGraphGroup
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.llm_helpers import (
     create_genie_config,
@@ -326,7 +323,7 @@ class Llama3_2_1B_QuantizablePreSplit(  # type: ignore[misc]
 # ---------------------------------------------------------------------------
 
 
-class Llama3_2_1B_PartBase(MultiGraphBaseModel):
+class Llama3_2_1B_PartBase(MultiGraphWorkbenchModel):
     """
     Unified Part base: handles both FP and Quantizable modes based on precision.
 
@@ -341,12 +338,29 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
         self,
         presplit: Llama3_2_1B_PreSplit | Llama3_2_1B_QuantizablePreSplit,
         precision: Precision = DEFAULT_PRECISION,
+        sequence_lengths: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
+        context_lengths: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
     ) -> None:
         super().__init__()
         self._presplit = presplit
         self._precision = precision
         self._quant_sim: QuantizationSimModel | None = None
         self._fp_session: onnxruntime.InferenceSession | None = None
+        self._sequence_lengths = sequence_lengths
+        self._context_lengths = context_lengths
+        self._graph_names: dict[str, tuple[int, int]] = {
+            f"{'token' if seq_len == 1 else 'prompt'}_ar{seq_len}_cl{ctx_len}_{self.part_id}_of_{NUM_SPLITS}": (
+                seq_len,
+                ctx_len,
+            )
+            for seq_len, ctx_len in itertools.product(
+                self._sequence_lengths, self._context_lengths
+            )
+        }
+
+    @property
+    def graph_names(self) -> list[str]:
+        return list(self._graph_names.keys())
 
     @property
     def _is_quantized(self) -> bool:
@@ -358,15 +372,15 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
         checkpoint: str | Path = "DEFAULT",
         host_device: torch.device | None = None,
         _skip_quantsim_creation: bool = True,
+        context_lengths: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
+        sequence_lengths: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
         **kwargs: Any,
     ) -> Self:
         """Create Part by getting or creating the appropriate PreSplit (cached)."""
         checkpoint_type = CheckpointType.from_checkpoint(checkpoint)
         if not checkpoint_type.is_aimet_onnx():
             presplit: Llama3_2_1B_PreSplit | Llama3_2_1B_QuantizablePreSplit = (
-                Llama3_2_1B_PreSplit.from_pretrained(
-                    host_device=host_device,
-                )
+                Llama3_2_1B_PreSplit.from_pretrained(host_device=host_device)
             )
             precision = Precision.float
         else:
@@ -379,43 +393,15 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
                 host_device=host_device,
                 _skip_quantsim_creation=_skip_quantsim_creation,
             )
-        return cls(presplit, precision=precision)
-
-    def get_default_input_spec(
-        self,
-        llm_config: dict | None = None,
-        sequence_length: int = 1,  # Default to token generator mode
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
-    ) -> InputSpec:
-        """Get default input spec for the full model (class-level convenience)."""
-        return Llama3_2_1B_PreSplit.get_static_input_spec(
-            llm_config=llm_config,
-            sequence_length=sequence_length,
-            context_length=context_length,
-            llm_io_type=llm_io_type,
+        return cls(
+            presplit,
+            precision=precision,
+            context_lengths=context_lengths,
+            sequence_lengths=sequence_lengths,
         )
 
-    def _get_single_graph_input_spec(
-        self,
-        sequence_length: int | None = None,
-        context_length: int | None = None,
-    ) -> InputSpec:
-        """Get input spec for this specific Part instance.
-
-        Part 1 (embedding): only input_ids.
-        Part 2+: intermediate hidden state from previous part,
-                 attention_mask, position embeddings, and only this
-                 part's KV cache layers.
-
-        Names are read from the actual split ONNX model at runtime.
-        The ONNX uses dynamic shapes, so one export works for any sequence_length;
-        only the concrete shapes in the spec differ.
-        """
-        if sequence_length is None:
-            sequence_length = self._presplit.sequence_length
-        if context_length is None:
-            context_length = self._presplit.context_length
+    def get_graph_input_spec(self, graph_name: str) -> InputSpec:
+        sequence_length, context_length = self._graph_names[graph_name]
         if self.part_id == 1:
             # Embedding split: only input_ids
             return {"input_ids": ((1, sequence_length), "int32")}
@@ -459,24 +445,22 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
 
         return spec
 
-    def get_output_names(self) -> list[str]:
+    def get_graph_output_names(self, graph_name: str) -> list[str]:
         """Get output names for this specific Part instance.
 
         Names are read from the actual split ONNX model at runtime.
         """
+        # All graphs have the same outputs.
         return [
             name.replace("/", "_").replace(".", "_")
             for name in self._get_onnx_output_names()
         ]
 
-    def preferred_hub_source_model_format(
-        self, target_runtime: TargetRuntime
-    ) -> SourceModelFormat:
-        """Source model format for AI Hub Workbench."""
-        return SourceModelFormat.ONNX
-
-    def _sample_inputs_impl(
-        self, input_spec: InputSpec | None = None
+    def get_graph_sample_inputs(
+        self,
+        graph_name: str,
+        input_spec: InputSpec | None = None,
+        use_channel_last_format: bool = True,
     ) -> SampleInputsType:
         """Get sample inputs for this specific part only.
 
@@ -485,9 +469,10 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
         carries the per-graph shapes so we derive seq_len from it.
         """
         # Derive seq_len from input_spec when available (multi-graph path).
-        seq_len = self._presplit.sequence_length
         if input_spec is not None and "input_ids" in input_spec:
             seq_len = input_spec["input_ids"][0][1]  # shape (1, seq_len)
+        else:
+            seq_len, _ = self._graph_names[graph_name]
 
         full_inputs = self._presplit._sample_inputs_impl()
 
@@ -603,15 +588,16 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
         session = self._get_fp_session()
         return mock_torch_onnx_inference(session, *args, **kwargs)
 
-    def convert_to_hub_source_model(
+    @property
+    def shared_source_model(self) -> bool:
+        return True
+
+    def convert_graph_to_hub_source_model(
         self,
-        target_runtime: TargetRuntime,
-        output_path: str | Path,
+        graph_name: str,
+        output_path: str | os.PathLike,
         input_spec: InputSpec | None = None,
-        check_trace: bool = True,
-        external_onnx_weights: bool = False,
-        output_names: list[str] | None = None,
-    ) -> str:
+    ) -> Path | None:
         """Export ONNX model for this Part."""
         model_name = self.__class__.__name__
 
@@ -621,7 +607,7 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
         precision_suffix = f"_{self._precision}" if self._is_quantized else ""
         out_dir = Path(output_path) / f"{model_name}{precision_suffix}{ext}"
         if (out_dir / f"{model_name}.onnx").exists():
-            return str(out_dir)
+            return out_dir
         out_dir.mkdir(parents=True, exist_ok=True)
 
         onnx_bundle = self._get_onnx_bundle()
@@ -630,71 +616,41 @@ class Llama3_2_1B_PartBase(MultiGraphBaseModel):
             dst_model_name=model_name,
             copy=True,
         )
-        return str(out_dir)
+        return out_dir
 
-    def get_hub_compile_options(
+    def get_graph_hub_compile_options(
         self,
+        graph_name: str,
         target_runtime: TargetRuntime,
         precision: Precision,
         other_compile_options: str = "",
         device: Device | None = None,
-    ) -> MultiGraphGroup[str]:
-        other_compile_options += " --quantize_full_type w8a16 --quantize_io"
-        return super().get_hub_compile_options(
-            target_runtime, precision, other_compile_options, device
+    ) -> str:
+        return super().get_graph_hub_compile_options(
+            graph_name,
+            target_runtime,
+            precision,
+            other_compile_options + " --quantize_full_type w8a16 --quantize_io",
+            device,
         )
 
-    def get_hub_profile_options(
+    def get_graph_hub_profile_options(
         self,
+        graph_name: str,
         target_runtime: TargetRuntime,
         other_profile_options: str = "",
-    ) -> MultiGraphGroup[str]:
-        """Get profile options keyed by graph name.
-
-        For quantized models, delegates to the PreSplit for extra options.
-        """
+    ) -> str:
         if self._is_quantized:
-            out: MultiGraphGroup[str] = MultiGraphGroup()
-            for graph_name in self.get_input_spec():
-                out[graph_name] = self._presplit.get_hub_profile_options(
-                    target_runtime=target_runtime,
-                    other_profile_options=other_profile_options,
-                    context_graph_name=graph_name,
-                )
-            return out
-        return MultiGraphBaseModel.get_hub_profile_options(
-            self,
+            return self._presplit.get_hub_profile_options(
+                target_runtime=target_runtime,
+                other_profile_options=other_profile_options,
+                context_graph_name=graph_name,
+            )
+        return super().get_graph_hub_profile_options(
+            graph_name,
             target_runtime=target_runtime,
             other_profile_options=other_profile_options,
         )
-
-    def get_input_spec(
-        self,
-        context_length: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
-        sequence_length: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
-    ) -> MultiGraphGroup[InputSpec]:
-        """
-        Parameters
-        ----------
-        context_length
-            Context length for the model.
-        sequence_length
-            Sequence length for the model.
-
-        Returns
-        -------
-        MultiGraphGroup[InputSpec]
-            Input specifications for each graph.
-        """
-        specs: MultiGraphGroup[InputSpec] = MultiGraphGroup()
-        for ctx_len in context_length:
-            for seq_len in sequence_length:
-                inst = "token" if seq_len == 1 else "prompt"
-                graph_name = (
-                    f"{inst}_ar{seq_len}_cl{ctx_len}_{self.part_id}_of_{NUM_SPLITS}"
-                )
-                specs[graph_name] = self._get_single_graph_input_spec(seq_len, ctx_len)
-        return specs
 
 
 class Llama3_2_1B_Part1_Of_3(Llama3_2_1B_PartBase):
@@ -741,10 +697,16 @@ class FPSplitModelWrapper(_Llama3SplitForwardMixin, Llama3_2_1B_PreSplit):
 # ---------------------------------------------------------------------------
 
 
-@CollectionModel.add_component(Llama3_2_1B_Part1_Of_3, "part1_of_3", cli_args_prefix="")
-@CollectionModel.add_component(Llama3_2_1B_Part2_Of_3, "part2_of_3", cli_args_prefix="")
-@CollectionModel.add_component(Llama3_2_1B_Part3_Of_3, "part3_of_3", cli_args_prefix="")
-class Llama3_2_1B_Collection(MultiGraphPretrainedCollectionModel):
+@MultiGraphCollectionModel.add_component(
+    Llama3_2_1B_Part1_Of_3, "part1_of_3", cli_args_prefix=""
+)
+@MultiGraphCollectionModel.add_component(
+    Llama3_2_1B_Part2_Of_3, "part2_of_3", cli_args_prefix=""
+)
+@MultiGraphCollectionModel.add_component(
+    Llama3_2_1B_Part3_Of_3, "part3_of_3", cli_args_prefix=""
+)
+class Llama3_2_1B_Collection(MultiGraphCollectionModel):
     """
     Unified Collection with 3 Parts for Llama 3.2 1B.
 
@@ -758,7 +720,8 @@ class Llama3_2_1B_Collection(MultiGraphPretrainedCollectionModel):
         checkpoint: str | Path = "DEFAULT",
         host_device: torch.device | None = None,
         _skip_quantsim_creation: bool = True,
-        **kwargs: Any,
+        sequence_lengths: list[int] = DEFAULT_EXPORT_SEQUENCE_LENGTHS,
+        context_lengths: list[int] = DEFAULT_EXPORT_CONTEXT_LENGTHS,
     ) -> Self:
         """
         Create Collection with all 3 Parts.
@@ -772,21 +735,24 @@ class Llama3_2_1B_Collection(MultiGraphPretrainedCollectionModel):
             Device for computation.
         _skip_quantsim_creation
             Skip QuantSim creation (for testing).
-        **kwargs
-            Additional keyword arguments passed to parent.
+        sequence_lengths
+            Sequence lengths to compile for.
+        context_lengths
+            Context lengths to compile for.
 
         Returns
         -------
         Self
             The Collection with all 3 Parts.
         """
-        part_kwargs = dict(
-            checkpoint=checkpoint,
-            host_device=host_device,
-            _skip_quantsim_creation=_skip_quantsim_creation,
-        )
         parts = [
-            part_cls.from_pretrained(**part_kwargs)
+            part_cls.from_pretrained(
+                checkpoint=checkpoint,
+                host_device=host_device,
+                _skip_quantsim_creation=_skip_quantsim_creation,
+                sequence_lengths=sequence_lengths,
+                context_lengths=context_lengths,
+            )
             for part_cls in cls.component_classes.values()
         ]
         return cls(*parts)

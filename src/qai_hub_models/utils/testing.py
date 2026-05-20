@@ -24,6 +24,7 @@ from tabulate import tabulate
 
 from qai_hub_models.datasets.common import get_folder_name
 from qai_hub_models.models.common import TargetRuntime
+from qai_hub_models.models.protocols import FromPretrainedProtocol
 from qai_hub_models.scorecard import ScorecardDevice
 from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.envvars import ArtifactsDirEnvvar, DeploymentEnvvar
@@ -38,6 +39,7 @@ from qai_hub_models.utils.base_model import (
     CollectionModel,
     PretrainedCollectionModel,
 )
+from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
 from qai_hub_models.utils.evaluate import (
     CACHE_SAMPLES_PER_JOB_FILE,
     get_dataset_path,
@@ -587,15 +589,15 @@ def has_get_unsupported_reason(cls: type, stop_at_classes: list[type]) -> bool:
 
 
 def _skip_if_unsupported_reason(
-    model_cls: type[BaseModel | BasePrecompiledModel],
+    model_cls: type[BaseModel | MultiGraphWorkbenchModel | BasePrecompiledModel],
     runtime: TargetRuntime,
     device: ScorecardDevice,
 ) -> None:
     if not has_get_unsupported_reason(model_cls, [BaseModel, BasePrecompiledModel]):
         return
     # check get_unsupported_reason
-    model: BaseModel | BasePrecompiledModel
-    if issubclass(model_cls, BaseModel):
+    model: BaseModel | BasePrecompiledModel | MultiGraphWorkbenchModel
+    if issubclass(model_cls, FromPretrainedProtocol):
         model = model_cls.from_pretrained()
     else:
         model = model_cls.from_precompiled()
@@ -606,7 +608,9 @@ def _skip_if_unsupported_reason(
 
 
 def skip_invalid_runtime_device(
-    model_cls: type[BaseModel | BasePrecompiledModel | CollectionModel],
+    model_cls: type[
+        BaseModel | MultiGraphWorkbenchModel | BasePrecompiledModel | CollectionModel
+    ],
     runtime: TargetRuntime,
     device: ScorecardDevice,
 ) -> None:

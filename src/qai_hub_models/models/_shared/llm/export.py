@@ -63,8 +63,8 @@ from qai_hub_models.models._shared.llm.model import (
 )
 from qai_hub_models.utils.args import (
     export_parser,
+    get_input_spec_kwargs,
 )
-from qai_hub_models.utils.base_model import get_input_spec_kwargs
 
 VALID_TARGET_RUNTIMES = Literal[TargetRuntime.GENIE]
 

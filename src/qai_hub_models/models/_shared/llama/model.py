@@ -374,6 +374,12 @@ class LlamaMixin(AimetEncodingLoaderMixin, BaseModel):
         )
         return output_list
 
+    @abstractmethod
+    def get_calibration_data(
+        self,
+        input_spec: InputSpec | None = None,
+    ) -> dict[str, torch.Tensor] | None: ...
+
     def _sample_inputs_impl(
         self, input_spec: InputSpec | None = None
     ) -> SampleInputsType:

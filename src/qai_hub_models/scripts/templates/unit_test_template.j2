@@ -209,6 +209,7 @@ def test_profile(precision: Precision, scorecard_path: ScorecardProfilePath, dev
         pytest.skip(str(e))
 
 
+{%- if not has_multi_graph %}
 @pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_evaluation_parameterized_pytest_config(MODEL_ID, EVAL_DEVICE, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES, {{ "can_use_quantize_job=False, " if not can_use_quantize_job else ''}}), ids=pytest_device_idfn)
 @pytest.mark.inference
 def test_inference(precision: Precision, scorecard_path: ScorecardProfilePath, device: ScorecardDevice) -> None:
@@ -238,6 +239,7 @@ def test_inference(precision: Precision, scorecard_path: ScorecardProfilePath, d
             )
     except CachedScorecardJobError as e:
         pytest.skip(str(e))
+{%- endif %}
 
 @pytest.mark.inference
 def test_val_data_torch() -> None:

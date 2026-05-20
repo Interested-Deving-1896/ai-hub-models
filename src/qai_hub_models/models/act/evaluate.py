@@ -14,8 +14,11 @@ import qai_hub as hub
 from qai_hub_models.models.act import MODEL_ID, Model
 from qai_hub_models.models.act.export import export_model
 from qai_hub_models.models.common import Precision, TargetRuntime
-from qai_hub_models.utils.args import evaluate_parser, get_model_kwargs
-from qai_hub_models.utils.base_model import get_input_spec_kwargs
+from qai_hub_models.utils.args import (
+    evaluate_parser,
+    get_input_spec_kwargs,
+    get_model_kwargs,
+)
 from qai_hub_models.utils.evaluate import evaluate_on_dataset
 from qai_hub_models.utils.inference import compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec

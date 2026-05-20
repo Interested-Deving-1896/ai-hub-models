@@ -22,9 +22,9 @@ from qai_hub_models.models.llama_v2_7b_chat.model import MODEL_ASSET_VERSION, MO
 from qai_hub_models.utils import model_cache
 from qai_hub_models.utils.args import (
     export_parser,
+    get_input_spec_kwargs,
     get_model_kwargs,
 )
-from qai_hub_models.utils.base_model import get_input_spec_kwargs
 from qai_hub_models.utils.compare import torch_inference
 from qai_hub_models.utils.export_result import (
     ExportResult,

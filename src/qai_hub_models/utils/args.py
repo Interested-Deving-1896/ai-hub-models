@@ -22,11 +22,9 @@ from typing import Any, TypeVar
 import qai_hub as hub
 from numpydoc.docscrape import FunctionDoc
 
-from qai_hub_models.models.common import (
-    Precision,
-    TargetRuntime,
-)
+from qai_hub_models.models.common import Precision, TargetRuntime
 from qai_hub_models.models.protocols import (
+    FromPrecompiledProtocol,
     FromPrecompiledTypeVar,
     FromPretrainedProtocol,
     FromPretrainedTypeVar,
@@ -35,14 +33,18 @@ from qai_hub_models.utils.base_model import (
     BaseModel,
     BasePrecompiledModel,
     CollectionModel,
-    HubModel,
-    get_input_spec_kwargs,
-    get_input_spec_params,
+    PretrainedCollectionModel,
+    WorkbenchModel,
+)
+from qai_hub_models.utils.base_multi_graph_model import (
+    MultiGraphCollectionModel,
+    MultiGraphWorkbenchModel,
 )
 from qai_hub_models.utils.envvars import DevModeEnvvar
 from qai_hub_models.utils.evaluate import EvalMode
 from qai_hub_models.utils.inference import OnDeviceModel, compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec
+from qai_hub_models.utils.kwarg_helpers import filter_kwargs, get_params
 from qai_hub_models.utils.qai_hub_helpers import (
     can_access_qualcomm_ai_hub,
     raise_if_fp_is_unsupported,
@@ -762,7 +764,7 @@ def model_from_cli_args(
 
 
 def demo_model_components_from_cli_args(
-    model_cls: type[CollectionModel],
+    model_cls: type[PretrainedCollectionModel],
     model_id: str,
     cli_args: argparse.Namespace,
 ) -> tuple[FromPretrainedProtocol | OnDeviceModel, ...]:
@@ -797,7 +799,6 @@ def demo_model_components_from_cli_args(
     for i, (comp, cls) in enumerate(model_cls.component_classes.items()):
         if cli_args.hub_model_id:
             cli_args_comp.hub_model_id = cli_args.hub_model_id.split(",")[i]
-        assert issubclass(cls, BaseModel)
         res.append(demo_model_from_cli_args(cls, model_id, cli_args_comp, comp))
 
     return tuple(res)
@@ -833,7 +834,7 @@ def demo_model_from_cli_args(
         else:
             cli_dict = vars(cli_args)
             additional_kwargs = dict(
-                get_model_kwargs(model_cls, cli_dict),
+                get_model_kwargs(model_cls, args_dict=cli_dict),
                 **get_input_spec_kwargs(model_cls, cli_dict),
             )
             target_model = compile_model_from_args(
@@ -912,7 +913,7 @@ def get_model_input_spec_parser(
         for param in FunctionDoc(func=model_cls.get_input_spec)["Parameters"]
     }
 
-    for name, param in get_input_spec_params(model_cls).items():
+    for name, param in get_params(model_cls.get_input_spec).items():
         resolved_type = _resolve_param_type(param, model_cls)
         help_str = input_spec_docs.get(
             name,
@@ -928,7 +929,7 @@ def get_model_input_spec_parser(
 
 
 def get_collection_model_input_spec_parser(
-    model_cls: type[CollectionModel],
+    model_cls: type[PretrainedCollectionModel],
     parser: QAIHMArgumentParser | None = None,
 ) -> QAIHMArgumentParser:
     """
@@ -940,8 +941,8 @@ def get_collection_model_input_spec_parser(
         parser = get_parser()
 
     for comp_name, comp_cls in model_cls.component_classes.items():
-        params = get_input_spec_params(comp_cls)
-        cli_prefix = comp_cls.cli_args_prefix
+        params = get_params(comp_cls.get_input_spec)
+        cli_prefix = comp_cls.cli_args_prefix  # type: ignore[attr-defined]
         if cli_prefix:
             cli_prefix += "-"
 
@@ -955,7 +956,7 @@ def get_collection_model_input_spec_parser(
             resolved_type = _resolve_param_type(param, comp_cls)
             if input_spec_docs.get(param_name):
                 help_text = input_spec_docs[param_name]
-            elif not comp_cls.cli_args_prefix:
+            elif not comp_cls.cli_args_prefix:  #  type: ignore[attr-defined]
                 help_text = f"Set {param_name}"
             else:
                 help_text = f"Set {param_name} for {comp_name}"
@@ -973,8 +974,21 @@ def get_collection_model_input_spec_parser(
     return parser
 
 
+def get_input_spec_kwargs(
+    model: type[WorkbenchModel | MultiGraphWorkbenchModel]
+    | WorkbenchModel
+    | MultiGraphWorkbenchModel,
+    args_dict: Mapping[str, Any],
+) -> dict[str, Any]:
+    """
+    Given a dict with many args, pull out the ones relevant
+    to constructing the model's input_spec.
+    """
+    return filter_kwargs(model.get_input_spec, args_dict)
+
+
 def get_component_input_spec_kwargs(
-    model_cls: type[CollectionModel],
+    model_cls: type[PretrainedCollectionModel | MultiGraphCollectionModel],
     component_name: str,
     args_dict: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -987,18 +1001,16 @@ def get_component_input_spec_kwargs(
     - Else skip (component uses its default)
     """
     comp_cls = model_cls.component_classes[component_name]
-    params = get_input_spec_params(comp_cls)
     cli_prefix = getattr(comp_cls, "cli_args_prefix", component_name)
-    kwargs: dict[str, Any] = {}
-    for param_name in params:
-        key = f"{cli_prefix}_{param_name}" if cli_prefix else param_name
-        if key in args_dict and args_dict[key] is not None:
-            kwargs[param_name] = args_dict[key]
-    return kwargs
+    kwargs: dict[str, Any] = get_input_spec_kwargs(comp_cls, args_dict)
+    return {
+        f"{cli_prefix}_{param_name}" if cli_prefix else param_name: kwarg
+        for param_name, kwarg in kwargs.items()
+    }
 
 
 def input_spec_from_cli_args(
-    model: HubModel | OnDeviceModel, cli_args: argparse.Namespace
+    model: WorkbenchModel | OnDeviceModel, cli_args: argparse.Namespace
 ) -> InputSpec | hub.InputSpecs:
     """
     Create this model's input spec from an argparse namespace.
@@ -1153,7 +1165,7 @@ def add_export_function_args(
 
 
 def export_parser(
-    model_cls: type[FromPretrainedTypeVar | FromPrecompiledTypeVar],
+    model_cls: type[FromPrecompiledProtocol | FromPretrainedProtocol],
     export_fn: Callable,
     components: list[str] | None = None,
     supported_precision_runtimes: dict[Precision, list[TargetRuntime]] | None = None,
@@ -1205,9 +1217,9 @@ def export_parser(
     add_export_function_args(export_fn, parser, force_fetch_static_assets, zip_assets)
     _add_device_args(parser, default_device=default_export_device)
     if components is not None or issubclass(model_cls, CollectionModel):
-        choices = (
-            components if components is not None else model_cls.component_class_names
-        )
+        choices = components or []
+        if not choices and issubclass(model_cls, CollectionModel):
+            choices = model_cls.component_class_names
         parser.add_argument(
             "--components",
             nargs="+",

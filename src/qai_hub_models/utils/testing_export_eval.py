@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext, suppress
 from pathlib import Path
-from typing import Any, Literal, TypeVar, cast
+from typing import Any, Literal, TypeAlias, TypeVar, cast
 from unittest import mock
 
 import numpy as np
@@ -70,9 +70,11 @@ from qai_hub_models.utils.aws import (
 from qai_hub_models.utils.base_model import (
     BaseModel,
     CollectionModel,
-    MultiGraphBaseModel,
-    MultiGraphPretrainedCollectionModel,
     PretrainedCollectionModel,
+)
+from qai_hub_models.utils.base_multi_graph_model import (
+    MultiGraphCollectionModel,
+    MultiGraphWorkbenchModel,
 )
 from qai_hub_models.utils.evaluate import (
     DEFAULT_NUM_EVAL_SAMPLES,
@@ -123,8 +125,8 @@ ExportFunc = Callable[
 JobFunc = Callable[..., hub.Job | dict[str, hub.Job]]
 
 
-QAIHMModelT = (
-    BaseModel | CollectionModel | MultiGraphBaseModel | MultiGraphCollectionExportResult
+QAIHMModelT: TypeAlias = (
+    BaseModel | CollectionModel | MultiGraphWorkbenchModel | MultiGraphCollectionModel
 )
 
 
@@ -141,25 +143,25 @@ def _get_components_and_graph_names(
         # Try to collect the cached graph names from disk instead.
         if issubclass(model, CollectionModel):
             components = model.component_class_names
-            if issubclass(model, MultiGraphPretrainedCollectionModel):
+            if issubclass(model, MultiGraphCollectionModel):
                 gn_cache = GraphNamesYaml.from_test_artifacts()
                 cgns = {cn: gn_cache.get(model_id, cn) for cn in components}
                 component_graph_names = ComponentGroup(
                     {k: v for k, v in cgns.items() if v is not None}
                 )
-        elif issubclass(model, MultiGraphBaseModel):
+        elif issubclass(model, MultiGraphWorkbenchModel):
             graph_names = GraphNamesYaml.from_test_artifacts().get(model_id)
 
     elif isinstance(model, CollectionModel):
         components = model.component_class_names
-        cgn: dict[str, list[str]] = {}
+        cgn = ComponentGroup[list[str]]({})
         for component_name, component in model.components.items():
-            if isinstance(component, MultiGraphBaseModel):
-                cgn[component_name] = list(component.get_input_spec())
+            if isinstance(component, MultiGraphWorkbenchModel):
+                cgn[component_name] = component.graph_names
         if cgn:
-            component_graph_names = ComponentGroup(cgn)
-    elif isinstance(model, MultiGraphBaseModel):
-        graph_names = list(model.get_input_spec())
+            component_graph_names = cgn
+    elif isinstance(model, MultiGraphWorkbenchModel):
+        graph_names = model.graph_names
 
     _stash_component_graph_names(
         model_id, components, graph_names, component_graph_names
@@ -1009,7 +1011,7 @@ def profile_via_export(
         | MultiGraphComponentGroup[hub.ProfileJob],
     ],
     model_id: str,
-    model: CollectionModel | BaseModel,
+    model: PretrainedCollectionModel | MultiGraphCollectionModel | BaseModel,
     precision: Precision,
     scorecard_path: ScorecardProfilePath,
     device: ScorecardDevice,
@@ -1093,7 +1095,7 @@ def inference_via_export(
         | MultiGraphComponentGroup[hub.InferenceJob],
     ],
     model_id: str,
-    model: CollectionModel | BaseModel,
+    model: PretrainedCollectionModel | MultiGraphCollectionModel | BaseModel,
     precision: Precision,
     scorecard_path: ScorecardProfilePath,
     device: ScorecardDevice,
@@ -1257,9 +1259,7 @@ def export_test_e2e(
             mock.MagicMock(return_value=mock.MagicMock(spec=hub.Model)),
         )
     )
-    if issubclass(
-        model_cls, (PretrainedCollectionModel, MultiGraphPretrainedCollectionModel)
-    ):
+    if issubclass(model_cls, (PretrainedCollectionModel, MultiGraphCollectionModel)):
         mocks.extend(
             mock.patch.object(
                 component_cls,

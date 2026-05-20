@@ -17,11 +17,9 @@ from onnx import save_model as save_onnx_model
 from packaging.version import Version
 
 from qai_hub_models.evaluators.base_evaluators import _DataLoader
-from qai_hub_models.models.protocols import (
-    PretrainedHubModelProtocol,
-    QuantizableModelProtocol,
-)
+from qai_hub_models.models.protocols import AIMETQuantizableModelProtocol
 from qai_hub_models.utils.asset_loaders import qaihm_temp_dir
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.input_spec import InputSpec, make_torch_inputs
 from qai_hub_models.utils.onnx.helpers import (
     safe_torch_onnx_export,
@@ -72,7 +70,7 @@ def zip_aimet_model(
         )
 
 
-class AimetEncodingLoaderMixin(PretrainedHubModelProtocol, QuantizableModelProtocol):
+class AimetEncodingLoaderMixin(AIMETQuantizableModelProtocol):
     """
     Mixin that fakes Torch->ONNX export with encodings similar to AIMET
       - Export Torch model to ONNX and load pre-computed encodings
@@ -82,6 +80,10 @@ class AimetEncodingLoaderMixin(PretrainedHubModelProtocol, QuantizableModelProto
         super().__init__()
         self.model = model
         self.aimet_encodings = aimet_encodings
+        if not isinstance(self, WorkbenchModel):
+            raise TypeError(
+                "AimetEncodingLoaderMixin can only be used with BaseModel subclasses"
+            )
 
     def quantize(
         self,
@@ -111,6 +113,7 @@ class AimetEncodingLoaderMixin(PretrainedHubModelProtocol, QuantizableModelProto
         if model_name is None:
             model_name = self.__class__.__name__
         if not input_spec:
+            assert isinstance(self, WorkbenchModel)
             input_spec = self.get_input_spec()
 
         os.makedirs(output_dir, exist_ok=True)

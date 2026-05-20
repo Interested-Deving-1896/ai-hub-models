@@ -11,9 +11,9 @@ from qai_hub_models.utils.base_app import CollectionAppProtocol
 from qai_hub_models.utils.base_model import (
     BaseModel,
     CollectionModel,
-    MultiGraphPretrainedCollectionModel,
     PretrainedCollectionModel,
 )
+from qai_hub_models.utils.base_multi_graph_model import MultiGraphCollectionModel
 from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
 
 
@@ -69,7 +69,7 @@ def validate_io_names(instance: BaseModel) -> list[str]:
 
 
 def validate_io_names_collection(
-    model: PretrainedCollectionModel | MultiGraphPretrainedCollectionModel,
+    model: PretrainedCollectionModel | MultiGraphCollectionModel,
 ) -> list[str]:
     """
     Run I/O name validation on each component of a collection model.
@@ -180,7 +180,9 @@ def validate_calibration_dataset_collection(
     return []
 
 
-def validate_eval_datasets(model: BaseModel | CollectionModel) -> list[str]:
+def validate_eval_datasets(
+    model: BaseModel | PretrainedCollectionModel | MultiGraphCollectionModel,
+) -> list[str]:
     """
     Validate that all names returned by eval_datasets() are registered.
 
@@ -302,7 +304,7 @@ def _component_precision_implemented(component: BaseModel) -> bool:
 
 
 def validate_component_precision(
-    model: CollectionModel,
+    model: PretrainedCollectionModel | MultiGraphCollectionModel,
     code_gen: QAIHMModelCodeGen,
 ) -> list[str]:
     """
@@ -356,9 +358,7 @@ def validate_component_precision(
 
 
 def perform_runtime_model_validation(
-    model_cls: type[
-        BaseModel | PretrainedCollectionModel | MultiGraphPretrainedCollectionModel
-    ],
+    model_cls: type[BaseModel | PretrainedCollectionModel | MultiGraphCollectionModel],
     model_id: str,
     app_cls: type | None = None,
 ) -> None:
@@ -389,7 +389,7 @@ def perform_runtime_model_validation(
     errors: list[str] = []
 
     model = model_cls.from_pretrained()
-    if isinstance(model, CollectionModel):
+    if isinstance(model, (CollectionModel, MultiGraphCollectionModel)):
         errors.extend(validate_io_names_collection(model))
         errors.extend(validate_calibration_dataset_collection(code_gen, app_cls))
         errors.extend(validate_component_precision(model, code_gen))

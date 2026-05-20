@@ -22,7 +22,7 @@ import torch
 from qai_hub.client import Device
 from qai_hub.public_rest_api import DatasetEntries
 
-from qai_hub_models.models.common import Precision, TargetRuntime
+from qai_hub_models.models.common import Precision, QAIRTVersion, TargetRuntime
 from qai_hub_models.utils.asset_loaders import qaihm_temp_dir
 from qai_hub_models.utils.export_result import (
     ComponentGroup,
@@ -515,3 +515,90 @@ def assert_success_and_get_target_models(  # type: ignore[misc]
     target_model = jobs.get_target_model()
     assert target_model is not None, f"Job failed: {jobs.url}"
     return target_model
+
+
+def build_quantize_options(
+    precision: Precision,
+    litemp_percentage: float | None = None,
+    other_quantize_options: str = "",
+) -> str:
+    all_options = other_quantize_options
+    precision_options = precision.get_hub_quantize_options(litemp_percentage)
+    if all_options and precision_options:
+        all_options += " "
+    all_options += precision_options
+    return all_options
+
+
+def build_compile_options(
+    target_runtime: TargetRuntime,
+    precision: Precision,
+    output_names: list[str],
+    channel_last_inputs: list[str],
+    channel_last_outputs: list[str],
+    context_graph_name: str | None = None,
+    other_compile_options: str = "",
+) -> str:
+    compile_options = ""
+    if "--target_runtime" not in other_compile_options:
+        compile_options = target_runtime.aihub_target_runtime_flag
+    if (
+        QAIRTVersion.HUB_FLAG not in other_compile_options
+        and target_runtime.qairt_version_changes_compilation
+    ):
+        compile_options += f" {target_runtime.default_qairt_version.hub_option}"
+
+    compile_options += f" --output_names {','.join(output_names)}"
+
+    if target_runtime != TargetRuntime.ONNX:
+        if channel_last_inputs:
+            compile_options += (
+                f" --force_channel_last_input {','.join(channel_last_inputs)}"
+            )
+        if channel_last_outputs:
+            compile_options += (
+                f" --force_channel_last_output {','.join(channel_last_outputs)}"
+            )
+
+    if precision.activations_type is not None:
+        compile_options += " --quantize_io"
+        if target_runtime == TargetRuntime.TFLITE:
+            compile_options += " --quantize_io_type uint8"
+
+    if target_runtime.is_aot_compiled:
+        assert context_graph_name is not None, (
+            f"Must specify a context_graph_name to compile for runtime {target_runtime.value}."
+        )
+        compile_options += f" --qnn_options context_enable_graphs={context_graph_name}"
+
+    if other_compile_options:
+        compile_options += " " + other_compile_options
+
+    return compile_options
+
+
+def build_link_options(
+    target_runtime: TargetRuntime,
+    other_link_options: str = "",
+) -> str:
+    if QAIRTVersion.HUB_FLAG not in other_link_options:
+        other_link_options += f" {target_runtime.default_qairt_version.hub_option}"
+    return other_link_options
+
+
+def build_profile_options(
+    target_runtime: TargetRuntime,
+    context_graph_name: str | None = None,
+    other_profile_options: str = "",
+) -> str:
+    if QAIRTVersion.HUB_FLAG not in other_profile_options:
+        other_profile_options += f" {target_runtime.default_qairt_version.hub_option}"
+    if context_graph_name is not None:
+        if not target_runtime.is_aot_compiled:
+            raise ValueError(
+                "Cannot specify a context binary graph name if the target is not precompiled QAIRT."
+            )
+        other_profile_options += (
+            f" --qnn_options context_enable_graphs={context_graph_name}"
+        )
+    return other_profile_options

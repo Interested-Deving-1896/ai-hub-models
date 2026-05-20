@@ -442,12 +442,14 @@ def export_model(
     model = Model.from_pretrained(
         **get_model_kwargs(Model, dict(**additional_model_kwargs, precision=precision))
     )
-    input_specs: dict[str, InputSpec] = {
-        name: model.components[name].get_input_spec(
-            **get_component_input_spec_kwargs(Model, name, additional_model_kwargs)
-        )
-        for name in components
-    }
+    input_specs: ComponentGroup[InputSpec] = ComponentGroup(
+        {
+            name: model.components[name].get_input_spec(
+                **get_component_input_spec_kwargs(Model, name, additional_model_kwargs)
+            )
+            for name in components
+        }
+    )
 
     # 2. Converts the PyTorch model to ONNX and quantizes the ONNX model.
     quantize_jobs: ComponentGroup[hub.client.QuantizeJob] | None = None
