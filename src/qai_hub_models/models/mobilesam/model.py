@@ -108,6 +108,37 @@ class MobileSAMDecoder(BaseModel):
         self.img_size = sam.image_encoder.img_size
         self.return_single_mask = return_single_mask
 
+    def _embed_points(
+        self, point_coords: torch.Tensor, point_labels: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Lifted from segment_anything.utils.onnx.SamOnnxModel
+
+        Modified to cast the boolean factors to the proper type first (see factor =)
+        This allows torch.onnx.export to pass on this model
+        """
+        point_coords = point_coords + 0.5
+        point_coords = point_coords / self.img_size
+        point_embedding = self.model.prompt_encoder.pe_layer._pe_encoding(point_coords)
+        point_labels = point_labels.unsqueeze(-1).expand_as(point_embedding)
+
+        factor = (point_labels != -1).to(point_embedding.dtype)
+        point_embedding = point_embedding * factor
+        factor = (point_labels == -1).to(point_embedding.dtype)
+        point_embedding = (
+            point_embedding
+            + self.model.prompt_encoder.not_a_point_embed.weight * factor
+        )
+
+        for i in range(self.model.prompt_encoder.num_point_embeddings):
+            factor = (point_labels == i).to(point_embedding.dtype)
+            point_embedding = (
+                point_embedding
+                + self.model.prompt_encoder.point_embeddings[i].weight * factor
+            )
+
+        return point_embedding
+
     def _embed_masks(self, input_mask: torch.Tensor | None) -> torch.Tensor:
         """
         Lifted from segment_anything.utils.onnx.SamOnnxModel
@@ -151,7 +182,7 @@ class MobileSAMDecoder(BaseModel):
             Mask scores. Shape [1, k]
             Note: k = number of points
         """
-        sparse_embedding = SamOnnxModel._embed_points(self, point_coords, point_labels)
+        sparse_embedding = self._embed_points(point_coords, point_labels)
         dense_embedding = self._embed_masks(mask_input)
 
         masks, scores = sam_decoder_predict_masks(
