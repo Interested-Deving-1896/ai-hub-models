@@ -23,6 +23,7 @@ from .utils.layer_cache import (
     attention_mask_input_names,
     cache_state_names,
     AttentionType,
+    _resolve_text_config,
 )
 
 
@@ -64,12 +65,10 @@ class LLM(ABC):
         )
 
         if small_model:
-            llm_config.num_hidden_layers = 2
-            if (
-                hasattr(llm_config, "layer_types")
-                and llm_config.layer_types is not None
-            ):
-                llm_config.layer_types = llm_config.layer_types[:2]
+            text_cfg = _resolve_text_config(llm_config)
+            text_cfg.num_hidden_layers = 2
+            if hasattr(text_cfg, "layer_types") and text_cfg.layer_types is not None:
+                text_cfg.layer_types = text_cfg.layer_types[:2]
 
         return AutoModelForCausalLM.from_pretrained(model_id, config=llm_config)
 
@@ -150,9 +149,11 @@ class LLM(ABC):
         """
         axes: dict[str, dict[int, str]] = {
             "input_ids": {1: "sequence_length"},
-            "attention_mask": {2: "sequence_length"},
             "position_ids": {1: "sequence_length"},
             "logits": {1: "sequence_length"},
+        } | {
+            name: {2: "sequence_length"}
+            for name in attention_mask_input_names(layer_cache_descriptors)
         }
         for desc in layer_cache_descriptors:
             i = desc.layer_idx
