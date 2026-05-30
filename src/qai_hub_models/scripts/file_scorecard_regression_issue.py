@@ -25,12 +25,21 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+
+# GitHub's hard limit on issue bodies is 65536 characters. Leave a small margin
+# so the truncation footer we may append still fits.
+MAX_ISSUE_BODY_LEN = 65000
+
+# AI Hub job IDs are short alphanumeric tokens. Anything else is rejected to
+# avoid markdown injection in the rendered issue body.
+_JOB_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 _env = Environment(
     loader=FileSystemLoader(TEMPLATES_DIR),
@@ -49,7 +58,7 @@ def _job_url(job_id: str, deployment: str = "workbench") -> str:
 
 def _job_link(job_id: str, deployment: str = "workbench") -> str:
     """Build a markdown link for a job ID, or N/A."""
-    if job_id == "null" or not job_id:
+    if job_id == "null" or not job_id or not _JOB_ID_RE.match(job_id):
         return "N/A"
     return f"[{job_id}]({_job_url(job_id, deployment)})"
 
@@ -72,6 +81,29 @@ def _linkify_job_ids(rows: list[dict], deployment: str = "workbench") -> list[di
     return result
 
 
+def _render(
+    today: str,
+    perf_regressions: list[dict],
+    numerics_regressions: list[dict],
+    run_url: str,
+    perf_diff_url: str,
+    numerics_diff_url: str,
+    perf_dropped: int = 0,
+    numerics_dropped: int = 0,
+) -> str:
+    template = _env.get_template("scorecard_regression_issue_template.j2")
+    return template.render(
+        today=today,
+        perf_regressions=perf_regressions,
+        numerics_regressions=numerics_regressions,
+        run_url=run_url,
+        perf_diff_url=perf_diff_url,
+        numerics_diff_url=numerics_diff_url,
+        perf_dropped=perf_dropped,
+        numerics_dropped=numerics_dropped,
+    )
+
+
 def build_issue_body(
     perf_regressions: list[dict],
     numerics_regressions: list[dict],
@@ -80,17 +112,49 @@ def build_issue_body(
     numerics_diff_url: str,
     deployment: str = "workbench",
 ) -> str:
-    """Build the GitHub issue body with regression tables."""
+    """Build the GitHub issue body with regression tables.
+
+    GitHub rejects issue bodies longer than 65536 characters. If the rendered
+    body would exceed that, drop rows from the largest table first until it
+    fits, and append a note pointing readers to the linked diff artifacts for
+    the full list.
+    """
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    template = _env.get_template("scorecard_regression_issue_template.j2")
-    return template.render(
-        today=today,
-        perf_regressions=_linkify_job_ids(perf_regressions, deployment),
-        numerics_regressions=numerics_regressions,
-        run_url=run_url,
-        perf_diff_url=perf_diff_url,
-        numerics_diff_url=numerics_diff_url,
-    )
+    perf = _linkify_job_ids(perf_regressions, deployment)
+    numerics = list(numerics_regressions)
+
+    body = _render(today, perf, numerics, run_url, perf_diff_url, numerics_diff_url)
+    perf_dropped = numerics_dropped = 0
+    while len(body) > MAX_ISSUE_BODY_LEN and (perf or numerics):
+        # Bulk-drop based on current overage so we don't re-render once per row.
+        total_rows = len(perf) + len(numerics)
+        chars_per_row = max(1, len(body) // max(total_rows, 1))
+        rows_to_drop = max(1, (len(body) - MAX_ISSUE_BODY_LEN) // chars_per_row)
+        for _ in range(rows_to_drop):
+            if not perf and not numerics:
+                break
+            # Drop from whichever table currently has more rows; ties go to perf.
+            if len(perf) >= len(numerics) and perf:
+                perf.pop()
+                perf_dropped += 1
+            elif numerics:
+                numerics.pop()
+                numerics_dropped += 1
+        body = _render(
+            today,
+            perf,
+            numerics,
+            run_url,
+            perf_diff_url,
+            numerics_diff_url,
+            perf_dropped=perf_dropped,
+            numerics_dropped=numerics_dropped,
+        )
+    # Defensive hard cap: if the template's fixed overhead alone (headers,
+    # URLs, footers) exceeds the limit, GitHub would still 422 us. Truncate.
+    if len(body) > MAX_ISSUE_BODY_LEN:
+        body = body[: MAX_ISSUE_BODY_LEN - 3] + "..."
+    return body
 
 
 def _resolve_glob(pattern: str) -> str | None:

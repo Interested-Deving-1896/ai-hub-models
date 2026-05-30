@@ -10,6 +10,7 @@ from unittest import mock
 
 from qai_hub_models.scripts import file_scorecard_regression_issue as mod
 from qai_hub_models.scripts.file_scorecard_regression_issue import (
+    MAX_ISSUE_BODY_LEN,
     build_issue_body,
 )
 
@@ -83,6 +84,60 @@ def test_build_issue_body() -> None:
     assert "yolov8_det" in body
     # Links section
     assert "[Scorecard Run](https://run)" in body
+
+
+def test_build_issue_body_truncates_to_github_limit() -> None:
+    """A huge regression list must be trimmed to fit GitHub's 65536-char limit."""
+    # ~5000 rows is well over the issue body limit when rendered as a markdown table.
+    huge_perf = [{**PERF_REGRESSIONS[0], "Model ID": f"model_{i}"} for i in range(5000)]
+
+    body = build_issue_body(
+        huge_perf,
+        [],
+        "https://run",
+        "https://perf",
+        "https://num",
+    )
+
+    assert len(body) <= MAX_ISSUE_BODY_LEN
+    # Some rows are kept and the truncation footer is present.
+    assert "model_0" in body
+    assert "more performance regression(s) omitted" in body
+    assert "[Performance Diff](https://perf)" in body
+
+
+def test_build_issue_body_truncates_numerics_table() -> None:
+    """Truncation drops from the numerics table when it is the larger one."""
+    huge_numerics = [
+        {**NUMERICS_REGRESSIONS[0], "Model ID": f"model_{i}"} for i in range(5000)
+    ]
+    body = build_issue_body(
+        PERF_REGRESSIONS,  # small
+        huge_numerics,
+        "https://run",
+        "https://perf",
+        "https://num",
+    )
+    assert len(body) <= MAX_ISSUE_BODY_LEN
+    assert "more numerics regression(s) omitted" in body
+    assert "[Numerics Diff](https://num)" in body
+
+
+def test_build_issue_body_rejects_malformed_job_ids() -> None:
+    """Job IDs that don't match the expected format are not linkified."""
+    bad_row = {
+        **PERF_REGRESSIONS[0],
+        "Job ID (prod)": "abc](javascript:alert(1)",
+    }
+    body = build_issue_body(
+        [bad_row],
+        [],
+        "https://run",
+        "https://perf",
+        "https://num",
+    )
+    assert "javascript:" not in body
+    assert "alert(1)" not in body
 
 
 def test_main_writes_output(tmp_path: Path) -> None:

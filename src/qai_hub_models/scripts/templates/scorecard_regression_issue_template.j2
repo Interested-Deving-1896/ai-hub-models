@@ -16,6 +16,9 @@ Date: {{ today }}
 | {% for val in r.values() %}{{ val }} | {% endfor %}
 
 {% endfor %}
+{% if perf_dropped %}
+_…and {{ perf_dropped }} more performance regression(s) omitted to fit GitHub's issue body size limit. See the [Performance Diff]({{ perf_diff_url }}) artifact for the full list._
+{% endif %}
 {% endif %}
 {% if numerics_regressions %}
 ## Numerics Regressions
@@ -28,6 +31,9 @@ Date: {{ today }}
 | {% for val in r.values() %}{{ val }} | {% endfor %}
 
 {% endfor %}
+{% if numerics_dropped %}
+_…and {{ numerics_dropped }} more numerics regression(s) omitted to fit GitHub's issue body size limit. See the [Numerics Diff]({{ numerics_diff_url }}) artifact for the full list._
+{% endif %}
 {% endif %}
 ## Links
 - [Scorecard Run]({{ run_url }})
