@@ -5,15 +5,13 @@
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import torch
 from transformers import AutoModelForDepthEstimation
 from typing_extensions import Self
 
 from qai_hub_models import Precision
 from qai_hub_models.models._shared.depth_estimation.model import DepthEstimationModel
+from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 from qai_hub_models.utils.input_spec import (
     ColorFormat,
@@ -21,7 +19,6 @@ from qai_hub_models.utils.input_spec import (
     InputSpec,
     IoType,
     TensorSpec,
-    make_torch_inputs,
 )
 
 MODEL_ID = __name__.split(".")[-2]
@@ -31,6 +28,11 @@ DEFAULT_WEIGHTS = "LiheYoung/depth-anything-small-hf"
 
 class DepthAnything(DepthEstimationModel):
     """Exportable DepthAnything Depth Estimation, end-to-end."""
+
+    def __init__(self, model: torch.nn.Module | None = None) -> None:
+        super().__init__(
+            model=model, serialization_settings=SerializationSettings(use_pt2=True)
+        )
 
     @classmethod
     def from_pretrained(cls, ckpt: str = DEFAULT_WEIGHTS) -> Self:
@@ -79,19 +81,6 @@ class DepthAnything(DepthEstimationModel):
                 ),
             ),
         }
-
-    def serialize(
-        self,
-        output_dir: str | os.PathLike,
-        input_spec: InputSpec | None = None,
-    ) -> Path:
-        input_spec = input_spec or self.get_input_spec()
-        output_path = Path(output_dir) / f"{self.name}.pt2"
-        self.to("cpu").eval()
-        with torch.no_grad():
-            exported = torch.export.export(self, tuple(make_torch_inputs(input_spec)))
-        torch.export.save(exported, output_path)
-        return output_path
 
     def get_hub_quantize_options(
         self, precision: Precision, other_options: str | None = None
