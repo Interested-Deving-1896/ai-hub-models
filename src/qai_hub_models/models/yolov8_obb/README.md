@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [YOLOv8-OBB: Real-time oriented object detection optimized for mobile and edge by Ultralytics](https://aihub.qualcomm.com/models/yolov8_obb)
 
 Ultralytics YOLOv8-OBB is a machine learning model that predicts oriented bounding boxes (OBB) and classes of objects in an image. It is designed for detecting objects that are not axis-aligned, such as aerial imagery or tilted text.

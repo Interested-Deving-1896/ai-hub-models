@@ -85,18 +85,37 @@ def sorted_devices(devices: set[ScorecardDevice]) -> list[ScorecardDevice]:
 __CHIP_SUPPORTED_DEVICES_CACHE: dict[str, set[ScorecardDevice]] = {}
 
 
+# Hub stores some chipsets under multiple names that all sanitize to the same
+# canonical form. ``perf.supported_chipsets`` holds the canonical (sanitized)
+# name, but Hub's ``chipset:<name>`` attribute query only matches the exact
+# variant — so an unsanitized variant must also be queried to find every
+# device. Add an entry here when a sanitized chipset has hidden variants.
+_CHIPSET_QUERY_ALIASES: dict[str, list[str]] = {
+    "qualcomm-snapdragon-8-elite": [
+        "qualcomm-snapdragon-8-elite",
+        "qualcomm-snapdragon-8-elite-for-galaxy",
+    ],
+}
+
+
 def get_supported_devices(chips: set[str]) -> list[ScorecardDevice]:
     """Return all the supported devices given the chipset being used."""
     supported_devices: set[ScorecardDevice] = set()
 
+    # Normalize each input chipset to its sanitized form before alias lookup,
+    # so callers can pass in either the sanitized name (``qualcomm-snapdragon-8-elite``)
+    # or an un-sanitized variant (``qualcomm-snapdragon-8-elite-for-galaxy``)
+    # and get the same set of devices back.
     for chip in chips:
-        if chip not in __CHIP_SUPPORTED_DEVICES_CACHE:
-            __CHIP_SUPPORTED_DEVICES_CACHE[chip] = {
-                ScorecardDevice.get(device.name, return_unregistered=True)
-                for device in hub.get_devices(attributes=f"chipset:{chip}")
-                if "(Family)" not in device.name
-                and device.name
-                != "Snapdragon 8 Gen 3 QRD"  # this is not available to all users
-            }
-        supported_devices.update(__CHIP_SUPPORTED_DEVICES_CACHE[chip])
+        canonical = sanitize_chipset_name(chip)
+        for query_chip in _CHIPSET_QUERY_ALIASES.get(canonical, [chip]):
+            if query_chip not in __CHIP_SUPPORTED_DEVICES_CACHE:
+                __CHIP_SUPPORTED_DEVICES_CACHE[query_chip] = {
+                    ScorecardDevice.get(device.name, return_unregistered=True)
+                    for device in hub.get_devices(attributes=f"chipset:{query_chip}")
+                    if "(Family)" not in device.name
+                    and device.name
+                    != "Snapdragon 8 Gen 3 QRD"  # this is not available to all users
+                }
+            supported_devices.update(__CHIP_SUPPORTED_DEVICES_CACHE[query_chip])
     return sorted_devices(supported_devices)

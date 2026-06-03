@@ -91,13 +91,16 @@ class CenternetPoseEvaluator(CocoBodyPoseEvaluator):
 
             image_ids
                 Tensor (int) of COCO image IDs [batch].
+            category_ids
+                Tensor (int) of COCO category IDs [batch]. Unused — predictions
+                hard-code category_id=1 (person).
             centers
                 Tensor (float) of bounding box centers [batch, 2].
             scales
                 Tensor (float) of scale factors [batch, 2].
         """
         hm, wh, hps, reg, hm_hp, hm_offset = output
-        image_ids, centers, scales = gt
+        image_ids, _category_ids, centers, scales = gt
 
         dets_pt = self.decode(hm, wh, hps, reg, hm_hp, hm_offset, self.max_dets)
         dets = dets_pt.detach().cpu().numpy()  # [B, max_dets, 40]

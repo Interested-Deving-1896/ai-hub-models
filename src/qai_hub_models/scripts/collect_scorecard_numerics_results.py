@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from qai_hub_models.configs.devices_and_chipsets_yaml import load_similar_devices
 from qai_hub_models.configs.info_yaml import QAIHMModelInfo
 from qai_hub_models.configs.numerics_yaml import QAIHMModelNumerics
 from qai_hub_models.configs.perf_yaml import QAIHMModelPerf
@@ -138,6 +139,7 @@ def main() -> None:
                         perf=QAIHMModelPerf.from_model(model_id, not_exists_ok=True),
                         failure_reason=model_info.code_gen_config.disabled_paths,
                     )
+                    perf.apply_similar_devices(load_similar_devices())
                     perf.to_model_yaml(model_id)
 
                     # Un-publish or re-publish the model if needed by updating info.yaml.

@@ -1213,6 +1213,32 @@ def inference_via_export(
     cache.to_file()
 
 
+def _all_cached_profile_jobs_succeeded(test_params: ScExportTestParams) -> bool:
+    """
+    True iff every profile job that should exist for these test params is
+    cached and succeeded. Used by export_test_e2e to decide whether to patch
+    in cached profile jobs vs. skip profiling and still upload the release
+    asset.
+
+    Returns False (do not patch) when the profile YAML is missing entirely,
+    when any profile job entry is absent for this (model, precision, device,
+    runtime), or when any cached job is still running / failed.
+    """
+    if not ScorecardArtifact.PROFILE_YAML.exists():
+        return False
+    yaml = ProfileScorecardJobYaml.from_test_artifacts()
+    try:
+        jobs = yaml.get_all_jobs(
+            test_params,
+            wait_for_job=False,
+            raise_if_not_successful=False,
+            raise_if_jobs_are_missing=False,
+        )
+    except Exception:
+        return False
+    return bool(jobs) and all(j is not None and j.success for j in jobs.values())
+
+
 def export_test_e2e(
     export_model: ExportFunc,
     model_cls: type[BaseModel | CollectionModel],
@@ -1264,8 +1290,12 @@ def export_test_e2e(
         component_graph_names,
     )
 
-    # Some scorecards will run without the profiling step.
-    has_cached_profile_jobs = ScorecardArtifact.PROFILE_YAML.exists()
+    # Profile is a best-effort prerequisite: if every profile job for this
+    # specific (model, precision, device, runtime) exists and succeeded,
+    # patch them in so the export script's profile call returns the cached
+    # job. Otherwise skip profiling entirely so we still upload the release
+    # asset (compile artifacts) for this path.
+    has_cached_profile_jobs = _all_cached_profile_jobs_succeeded(test_params)
 
     # Patch previous jobs
     (
@@ -1371,7 +1401,16 @@ def export_test_e2e(
             )
         )
 
-    # Test export script end to end
+    # Test export script end to end.
+    #
+    # Capture any exception raised during the export call so we can still
+    # upload the asset to S3 and record it in release-assets.yaml when the
+    # export returned a download_path before raising (e.g. a post-download
+    # check failed). We re-raise after the upload so the test runner sees
+    # the failure. If the export raised without producing a download_path
+    # we fail immediately.
+    export_error: Exception | None = None
+    result = None
     with (
         device_patch,
         calibration_data_patch,
@@ -1382,55 +1421,70 @@ def export_test_e2e(
         tempfile.TemporaryDirectory() as tmpdir,
         mock.patch("qai_hub.upload_model", return_value=None),
     ):
-        with contextlib.ExitStack() as stack:
-            for m in mocks:
-                stack.enter_context(m)
-            result = export_model(
-                device=device.execution_device,
-                precision=precision,
-                target_runtime=scorecard_path.runtime,
-                compile_options=scorecard_path.compile_path.get_compile_options(),
-                profile_options=scorecard_path.get_profile_options(),
-                skip_profiling=not has_cached_profile_jobs,
-                skip_inferencing=True,
-                output_dir=tmpdir,
-                zip_assets=True,
-            )
+        try:
+            with contextlib.ExitStack() as stack:
+                for m in mocks:
+                    stack.enter_context(m)
+                result = export_model(
+                    device=device.execution_device,
+                    precision=precision,
+                    target_runtime=scorecard_path.runtime,
+                    compile_options=scorecard_path.compile_path.get_compile_options(),
+                    profile_options=scorecard_path.get_profile_options(),
+                    skip_profiling=not has_cached_profile_jobs,
+                    skip_inferencing=True,
+                    output_dir=tmpdir,
+                    zip_assets=True,
+                )
+        except Exception as e:
+            export_error = e
 
-        assert result.download_path is not None
+        if result is None or result.download_path is None:
+            if export_error is not None:
+                raise export_error
+            raise RuntimeError(
+                f"Export for {model_id} returned no download_path "
+                f"(precision={precision}, runtime={scorecard_path.runtime}, "
+                f"device={device})."
+            )
+        download_path: Path = result.download_path
+        assert result.tool_versions is not None
+        tool_versions: ToolVersions = result.tool_versions
 
         if upload_to_s3:
             assert s3_bucket is not None  # mypy
             assets_cache = ScorecardAssetYaml.from_yaml(
                 ScorecardArtifact.RELEASE_ASSETS.path, create_empty_if_no_file=True
             )
-            if assets_cache.get_asset(
-                model_id,
-                precision,
-                device if scorecard_path.runtime.is_aot_compiled else cs_universal,
-                scorecard_path,
-            ):
-                # Asset for this runtime (device agnostic) or runtime + chipset exists already.
-                return
-
-            s3_key = str(S3ArtifactsDirEnvvar.get() / result.download_path.name)
-
-            s3_multipart_upload(
-                bucket=s3_bucket,
-                key=s3_key,
-                local_file_path=result.download_path,
+            already_cached = (
+                assets_cache.get_asset(
+                    model_id,
+                    precision,
+                    device if scorecard_path.runtime.is_aot_compiled else cs_universal,
+                    scorecard_path,
+                )
+                is not None
             )
+            if not already_cached:
+                s3_key = str(S3ArtifactsDirEnvvar.get() / download_path.name)
+                s3_multipart_upload(
+                    bucket=s3_bucket,
+                    key=s3_key,
+                    local_file_path=download_path,
+                )
+                assets_cache.add_asset(
+                    QAIHMModelReleaseAssets.AssetDetails(
+                        s3_key=s3_key, tool_versions=tool_versions
+                    ),
+                    model_id,
+                    precision,
+                    device if scorecard_path.runtime.is_aot_compiled else cs_universal,
+                    scorecard_path,
+                )
+                assets_cache.to_yaml(ScorecardArtifact.RELEASE_ASSETS.path)
 
-            assets_cache.add_asset(
-                QAIHMModelReleaseAssets.AssetDetails(
-                    s3_key=s3_key, tool_versions=result.tool_versions
-                ),
-                model_id,
-                precision,
-                device if scorecard_path.runtime.is_aot_compiled else cs_universal,
-                scorecard_path,
-            )
-            assets_cache.to_yaml(ScorecardArtifact.RELEASE_ASSETS.path)
+        if export_error is not None:
+            raise export_error
 
 
 def on_device_inference_for_accuracy_validation(

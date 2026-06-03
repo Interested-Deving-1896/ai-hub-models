@@ -1,5 +1,5 @@
 metrics:
-- dataset_name: mpiigaze
+- dataset_name: mpii_gaze
   dataset_link: http://datasets.d2.mpi-inf.mpg.de/MPIIGaze/MPIIGaze.tar.gz
   dataset_split_description: evaluation subset
   metric_name: Mean Angular Error
@@ -8,16 +8,15 @@ metrics:
   metric_range:
     min: 0.0
   metric_enablement_threshold: 5.0
-  benchmark_value: 16.8
   num_partial_samples: 500
-  partial_torch_metric: 16.7
+  partial_torch_metric: 16.6
   device_metric:
     Samsung Galaxy S25:
       w8a16:
         qnn_dlc:
-          partial_metric: 12.1
+          partial_metric: 16.1
         onnx:
-          partial_metric: 12.1
+          partial_metric: 16.1
       float:
         tflite:
           partial_metric: 16.6

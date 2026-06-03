@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [PiperTTS-EN: High-quality text-to-speech library](https://aihub.qualcomm.com/models/pipertts_en)
 
 PiperTTS is a high-quality multi-lingual text-to-speech library.

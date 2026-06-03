@@ -19,7 +19,6 @@ from qai_hub_models.utils.args import (
     get_input_spec_kwargs,
     get_model_kwargs,
 )
-from qai_hub_models.utils.asset_loaders import UNPUBLISHED_MODEL_WARNING, query_yes_no
 from qai_hub_models.utils.evaluate import evaluate_on_dataset
 from qai_hub_models.utils.inference import compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec
@@ -27,9 +26,6 @@ from qai_hub_models.utils.input_spec import InputSpec
 
 def main() -> None:
     warnings.filterwarnings("ignore")
-    print("WARNING:", UNPUBLISHED_MODEL_WARNING)
-    if not query_yes_no("Continue?"):
-        return
     eval_dataset_classes = Model.get_eval_dataset_classes()
     supported_precision_runtimes: dict[Precision, list[TargetRuntime]] = {
         Precision.float: [

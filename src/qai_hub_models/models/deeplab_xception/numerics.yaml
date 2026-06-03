@@ -1,5 +1,5 @@
 metrics:
-- dataset_name: pascal_voc
+- dataset_name: voc_segmentation
   dataset_link: https://host.robots.ox.ac.uk/pascal/VOC/voc2012/
   dataset_split_description: validation split
   metric_name: Mean Intersection Over Union
@@ -9,7 +9,6 @@ metrics:
     min: 0.0
     max: 100.0
   metric_enablement_threshold: 10.0
-  benchmark_value: 88.4
   num_partial_samples: 400
   partial_torch_metric: 85.6
   device_metric:
@@ -23,7 +22,7 @@ metrics:
           partial_metric: 85.6
       w8a8:
         tflite:
-          partial_metric: 84.7
+          partial_metric: 84.5
         qnn_dlc:
           partial_metric: 84.8
         onnx:

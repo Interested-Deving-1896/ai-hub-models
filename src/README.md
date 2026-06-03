@@ -185,6 +185,8 @@ and many more.
 | [DDColor](https://aihub.qualcomm.com/models/ddcolor) | `qai_hub_models.models.ddcolor` |
 | [DnCNN](https://aihub.qualcomm.com/models/dncnn) | `qai_hub_models.models.dncnn` |
 | [LaMa-Dilated](https://aihub.qualcomm.com/models/lama_dilated) | `qai_hub_models.models.lama_dilated` |
+| [NAFNet-DeBlur](https://aihub.qualcomm.com/models/nafnet_deblur) | `qai_hub_models.models.nafnet_deblur` |
+| [NAFNet-DeNoise](https://aihub.qualcomm.com/models/nafnet_denoise) | `qai_hub_models.models.nafnet_denoise` |
 | | |
 | **Super Resolution**
 | [ESRGAN](https://aihub.qualcomm.com/models/esrgan) | `qai_hub_models.models.esrgan` |
@@ -211,6 +213,7 @@ and many more.
 | [FastSam-X](https://aihub.qualcomm.com/models/fastsam_x) | `qai_hub_models.models.fastsam_x` |
 | [HRNet-W48-OCR](https://aihub.qualcomm.com/models/hrnet_w48_ocr) | `qai_hub_models.models.hrnet_w48_ocr` |
 | [Mask2Former](https://aihub.qualcomm.com/models/mask2former) | `qai_hub_models.models.mask2former` |
+| [MaskRCNN](https://aihub.qualcomm.com/models/maskrcnn) | `qai_hub_models.models.maskrcnn` |
 | [MediaPipe-Selfie-Segmentation](https://aihub.qualcomm.com/models/mediapipe_selfie) | `qai_hub_models.models.mediapipe_selfie` |
 | [MobileSam](https://aihub.qualcomm.com/models/mobilesam) | `qai_hub_models.models.mobilesam` |
 | [PSPNet](https://aihub.qualcomm.com/models/pspnet) | `qai_hub_models.models.pspnet` |
@@ -262,6 +265,7 @@ and many more.
 | [YOLOv10-Detection](https://aihub.qualcomm.com/models/yolov10_det) | `qai_hub_models.models.yolov10_det` |
 | [YOLOv11-Detection](https://aihub.qualcomm.com/models/yolov11_det) | `qai_hub_models.models.yolov11_det` |
 | [YOLOv8-Detection](https://aihub.qualcomm.com/models/yolov8_det) | `qai_hub_models.models.yolov8_det` |
+| [YOLOv8-OBB](https://aihub.qualcomm.com/models/yolov8_obb) | `qai_hub_models.models.yolov8_obb` |
 | [YOLOv9-Detection](https://aihub.qualcomm.com/models/yolov9_det) | `qai_hub_models.models.yolov9_det` |
 | [Yolo-R](https://aihub.qualcomm.com/models/yolor) | `qai_hub_models.models.yolor` |
 | [Yolo-X](https://aihub.qualcomm.com/models/yolox) | `qai_hub_models.models.yolox` |
@@ -279,6 +283,7 @@ and many more.
 | [Posenet-Mobilenet](https://aihub.qualcomm.com/models/posenet_mobilenet) | `qai_hub_models.models.posenet_mobilenet` |
 | [RTMPose-Body2d](https://aihub.qualcomm.com/models/rtmpose_body2d) | `qai_hub_models.models.rtmpose_body2d` |
 | [SixDRepNet](https://aihub.qualcomm.com/models/sixd_repnet) | `qai_hub_models.models.sixd_repnet` |
+| [YOLOv11-Pose](https://aihub.qualcomm.com/models/yolov11_pose) | `qai_hub_models.models.yolov11_pose` |
 | | |
 | **Gaze Estimation**
 | [EyeGaze](https://aihub.qualcomm.com/models/eyegaze) | `qai_hub_models.models.eyegaze` |
@@ -330,6 +335,7 @@ and many more.
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | `qai_hub_models.models.whisper_large_v3_turbo` |
 | [Whisper-Medium](https://aihub.qualcomm.com/models/whisper_medium) | `qai_hub_models.models.whisper_medium` |
 | [Whisper-Small](https://aihub.qualcomm.com/models/whisper_small) | `qai_hub_models.models.whisper_small` |
+| [Whisper-Small-Quantized](https://aihub.qualcomm.com/models/whisper_small_quantized) | `qai_hub_models.models.whisper_small_quantized` |
 | [Whisper-Tiny](https://aihub.qualcomm.com/models/whisper_tiny) | `qai_hub_models.models.whisper_tiny` |
 | [Zipformer](https://aihub.qualcomm.com/models/zipformer) | `qai_hub_models.models.zipformer` |
 | | |
@@ -340,6 +346,9 @@ and many more.
 | [MeloTTS-EN](https://aihub.qualcomm.com/models/melotts_en) | `qai_hub_models.models.melotts_en` |
 | [MeloTTS-ES](https://aihub.qualcomm.com/models/melotts_es) | `qai_hub_models.models.melotts_es` |
 | [MeloTTS-ZH](https://aihub.qualcomm.com/models/melotts_zh) | `qai_hub_models.models.melotts_zh` |
+| [PiperTTS-DE](https://aihub.qualcomm.com/models/pipertts_de) | `qai_hub_models.models.pipertts_de` |
+| [PiperTTS-EN](https://aihub.qualcomm.com/models/pipertts_en) | `qai_hub_models.models.pipertts_en` |
+| [PiperTTS-IT](https://aihub.qualcomm.com/models/pipertts_it) | `qai_hub_models.models.pipertts_it` |
 
 ### Generative AI
 

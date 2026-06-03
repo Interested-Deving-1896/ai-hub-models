@@ -185,6 +185,8 @@ and many more.
 | [DDColor](https://aihub.qualcomm.com/models/ddcolor) | [qai_hub_models.models.ddcolor](src/qai_hub_models/models/ddcolor/README.md) |
 | [DnCNN](https://aihub.qualcomm.com/models/dncnn) | [qai_hub_models.models.dncnn](src/qai_hub_models/models/dncnn/README.md) |
 | [LaMa-Dilated](https://aihub.qualcomm.com/models/lama_dilated) | [qai_hub_models.models.lama_dilated](src/qai_hub_models/models/lama_dilated/README.md) |
+| [NAFNet-DeBlur](https://aihub.qualcomm.com/models/nafnet_deblur) | [qai_hub_models.models.nafnet_deblur](src/qai_hub_models/models/nafnet_deblur/README.md) |
+| [NAFNet-DeNoise](https://aihub.qualcomm.com/models/nafnet_denoise) | [qai_hub_models.models.nafnet_denoise](src/qai_hub_models/models/nafnet_denoise/README.md) |
 | | |
 | **Super Resolution**
 | [ESRGAN](https://aihub.qualcomm.com/models/esrgan) | [qai_hub_models.models.esrgan](src/qai_hub_models/models/esrgan/README.md) |
@@ -211,6 +213,7 @@ and many more.
 | [FastSam-X](https://aihub.qualcomm.com/models/fastsam_x) | [qai_hub_models.models.fastsam_x](src/qai_hub_models/models/fastsam_x/README.md) |
 | [HRNet-W48-OCR](https://aihub.qualcomm.com/models/hrnet_w48_ocr) | [qai_hub_models.models.hrnet_w48_ocr](src/qai_hub_models/models/hrnet_w48_ocr/README.md) |
 | [Mask2Former](https://aihub.qualcomm.com/models/mask2former) | [qai_hub_models.models.mask2former](src/qai_hub_models/models/mask2former/README.md) |
+| [MaskRCNN](https://aihub.qualcomm.com/models/maskrcnn) | [qai_hub_models.models.maskrcnn](src/qai_hub_models/models/maskrcnn/README.md) |
 | [MediaPipe-Selfie-Segmentation](https://aihub.qualcomm.com/models/mediapipe_selfie) | [qai_hub_models.models.mediapipe_selfie](src/qai_hub_models/models/mediapipe_selfie/README.md) |
 | [MobileSam](https://aihub.qualcomm.com/models/mobilesam) | [qai_hub_models.models.mobilesam](src/qai_hub_models/models/mobilesam/README.md) |
 | [PSPNet](https://aihub.qualcomm.com/models/pspnet) | [qai_hub_models.models.pspnet](src/qai_hub_models/models/pspnet/README.md) |
@@ -262,6 +265,7 @@ and many more.
 | [YOLOv10-Detection](https://aihub.qualcomm.com/models/yolov10_det) | [qai_hub_models.models.yolov10_det](src/qai_hub_models/models/yolov10_det/README.md) |
 | [YOLOv11-Detection](https://aihub.qualcomm.com/models/yolov11_det) | [qai_hub_models.models.yolov11_det](src/qai_hub_models/models/yolov11_det/README.md) |
 | [YOLOv8-Detection](https://aihub.qualcomm.com/models/yolov8_det) | [qai_hub_models.models.yolov8_det](src/qai_hub_models/models/yolov8_det/README.md) |
+| [YOLOv8-OBB](https://aihub.qualcomm.com/models/yolov8_obb) | [qai_hub_models.models.yolov8_obb](src/qai_hub_models/models/yolov8_obb/README.md) |
 | [YOLOv9-Detection](https://aihub.qualcomm.com/models/yolov9_det) | [qai_hub_models.models.yolov9_det](src/qai_hub_models/models/yolov9_det/README.md) |
 | [Yolo-R](https://aihub.qualcomm.com/models/yolor) | [qai_hub_models.models.yolor](src/qai_hub_models/models/yolor/README.md) |
 | [Yolo-X](https://aihub.qualcomm.com/models/yolox) | [qai_hub_models.models.yolox](src/qai_hub_models/models/yolox/README.md) |
@@ -279,6 +283,7 @@ and many more.
 | [Posenet-Mobilenet](https://aihub.qualcomm.com/models/posenet_mobilenet) | [qai_hub_models.models.posenet_mobilenet](src/qai_hub_models/models/posenet_mobilenet/README.md) |
 | [RTMPose-Body2d](https://aihub.qualcomm.com/models/rtmpose_body2d) | [qai_hub_models.models.rtmpose_body2d](src/qai_hub_models/models/rtmpose_body2d/README.md) |
 | [SixDRepNet](https://aihub.qualcomm.com/models/sixd_repnet) | [qai_hub_models.models.sixd_repnet](src/qai_hub_models/models/sixd_repnet/README.md) |
+| [YOLOv11-Pose](https://aihub.qualcomm.com/models/yolov11_pose) | [qai_hub_models.models.yolov11_pose](src/qai_hub_models/models/yolov11_pose/README.md) |
 | | |
 | **Gaze Estimation**
 | [EyeGaze](https://aihub.qualcomm.com/models/eyegaze) | [qai_hub_models.models.eyegaze](src/qai_hub_models/models/eyegaze/README.md) |
@@ -330,6 +335,7 @@ and many more.
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | [qai_hub_models.models.whisper_large_v3_turbo](src/qai_hub_models/models/whisper_large_v3_turbo/README.md) |
 | [Whisper-Medium](https://aihub.qualcomm.com/models/whisper_medium) | [qai_hub_models.models.whisper_medium](src/qai_hub_models/models/whisper_medium/README.md) |
 | [Whisper-Small](https://aihub.qualcomm.com/models/whisper_small) | [qai_hub_models.models.whisper_small](src/qai_hub_models/models/whisper_small/README.md) |
+| [Whisper-Small-Quantized](https://aihub.qualcomm.com/models/whisper_small_quantized) | [qai_hub_models.models.whisper_small_quantized](src/qai_hub_models/models/whisper_small_quantized/README.md) |
 | [Whisper-Tiny](https://aihub.qualcomm.com/models/whisper_tiny) | [qai_hub_models.models.whisper_tiny](src/qai_hub_models/models/whisper_tiny/README.md) |
 | [Zipformer](https://aihub.qualcomm.com/models/zipformer) | [qai_hub_models.models.zipformer](src/qai_hub_models/models/zipformer/README.md) |
 | | |
@@ -340,6 +346,9 @@ and many more.
 | [MeloTTS-EN](https://aihub.qualcomm.com/models/melotts_en) | [qai_hub_models.models.melotts_en](src/qai_hub_models/models/melotts_en/README.md) |
 | [MeloTTS-ES](https://aihub.qualcomm.com/models/melotts_es) | [qai_hub_models.models.melotts_es](src/qai_hub_models/models/melotts_es/README.md) |
 | [MeloTTS-ZH](https://aihub.qualcomm.com/models/melotts_zh) | [qai_hub_models.models.melotts_zh](src/qai_hub_models/models/melotts_zh/README.md) |
+| [PiperTTS-DE](https://aihub.qualcomm.com/models/pipertts_de) | [qai_hub_models.models.pipertts_de](src/qai_hub_models/models/pipertts_de/README.md) |
+| [PiperTTS-EN](https://aihub.qualcomm.com/models/pipertts_en) | [qai_hub_models.models.pipertts_en](src/qai_hub_models/models/pipertts_en/README.md) |
+| [PiperTTS-IT](https://aihub.qualcomm.com/models/pipertts_it) | [qai_hub_models.models.pipertts_it](src/qai_hub_models/models/pipertts_it/README.md) |
 
 ### Generative AI
 

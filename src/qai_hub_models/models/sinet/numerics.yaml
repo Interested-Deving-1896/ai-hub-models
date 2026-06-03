@@ -1,5 +1,5 @@
 metrics:
-- dataset_name: eg1800
+- dataset_name: eg1800_segmentation
   dataset_link: https://github.com/clovaai/ext_portrait_segmentation
   dataset_split_description: validation split
   metric_name: Mean Intersection Over Union
@@ -9,7 +9,6 @@ metrics:
     min: 0.0
     max: 100.0
   metric_enablement_threshold: 10.0
-  benchmark_value: 95.2
   num_partial_samples: 500
   partial_torch_metric: 93.3
   device_metric:
@@ -22,14 +21,12 @@ metrics:
         onnx:
           partial_metric: 93.3
       w8a8:
-        tflite:
-          partial_metric: 93.0
         qnn_dlc:
-          partial_metric: 93.1
+          partial_metric: 93.0
         onnx:
-          partial_metric: 93.1
+          partial_metric: 93.0
       w8a16:
         qnn_dlc:
-          partial_metric: 93.4
+          partial_metric: 93.3
         onnx:
           partial_metric: 93.4

@@ -1,5 +1,5 @@
 metrics:
-- dataset_name: cocobody
+- dataset_name: coco_body
   dataset_link: http://images.cocodataset.org/
   dataset_split_description: val2017 split
   metric_name: Mean Average Precision
@@ -9,7 +9,6 @@ metrics:
     min: 0.0
     max: 100.0
   metric_enablement_threshold: 10.0
-  benchmark_value: 74.4
   num_partial_samples: 1000
   partial_torch_metric: 81.2
   device_metric:
@@ -21,11 +20,11 @@ metrics:
           partial_metric: 80.8
       w8a8:
         tflite:
-          partial_metric: 80.2
+          partial_metric: 80.4
         qnn_dlc:
           partial_metric: 80.3
         onnx:
-          partial_metric: 80.6
+          partial_metric: 80.3
       float:
         tflite:
           partial_metric: 81.3

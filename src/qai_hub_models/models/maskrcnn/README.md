@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [MaskRCNN: Instance segmentation for object detection and masking](https://aihub.qualcomm.com/models/maskrcnn)
 
 Mask R-CNN is a machine learning model that extends Faster R-CNN to perform instance segmentation by detecting objects in an image while simultaneously generating a high-quality segmentation mask for each instance. It adds a branch for predicting segmentation masks in parallel with the existing branch for bounding box recognition.

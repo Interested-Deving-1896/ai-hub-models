@@ -109,10 +109,13 @@ class HfWhisperEncoder(BaseModel):
         return cls(cast(WhisperConfig, model.config), model.get_encoder())
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         if (
             target_runtime == TargetRuntime.TFLITE

@@ -1,5 +1,5 @@
 metrics:
-- dataset_name: ade20k
+- dataset_name: ade_segmentation
   dataset_link: https://ade20k.csail.mit.edu/
   dataset_split_description: validation split
   metric_name: Mean Intersection Over Union
@@ -9,7 +9,6 @@ metrics:
     min: 0.0
     max: 100.0
   metric_enablement_threshold: 10.0
-  benchmark_value: 29.1
   num_partial_samples: 100
   partial_torch_metric: 29.1
   device_metric:
@@ -23,9 +22,9 @@ metrics:
           partial_metric: 28.1
       w8a16:
         qnn_dlc:
-          partial_metric: 29.4
+          partial_metric: 29.2
         onnx:
-          partial_metric: 29.4
+          partial_metric: 29.2
       float:
         tflite:
           partial_metric: 29.1

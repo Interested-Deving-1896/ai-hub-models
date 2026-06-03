@@ -246,7 +246,7 @@ def export_model(
     skip_downloading: bool = False,
     skip_summary: bool = False,
     output_dir: str | None = None,
-    target_runtime: TargetRuntime = TargetRuntime.QNN_CONTEXT_BINARY,
+    target_runtime: TargetRuntime = TargetRuntime.TFLITE,
     compile_options: str = "",
     quantize_options: str = "",
     profile_options: str = "",
@@ -530,7 +530,17 @@ def main() -> None:
     warnings.filterwarnings("ignore")
     if not check_unpublished_model_warning():
         return
-    supported_precision_runtimes: dict[Precision, list[TargetRuntime]] = {}
+    supported_precision_runtimes: dict[Precision, list[TargetRuntime]] = {
+        Precision.float: [
+            TargetRuntime.TFLITE,
+            TargetRuntime.QNN_DLC,
+            TargetRuntime.QNN_CONTEXT_BINARY,
+            TargetRuntime.PRECOMPILED_QNN_ONNX,
+        ],
+        Precision.w8a16: [
+            TargetRuntime.ONNX,
+        ],
+    }
 
     parser = export_parser(
         model_cls=Model,

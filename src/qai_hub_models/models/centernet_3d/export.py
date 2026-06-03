@@ -530,7 +530,12 @@ def main() -> None:
     warnings.filterwarnings("ignore")
     if not check_unpublished_model_warning():
         return
-    supported_precision_runtimes: dict[Precision, list[TargetRuntime]] = {}
+    supported_precision_runtimes: dict[Precision, list[TargetRuntime]] = {
+        Precision.w8a16: [
+            TargetRuntime.QNN_CONTEXT_BINARY,
+            TargetRuntime.PRECOMPILED_QNN_ONNX,
+        ],
+    }
 
     parser = export_parser(
         model_cls=Model,
