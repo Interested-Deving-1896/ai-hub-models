@@ -16,7 +16,8 @@ start_group "Ubuntu install: update repositories"
     wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | run_as_root tee "$APT_GPG_FILE" > /dev/null
 
     APT_SOURCE_FILE=/etc/apt/sources.list.d/github-cli.list
-    echo "deb [arch=$(run_as_root dpkg --print-architecture) signed-by=$APT_GPG_FILE] https://cli.github.com/packages stable main" | run_as_root tee "$APT_SOURCE_FILE" > /dev/null
+    APT_ARCH=$(dpkg --print-architecture)
+    echo "deb [arch=$APT_ARCH signed-by=$APT_GPG_FILE] https://cli.github.com/packages stable main" | run_as_root tee "$APT_SOURCE_FILE" > /dev/null
 
     run_as_root apt-get update
 end_group
