@@ -30,6 +30,10 @@
         Whether to include generative AI usage limitations.
     additional_readme_section : str
         Additional content to include in the README.
+    voice_ai_compatible : bool
+        Whether the model is compatible with the Qualcomm Voice AI SDK.
+    voice_ai_url : str
+        URL to the Qualcomm Voice AI SDK download page.
     include_example_and_usage : bool
         Whether to include example and usage section.
     model_id : str, optional
@@ -69,6 +73,8 @@
     research_paper_url,
     include_gen_ai_terms,
     additional_readme_section,
+    voice_ai_compatible,
+    voice_ai_url,
     include_example_and_usage,
     model_id=None,
     model_package=None,
@@ -98,6 +104,12 @@
 {% if additional_readme_section %}
 
 {{ additional_readme_section }}
+{% endif %}
+{% if voice_ai_compatible %}
+
+## Deploying {{ model_name }} on-device
+
+This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from the [Qualcomm Package Manager]({{ voice_ai_url }}) to deploy this model on-device.
 {% endif %}
 {% if include_example_and_usage %}
 

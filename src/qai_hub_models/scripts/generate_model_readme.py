@@ -61,6 +61,8 @@ def get_shared_template_args(model_info: QAIHMModelInfo) -> dict[str, Any]:
         "license_url": model_info.license,
         # Flags
         "include_gen_ai_terms": model_info.is_gen_ai_model,
+        "voice_ai_compatible": model_info.voice_ai_compatible,
+        "voice_ai_url": ASSET_CONFIG.voice_ai_url,
     }
 
 

@@ -260,6 +260,9 @@ class QAIHMModelInfo(BaseQAIHMConfig):
     # Add per device, download, app and if the model is available for purchase.
     llm_details: LLMDetails | None = None
 
+    # Whether the model is compatible with the Qualcomm Voice AI SDK.
+    voice_ai_compatible: bool = False
+
     def to_proto(self, aihm_version: str) -> info_pb2.ModelInfo:
         technical_details = []
         for key, val in self.technical_details.items():
@@ -316,6 +319,7 @@ class QAIHMModelInfo(BaseQAIHMConfig):
                 form_factor_to_proto(ff)
                 for ff in (self.private_perf_form_factors or [])
             ],
+            voice_ai_compatible=self.voice_ai_compatible,
         )
 
     @model_validator(mode="after")

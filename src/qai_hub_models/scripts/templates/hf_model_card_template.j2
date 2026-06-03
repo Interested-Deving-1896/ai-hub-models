@@ -31,6 +31,10 @@
         Whether to include generative AI usage limitations.
     additional_readme_section : str
         Additional content to include in the README.
+    voice_ai_compatible : bool
+        Whether the model is compatible with the Qualcomm Voice AI SDK.
+    voice_ai_url : str
+        URL to the Qualcomm Voice AI SDK download page.
     hugging_face_metadata : str
         YAML metadata for Hugging Face model card.
     static_image : str
@@ -65,6 +69,8 @@
     research_paper_url,
     include_gen_ai_terms,
     additional_readme_section,
+    voice_ai_compatible,
+    voice_ai_url,
     hugging_face_metadata,
     static_image,
     qaihm_model_url,
@@ -91,6 +97,12 @@
 {% if additional_readme_section %}
 
 {{ additional_readme_section }}
+{%- endif %}
+{% if voice_ai_compatible %}
+
+## Deploying {{ model_name }} on-device
+
+This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from the [Qualcomm Package Manager]({{ voice_ai_url }}) to deploy this model on-device.
 {%- endif %}
 
 {{ getting_started(model_name, model_url, qaihm_model_url, download_links, is_precompiled, restrict_model_sharing, show_purchase_statement) }}
