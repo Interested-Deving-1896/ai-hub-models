@@ -92,6 +92,7 @@ ALL_COMPONENTS = Model.component_class_names
         ENABLED_PRECISION_RUNTIMES,
         PASSING_PRECISION_RUNTIMES,
         can_use_quantize_job=False,
+        is_llm=True,
     ),
     ids=pytest_device_idfn,
 )
@@ -122,6 +123,7 @@ def test_compile(
         ENABLED_PRECISION_RUNTIMES,
         PASSING_PRECISION_RUNTIMES,
         can_use_quantize_job=False,
+        is_llm=True,
     ),
     ids=pytest_device_idfn,
 )
@@ -208,6 +210,7 @@ def test_val_accuracy(
         PASSING_PRECISION_RUNTIMES,
         can_use_quantize_job=False,
         requires_aot_prepare=True,
+        is_llm=True,
     ),
     ids=pytest_device_idfn,
 )

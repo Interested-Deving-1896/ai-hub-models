@@ -1,6 +1,7 @@
 {% import 'common_template.j2' as common %}
 {% set has_skipped_runtime = not supports_tflite or not supports_qnn or not supports_onnx -%}
 {% set optional_s = "s" if is_collection_model else "" -%}
+{% set is_llm = (test_split.value == "llm") -%}
 {{ header }}
 
 from __future__ import annotations
@@ -142,7 +143,7 @@ def test_quantize(precision: Precision) -> None:
 ALL_COMPONENTS = Model.component_class_names
 {% endif %}
 
-@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_compile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}), ids=pytest_device_idfn)
+@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_compile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}{{ ", is_llm=True" if is_llm else ''}}), ids=pytest_device_idfn)
 @pytest.mark.compile
 def test_compile(precision: Precision, scorecard_path: ScorecardCompilePath, device: ScorecardDevice) -> None:
     skip_invalid_runtime_device(Model, scorecard_path.runtime, device)
@@ -166,7 +167,7 @@ def test_compile(precision: Precision, scorecard_path: ScorecardCompilePath, dev
     except CachedScorecardJobError as e:
         pytest.skip(str(e))
 
-@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_link_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}), ids=pytest_device_idfn)
+@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_link_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}{{ ", is_llm=True" if is_llm else ''}}), ids=pytest_device_idfn)
 @pytest.mark.link
 def test_link(precision: Precision, scorecard_path: ScorecardCompilePath, device: ScorecardDevice) -> None:
     skip_invalid_runtime_device(Model, scorecard_path.runtime, device)
@@ -187,7 +188,7 @@ def test_link(precision: Precision, scorecard_path: ScorecardCompilePath, device
         pytest.skip(str(e))
 
 {%- if not skip_profile_and_inference %}
-@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_profile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}), ids=pytest_device_idfn)
+@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_profile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}{{ ", is_llm=True" if is_llm else ''}}), ids=pytest_device_idfn)
 @pytest.mark.profile
 def test_profile(precision: Precision, scorecard_path: ScorecardProfilePath, device: ScorecardDevice) -> None:
     skip_invalid_runtime_device(Model, scorecard_path.runtime, device)
@@ -361,7 +362,7 @@ def test_val_accuracy(precision: Precision, scorecard_path: ScorecardProfilePath
         pytest.skip(str(e))
 
 
-@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_export_parameterized_pytest_config(MODEL_ID, EVAL_DEVICE, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES, {{ "can_use_quantize_job=False, " if not can_use_quantize_job else ''}}{{ "requires_aot_prepare=True, " if requires_aot_prepare else ''}}), ids=pytest_device_idfn)
+@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_export_parameterized_pytest_config(MODEL_ID, EVAL_DEVICE, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES, {{ "can_use_quantize_job=False, " if not can_use_quantize_job else ''}}{{ "requires_aot_prepare=True, " if requires_aot_prepare else ''}}{{ "is_llm=True, " if is_llm else ''}}), ids=pytest_device_idfn)
 @pytest.mark.export
 def test_export(precision: Precision, scorecard_path: ScorecardProfilePath, device: ScorecardDevice) -> None:
     skip_invalid_runtime_device(Model, scorecard_path.runtime, device)

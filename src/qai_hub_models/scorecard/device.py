@@ -486,10 +486,13 @@ class ScorecardDevice:
             or self.form_factor == ScorecardDevice.FormFactor.IOT
         ):
             inference_engines_to_test = list(InferenceEngine)
-        elif (
-            self.form_factor == ScorecardDevice.FormFactor.AUTO  # noqa: PLR1714 | Can't merge comparisons and use assert_never
-            or self.form_factor == ScorecardDevice.FormFactor.XR
-        ):
+        elif self.form_factor == ScorecardDevice.FormFactor.AUTO:
+            inference_engines_to_test = [
+                InferenceEngine.QNN,
+                InferenceEngine.TFLITE,
+                InferenceEngine.GENIE,
+            ]
+        elif self.form_factor == ScorecardDevice.FormFactor.XR:
             inference_engines_to_test = [InferenceEngine.QNN, InferenceEngine.TFLITE]
         elif self.form_factor == ScorecardDevice.FormFactor.COMPUTE:
             inference_engines_to_test = [
@@ -679,3 +682,20 @@ CANARY_DEVICES = {
     "Snapdragon X Elite CRD",
     "Dragonwing IQ-9075 EVK",
 }
+
+
+# Devices LLM models compile against by default (any precision).
+LLM_COMPILE_DEVICES = [
+    cs_9075,
+    cs_auto_lemans_8775,
+    cs_8_elite,
+    cs_8_elite_gen_5,
+    cs_x_elite,
+    cs_x2_elite,
+]
+
+# Extra devices LLM models compile against for w4 precision only,
+# in addition to LLM_COMPILE_DEVICES.
+LLM_W4FP16_COMPILE_DEVICES = [
+    cs_auto_makena_8295,
+]
