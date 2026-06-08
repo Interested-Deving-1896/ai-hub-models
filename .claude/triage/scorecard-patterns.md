@@ -42,6 +42,7 @@ Use alongside `error-patterns.md` and `runtime-guide.md` for triage.
 | Regression coincides with known Hub maintenance window | HIGH | Cloud Services |
 | Same model shows wildly different times across retries | MEDIUM | Cloud Services (device pool contention) |
 | All models on one device show ~same factor increase | HIGH | Cloud Services (throttled device) |
+| All entries on one device report `-inf` / no valid measurement + null Job IDs for subset | HIGH | Cloud Services / Scorecard infra (device pool unavailable or pipeline skipped submissions) |
 
 ---
 
@@ -92,7 +93,7 @@ Use alongside `error-patterns.md` and `runtime-guide.md` for triage.
 
 | Model | Device | Runtime | Notes |
 |-------|--------|---------|-------|
-| (initially empty) | | | |
+| `amt_torchscript` | All | `tflite`, `qnn_dlc` | Chronically flaky inference (5P/17F tflite, 12P/10F qnn_dlc over 22 nightlies). Replaced by `cdcn_torchscript` in integration test set (PR #3462, Jun 2026). |
 
 ---
 

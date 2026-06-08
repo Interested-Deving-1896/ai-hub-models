@@ -30,6 +30,8 @@ If the traceback points to our code, route to `ai-hub-models`.
 | "Install QAIHM[dev,<model>] (wheel) failed" | Model's `requirements.txt` | `ai-hub-models` | Dependency doesn't have wheels for the CI Python version or platform. Route to model owner. |
 | Codegen/template errors | `scripts/templates/*.j2` | `ai-hub-models` | Jinja template rendering failure in codegen. |
 | "Check for code-gen changes" pre-commit failure | `scripts/run_codegen.py` | `ai-hub-models` | Committed code-gen output is stale. Re-run `run_codegen.py` for the affected model. |
+| `NotImplementedError` at `base_model.py` in `component_precision()` | `utils/base_model.py` | `ai-hub-models` | Multi-component model missing `component_precision()` override. Fix: implement the method in the model class. |
+| "Mismatch between accuracy csv models" in scorecard integration test | `scorecard/static/scripts/validate_integration_test.py` | `ai-hub-models` | A model in the integration test set failed all inference jobs (no accuracy row). Check if the model is chronically flaky — may need replacement in the test set. |
 
 **Key principle:** If the stack trace is in `qai_hub_models/`, it's almost always `ai-hub-models` regardless of which runtime or compiler is mentioned in the error message.
 
