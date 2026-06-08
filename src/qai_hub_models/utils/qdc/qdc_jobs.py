@@ -4,7 +4,6 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-import os
 import random
 import time
 import uuid
@@ -48,7 +47,7 @@ HUB_DEVICE_TO_QDC_DEVICE_MAP = {
 
 QDC_REST_BASE_URL = "https://api.qualcomm.com/deviceloud/v1"
 # QDC job limit
-QDC_JOB_LIMIT = int(os.getenv("QDC_JOB_LIMIT", "1"))
+QDC_JOB_LIMIT = 3
 # Default timeout for job status polling (in seconds)
 DEFAULT_JOB_TIMEOUT = 7200  # 2 hours
 # Polling interval for job status checks (in seconds)
