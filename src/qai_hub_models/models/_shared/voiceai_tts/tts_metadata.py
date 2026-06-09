@@ -140,6 +140,7 @@ class TTSMetadata(BaseQAIHMConfig):
                 language_name=lang_name,
                 description=f"Default voice for {lang_name}",
                 capabilities=TTSCapabilities(),
+                speaking_rate=0.85 if language == TTSLanguage.ITALIAN else 1.0,
                 sample_rate=sample_rate,
                 language_code=LANG_ID_MAP[language],
             )
