@@ -32,6 +32,29 @@ jobs:
       deployment: prod
       is_pr: true
 
+  check-jira-title:
+    if: github.event_name == 'pull_request'
+    name: Check JIRA in PR Title
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Check JIRA in PR Title
+        env:
+          GH_TOKEN: ${{ secrets.STAGING_GH_TOKEN }}
+          GH_WRITE_TOKEN: ${{ github.token }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: scripts/ci/pr_jira_check.sh
+
   website-import-workflow:
     if: github.actor != 'dependabot[bot]'
     name: Test Website Import
