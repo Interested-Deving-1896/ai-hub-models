@@ -108,11 +108,18 @@ Throughout the session, stay within the boundaries defined by the permissions ab
 - **Inline Python**: **NEVER use `python3 -c "..."` with multi-line or quote-heavy code** — it confuses the Bash permission matcher and triggers repeated permission prompts. Instead, write the script to a file in `/tmp/claude/` and run it.
   - **Bad**: `python3 -c "import os\nprint(os.environ['FOO'])"` — permission matcher chokes on quotes
   - **Good**: Write to `/tmp/claude/check_env.py`, then run `python3 /tmp/claude/check_env.py`
-- **No command chaining**: Never use `&&`, `||`, `;`, pipes (`|`), or redirects (`>`, `>>`) in bash commands. Permission checks match on the first command and can be confused by chaining or redirects. Run each command as a separate Bash call.
-  - **Bad**: `git show HEAD:file.py > /tmp/claude/file.py` — redirect confuses permission check
+- **No command chaining**: Never use `&&`, `||`, `;`, or pipes (`|`) in bash commands. The permission matcher splits on these operators and rechecks each side, so a permitted command (e.g. `git status`) gets rejected when piped into something whose argument shape isn't allow-listed. Run each command as a separate Bash call. Redirects (`>`, `>>`) are fine — they don't trigger command splitting.
   - **Bad**: `gh api ... | python3 -c "..."` — pipe confuses permission check
-  - **Good**: `git show HEAD:file.py` — read output directly from tool result
+  - **Bad**: `cmd1 && cmd2` / `cmd1; cmd2` — same problem
+  - **Good**: `git show HEAD:file.py > /tmp/claude/file.py` — redirects are OK
   - **Good**: `gh api ... --jq '<filter>'` — use tool's own flags instead of piping
+  - **Good**: for sequences that genuinely need pipelining, write the whole pipeline to `/tmp/claude/<name>.sh` and run it with `bash /tmp/claude/<name>.sh`
+- **No filesystem-wide searches**: Never run `find`, `bfs`, `grep -r`, `rg`, or similar tools against the top level of `/`, `/afs`, or `/mnt/share`. These traverse every mountpoint or every cell of a shared filesystem, generating heavy load on file servers and possibly getting terminated by infrastructure admins. Subdirectories (e.g. `/afs/<specific-cell>`, `/mnt/share/<project>`) are fine.
+  - **Bad**: `find / -name qdc_api.py` — scans every mount under root
+  - **Bad**: `grep -r foo /afs` — walks every AFS cell
+  - **Good**: search a known subtree — `find . -name qdc_api.py` (the repo) or `find /afs/<specific-cell> -name ...`
+  - **Good**: locate an installed Python package via the interpreter — write `import pkg, os; print(os.path.dirname(pkg.__file__))` to `/tmp/claude/find_pkg.py`, then run `python3 /tmp/claude/find_pkg.py` (the inline-Python rule above forbids `python3 -c` with quote-heavy code)
+  - **Good**: locate venv contents via the venv path — `ls "${VENV:?}/lib/python*/site-packages/<pkg>/"` (the `:?` modifier errors immediately if `$VENV` is unset, preventing a silent fallback to a wide scan)
 
 ## Getting Started
 

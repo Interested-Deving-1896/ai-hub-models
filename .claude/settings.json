@@ -23,5 +23,18 @@
       "Edit(//tmp/claude/**)",
       "Write(//tmp/claude/**)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check_bash_command.sh"
+          }
+        ]
+      }
+    ]
   }
 }
