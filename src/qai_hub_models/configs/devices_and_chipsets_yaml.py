@@ -15,7 +15,10 @@ from qai_hub_models_cli.proto import platform_pb2
 from typing_extensions import assert_never
 
 from qai_hub_models.configs.proto_helpers import form_factor_to_proto, runtime_to_proto
-from qai_hub_models.scorecard.device import ScorecardDevice, sanitize_chipset_name
+from qai_hub_models.scorecard.device import (
+    ScorecardDevice,
+    get_canonical_chipset_name,
+)
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
 from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
@@ -228,7 +231,7 @@ def load_similar_devices() -> dict[str, tuple[str, list[str]]]:
     Load the similar devices mapping, resolving reference chipsets to device names.
 
     For each entry, the lookup uses `reference_chipset` (or `chipset` if unset),
-    plus any chipset that normalizes to the same value via sanitize_chipset_name
+    plus any chipset that normalizes to the same value via get_canonical_chipset_name
     (e.g. 8-elite-for-galaxy -> 8-elite).
 
     Returns unsupported_device_name -> (real_chipset, [reference_device_names]).
@@ -245,7 +248,7 @@ def load_similar_devices() -> dict[str, tuple[str, list[str]]]:
     for name, details in dc.devices.items():
         if name in similar_names:
             continue
-        key = sanitize_chipset_name(details.chipset)
+        key = get_canonical_chipset_name(details.chipset)
         if key not in sanitized_to_devices:
             sanitized_to_devices[key] = []
         sanitized_to_devices[key].append(name)
@@ -253,7 +256,7 @@ def load_similar_devices() -> dict[str, tuple[str, list[str]]]:
     resolved: dict[str, tuple[str, list[str]]] = {}
     for unsupported_name, entry in raw.devices.items():
         lookup_chipset = entry.reference_chipset or entry.chipset
-        key = sanitize_chipset_name(lookup_chipset)
+        key = get_canonical_chipset_name(lookup_chipset)
         resolved[unsupported_name] = (
             entry.chipset,
             sanitized_to_devices.get(key, []),
@@ -300,6 +303,7 @@ class ChipsetYaml(BaseQAIHMConfig):
     @staticmethod
     def chipset_marketing_name(chipset: str, world: WebsiteWorld | None = None) -> str:
         """Sanitize chip name to match marketing."""
+        chipset = get_canonical_chipset_name(chipset)
         chip = " ".join([word.capitalize() for word in chipset.split("-")])
         chip = chip.replace(
             "Qualcomm Snapdragon", "Snapdragon®"

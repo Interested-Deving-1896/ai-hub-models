@@ -27,7 +27,7 @@ from qai_hub_models.scorecard import ScorecardDevice
 from qai_hub_models.scorecard.device import (
     LLM_COMPILE_DEVICES,
     LLM_W4FP16_COMPILE_DEVICES,
-    sanitize_chipset_name,
+    get_canonical_chipset_name,
 )
 from qai_hub_models.scorecard.envvars import LLMPerfReleaseAssetsEnvvar
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
@@ -178,7 +178,7 @@ def update_perf_yaml(
     if device not in perf.supported_devices:
         perf.supported_devices.append(device)
 
-    chipset = sanitize_chipset_name(device.chipset)
+    chipset = get_canonical_chipset_name(device.chipset)
     if chipset not in perf.supported_chipsets:
         perf.supported_chipsets.append(chipset)
 

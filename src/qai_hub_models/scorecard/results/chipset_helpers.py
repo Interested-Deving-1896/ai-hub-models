@@ -7,7 +7,11 @@ from __future__ import annotations
 
 import qai_hub as hub
 
-from qai_hub_models.scorecard.device import ScorecardDevice, sanitize_chipset_name
+from qai_hub_models.scorecard.device import (
+    ScorecardDevice,
+    get_all_chipset_workbench_variants,
+    get_canonical_chipset_name,
+)
 
 WEBSITE_CHIPSET_ORDER = [
     "qualcomm-snapdragon-8-elite-gen5",
@@ -35,7 +39,7 @@ WEBSITE_CHIPSET_ORDER = [
 
 def sorted_chipsets(chips: set[str]) -> list[str]:
     """Sort the set of chipsets in order they should show up on the website."""
-    chips = {sanitize_chipset_name(c) for c in chips}
+    chips = {get_canonical_chipset_name(c) for c in chips}
 
     out = []
     for chipset in WEBSITE_CHIPSET_ORDER:
@@ -55,10 +59,10 @@ def sorted_devices(devices: set[ScorecardDevice]) -> list[ScorecardDevice]:
     """
     device_chipset_map: dict[str, set[ScorecardDevice]] = {}
     for device in devices:
-        sanitized = sanitize_chipset_name(device.chipset)
-        if sanitized not in device_chipset_map:
-            device_chipset_map[sanitized] = set()
-        device_chipset_map[sanitized].add(device)
+        canonical_name = get_canonical_chipset_name(device.chipset)
+        if canonical_name not in device_chipset_map:
+            device_chipset_map[canonical_name] = set()
+        device_chipset_map[canonical_name].add(device)
 
     out: list[ScorecardDevice] = []
     for chipset in WEBSITE_CHIPSET_ORDER:
@@ -85,30 +89,14 @@ def sorted_devices(devices: set[ScorecardDevice]) -> list[ScorecardDevice]:
 __CHIP_SUPPORTED_DEVICES_CACHE: dict[str, set[ScorecardDevice]] = {}
 
 
-# Hub stores some chipsets under multiple names that all sanitize to the same
-# canonical form. ``perf.supported_chipsets`` holds the canonical (sanitized)
-# name, but Hub's ``chipset:<name>`` attribute query only matches the exact
-# variant — so an unsanitized variant must also be queried to find every
-# device. Add an entry here when a sanitized chipset has hidden variants.
-_CHIPSET_QUERY_ALIASES: dict[str, list[str]] = {
-    "qualcomm-snapdragon-8-elite": [
-        "qualcomm-snapdragon-8-elite",
-        "qualcomm-snapdragon-8-elite-for-galaxy",
-    ],
-}
-
-
-def get_supported_devices(chips: set[str]) -> list[ScorecardDevice]:
+def get_supported_devices(chipsets: set[str]) -> list[ScorecardDevice]:
     """Return all the supported devices given the chipset being used."""
     supported_devices: set[ScorecardDevice] = set()
 
-    # Normalize each input chipset to its sanitized form before alias lookup,
-    # so callers can pass in either the sanitized name (``qualcomm-snapdragon-8-elite``)
-    # or an un-sanitized variant (``qualcomm-snapdragon-8-elite-for-galaxy``)
-    # and get the same set of devices back.
-    for chip in chips:
-        canonical = sanitize_chipset_name(chip)
-        for query_chip in _CHIPSET_QUERY_ALIASES.get(canonical, [chip]):
+    all_variants = get_all_chipset_workbench_variants()
+    for chipset in chipsets:
+        canonical_name = get_canonical_chipset_name(chipset)
+        for query_chip in all_variants.get(canonical_name, [canonical_name]):
             if query_chip not in __CHIP_SUPPORTED_DEVICES_CACHE:
                 __CHIP_SUPPORTED_DEVICES_CACHE[query_chip] = {
                     ScorecardDevice.get(device.name, return_unregistered=True)
