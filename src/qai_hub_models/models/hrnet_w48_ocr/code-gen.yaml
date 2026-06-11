@@ -6,3 +6,14 @@ external_repos:
 supported_precisions:
 - float
 - w8a16
+disabled_paths:
+  float:
+    tflite:
+      scorecard_failure: 'Profiling jobs slower than 4000ms: jp0k2j4n5'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jpv4rdwzp'
+  w8a16:
+    qnn_dlc:
+      scorecard_failure: 'Profiling jobs slower than 4000ms: jpe2wyj1p'
+    onnx:
+      scorecard_failure: 'Profiling jobs slower than 4000ms: jp3816235'

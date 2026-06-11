@@ -219,7 +219,7 @@ class ScorecardExportTestSummary:
             if summary.profile_job:
                 if not summary.profile_job.success:
                     failing_jobs.append(summary.profile_job.job_id)
-                if (
+                elif (
                     summary.profile_job.inference_time_milliseconds
                     > MAX_ACCEPTABLE_INFERENCE_TIME_MS
                 ):

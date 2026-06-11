@@ -1,9 +1,13 @@
-supported_precisions:
-- float
 has_on_target_demo: true
+disabled_paths:
+  float:
+    qnn_context_binary:
+      scorecard_failure: Some expected profile jobs were missing.
+    precompiled_qnn_onnx:
+      scorecard_failure: Some expected profile jobs were missing.
 is_collection_model: true
+requires_aot_prepare: true
 global_requirements_incompatible: true
 pip_install_flags: git+https://github.com/facebookresearch/sam3.git@f66a2514dff3c032534fe236640c1e7c0f5c7677
 python_version_less_than: '3.13'
 python_version_less_than_reason: SAM3 hardcodes numpy 1.x as a requirement
-requires_aot_prepare: true

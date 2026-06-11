@@ -97,7 +97,6 @@ PASSING_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
         TargetRuntime.ONNX,
     ],
     Precision.w8a8: [
-        TargetRuntime.TFLITE,
         TargetRuntime.QNN_DLC,
         TargetRuntime.ONNX,
     ],

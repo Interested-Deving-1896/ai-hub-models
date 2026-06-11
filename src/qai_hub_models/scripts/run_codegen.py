@@ -405,8 +405,11 @@ def main() -> None:
         modified_files.extend(_generate_shared_external_repos(environment))
 
     for model in models:
-        modified_files.extend(generate_code_for_model(model))
-        modified_files.append(str(generate_and_write_model_readme(model)))
+        try:
+            modified_files.extend(generate_code_for_model(model))
+            modified_files.append(str(generate_and_write_model_readme(model)))
+        except Exception as e:  # noqa: PERF203
+            raise ValueError(f"Failed to generate export files for {model}") from e
 
     # Generate global README
     all_model_infos = [QAIHMModelInfo.from_model(mid) for mid in MODEL_IDS]

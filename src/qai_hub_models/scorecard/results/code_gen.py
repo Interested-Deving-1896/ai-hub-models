@@ -94,8 +94,8 @@ def update_code_gen_failure_reasons(
 
     If relevant jobs can't be found in the given scorecard summaries, then no changes are made to the config.
     """
-    default_device = code_gen_config.default_device
-    if not ScorecardDevice.get(default_device).enabled:
+    default_device = ScorecardDevice.get(code_gen_config.default_device)
+    if not default_device.enabled:
         return
 
     supported_precisions = list(enabled_test_paths.keys())
@@ -106,7 +106,6 @@ def update_code_gen_failure_reasons(
         clean_accuracy=False,
     )
 
-    default_device = code_gen_config.default_device
     for summary in summaries:
         params = summary.params
         assert params.precision is not None
