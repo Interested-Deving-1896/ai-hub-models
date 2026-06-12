@@ -6,6 +6,10 @@
 from __future__ import annotations
 
 import math
+import os
+import types
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -60,9 +64,7 @@ class HuggingFaceWavLMBasePlus(BaseModel):
 
         return cls(model, apply_npu_opt)
 
-    def forward(
-        self, x: torch.Tensor, attention_mask: torch.Tensor | None = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
         """
         Run WavLM on `x`, and produce logits.
 
@@ -71,10 +73,8 @@ class HuggingFaceWavLMBasePlus(BaseModel):
         x
             Tensor of shape (batch, sample_length). 10 seconds at 16kHz = 160000 samples.
         attention_mask
-            Optional binary tensor of shape (batch, sample_length): 1 for real audio,
-            0 for zero-padding. When None, a full-ones mask is generated internally.
-            Pass explicitly during torch eval to improve WER on clips shorter than
-            sample_length. Not compiled into the on-device graph (see get_input_spec).
+            Binary tensor of shape (batch, sample_length): 1 for real audio,
+            0 for zero-padding.
 
         Returns
         -------
@@ -82,8 +82,6 @@ class HuggingFaceWavLMBasePlus(BaseModel):
             Logits tensor of shape (1, sequence_length, vocab_size).
             Where sequence_length = 499, vocab_size = 31.
         """
-        if attention_mask is None:
-            attention_mask = torch.ones(x.shape, dtype=torch.long, device=x.device)
         return self.model(x, attention_mask=attention_mask)
 
     def get_input_spec(
@@ -99,6 +97,11 @@ class HuggingFaceWavLMBasePlus(BaseModel):
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
+            "attention_mask": TensorSpec(
+                shape=(batch_size, sample_length),
+                dtype="int32",
+                io_type=IoType.TENSOR,
+            ),
         }
 
     def get_output_names(self) -> list[str]:
@@ -111,7 +114,11 @@ class HuggingFaceWavLMBasePlus(BaseModel):
         if input_spec is not None:
             length = input_spec["input"][0][1]
             audio = audio[:length]
-        return {"input": [np.expand_dims(audio, axis=0)]}
+        mask = np.ones(audio.shape[-1], dtype=np.int32)
+        return {
+            "input": [np.expand_dims(audio, axis=0)],
+            "attention_mask": [np.expand_dims(mask, axis=0)],
+        }
 
     def get_hub_compile_options(
         self,
@@ -127,6 +134,32 @@ class HuggingFaceWavLMBasePlus(BaseModel):
         if target_runtime != TargetRuntime.ONNX:
             compile_options += " --truncate_64bit_tensors"
         return compile_options
+
+    def convert_to_torchscript(
+        self, input_spec: InputSpec | None = None, check_trace: bool = True
+    ) -> Any:
+        input_spec = input_spec or self.get_input_spec()
+        sample = self.sample_inputs(input_spec, use_channel_last_format=False)
+        inputs = tuple(torch.from_numpy(sample[name][0]) for name in input_spec)
+        self.to("cpu").eval()
+        return torch.jit.trace(self, inputs, check_trace=check_trace)
+
+    def serialize(
+        self,
+        output_dir: str | os.PathLike,
+        input_spec: InputSpec | None = None,
+    ) -> Path:
+        if not self.serialization_settings.use_pt2:
+            return super().serialize(output_dir, input_spec)
+        input_spec = input_spec or self.get_input_spec()
+        sample = self.sample_inputs(input_spec, use_channel_last_format=False)
+        inputs = tuple(torch.from_numpy(sample[name][0]) for name in input_spec)
+        output_path = Path(output_dir) / f"{self.name}.pt2"
+        self.to("cpu").eval()
+        with torch.no_grad():
+            exported = torch.export.export(self, inputs)
+        torch.export.save(exported, output_path)
+        return output_path
 
     def get_evaluator(self) -> BaseEvaluator:
         return LibriSpeechEvaluator()
@@ -253,4 +286,30 @@ def convert_to_wavlm_npu(model: WavLMForCTC) -> WavLMForCTC:
             conv_layer_i, slice_size=4000
         )
 
+    def _patched_get_feature_vector_attention_mask(
+        self: WavLMForCTC,
+        feature_vector_length: int,
+        attention_mask: torch.Tensor,
+        add_adapter: bool | None = None,
+    ) -> torch.Tensor:
+        """Comparison-based replacement for HF's helper.
+
+        HF's original does an indexed assignment
+        (``mask[arange, output_lengths-1] = 1``) that goes out of bounds when
+        the export pipeline traces with non-binary inputs (e.g. the AI Hub
+        server-side Torch→ONNX re-export uses random ints). Compute the
+        output mask as ``arange < output_lengths`` instead, which is robust
+        to whatever values appear at trace time.
+        """
+        non_padded_lengths = attention_mask.sum(dim=-1).to(torch.long)
+        output_lengths = self._get_feat_extract_output_lengths(
+            non_padded_lengths,  # type: ignore[arg-type]
+            add_adapter=add_adapter,
+        ).to(torch.long)
+        idx = torch.arange(feature_vector_length, device=attention_mask.device)
+        return idx.unsqueeze(0) < output_lengths.unsqueeze(-1)
+
+    model.wavlm._get_feature_vector_attention_mask = types.MethodType(
+        _patched_get_feature_vector_attention_mask, model.wavlm
+    )
     return model

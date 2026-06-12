@@ -55,13 +55,16 @@ class HuggingFaceWavLMBasePlusApp:
         input_len = int(DEFAULT_INPUT_LENGTH_SECONDS * sampling_rate)
         x_arr = x[:input_len]
         xpt = torch.from_numpy(x_arr).float()
+        real_len = xpt.shape[0]
         xpt = torch.nn.functional.pad(
-            xpt, (0, input_len - xpt.shape[0]), mode="constant", value=0
+            xpt, (0, input_len - real_len), mode="constant", value=0
         )
         audio_tensor = xpt.unsqueeze(0)
+        attention_mask = torch.zeros(1, input_len, dtype=torch.int32)
+        attention_mask[:, :real_len] = 1
 
         # Run prediction
-        features = self.model(audio_tensor)
+        features = self.model(audio_tensor, attention_mask)
         pred_ids = torch.argmax(features[0], dim=-1)
         return self.processor.batch_decode(pred_ids)[0]
 

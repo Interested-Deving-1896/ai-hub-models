@@ -10,6 +10,7 @@ from torch.nn import functional as F
 
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetMetadata, DatasetSplit
+from qai_hub_models.utils.input_spec import InputSpec
 
 LIBRISPEECH_FOLDER_NAME = "librispeech"
 LIBRISPEECH_VERSION = 2
@@ -32,10 +33,13 @@ class LibriSpeechDataset(BaseDataset):
         target_sample_rate: int = 16000,
         max_sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         max_text_length: int = DEFAULT_MAX_TEXT_LENGTH,
+        input_spec: InputSpec | None = None,
     ) -> None:
         self.base_path = LIBRISPEECH_CLEAN_ASSET.extracted_path
         BaseDataset.__init__(self, self.base_path, split)
         self.target_sample_rate = target_sample_rate
+        if input_spec is not None and "input" in input_spec:
+            max_sequence_length = input_spec["input"][0][1]
         self.max_sequence_length = max_sequence_length
         self.max_text_length = max_text_length
 
