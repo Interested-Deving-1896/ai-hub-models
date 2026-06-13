@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from enum import Enum, EnumMeta, unique
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typing_extensions import assert_never
 
@@ -29,6 +29,9 @@ from qai_hub_models.utils.hub_clients import (
     default_hub_client_as,
     get_scorecard_client_or_raise,
 )
+
+if TYPE_CHECKING:
+    from qai_hub_models.scorecard import ScorecardDevice
 
 
 class ScorecardProfilePathMeta(EnumMeta):
@@ -242,9 +245,18 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
         return self.value not in TargetRuntime._value2member_map_
 
     def get_profile_options(
-        self, include_default_qaihm_qnn_version: bool = False
+        self,
+        precision: Precision,
+        device: ScorecardDevice,
+        include_default_qaihm_qnn_version: bool = False,
     ) -> str:
         out = ""
+        if (
+            self == ScorecardProfilePath.ONNX
+            and not precision.has_float_activations
+            and not device.supports_fp16_npu
+        ):
+            out = out + " --onnx_execution_providers qnn"
         if self == ScorecardProfilePath.ONNX_DML_GPU:
             out = out + " --onnx_execution_providers directml"
         if self == ScorecardProfilePath.QNN_DLC_GPU:

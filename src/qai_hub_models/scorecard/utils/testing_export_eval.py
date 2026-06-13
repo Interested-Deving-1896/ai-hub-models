@@ -1119,7 +1119,8 @@ def profile_via_export(
             assert_success_and_get_target_models(compile_jobs) if compile_jobs else None
         )
         profile_options = model.get_hub_profile_options(
-            scorecard_path.runtime, scorecard_path.get_profile_options()
+            scorecard_path.runtime,
+            scorecard_path.get_profile_options(precision, device),
         )
         profile_output = profile_model(  # type: ignore[assignment]
             model_id,
@@ -1200,7 +1201,7 @@ def inference_via_export(
         use_channel_last_format=runtime.channel_last_native_execution
     )
     inference_options = model.get_hub_profile_options(
-        scorecard_path.runtime, scorecard_path.get_profile_options()
+        scorecard_path.runtime, scorecard_path.get_profile_options(precision, device)
     )
     inference_output = inference_model(
         inference_inputs,
@@ -1432,7 +1433,9 @@ def export_test_e2e(
                     precision=precision,
                     target_runtime=scorecard_path.runtime,
                     compile_options=scorecard_path.compile_path.get_compile_options(),
-                    profile_options=scorecard_path.get_profile_options(),
+                    profile_options=scorecard_path.get_profile_options(
+                        precision, device
+                    ),
                     skip_profiling=not has_cached_profile_jobs,
                     skip_inferencing=True,
                     output_dir=tmpdir,

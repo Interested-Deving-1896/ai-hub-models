@@ -90,11 +90,10 @@ class EyeGaze(BaseModel):
         target_runtime: TargetRuntime,
         other_profile_options: str = "",
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
-        )
-        options = " --compute_unit cpu"  # Accuracy no regained on NPU
-        return profile_options + options
+        # NPU has accuracy issues; force CPU execution.
+        if "--compute_unit" not in other_profile_options:
+            other_profile_options = f"--compute_unit cpu {other_profile_options}"
+        return super().get_hub_profile_options(target_runtime, other_profile_options)
 
     @classmethod
     def get_eval_dataset_classes(cls) -> list[type[BaseDataset]]:

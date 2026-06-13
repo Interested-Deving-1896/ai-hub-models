@@ -104,9 +104,9 @@ class CREStereo(BaseModel):
         other_profile_options: str = "",
     ) -> str:
         # NPU has accuracy issues; force CPU execution.
-        return " --compute_unit cpu " + super().get_hub_profile_options(
-            target_runtime, other_profile_options
-        )
+        if "--compute_unit" not in other_profile_options:
+            other_profile_options = f"--compute_unit cpu {other_profile_options}"
+        return super().get_hub_profile_options(target_runtime, other_profile_options)
 
     def get_input_spec(
         self,
