@@ -182,6 +182,7 @@ def process_link_job(prod_client: Client, job_id: str) -> tuple[dict, bool]:
 
     result = {
         "prod_job": job_id,
+        "prod_job_url": job.url,
         "prod_job_status": job_status.code,
         "device": job.device.name,
         "options": job.options,

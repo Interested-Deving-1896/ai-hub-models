@@ -273,6 +273,7 @@ jobs:
           PROD_LINK_CONFIG=$(ls -t results/link-scorecard__*.yaml | head -1)
 
           python post_link_results.py \
+            --dev-profile dev \
             --dev-link-config "${DEV_LINK_CONFIG}" \
             --prod-link-config "${PROD_LINK_CONFIG}" \
             --verbose
@@ -341,6 +342,7 @@ jobs:
           source "${{ github.workspace }}/${{ env.VENV_PATH }}/bin/activate"
 
           python post_compile_results.py \
+            --dev-profile dev \
             --results-dir results \
             --verbose
         shell: bash
@@ -352,3 +354,18 @@ jobs:
           name: compiler-scorecard-results-${{ github.run_number }}
           path: scripts/compiler_nightly/results/
           retention-days: 30
+
+  notify_slack:
+    name: "Notify Slack (#ai-hub-compiler)"
+    needs: [submit_compile_jobs, submit_link_jobs, collect_link_results, collect_compile_results]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+    steps:
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
+          payload: |
+            channel: "C08EYJJCW87"
+            text: "Compiler Nightly Scorecard Failed\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}"

@@ -1,0 +1,21 @@
+link:
+  - models:
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_6490
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_6690
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_7_gen_4
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_8550
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_8_elite
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_8_elite_gen_5
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_8_gen_3
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_9075
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_auto_lemans_8775
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_auto_makena_8295
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_auto_monaco_7255
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_x2_elite
+      - internimage_w8a8_QNN_CONTEXT_BINARY-cs_x_elite
+    error: "Exception encountered: Validate OpConfig failed: QNN_OP_PACKAGE_ERROR_VALIDATION_FAILURE: Op configuration failed validation"
+
+compile:
+  - models:
+      - detr_resnet50_w8a16_mixed_int16_QNN_DLC
+    error: "Time limit exceeded in compilation step. The optimization level is 3 (highest is 3). Lowering it with --qnn_context_binary_optimization_level 1 can significantly reduce compile time at the cost of less optimal inference performance"

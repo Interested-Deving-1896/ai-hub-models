@@ -11,10 +11,14 @@ from pathlib import Path
 from prettytable import PrettyTable
 
 sys.path.insert(0, str(Path(__file__).parent))
+from qai_hub import JobType
 from utils import (
     DISPLAY_SEPARATOR,
     create_results_table,
+    filter_known_failures,
+    find_passing_known_failures,
     get_date_str,
+    load_client,
     load_yaml_safe,
     log_and_print,
     setup_script_logging,
@@ -32,6 +36,8 @@ def print_summary(
     progressions: dict,
     failures: dict,
     passed: dict,
+    known: dict,
+    passing_known: dict,
     job_yaml_tag: str,
 ) -> None:
     summary_table = PrettyTable()
@@ -42,6 +48,8 @@ def print_summary(
     summary_table.add_row(["Regressions", len(regressions)])
     summary_table.add_row(["Progressions", len(progressions)])
     summary_table.add_row(["Failures (Both Prod & Dev)", len(failures)])
+    summary_table.add_row(["Known Failures (Excluded)", len(known)])
+    summary_table.add_row(["Known Issues Passing Now", len(passing_known)])
 
     log_and_print(f"\n{DISPLAY_SEPARATOR}", logger)
     log_and_print(f"Summary for {job_yaml_tag}", logger)
@@ -49,15 +57,27 @@ def print_summary(
     for line in str(summary_table).split("\n"):
         log_and_print(line, logger)
 
-    # Print regressions to console and log
+    # Print regressions and known failures to console and log
     field_names = ["Model", "Prod Job URL", "Dev Job URL"]
-    if regressions:
-        table = create_results_table(regressions, field_names, _compile_row)
-        log_and_print(f"\n{DISPLAY_SEPARATOR}", logger)
-        log_and_print("REGRESSIONS: Prod SUCCESS -> Dev FAILED", logger)
-        log_and_print(DISPLAY_SEPARATOR, logger)
-        for line in str(table).split("\n"):
-            log_and_print(line, logger)
+    console_sections = [
+        (regressions, "REGRESSIONS: Prod SUCCESS -> Dev FAILED"),
+        (
+            known,
+            "KNOWN FAILURES: Prod SUCCESS -> Dev FAILED (excluded from regressions)",
+        ),
+        (
+            passing_known,
+            "KNOWN ISSUES PASSING NOW: remove from known_failures.yaml",
+        ),
+    ]
+    for data, title in console_sections:
+        if data:
+            table = create_results_table(data, field_names, _compile_row)
+            log_and_print(f"\n{DISPLAY_SEPARATOR}", logger)
+            log_and_print(title, logger)
+            log_and_print(DISPLAY_SEPARATOR, logger)
+            for line in str(table).split("\n"):
+                log_and_print(line, logger)
 
     # Log-only sections
     sections = [
@@ -84,6 +104,12 @@ def main() -> int:
         type=Path,
         default=Path("results"),
         help="Directory containing result YAML files (default: results)",
+    )
+    parser.add_argument(
+        "--dev-profile",
+        type=str,
+        default="dev",
+        help="Hub client profile for dev environment (default: dev)",
     )
     parser.add_argument(
         "--verbose",
@@ -124,10 +150,36 @@ def main() -> int:
             return_empty_on_not_found=True,
         )
 
-        print_summary(regressions, progressions, failures, passed, job_yaml_tag)
+        dev_client = load_client(args.dev_profile)
+        regressions, known = filter_known_failures(
+            regressions, dev_client, JobType.COMPILE, "dev_job"
+        )
+        if known:
+            log_and_print(f"Excluded {len(known)} known compile failures", logger)
+
+        passing = {**passed, **progressions}
+        passing_known = find_passing_known_failures(passing, JobType.COMPILE)
+
+        print_summary(
+            regressions,
+            progressions,
+            failures,
+            passed,
+            known,
+            passing_known,
+            job_yaml_tag,
+        )
 
         if regressions:
             log_and_print(f"✗ Found {len(regressions)} regressions.", logger)
+            return 1
+
+        if passing_known:
+            log_and_print(
+                f"✗ Found {len(passing_known)} known issues now passing. "
+                "Remove them from known_failures.yaml.",
+                logger,
+            )
             return 1
 
         log_and_print("✓ No regressions found.", logger)

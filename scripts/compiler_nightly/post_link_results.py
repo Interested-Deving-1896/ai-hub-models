@@ -11,10 +11,14 @@ from pathlib import Path
 from prettytable import PrettyTable
 
 sys.path.insert(0, str(Path(__file__).parent))
+from qai_hub import JobType
 from utils import (
     DISPLAY_SEPARATOR,
     JOB_STATUS_SUCCESS,
     extract_tag_and_dir_from_yaml,
+    filter_known_failures,
+    find_passing_known_failures,
+    load_client,
     load_yaml_safe,
     log_and_print,
     print_results_table,
@@ -36,6 +40,11 @@ def calculate_status_changes(prod_config: dict, dev_config: dict) -> dict:
         if not prod_info:
             continue
 
+        # No dev link job means an upstream compile failure (link_job=None),
+        # already surfaced by the compile scorecard — not a link regression.
+        if not dev_info.get("link_job"):
+            continue
+
         prod_success = prod_info.get("prod_job_status") == JOB_STATUS_SUCCESS
         dev_success = dev_info.get("link_status") == JOB_STATUS_SUCCESS
 
@@ -50,6 +59,7 @@ def calculate_status_changes(prod_config: dict, dev_config: dict) -> dict:
             "dev_status": dev_info.get("link_status", "N/A"),
             "prod_job_url": prod_job_url,
             "dev_job_url": dev_info.get("link_job_url"),
+            "link_job": dev_info.get("link_job"),
         }
 
     return status_changes
@@ -81,28 +91,14 @@ def _status_row(model_name: str, info: dict, empty_value: str = "N/A") -> list:
     ]
 
 
-def print_progressions_table(progressions: dict) -> None:
-    field_names = ["Model", "Prod Status", "Dev Status", "Prod URL", "Dev URL"]
+def print_status_table(data: dict, title: str, empty_message: str) -> None:
     print_results_table(
-        progressions,
-        title=f"FIXES: {len(progressions)} models now succeed in dev",
-        field_names=field_names,
+        data,
+        title=title,
+        field_names=["Model", "Prod Status", "Dev Status", "Prod URL", "Dev URL"],
         row_extractor=_status_row,
         sort_key=lambda x: x[0],
-        empty_message="No progressions found.",
-        print_to_console=True,
-    )
-
-
-def print_regressions_table(regressions: dict) -> None:
-    field_names = ["Model", "Prod Status", "Dev Status", "Prod URL", "Dev URL"]
-    print_results_table(
-        regressions,
-        title=f"REGRESSIONS: {len(regressions)} models now fail in dev",
-        field_names=field_names,
-        row_extractor=_status_row,
-        sort_key=lambda x: x[0],
-        empty_message="No regressions found! 🎉",
+        empty_message=empty_message,
         print_to_console=True,
     )
 
@@ -165,6 +161,12 @@ def main() -> int:
         help="Path to AIHM link-scorecard.yaml from prod",
     )
     parser.add_argument(
+        "--dev-profile",
+        type=str,
+        default="dev",
+        help="Hub client profile for dev environment (default: dev)",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -188,13 +190,50 @@ def main() -> int:
         regressions = get_regressions(status_changes)
         progressions = get_progressions(status_changes)
 
+        dev_client = load_client(args.dev_profile)
+        regressions, known = filter_known_failures(
+            regressions, dev_client, JobType.LINK, "link_job"
+        )
+        if known:
+            log_and_print(f"Excluded {len(known)} known link failures", logger)
+
+        passing = {k: v for k, v in status_changes.items() if v["dev_success"]}
+        passing_known = find_passing_known_failures(passing, JobType.LINK)
+
         print_summary(status_changes, regressions, progressions)
-        print_progressions_table(progressions)
-        print_regressions_table(regressions)
+        print_status_table(
+            progressions,
+            f"FIXES: {len(progressions)} models now succeed in dev",
+            "No progressions found.",
+        )
+        print_status_table(
+            known,
+            f"KNOWN FAILURES: {len(known)} models excluded from regressions",
+            "No known failures.",
+        )
+        print_status_table(
+            passing_known,
+            f"KNOWN ISSUES PASSING NOW: {len(passing_known)} models - "
+            "remove from known_failures.yaml",
+            "No stale known issues.",
+        )
+        print_status_table(
+            regressions,
+            f"REGRESSIONS: {len(regressions)} models now fail in dev",
+            "No regressions found! 🎉",
+        )
         save_full_table_csv(status_changes, output_dir, tag)
 
         if regressions:
             log_and_print(f"✗ Found {len(regressions)} link regressions.", logger)
+            return 1
+
+        if passing_known:
+            log_and_print(
+                f"✗ Found {len(passing_known)} known issues now passing. "
+                "Remove them from known_failures.yaml.",
+                logger,
+            )
             return 1
 
         log_and_print("✓ No link regressions found.", logger)

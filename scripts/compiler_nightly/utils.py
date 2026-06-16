@@ -10,19 +10,22 @@ import csv
 import logging
 import os
 import re
+import tempfile
 from collections.abc import Callable
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 from prettytable import PrettyTable
-from qai_hub import Client
+from qai_hub import Client, JobType
 from ruamel.yaml import YAML
 
 # Project and configuration constants
 AIHW_COMPILER_NIGHTLY_PROJECT = os.environ.get("COMPILER_NIGHTLY_PROJECT_ID", "")
 DEFAULT_OUTPUT_DIR = Path("results")
 DEFAULT_MAX_WORKERS = 10
+KNOWN_FAILURES_CONFIG = Path(__file__).parent / "config" / "known_failures.yaml"
 
 # Job status constants
 JOB_STATUS_SUCCESS = "SUCCESS"
@@ -238,3 +241,68 @@ def save_results_csv(
 
     log_and_print(f"Saved results to: {output_path}", logger)
     return output_path
+
+
+@cache
+def load_known_failures(job_type: str) -> list:
+    config = load_yaml_safe(KNOWN_FAILURES_CONFIG, return_empty_on_not_found=True)
+    return config.get(job_type, []) or []
+
+
+def job_log_contains_error(
+    client: Client, job_id: str, error: str, job_type: JobType
+) -> bool:
+    job = client.get_job(job_id, job_type)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for log_path in job.download_job_logs(temp_dir):
+            with open(log_path, errors="replace") as f:
+                if error in f.read():
+                    return True
+    return False
+
+
+def _is_known_failure(
+    client: Client,
+    model_name: str,
+    job_id: str | None,
+    known_failures: list,
+    job_type: JobType,
+) -> bool:
+    if not job_id:
+        return False
+    for entry in known_failures:
+        if any(m in model_name for m in entry["models"]) and job_log_contains_error(
+            client, job_id, entry["error"], job_type
+        ):
+            return True
+    return False
+
+
+def filter_known_failures(
+    regressions: dict,
+    client: Client,
+    job_type: JobType,
+    job_id_key: str,
+) -> tuple[dict, dict]:
+    known_failures = load_known_failures(job_type.name.lower())
+    real: dict = {}
+    known: dict = {}
+
+    for model_name, info in regressions.items():
+        job_id = info.get(job_id_key)
+        is_known = _is_known_failure(
+            client, model_name, job_id, known_failures, job_type
+        )
+        (known if is_known else real)[model_name] = info
+
+    return real, known
+
+
+def find_passing_known_failures(passing: dict, job_type: JobType) -> dict:
+    known_failures = load_known_failures(job_type.name.lower())
+    models = [m for e in known_failures for m in e["models"]]
+    return {
+        model_name: info
+        for model_name, info in passing.items()
+        if any(m in model_name for m in models)
+    }
