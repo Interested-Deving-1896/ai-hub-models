@@ -38,6 +38,21 @@ REPRESENTATIVE_AIMET_MODEL_FILE = (
     "src/qai_hub_models/models/stable_diffusion_v1_5/model.py"
 )
 
+# _shared/llm/ + _shared/llama3/ route to llama; _shared/qwen3/ routes to qwen.
+LLAMA_REPRESENTATIVE_EXPORT_FILE = (
+    "src/qai_hub_models/models/llama_v3_2_1b_instruct/export.py"
+)
+QWEN_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/qwen3_4b/export.py"
+_SHARED_DIR = Path(REPO_ROOT, "src/qai_hub_models/models/_shared")
+_LLAMA_REP_FILES = sorted(
+    p.relative_to(REPO_ROOT).as_posix()
+    for sub in ("llm", "llama3")
+    for p in (_SHARED_DIR / sub).rglob("*.py")
+)
+_QWEN_REP_FILES = sorted(
+    p.relative_to(REPO_ROOT).as_posix() for p in (_SHARED_DIR / "qwen3").rglob("*.py")
+)
+
 
 # For certain files that are imported by many models, manually override
 # which files to test. For example, quantization_aimet is imported by all
@@ -54,6 +69,8 @@ MANUAL_EDGES = {
     "src/qai_hub_models/utils/quantization_aimet_onnx.py": [
         REPRESENTATIVE_AIMET_MODEL_FILE,
     ],
+    **{f: [LLAMA_REPRESENTATIVE_EXPORT_FILE] for f in _LLAMA_REP_FILES},
+    **{f: [QWEN_REPRESENTATIVE_EXPORT_FILE] for f in _QWEN_REP_FILES},
     "src/qai_hub_models/common.py": REPRESENTATIVE_EXPORT_FILES,
     "src/qai_hub_models/configs/_info_yaml_enums.py": REPRESENTATIVE_EXPORT_FILES,
     "src/qai_hub_models/configs/_info_yaml_llm_details.py": REPRESENTATIVE_EXPORT_FILES,
