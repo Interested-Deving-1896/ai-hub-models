@@ -979,6 +979,48 @@ class Qwen2VLDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx, Qwen2VLTextBase_AIMETOnnx):
         )
         return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
 
+    def get_weight_optimization_data(
+        self,
+        num_samples: int = 0,
+        input_spec: InputSpec | None = None,
+        sequence_length: int = DEFAULT_CALIBRATION_SEQ_LEN,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+    ) -> DatasetEntries | None:
+        """Get plain text (WikiText) data for seqMSE/AdaScale weight optimization."""
+        from qai_hub_models.datasets import instantiate_dataset
+        from qai_hub_models.datasets.wikitext import WikiText
+
+        if num_samples == 0:
+            num_samples = math.ceil(80000 / context_length)
+
+        dataset = instantiate_dataset(
+            WikiText,
+            DatasetSplit.TRAIN,
+            input_spec=None,
+            tokenizer=self.tokenizer,
+            block_size=sequence_length,
+            context_length=context_length,
+            num_samples=num_samples,
+        )
+        dataloader = DataLoader(dataset, batch_size=1, collate_fn=dataset.collate_fn)
+
+        input_spec = self.get_input_spec(
+            llm_config=self.llm_config.to_dict(),
+            sequence_length=sequence_length,
+            context_length=context_length,
+            llm_io_type=self.llm_io_type,
+        )
+        assert input_spec is not None
+
+        inputs = self._prefill_dataset(
+            dataloader,
+            num_inputs=len(input_spec),
+            seq_len=sequence_length,
+            use_vision=False,
+            desc="Pre-filling weight optimization data (text-only)",
+        )
+        return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
+
 
 class Qwen2VLTextBase_QNN(Qwen2Base_QNN):
     """

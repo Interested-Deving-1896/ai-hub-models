@@ -3107,3 +3107,12 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
                         inputs[i].append(tensor.cpu())
 
         return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
+
+    def get_weight_optimization_data(
+        self,
+        num_samples: int = 0,
+        input_spec: InputSpec | None = None,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        context_length: int = DEFAULT_CONTEXT_LENGTH,
+    ) -> DatasetEntries | None:
+        return None

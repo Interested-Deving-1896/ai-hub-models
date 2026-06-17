@@ -303,15 +303,21 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
         )
 
         restore_value: int | None = None
-        if model_type == "qwen3" and num_rmsnorm_per_blk is not None:
+        if num_rmsnorm_per_blk is not None:
             from aimet_onnx.graph_passes.passes.decoder_block import DecoderBlockQwen3
 
             restore_value = DecoderBlockQwen3.NUM_RMSNORM_PER_BLK
             DecoderBlockQwen3.NUM_RMSNORM_PER_BLK = num_rmsnorm_per_blk
 
+        inputs = self._dataloader_to_numpy(data, num_batches=num_batches)
+
+        # Pre-compute param encodings with a real input to avoid
+        # make_dummy_input (inside apply_adascale) generating random values
+        self.quant_sim._compute_param_encodings(dummy_input=inputs[0], overwrite=False)
+
         AdaScale.apply_adascale(
             self.quant_sim,
-            self._dataloader_to_numpy(data, num_batches=num_batches),
+            inputs,
             adascale_model_config=adascale_model_config_dict[model_type],
             num_iterations=num_iterations,
         )
@@ -333,6 +339,7 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
         seq_mse_num_samples: int | None = None,
         ada_scale_num_samples: int | None = None,
         ada_scale_num_iterations: int | None = None,
+        weight_optimization_data: DataLoader | None = None,
     ) -> None:
         """
         Quantize the model using calibration data.
@@ -355,6 +362,10 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
             Number of samples for AdaScale.
         ada_scale_num_iterations
             Number of iterations for AdaScale.
+        weight_optimization_data
+            Separate data loader for seqMSE/AdaScale weight optimization.
+            If None, falls back to using ``data`` for both optimization
+            and calibration.
 
         Returns
         -------
@@ -371,6 +382,10 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
                 )
             data = dataset_entries_to_dataloader(calib_data)
 
+        optim_data = (
+            data if weight_optimization_data is None else weight_optimization_data
+        )
+
         # "samples": 4096 context length batches
         # "batches": actual iterations
         if hasattr(self, "context_length") and hasattr(self, "sequence_length"):
@@ -380,7 +395,7 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
 
         if use_seq_mse:
             seq_mse_num_samples = min(
-                len(data) // batches_per_sample,
+                len(optim_data) // batches_per_sample,
                 seq_mse_num_samples or num_samples or DEFAULT_SEQ_MSE_NUM_SAMPLES,
             )
             seq_mse_num_batches = seq_mse_num_samples * batches_per_sample
@@ -390,12 +405,12 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
                 f"Apply Sequential MSE ({seq_mse_num_samples} samples / {seq_mse_num_batches} batches)"
             )
             print()
-            self._apply_seq_mse(data=data, num_batches=seq_mse_num_batches)
+            self._apply_seq_mse(data=optim_data, num_batches=seq_mse_num_batches)
 
         if use_ada_scale:
             assert self.ada_scale_model_type is not None
             ada_scale_num_samples = min(
-                len(data) // batches_per_sample,
+                len(optim_data) // batches_per_sample,
                 ada_scale_num_samples or DEFAULT_ADA_SCALE_NUM_SAMPLES,
             )
             ada_scale_num_iters = (
@@ -408,7 +423,7 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
             )
             print()
             self._apply_ada_scale(
-                data=data,
+                data=optim_data,
                 num_batches=ada_scale_num_batches,
                 num_iterations=ada_scale_num_iters,
                 model_type=self.ada_scale_model_type,

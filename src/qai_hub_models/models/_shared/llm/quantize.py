@@ -134,6 +134,17 @@ def quantize(
     assert calib_data is not None
     dataloader = dataset_entries_to_dataloader(calib_data)
 
+    weight_optim_dataloader = None
+    if (use_seq_mse or use_ada_scale) and isinstance(model_quant, LLMDynamic_AIMETOnnx):
+        optim_num_samples = max(seq_mse_num_samples or 0, ada_scale_num_samples or 0)
+        optim_data = model_quant.get_weight_optimization_data(
+            num_samples=optim_num_samples,
+            sequence_length=seq_len,
+            context_length=context_length,
+        )
+        if optim_data is not None:
+            weight_optim_dataloader = dataset_entries_to_dataloader(optim_data)
+
     gc.collect()
     torch.cuda.empty_cache()
 
@@ -150,6 +161,7 @@ def quantize(
         seq_mse_num_samples=seq_mse_num_samples,
         ada_scale_num_samples=ada_scale_num_samples,
         ada_scale_num_iterations=ada_scale_num_iterations,
+        weight_optimization_data=weight_optim_dataloader,
     )
 
     save_kwargs: dict[str, Any] = dict(fp_model=fp_model)
