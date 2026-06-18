@@ -123,6 +123,9 @@ def test_extract_tool_versions_from_compile_job(
 
     # Compile job: Failed
     for rt in TargetRuntime:
+        if rt == TargetRuntime.GENIEX_LLAMACPP:
+            # GenieX llama.cpp does not compile via AI Hub.
+            continue
         j = MagicMock(
             spec=hub.CompileJob,
             _job_type=JobType.COMPILE,

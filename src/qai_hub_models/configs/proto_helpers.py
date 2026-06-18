@@ -45,6 +45,7 @@ _RUNTIME_TO_PROTO: dict[str, int] = {
     "genie": runtime_pb2.RUNTIME_GENIE,
     "geniex_qairt": runtime_pb2.RUNTIME_GENIEX_QAIRT,
     "voice_ai": runtime_pb2.RUNTIME_VOICE_AI,
+    "geniex_llamacpp": runtime_pb2.RUNTIME_GENIEX_LLAMACPP,
 }
 
 

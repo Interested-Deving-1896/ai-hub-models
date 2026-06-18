@@ -371,6 +371,7 @@ class InferenceEngine(Enum):
     TFLITE = "tflite"
     QNN = "qnn"
     ONNX = "onnx"
+    GENIEX_LLAMACPP = "geniex_llamacpp"
 
     @property
     def full_package_name(self) -> str:
@@ -380,6 +381,8 @@ class InferenceEngine(Enum):
             return "QAIRT (Qualcomm AI Runtime)"
         if self == InferenceEngine.ONNX:
             return "ONNX Runtime"
+        if self == InferenceEngine.GENIEX_LLAMACPP:
+            return "GenieX Llama.cpp Plugin"
         assert_never(self)
 
     @property
@@ -461,6 +464,9 @@ class TargetRuntime(Enum):
     # Qualcomm GenieX asset using QAIRT as the inference engine
     GENIEX_QAIRT = "geniex_qairt"
 
+    # GenieX with Llama.cpp backend (GGUF models)
+    GENIEX_LLAMACPP = "geniex_llamacpp"
+
     # Qualcomm Voice AI
     # https://www.qualcomm.com/products/features/voice-assist
     # https://qpm.qualcomm.com/#/main/tools/details/VoiceAI_ASR_Community
@@ -494,6 +500,8 @@ class TargetRuntime(Enum):
             return InferenceEngine.QNN
         if self == TargetRuntime.GENIEX_QAIRT:
             return InferenceEngine.QNN
+        if self == TargetRuntime.GENIEX_LLAMACPP:
+            return InferenceEngine.GENIEX_LLAMACPP
         assert_never(self)
 
     @property
@@ -513,6 +521,8 @@ class TargetRuntime(Enum):
             return "genie.zip"
         if self == TargetRuntime.GENIEX_QAIRT:
             return "geniex.zip"
+        if self == TargetRuntime.GENIEX_LLAMACPP:
+            return "gguf"
         assert_never(self)
 
     @property
@@ -526,9 +536,11 @@ class TargetRuntime(Enum):
             return hub.SourceModelType.ONNX
         if self == TargetRuntime.TFLITE:
             return hub.SourceModelType.TFLITE
-        if self == TargetRuntime.GENIE:
-            raise ValueError(f"No Hub model type is applicable for {self.value}")
-        if self == TargetRuntime.GENIEX_QAIRT:
+        if (
+            self == TargetRuntime.GENIE  # noqa: PLR1714 | Can't merge comparisons and use assert_never
+            or self == TargetRuntime.GENIEX_QAIRT
+            or self == TargetRuntime.GENIEX_LLAMACPP
+        ):
             raise ValueError(f"No Hub model type is applicable for {self.value}")
         assert_never(self)
 
@@ -604,11 +616,22 @@ class TargetRuntime(Enum):
                 Precision.w8a16_mixed_fp16,
                 Precision.mixed,
             ]
+
+        if self == TargetRuntime.GENIEX_LLAMACPP:
+            return precision in [
+                Precision.mxfp4,
+                Precision.q8_0,
+                Precision.q4_0,
+            ]
+
         assert_never(self)
 
     @property
-    def aihub_target_runtime_flag(self) -> str:
-        """AI Hub Workbench job flag for compiling to this runtime."""
+    def aihub_target_runtime_flag(self) -> str | None:
+        """AI Hub Workbench job flag for compiling to this runtime, or None if AI Hub does not compile this runtime."""
+        if self == TargetRuntime.GENIEX_LLAMACPP:
+            return None
+
         if self.is_orchestrator_runtime or self.uses_hub_link:
             # Orchestrator runtimes and link-based runtimes compile to DLC first.
             # Link-based runtimes (e.g., QNN_CONTEXT_BINARY) then use hub.link()
@@ -663,6 +686,7 @@ class TargetRuntime(Enum):
         return self in [
             TargetRuntime.GENIE,
             TargetRuntime.GENIEX_QAIRT,
+            TargetRuntime.GENIEX_LLAMACPP,
             TargetRuntime.VOICE_AI,
         ]
 

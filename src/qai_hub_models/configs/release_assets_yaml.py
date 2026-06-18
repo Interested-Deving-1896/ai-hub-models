@@ -10,6 +10,7 @@ from pathlib import Path
 
 from pydantic import Field
 from qai_hub_models_cli.proto import release_assets_pb2
+from qai_hub_models_cli.proto.shared import tool_versions_pb2
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.proto_helpers import precision_to_proto, runtime_to_proto
@@ -120,7 +121,7 @@ class QAIHMModelReleaseAssets(BaseQAIHMConfig):
                             download_url=asset.download_url,
                             tool_versions=asset.tool_versions.to_proto()
                             if asset.tool_versions
-                            else None,
+                            else tool_versions_pb2.ToolVersions(),
                         )
                     )
             for chipset, path_dict in prec_details.chipset_assets.items():
@@ -134,7 +135,7 @@ class QAIHMModelReleaseAssets(BaseQAIHMConfig):
                                 download_url=asset.download_url,
                                 tool_versions=asset.tool_versions.to_proto()
                                 if asset.tool_versions
-                                else None,
+                                else tool_versions_pb2.ToolVersions(),
                             )
                         )
 

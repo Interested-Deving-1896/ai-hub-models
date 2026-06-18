@@ -51,6 +51,7 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
     PRECOMPILED_QNN_ONNX = "precompiled_qnn_onnx"
     GENIE = "genie"
     GENIEX_QAIRT = "geniex_qairt"
+    GENIEX_LLAMACPP = "geniex_llamacpp"
     VOICE_AI = "voice_ai"
     ONNX_DML_GPU = "onnx_dml_gpu"
     QNN_DLC_GPU = "qnn_dlc_gpu"
@@ -211,6 +212,8 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             return TargetRuntime.GENIE
         if self == ScorecardProfilePath.GENIEX_QAIRT:
             return TargetRuntime.GENIEX_QAIRT
+        if self == ScorecardProfilePath.GENIEX_LLAMACPP:
+            return TargetRuntime.GENIEX_LLAMACPP
         if self == ScorecardProfilePath.VOICE_AI:
             return TargetRuntime.VOICE_AI
         assert_never(self)
@@ -238,6 +241,8 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             return ScorecardCompilePath.GENIE
         if self == ScorecardProfilePath.GENIEX_QAIRT:
             return ScorecardCompilePath.GENIEX_QAIRT
+        if self == ScorecardProfilePath.GENIEX_LLAMACPP:
+            return ScorecardCompilePath.GENIEX_LLAMACPP
         if self == ScorecardProfilePath.VOICE_AI:
             return ScorecardCompilePath.VOICE_AI
         assert_never(self)
@@ -297,11 +302,13 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
     @property
     def website_runtime_name(self) -> str:
         """The name of the runtime on the website that corresponds to this path."""
-        if self in [
-            ScorecardProfilePath.VOICE_AI,
-        ]:
+        if self == ScorecardProfilePath.VOICE_AI:
             return self.value
-        if self in [ScorecardProfilePath.GENIEX_QAIRT, ScorecardProfilePath.GENIE]:
+        if self in [
+            ScorecardProfilePath.GENIEX_QAIRT,
+            ScorecardProfilePath.GENIE,
+            ScorecardProfilePath.GENIEX_LLAMACPP,
+        ]:
             return ScorecardProfilePath.GENIE.value
         return self.runtime.inference_engine.value
 

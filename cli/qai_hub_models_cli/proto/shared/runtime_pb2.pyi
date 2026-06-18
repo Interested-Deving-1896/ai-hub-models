@@ -39,6 +39,7 @@ class _RuntimeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTy
     RUNTIME_GENIE: _Runtime.ValueType  # 6
     RUNTIME_VOICE_AI: _Runtime.ValueType  # 7
     RUNTIME_GENIEX_QAIRT: _Runtime.ValueType  # 11
+    RUNTIME_GENIEX_LLAMACPP: _Runtime.ValueType  # 12
 
 class Runtime(_Runtime, metaclass=_RuntimeEnumTypeWrapper): ...
 
@@ -51,4 +52,5 @@ RUNTIME_PRECOMPILED_QNN_ONNX: Runtime.ValueType  # 5
 RUNTIME_GENIE: Runtime.ValueType  # 6
 RUNTIME_VOICE_AI: Runtime.ValueType  # 7
 RUNTIME_GENIEX_QAIRT: Runtime.ValueType  # 11
+RUNTIME_GENIEX_LLAMACPP: Runtime.ValueType  # 12
 global___Runtime = Runtime

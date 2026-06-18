@@ -560,7 +560,12 @@ def build_compile_options(
 ) -> str:
     compile_options = ""
     if "--target_runtime" not in other_compile_options:
-        compile_options = target_runtime.aihub_target_runtime_flag
+        flag = target_runtime.aihub_target_runtime_flag
+        if flag is None:
+            raise ValueError(
+                f"Runtime {target_runtime.name} does not support AI Hub compilation."
+            )
+        compile_options = flag
     if (
         QAIRTVersion.HUB_FLAG not in other_compile_options
         and target_runtime.qairt_version_changes_compilation

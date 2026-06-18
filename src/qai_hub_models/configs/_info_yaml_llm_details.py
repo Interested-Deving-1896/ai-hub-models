@@ -37,6 +37,8 @@ class LLMDetails(BaseQAIHMConfig):
     call_to_action: LLM_CALL_TO_ACTION
     genie_compatible: bool = False
 
+    geniex_llamacpp_compatible: bool = False
+
     # Dict<Device Name, Dict<Long Runtime Name, LLMDeviceRuntimeDetails>
     # Used when genie_compatible is True (QNN context binary models)
     devices: dict[str, dict[ScorecardProfilePath, LLMDeviceRuntimeDetails]] | None = (
