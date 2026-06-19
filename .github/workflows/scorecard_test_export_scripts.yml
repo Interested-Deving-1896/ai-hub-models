@@ -25,6 +25,17 @@ on:
           type: string
           required: false
 
+        build_and_test_target:
+          description: |
+            Which build_and_test.py task to invoke. Use "test_export_scripts"
+            (gates on @pytest.mark.export) for non-LLMs, or
+            "test_llm_export_scripts" (gates on @pytest.mark.llm_export) for LLMs.
+          type: choice
+          default: test_export_scripts
+          options:
+            - test_export_scripts
+            - test_llm_export_scripts
+
     # Used by other workflows to trigger this workflow
     workflow_call:
       inputs:
