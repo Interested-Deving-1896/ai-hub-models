@@ -115,7 +115,12 @@ class MPIIGazeDataset(BaseDataset):
         (x, y, z) = mat["data"][side][0, 0]["gaze"][0, 0][row]
         theta = np.arcsin(-y)
         phi = np.arctan2(-x, -z)
-        gaze = np.array([-theta, phi])
+        gaze = np.array([-theta, phi], dtype=np.float32)
+        # The right-eye image is horizontally flipped in preprocess_eye_crop so the
+        # model sees a mirrored image and predicts a mirrored yaw.  Negate the GT
+        # yaw here so prediction and ground-truth are in the same coordinate space
+        if side == "right":
+            gaze[1] = -gaze[1]
 
         return img_tensor, torch.from_numpy(gaze)
 

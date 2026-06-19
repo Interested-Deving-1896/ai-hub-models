@@ -71,11 +71,11 @@ class EyeGazeApp:
         gaze_out = gaze_pred.squeeze(0).numpy()
         gaze_out = gaze_out.astype(np.float32)
 
-        if raw_output:
-            return gaze_out
-
         if side == "right":
             gaze_out[1] = -gaze_out[1]
+
+        if raw_output:
+            return gaze_out
 
         # Create visualization
         vis = cv2.cvtColor((proc_img * 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)
