@@ -566,7 +566,7 @@ def build_compile_options(
             f" --force_channel_last_input {','.join(channel_last_inputs)}"
         )
 
-    if channel_last_outputs := get_channel_last(input_spec, target_runtime):
+    if channel_last_outputs := get_channel_last(output_spec, target_runtime):
         compile_options += (
             f" --force_channel_last_output {','.join(channel_last_outputs)}"
         )

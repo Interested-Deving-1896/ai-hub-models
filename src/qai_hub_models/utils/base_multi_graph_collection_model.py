@@ -21,7 +21,7 @@ from qai_hub_models.utils.export_result import (
     ComponentGroup,
     MultiGraphComponentGroup,
 )
-from qai_hub_models.utils.input_spec import InputSpec, OutputSpec
+from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, get_channel_last
 from qai_hub_models.utils.kwarg_helpers import filter_kwargs
 from qai_hub_models.utils.qai_hub_helpers import (
     build_compile_options,
@@ -107,18 +107,6 @@ class MultiGraphCollectionModel(ABC):
         """Return the Lite-MP percentage for mixed-precision quantization, or None."""
         return None
 
-    def get_component_graph_channel_last_inputs(
-        self, component_name: str, graph_name: str
-    ) -> list[str]:
-        """Return input names that should be transposed to channel-last format."""
-        return []
-
-    def get_component_graph_channel_last_outputs(
-        self, component_name: str, graph_name: str
-    ) -> list[str]:
-        """Return output names that should be transposed to channel-last format."""
-        return []
-
     def get_component_graph_mixed_precision(
         self, component_name: str, graph_name: str, precision: Precision
     ) -> Precision:
@@ -199,10 +187,7 @@ class MultiGraphCollectionModel(ABC):
             component_name, graph_name
         )
         inputs = expand_to_batch_size(make_sample_inputs(input_spec), input_spec)
-        channel_last = self.get_component_graph_channel_last_inputs(
-            component_name, graph_name
-        )
-        if use_channel_last_format and channel_last:
+        if use_channel_last_format and (channel_last := get_channel_last(input_spec)):
             return transpose_channel_first_to_last(channel_last, inputs)
         return inputs
 

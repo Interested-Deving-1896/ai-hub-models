@@ -21,7 +21,12 @@ from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.models.protocols import FromPretrainedProtocol
 from qai_hub_models.utils.base_model import _model_cls_name
 from qai_hub_models.utils.export_result import MultiGraphGroup
-from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, make_torch_inputs
+from qai_hub_models.utils.input_spec import (
+    InputSpec,
+    OutputSpec,
+    get_channel_last,
+    make_torch_inputs,
+)
 from qai_hub_models.utils.qai_hub_helpers import (
     build_compile_options,
     build_link_options,
@@ -81,12 +86,6 @@ class MultiGraphWorkbenchModel(ABC, FromPretrainedProtocol):
     def name(self) -> str:
         return _model_cls_name(self)
 
-    def get_graph_channel_last_input(self, graph_name: str) -> list[str]:
-        return []
-
-    def get_graph_channel_last_output(self, graph_name: str) -> list[str]:
-        return []
-
     def get_unsupported_reason(
         self, target_runtime: TargetRuntime, device: Device
     ) -> str | None:
@@ -115,9 +114,7 @@ class MultiGraphWorkbenchModel(ABC, FromPretrainedProtocol):
         inputs_list = make_torch_inputs(spec)
         for i, input_name in enumerate(spec.keys()):
             inputs_dict[input_name] = [inputs_list[i].numpy()]
-        if use_channel_last_format and (
-            cl := self.get_graph_channel_last_input(graph_name)
-        ):
+        if use_channel_last_format and (cl := get_channel_last(spec)):
             inputs_dict = transpose_channel_first_to_last(cl, inputs_dict)
         return inputs_dict
 

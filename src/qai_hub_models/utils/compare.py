@@ -82,7 +82,7 @@ def torch_inference(
     if not return_channel_last_output:
         return numpy_outputs
     new_outputs = []
-    channel_last_outputs = get_channel_last(model.get_input_spec())
+    channel_last_outputs = get_channel_last(model.get_output_spec())
     for name, np_out in zip(list(model.get_output_spec()), numpy_outputs, strict=False):
         if name in channel_last_outputs:
             new_out = transpose_channel_first_to_last([name], {name: [np_out]})
