@@ -2,44 +2,43 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-
 from __future__ import annotations
 
-import os
-from pathlib import Path
-from typing import Any
-
-import torch
-from typing_extensions import Self
+import logging
 
 from qai_hub_models import Precision
+
+# LLMIOType is re-exported from this module so the CLI input-spec parser can
+# resolve the inherited get_input_spec's "llm_io_type" annotation, which it
+# looks up in the concrete model's module.
 from qai_hub_models.models._shared.llama3.model import (
-    Llama3Base,
-    Llama3Base_AIMETOnnx,
-    Llama3Base_QNN,
+    LlamaPartBase,
+    LlamaPreSplitBase,
+    LlamaPreSplitCollectionBase,
+    LlamaQuantizablePreSplitBase,
 )
-from qai_hub_models.models._shared.llm.common import LLMIOType
-from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_CONTEXT_LENGTH,
-    DEFAULT_SEQUENCE_LENGTH,
-    LLMBase,
-    determine_precision_from_checkpoint,
-)
+from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_EXPORT_CONTEXT_LENGTHS as GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
-from qai_hub_models.utils.input_spec import InputSpec, OutputSpec
+from qai_hub_models.models._shared.llm.model import SplitForwardMixin
+from qai_hub_models.models._shared.lm_driver.generator import (
+    HubCompatibleGenerator,
+)
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_EXPORT_CONTEXT_LENGTHS = GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS
 DEFAULT_EXPORT_SEQUENCE_LENGTHS = GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS
 
+# Model identification
 MODEL_ID = __name__.split(".")[-2]
-MODEL_ASSET_VERSION = 6
+MODEL_ASSET_VERSION = 7
 
+# Model architecture constants (from Llama-3-TAIDE 8B)
 NUM_LAYERS = 32
 NUM_SPLITS = 5
 NUM_LAYERS_PER_SPLIT = 9
@@ -47,280 +46,143 @@ HIDDEN_SIZE = 4096
 NUM_KEY_VALUE_HEADS = 8
 NUM_ATTN_HEADS = 32
 
-# Hugging face repo name and url
+# Hugging Face repo
 HF_REPO_NAME = "taide/Llama3-TAIDE-LX-8B-Chat-Alpha1"
 HF_REPO_URL = f"https://huggingface.co/{HF_REPO_NAME}"
 
-# Minimum memory (RAM+swap) recommended for export.
+# Memory requirements
 MIN_MEMORY_RECOMMENDED = 150
 
+# Precision settings
 DEFAULT_PRECISION = Precision.w4a16
 SUPPORTED_PRECISIONS = [Precision.w4a16]
-DEFAULT_CHECKPOINT = {Precision.w4a16: "llama_v3_taide_8b_chat_ckpt_w4a16"}
+DEFAULT_CHECKPOINT = {
+    Precision.w4a16: "w4a16",
+}
+
+# Name used for split ONNX file basenames (e.g. Llama3_TAIDE_1_of_5.onnx)
+SPLIT_MODEL_NAME = "Llama3_TAIDE"
 
 
-class Llama3_TAIDE(Llama3Base):
-    min_memory_recommended = MIN_MEMORY_RECOMMENDED
+class Llama3_TAIDE_PreSplit(LlamaPreSplitBase):
+    """FP PreSplit for Llama-3-TAIDE 8B."""
 
     # Default prompts for demos (Traditional Chinese)
     default_user_prompt = "介紹台灣特色"
     default_system_prompt = "你是一個來自台灣的 AI 助理，你的名字是 TAIDE，樂於以台灣人的立場幫助使用者，會用繁體中文回答問題"  # noqa: RUF001
 
-    def __init__(
-        self,
-        checkpoint: str | os.PathLike | Path = HF_REPO_NAME,
-        *args: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(
-            checkpoint=checkpoint,  # type: ignore[misc]
-            *args,  # noqa: B026
-            **kwargs,
-        )
-
-    def _verify_ckpt(self) -> None:
-        super()._verify_ckpt()
-        if not (
-            self.llm_config.num_hidden_layers == NUM_LAYERS
-            and self.llm_config.hidden_size == HIDDEN_SIZE
-            and self.llm_config.num_attention_heads == NUM_ATTN_HEADS
-            and self.llm_config.num_key_value_heads == NUM_KEY_VALUE_HEADS
-        ):
-            raise ValueError("Model config is not compatible with our implementation.")
-
-    @classmethod
-    def from_pretrained(
-        cls,
-        checkpoint: str | os.PathLike | Path = HF_REPO_NAME,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        host_device: torch.device | None = None,
-        load_pretrained: bool = True,
-        _skip_optimizations: list[str] | None = None,
-    ) -> Self:
-        """
-        Load a pre-trained Llama-3-TAIDE model via HuggingFace.
-
-        checkpoint:
-            Local path or Hugging Face name of floating point checkpoint.
-        sequence_length:
-            Instantiate with this token sequence length input. A longer
-            sequence length means the model is capable of processing more
-            tokens at once. This can only be set to greater than one to process
-            prompts, since responses are auto-regressive in nature and require
-            this to be 1.
-        context_length:
-            Total context length of model. Longer context length means the
-            model is more capable of making longer connections in the input
-            prompt. However, it also hurts runtime performance (both time-to-
-            first-token and tokens-per-second), so this is a tradeoff that may
-            depend on the use case.
-        _skip_optimizations: List of optimizations to skip.
-        """
-        return cls(
-            checkpoint=checkpoint,
-            sequence_length=sequence_length,
-            context_length=context_length,
-            host_device=host_device,
-            load_pretrained=load_pretrained,
-            _skip_optimizations=_skip_optimizations,
-        )
-
-    def get_output_spec(self) -> OutputSpec:
-        return Llama3Base._get_output_spec(NUM_LAYERS)
-
-    def get_input_spec(
-        self,
-        llm_config: dict,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
-    ) -> InputSpec:
-        """
-        Parameters
-        ----------
-        llm_config
-            Model configuration dictionary.
-        sequence_length
-            Sequence length for the model.
-        context_length
-            Context length for the model.
-        llm_io_type
-            Input/output type for the LLM.
-
-        Returns
-        -------
-        InputSpec
-            Input specification for the model.
-        """
-        return Llama3Base._get_input_spec(
-            num_hidden_layers=llm_config["num_hidden_layers"],
-            sequence_length=sequence_length,
-            context_length=context_length,
-            hidden_size=llm_config["hidden_size"],
-            num_key_value_heads=llm_config["num_key_value_heads"],
-            num_attention_heads=llm_config["num_attention_heads"],
-            llm_io_type=llm_io_type,
-        )
+    model_id = MODEL_ID
+    GeneratorClass = HubCompatibleGenerator
+    model_asset_version = MODEL_ASSET_VERSION
+    num_layers = NUM_LAYERS
+    hidden_size = HIDDEN_SIZE
+    num_attention_heads = NUM_ATTN_HEADS
+    num_key_value_heads = NUM_KEY_VALUE_HEADS
+    hf_repo_name = HF_REPO_NAME
+    split_model_name = SPLIT_MODEL_NAME
+    num_splits = NUM_SPLITS
+    num_layers_per_split = NUM_LAYERS_PER_SPLIT
+    min_memory_recommended = MIN_MEMORY_RECOMMENDED
+    default_checkpoint = DEFAULT_CHECKPOINT
+    default_precision = DEFAULT_PRECISION
 
 
-class Llama3_TAIDE_AIMETOnnx(Llama3Base_AIMETOnnx):
-    def __init__(
-        self, checkpoint: str | os.PathLike | Path | None, *args: Any, **kwargs: Any
-    ) -> None:
-        super().__init__(
-            checkpoint=checkpoint,  # type: ignore[misc]
-            *args,  # noqa: B026
-            **kwargs,
-        )
+class Llama3_TAIDE_QuantizablePreSplit(
+    LlamaQuantizablePreSplitBase[Llama3_TAIDE_PreSplit]
+):
+    """Quantizable PreSplit for Llama-3-TAIDE 8B."""
 
-    @classmethod
-    def from_pretrained(
-        cls,
-        checkpoint: str | os.PathLike | Path | None = "DEFAULT",
-        host_device: torch.device | None = None,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        precision: Precision = DEFAULT_PRECISION,
-        fp_model: LLMBase | None = None,
-        _skip_quantsim_creation: bool = False,
-        use_dynamic_shapes: bool = False,
-    ) -> Self:
-        """
-        Load weight from Huggingface and create Aimet-ONNX QuantSim.
-        Optionally load onnx model and AIMET encodings from a checkpoint.
+    FPModel = Llama3_TAIDE_PreSplit
+    GeneratorClass = HubCompatibleGenerator
 
-        Parameters
-        ----------
-        checkpoint
-            Path to previously calibrated AIMET encodings and ONNX
-            models. Note that encodings are sensitive to AIMET ONNX versions.
-            If passing None, initializes without encodings.
-        host_device
-            Device on which to load the model.
-        sequence_length
-            Sequence length for the model.
-        context_length
-            Context length for the model.
-        precision
-            Precision for quantization.
-        fp_model
-            Optional floating point model.
-        _skip_quantsim_creation
-            Internal parameter to skip quantsim creation. This helps export on platforms where aimet onnx is not available.
-        use_dynamic_shapes
-            Whether to use dynamic shapes for ONNX export.
-
-        Returns
-        -------
-        model : Self
-            Instance of the quantized model.
-        """
-        if host_device is None:
-            host_device = torch.device("cpu")
-        if isinstance(checkpoint, str) and checkpoint.startswith("DEFAULT"):
-            precision = determine_precision_from_checkpoint(checkpoint) or precision
-            if precision not in SUPPORTED_PRECISIONS:
-                available_precisions = [str(p) for p in SUPPORTED_PRECISIONS]
-                raise ValueError(
-                    f"This model is not supported for {precision!s} precision. "
-                    f"Models are available in following precisions: {','.join(available_precisions)}."
-                )
-            if precision not in DEFAULT_CHECKPOINT:
-                available_checkpoints = [str(p) for p in DEFAULT_CHECKPOINT]
-                raise ValueError(
-                    f"No checkpoint is available for this model in {precision!s} precision. If you would "
-                    f"like to continue with this precision, please generate a local quantized checkpoint. "
-                    f"Checkpoints are available in the following precisions: {','.join(available_checkpoints)}."
-                )
-            precision_checkpoint = DEFAULT_CHECKPOINT[precision]
-            checkpoint = str(
-                CachedWebModelAsset.from_asset_store(
-                    MODEL_ID,
-                    MODEL_ASSET_VERSION,
-                    precision_checkpoint + ".zip",
-                ).fetch(extract=True)
-            )
-            # Generate necessary ONNX models
-            if fp_model is not None:
-                cls.create_onnx_models(
-                    checkpoint=checkpoint,
-                    fp_model=fp_model,
-                    context_length=context_length,
-                    export_sequence_lengths=[sequence_length],
-                    host_device=host_device,
-                    llm_io_type=fp_model.llm_io_type,
-                )
-
-                cls.save_tokenizer_and_config(checkpoint=checkpoint, fp_model=fp_model)
-        return super().from_pretrained(
-            checkpoint=checkpoint,
-            host_device=host_device,
-            sequence_length=sequence_length,
-            context_length=context_length,
-            precision=precision,
-            fp_model=fp_model,
-            _skip_quantsim_creation=_skip_quantsim_creation,
-            use_dynamic_shapes=use_dynamic_shapes,
-        )
-
-    def get_output_spec(self) -> OutputSpec:
-        return Llama3Base._get_output_spec(NUM_LAYERS)
-
-    def get_input_spec(
-        self,
-        llm_config: dict,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
-    ) -> InputSpec:
-        """
-        Parameters
-        ----------
-        llm_config
-            Model configuration dictionary.
-        sequence_length
-            Sequence length for the model.
-        context_length
-            Context length for the model.
-        llm_io_type
-            Input/output type for the LLM.
-
-        Returns
-        -------
-        InputSpec
-            Input specification for the model.
-        """
-        return Llama3Base._get_input_spec(
-            num_hidden_layers=llm_config["num_hidden_layers"],
-            sequence_length=sequence_length,
-            context_length=context_length,
-            hidden_size=llm_config["hidden_size"],
-            num_key_value_heads=llm_config["num_key_value_heads"],
-            num_attention_heads=llm_config["num_attention_heads"],
-            llm_io_type=llm_io_type,
-        )
+    model_id = MODEL_ID
+    model_asset_version = MODEL_ASSET_VERSION
+    num_layers = NUM_LAYERS
+    supported_precisions = SUPPORTED_PRECISIONS
+    split_model_name = SPLIT_MODEL_NAME
+    num_splits = NUM_SPLITS
+    num_layers_per_split = NUM_LAYERS_PER_SPLIT
+    default_checkpoint = DEFAULT_CHECKPOINT
+    default_precision = DEFAULT_PRECISION
 
 
-class Llama3_TAIDE_QNN(Llama3Base_QNN):
-    num_layers_per_split: int = NUM_LAYERS_PER_SPLIT
+class Llama3_TAIDE_PartBase(LlamaPartBase):
+    """Unified Part base for Llama-3-TAIDE 8B."""
 
-    def get_output_spec(self) -> OutputSpec:
-        return Llama3Base._get_output_spec(NUM_LAYERS)
+    num_splits = NUM_SPLITS
+    hidden_size = HIDDEN_SIZE
+    num_attention_heads = NUM_ATTN_HEADS
+    num_key_value_heads = NUM_KEY_VALUE_HEADS
+    fp_presplit_cls = Llama3_TAIDE_PreSplit
+    quant_presplit_cls = Llama3_TAIDE_QuantizablePreSplit
+    default_precision = DEFAULT_PRECISION
 
-    def get_input_spec(
-        self,
-        llm_config: dict,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        llm_io_type: LLMIOType = LLMIOType.genie_input_ids,
-    ) -> InputSpec:
-        return Llama3Base._get_input_spec(
-            num_hidden_layers=llm_config["num_hidden_layers"],
-            sequence_length=sequence_length,
-            context_length=context_length,
-            hidden_size=llm_config["hidden_size"],
-            num_key_value_heads=llm_config["num_key_value_heads"],
-            num_attention_heads=llm_config["num_attention_heads"],
-            llm_io_type=llm_io_type,
-        )
+
+class Llama3_TAIDE_Part1_Of_5(Llama3_TAIDE_PartBase):
+    """Part 1: Embedding."""
+
+    part_id = 1
+
+
+class Llama3_TAIDE_Part2_Of_5(Llama3_TAIDE_PartBase):
+    """Part 2."""
+
+    part_id = 2
+
+
+class Llama3_TAIDE_Part3_Of_5(Llama3_TAIDE_PartBase):
+    """Part 3."""
+
+    part_id = 3
+
+
+class Llama3_TAIDE_Part4_Of_5(Llama3_TAIDE_PartBase):
+    """Part 4."""
+
+    part_id = 4
+
+
+class Llama3_TAIDE_Part5_Of_5(Llama3_TAIDE_PartBase):
+    """Part 5: Final layers + LM head."""
+
+    part_id = 5
+
+
+_SPLIT_PART_CLASSES: list[type] = [
+    Llama3_TAIDE_Part1_Of_5,
+    Llama3_TAIDE_Part2_Of_5,
+    Llama3_TAIDE_Part3_Of_5,
+    Llama3_TAIDE_Part4_Of_5,
+    Llama3_TAIDE_Part5_Of_5,
+]
+
+
+class QuantizedSplitModelWrapper(  # type: ignore[misc]
+    SplitForwardMixin, Llama3_TAIDE_QuantizablePreSplit
+):
+    """Quantized eval via split Parts instead of monolithic QuantSim."""
+
+    def get_split_part_classes(self) -> list[type]:
+        return _SPLIT_PART_CLASSES
+
+
+class FPSplitModelWrapper(SplitForwardMixin, Llama3_TAIDE_PreSplit):
+    """FP eval via split Parts instead of monolithic torch model."""
+
+    def get_split_part_classes(self) -> list[type]:
+        return _SPLIT_PART_CLASSES
+
+
+class Llama3_TAIDE_Collection(LlamaPreSplitCollectionBase):
+    """Unified Collection with 5 Parts for Llama-3-TAIDE 8B."""
+
+    hf_repo_name = HF_REPO_NAME
+    fp_presplit_cls = Llama3_TAIDE_PreSplit
+    part_base_cls = Llama3_TAIDE_PartBase
+    parts = {
+        "part1_of_5": Llama3_TAIDE_Part1_Of_5,
+        "part2_of_5": Llama3_TAIDE_Part2_Of_5,
+        "part3_of_5": Llama3_TAIDE_Part3_Of_5,
+        "part4_of_5": Llama3_TAIDE_Part4_Of_5,
+        "part5_of_5": Llama3_TAIDE_Part5_Of_5,
+    }

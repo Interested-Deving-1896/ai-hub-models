@@ -2,15 +2,56 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
+from qai_hub_models.models._shared.llm.model import SplitForwardMixin
 
-from qai_hub_models.models._shared.llama3.model import (
-    LlamaPositionProcessor as PositionProcessor,
+from .model import (
+    DEFAULT_PRECISION,
+    HF_REPO_NAME,
+    HIDDEN_SIZE,
+    MIN_MEMORY_RECOMMENDED,
+    MODEL_ID,
+    NUM_ATTN_HEADS,
+    NUM_KEY_VALUE_HEADS,
+    NUM_LAYERS,
+    NUM_LAYERS_PER_SPLIT,
+    NUM_SPLITS,
+    Falcon3_7B_Collection,
+    Falcon3_7B_Part1_Of_5,
+    Falcon3_7B_Part2_Of_5,
+    Falcon3_7B_Part3_Of_5,
+    Falcon3_7B_Part4_Of_5,
+    Falcon3_7B_Part5_Of_5,
+    Falcon3_7B_PartBase,
+    Falcon3_7B_PreSplit,
+    Falcon3_7B_QuantizablePreSplit,
+    FPSplitModelWrapper,
+    QuantizedSplitModelWrapper,
 )
-from qai_hub_models.models._shared.llm.app import ChatApp as App
 
-from .model import MODEL_ID
-from .model import Falcon3_7B as FP_Model
-from .model import Falcon3_7B_AIMETOnnx as Model
-from .model import Falcon3_7B_QNN as QNN_Model
+Model = Falcon3_7B_Collection
 
-__all__ = ["MODEL_ID", "App", "FP_Model", "Model", "PositionProcessor", "QNN_Model"]
+__all__ = [
+    "DEFAULT_PRECISION",
+    "HF_REPO_NAME",
+    "HIDDEN_SIZE",
+    "MIN_MEMORY_RECOMMENDED",
+    "MODEL_ID",
+    "NUM_ATTN_HEADS",
+    "NUM_KEY_VALUE_HEADS",
+    "NUM_LAYERS",
+    "NUM_LAYERS_PER_SPLIT",
+    "NUM_SPLITS",
+    "FPSplitModelWrapper",
+    "Falcon3_7B_Collection",
+    "Falcon3_7B_Part1_Of_5",
+    "Falcon3_7B_Part2_Of_5",
+    "Falcon3_7B_Part3_Of_5",
+    "Falcon3_7B_Part4_Of_5",
+    "Falcon3_7B_Part5_Of_5",
+    "Falcon3_7B_PartBase",
+    "Falcon3_7B_PreSplit",
+    "Falcon3_7B_QuantizablePreSplit",
+    "Model",
+    "QuantizedSplitModelWrapper",
+    "SplitForwardMixin",
+]

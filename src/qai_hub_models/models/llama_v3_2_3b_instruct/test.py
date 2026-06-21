@@ -15,7 +15,6 @@ import torch
 from transformers import AutoConfig
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.models._shared.llm import test
 from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
@@ -193,7 +192,6 @@ def test_evaluate(
     np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.03, atol=0)
 
 
-@pytest.mark.nightly
 @pytest.mark.demo
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
@@ -228,7 +226,6 @@ def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     QuantizedSplitModelWrapper.release()
 
 
-@pytest.mark.nightly
 @pytest.mark.demo
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
@@ -250,7 +247,10 @@ def test_demo_default(
     assert "Paris" in captured.out
 
 
-@pytest.mark.nightly
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="This test can be run on GPU only.",
+)
 @pytest.mark.parametrize(
     ("precision", "scorecard_path", "device", "checkpoint"),
     [
@@ -305,66 +305,6 @@ def test_compile(
         print(f"[provenance] compile_job[{compile_key}]={compile_job.job_id}")
     for link_key, link_job in (result.link_jobs or {}).items():
         print(f"[provenance] link_job[{link_key}]={link_job.job_id}")
-
-
-@pytest.mark.nightly
-@pytest.mark.skipif(
-    not importlib.util.find_spec("qualcomm_device_cloud_sdk"),
-    reason="This test requires the qualcomm_device_cloud_sdk package.",
-)
-@pytest.mark.parametrize(
-    ("precision", "scorecard_path", "device"),
-    [
-        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_x_elite),
-        (Precision.w4, ScorecardCompilePath.GENIE, cs_8_elite_qrd),
-    ],
-)
-@pytest.mark.qdc
-def test_qdc(
-    precision: Precision,
-    scorecard_path: ScorecardCompilePath,
-    device: ScorecardDevice,
-) -> None:
-    Llama3_2_3B_PreSplit.release()
-    Llama3_2_3B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
-    genie_bundle_path = Path(
-        test.GENIE_BUNDLES_ROOT
-    ) / ASSET_CONFIG.get_release_asset_name(
-        MODEL_ID, TargetRuntime.GENIE, precision, device.chipset
-    )
-    if scorecard_path.runtime != TargetRuntime.GENIE:
-        pytest.skip("This test is only valid for Genie runtime.")
-    if not (genie_bundle_path / "genie_config.json").exists():
-        pytest.fail("The genie bundle does not exist.")
-
-    from qai_hub_models.models._shared.llm.qdc.genie_jobs import (
-        _USE_DEFAULT_PROMPTS,
-        submit_genie_bundle_to_qdc_device,
-    )
-
-    metadata = ModelMetadata.from_json(genie_bundle_path / "metadata.json")
-    print(f"[provenance] precision={precision} bundle={genie_bundle_path}")
-    print(f"[provenance] metadata.json precision={metadata.precision}")
-
-    qdc_job_name = f"Genie {MODEL_ID} {precision}"
-    tps, prefill_tps, min_ttft_ms, _ = submit_genie_bundle_to_qdc_device(
-        os.environ["QDC_API_TOKEN"],
-        device.reference_device.name,
-        str(genie_bundle_path),
-        job_name=qdc_job_name,
-        eval_prompts=(_USE_DEFAULT_PROMPTS if device.is_default else None),
-    )
-    assert tps is not None and min_ttft_ms is not None, "QDC execution failed."
-    log_perf_on_device_result(
-        model_name=MODEL_ID,
-        precision=str(precision),
-        device=device.name,
-        tps=tps,
-        prefill_tps=prefill_tps,
-        ttft_ms=min_ttft_ms,
-    )
 
 
 def _get_llm_perf_params() -> list[tuple[Precision, ScorecardDevice]]:

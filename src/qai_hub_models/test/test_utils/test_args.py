@@ -24,15 +24,28 @@ class DynamicMockModule(types.ModuleType):
         super().__init__(name)
         self.__path__: list[str] = []
         self.__all__: list[str] = []
+        # Some mocked packages (e.g. transformers) have their __version__
+        # inspected at import time. Provide a real value so version comparisons
+        # don't trip the dunder guard in __getattr__ below.
+        self.__version__ = "0.0.0"
 
-    def __getattr__(self, name: str) -> DynamicMockModule:
+    def __getattr__(self, name: str) -> object:
         if name.startswith("__") and name.endswith("__"):
             raise AttributeError(name)
+        # CamelCase names are treated as classes (e.g. transformers'
+        # GenerationMixin, PretrainedConfig). Returning a real, subclassable
+        # class lets modules that subclass these at import time (e.g. the LLM
+        # generators: `class Generator(GenerationMixin, torch.nn.Module)`) load
+        # under the mock. Lowercase names are treated as submodules.
+        if name[:1].isupper():
+            klass = type(name, (), {})
+            setattr(self, name, klass)
+            return klass
         submodule_name = f"{self.__name__}.{name}"
         if submodule_name not in sys.modules:
             sub = DynamicMockModule(submodule_name)
             sys.modules[submodule_name] = sub
-        return sys.modules[submodule_name]  # type: ignore[return-value]
+        return sys.modules[submodule_name]
 
     def __call__(self, *args: object, **kwargs: object) -> MagicMock:
         return MagicMock()
@@ -71,7 +84,7 @@ sys.meta_path.insert(0, _finder)
 from qai_hub_models.datasets.imagenet import ImagenetDataset  # noqa: E402
 from qai_hub_models.models._shared.llm.export import get_llm_parser  # noqa: E402
 from qai_hub_models.models.llama_v3_1_8b_instruct import (  # noqa: E402
-    Model as LlamaModel,
+    QuantizedSplitModelWrapper as LlamaModel,
 )
 from qai_hub_models.models.midas import Model as MidasModel  # noqa: E402
 from qai_hub_models.models.qwen2_7b_instruct import (  # noqa: E402
@@ -238,7 +251,6 @@ def test_parse_llama_export(llama_parser: argparse.ArgumentParser) -> None:
         "synchronous",
         "quantize",
         "onnx_export_dir",
-        "use_dynamic_shapes",
         "zip_assets",
     }
     assert args.target_runtime == TargetRuntime.GENIE

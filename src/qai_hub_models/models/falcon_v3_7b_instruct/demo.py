@@ -6,30 +6,23 @@
 from __future__ import annotations
 
 from qai_hub_models.models._shared.llm.demo import llm_chat_demo
-from qai_hub_models.models._shared.llm.model import (
-    LLM_QNN,
-    LLM_AIMETOnnx,
-    LLMBase,
-)
-from qai_hub_models.models.falcon_v3_7b_instruct import (
-    MODEL_ID,
-    FP_Model,
-    Model,
-    QNN_Model,
-)
+from qai_hub_models.models._shared.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.models.falcon_v3_7b_instruct.model import (
     END_TOKENS,
     HF_REPO_NAME,
     HF_REPO_URL,
+    MODEL_ID,
     SUPPORTED_PRECISIONS,
+    Falcon3_7B_PreSplit,
+    QuantizedSplitModelWrapper,
 )
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 
 
-def falcon_v3_7b_instruct_demo(
-    model_cls: type[LLM_AIMETOnnx] = Model,
-    fp_model_cls: type[LLMBase] = FP_Model,
-    qnn_model_cls: type[LLM_QNN] = QNN_Model,
+def falcon_3_7b_chat_demo(
+    model_cls: type[LLM_AIMETOnnx] = QuantizedSplitModelWrapper,
+    fp_model_cls: type[LLMBase] = Falcon3_7B_PreSplit,
+    qnn_model_cls: type[LLM_QNN] = LLM_QNN,
     model_id: str = MODEL_ID,
     end_tokens: set = END_TOKENS,
     hf_repo_name: str = HF_REPO_NAME,
@@ -52,4 +45,4 @@ def falcon_v3_7b_instruct_demo(
 
 
 if __name__ == "__main__":
-    falcon_v3_7b_instruct_demo()
+    falcon_3_7b_chat_demo()
