@@ -608,6 +608,10 @@ def add_function_parser_args(
                     arg_name = f"--{name.replace('_', '-')}"
         elif param.annotation == "bool":
             type_ = bool
+        elif param.annotation == "int | None":
+            # Default is None so the type can't be inferred from it; the
+            # annotation says it's an int, so parse it as int rather than str.
+            type_ = int
         else:
             type_ = str
 
