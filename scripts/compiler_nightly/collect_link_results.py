@@ -21,6 +21,7 @@ from utils import (
     log_and_print,
     save_yaml_results,
     setup_script_logging,
+    wait_for_job_with_timeout,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,10 +38,9 @@ def collect_link_result(
 
     try:
         job = client.get_job(link_job_id, JobType.LINK)
-        status = job.get_status()
 
         result = job_info.copy()
-        result["link_status"] = status.code
+        result["link_status"] = wait_for_job_with_timeout(job, model_name)
 
         return model_name, result
 

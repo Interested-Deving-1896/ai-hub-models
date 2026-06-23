@@ -9,7 +9,6 @@ import argparse
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -18,13 +17,13 @@ from utils import (
     DEFAULT_MAX_WORKERS,
     JOB_STATUS_FAILED,
     JOB_STATUS_SUCCESS,
-    MAX_JOB_RUNTIME_SECONDS,
     extract_tag_and_dir_from_yaml,
     load_client,
     load_yaml_safe,
     log_and_print,
     save_yaml_results,
     setup_script_logging,
+    wait_for_job_with_timeout,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,36 +37,7 @@ def wait_for_jobs(
 
     def wait_for_single_job(model_name: str, job_info: dict) -> tuple[str, str]:
         job = client.get_job(job_info["dev_job"])
-
-        # Check if job is already in a terminal state
-        current_status = job.get_status()
-        if current_status.code in (JOB_STATUS_SUCCESS, JOB_STATUS_FAILED):
-            return model_name, current_status.code
-
-        # Check if job has been running longer than the timeout threshold
-        job_created = job.date
-        current_time = datetime.now(job_created.tzinfo)
-        elapsed_time = current_time - job_created
-
-        if elapsed_time.total_seconds() > MAX_JOB_RUNTIME_SECONDS:
-            logger.warning(
-                f"{model_name}: Job has been running for {elapsed_time.total_seconds() / 3600:.1f} hours. "
-                f"Treating as failed (timeout after {MAX_JOB_RUNTIME_SECONDS / 3600:.1f}h)."
-            )
-            return model_name, "FAILED"
-
-        # Calculate remaining time to wait
-        remaining_seconds = MAX_JOB_RUNTIME_SECONDS - elapsed_time.total_seconds()
-
-        # Wait for job with timeout
-        try:
-            status = job.wait(timeout=int(remaining_seconds))
-            return model_name, status.code
-        except Exception as e:
-            logger.warning(
-                f"{model_name}: Job timeout or error after {MAX_JOB_RUNTIME_SECONDS / 3600:.1f} hours: {e}"
-            )
-            return model_name, JOB_STATUS_FAILED
+        return model_name, wait_for_job_with_timeout(job, model_name)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [

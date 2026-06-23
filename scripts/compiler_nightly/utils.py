@@ -18,8 +18,10 @@ from pathlib import Path
 from typing import Any
 
 from prettytable import PrettyTable
-from qai_hub import Client, JobType
+from qai_hub import Client, Job, JobType
 from ruamel.yaml import YAML
+
+logger = logging.getLogger(__name__)
 
 # Project and configuration constants
 AIHW_COMPILER_NIGHTLY_PROJECT = os.environ.get("COMPILER_NIGHTLY_PROJECT_ID", "")
@@ -41,6 +43,37 @@ DEVICE_PATTERNS = ("cs_", "samsung_")
 
 def get_date_str() -> str:
     return datetime.now().strftime("%m-%d-%Y")
+
+
+def wait_for_job_with_timeout(job: Job, model_name: str) -> str:
+    """Return job's terminal status code, treating it as FAILED if still running past MAX_JOB_RUNTIME_SECONDS."""
+    status = job.get_status()
+    if status.finished:
+        return status.code
+
+    # Still running: fail it if it has exceeded the timeout threshold.
+    job_created = job.date
+    current_time = datetime.now(job_created.tzinfo)
+    elapsed_time = current_time - job_created
+
+    if elapsed_time.total_seconds() > MAX_JOB_RUNTIME_SECONDS:
+        logger.warning(
+            f"{model_name}: Job has been running for {elapsed_time.total_seconds() / 3600:.1f} hours. "
+            f"Treating as failed (timeout after {MAX_JOB_RUNTIME_SECONDS / 3600:.1f}h)."
+        )
+        return JOB_STATUS_FAILED
+
+    # Wait for the remaining time up to the timeout threshold. job.wait() returns
+    # immediately for already-terminal jobs, so no separate get_status() guard.
+    remaining_seconds = MAX_JOB_RUNTIME_SECONDS - elapsed_time.total_seconds()
+    try:
+        status = job.wait(timeout=max(1, int(remaining_seconds)))
+        return status.code
+    except TimeoutError:
+        logger.warning(
+            f"{model_name}: Job timed out after {MAX_JOB_RUNTIME_SECONDS / 3600:.1f} hours."
+        )
+        return JOB_STATUS_FAILED
 
 
 def extract_tag_and_dir_from_yaml(yaml_path: Path) -> tuple[str, Path]:
