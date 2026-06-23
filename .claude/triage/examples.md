@@ -198,3 +198,20 @@ The czar rotates weekly. Assign to the `ai-hub-models` label and let the current
 - **Key signal:** ALL failed jobs have identical "Set up job" error + `codeload.github.com` in URL + some Python versions passed (timing-dependent)
 - **Confidence:** HIGH
 - **Lesson:** When multiple jobs fail at the "Set up job" step with `codeload.github.com` errors, it's always a GitHub CDN outage. The related tetracode#19448 (Workbench Job Failures) was a false alarm — no workbench jobs actually ran.
+
+## Example 22: PT2 Serialization Incompatibility — ai-hub-models (Not Compiler)
+**Issue:** tetracode#19926 "[QAIHM Nightly] Test Failures - 2026-06-19"
+- **Error:** `sam3` — `GuardOnDataDependentSymNode: u0` during `torch.export.export`; `zipformer` — `PT2 serialization requires torch>=2.9`
+- **Agent triage:** Correctly identified as `ai-hub-models` — PT2 serialization defaults incompatible with CI torch version and model code patterns.
+- **Actual fix:** PR #3626 disabled PT2 serialization for sam3 head and zipformer components.
+- **Key signal:** Error is in torch.export path (our code opted into PT2), not in compiler/runtime. Stack trace is in model code or base_model.py.
+- **Confidence:** HIGH
+- **Lesson:** When `torch.export` or PT2 serialization fails, the fix is always in our model/config code (disable PT2 or refactor). It's NOT a compiler bug — we control the serialization path selection.
+
+## Example 23: AIMET Quantize Job Failure — Quantization Team (Workbench Job)
+**Issue:** tetracode#19925 "[QAIHM Nightly] Workbench Job Failures - 2026-06-19"
+- **Error:** `bert_base_uncased_hf_w8a16` and `distil_bert_base_uncased_hf_w8a16` quantize jobs failed
+- **Agent triage:** Routed to `Quantization` — AIMET w8a16 quantize regression, no bert-related code changes in commit range.
+- **Actual fix:** PR #3626 added `use_pt2=False` override for these models (the quantize jobs were failing due to PT2 export path, same root cause as sam3/zipformer).
+- **Score:** PARTIAL — team was wrong (actual fix was ai-hub-models, not Quantization), but noting "AIMET quantize regression" was a reasonable hypothesis without seeing the workbench job logs.
+- **Lesson:** Workbench quantize job failures can have AIMET OR model-code root causes. When quantize fails for models that just gained PT2 defaults, check whether the quantize pipeline is hitting the torch.export path. Fix may be in our serialization config, not AIMET.

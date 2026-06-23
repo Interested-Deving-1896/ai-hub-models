@@ -95,6 +95,9 @@ Use alongside `error-patterns.md` and `runtime-guide.md` for triage.
 | Model | Device | Runtime | Notes |
 |-------|--------|---------|-------|
 | `amt_torchscript` | All | `tflite`, `qnn_dlc` | Chronically flaky inference (5P/17F tflite, 12P/10F qnn_dlc over 22 nightlies). Replaced by `cdcn_torchscript` in integration test set (PR #3462, Jun 2026). |
+| `bevfusion_det` (decoder) | Samsung Galaxy S25 | `qnn_context_binary`, `precompiled_qnn_onnx` | 15x regression on S25 only (QAIRT 2.47 suspected). Tracked in tetracode#19932, #19807. Sustained across Jun 12 + Jun 18 dev scorecards. |
+| `esrgan` | Samsung Galaxy S25 | `qnn_dlc` | Reports `-inf` timing on S25. Part of broader S25/qnn_dlc cluster. Tracked in tetracode#19051, #19917. Sustained across Jun 12 + Jun 18. |
+| `vit` | Samsung Galaxy S25 | `qnn_dlc` | Reports `-inf` timing (w8a8). QAIRT 2.47 regression suspected. Tracked in tetracode#19775. Sustained across Jun 12 + Jun 18. |
 
 ---
 

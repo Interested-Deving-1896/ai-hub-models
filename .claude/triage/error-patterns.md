@@ -32,6 +32,9 @@ If the traceback points to our code, route to `ai-hub-models`.
 | "Check for code-gen changes" pre-commit failure | `scripts/run_codegen.py` | `ai-hub-models` | Committed code-gen output is stale. Re-run `run_codegen.py` for the affected model. |
 | `NotImplementedError` at `base_model.py` in `component_precision()` | `utils/base_model.py` | `ai-hub-models` | Multi-component model missing `component_precision()` override. Fix: implement the method in the model class. |
 | "Mismatch between accuracy csv models" in scorecard integration test | `scorecard/static/scripts/validate_integration_test.py` | `ai-hub-models` | A model in the integration test set failed all inference jobs (no accuracy row). Check if the model is chronically flaky — may need replacement in the test set. |
+| `GuardOnDataDependentSymNode` during `torch.export.export` | `models/*/model*.py` | `ai-hub-models` | Model uses data-dependent control flow incompatible with PT2/torch.export. Fix: set `use_pt2=False` for that component or refactor the dynamic shape logic. See tetracode#19926, PR #3626. |
+| `PT2 serialization (use_pt2=True) requires torch>=2.9` | `utils/base_model.py` | `ai-hub-models` | CI runner has torch<2.9 but model defaults `use_pt2=True`. Fix: pin `use_pt2=False` in the model's code-gen.yaml or model.py for affected components. See tetracode#19926, PR #3626. |
+| `AttributeError: 'tuple' object has no attribute 'shape'` in `transpose_channel.py` | `utils/transpose_channel.py` | `ai-hub-models` | Scorecard accuracy collection crash — model inference returned a tuple where a tensor was expected. Fix in transpose_channel.py or model's postprocessing. See tetracode#19944. |
 
 **Key principle:** If the stack trace is in `qai_hub_models/`, it's almost always `ai-hub-models` regardless of which runtime or compiler is mentioned in the error message.
 
@@ -117,6 +120,7 @@ lowers confidence on bisected suspects when the out-of-band signals are present.
 | Argo `AlreadyExists` — GPU runner workflow name collision across Python matrix | Sporadic | Race condition: multiple Python-version matrix legs try to create same Argo workflow name (e.g. `gpu-pr-<run_id>-1`). One wins, others fail. Re-run or ignore — the winning leg ran tests. Recurring (2026-06-12, 2026-06-13). |
 | `503 Service Unavailable` from `download.pytorch.org` during `uv pip install torch` | Sporadic | PyTorch index server outage. `uv` does not retry across indexes. Re-run. |
 | DNS failure resolving external dataset host (e.g. `www.cs.utexas.edu`) | Sporadic | Transient DNS resolution failure on CI runner. Only affects models that download from that host at test time. Re-run. |
+| External URL returns HTTP 202 (Accepted) instead of 200 | Sporadic | Some academic publishers (IEEE, ACM) intermittently return 202 for HEAD probes. Not a broken URL — re-run. If persistent across multiple runs, consider adding 202 to the validator's allowlist. See tetracode#19869. |
 
 ### Workbench Service Issues (Not a compiler/code bug)
 | Error Signature | Label | Notes |
