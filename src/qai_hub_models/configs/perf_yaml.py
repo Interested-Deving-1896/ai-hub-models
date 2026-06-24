@@ -41,6 +41,12 @@ class QAIHMModelPerf(BaseQAIHMConfig):
             )
             prefill_tokens_per_second: float | None = None
 
+            # Compute unit these metrics are intended to run on ("npu", "gpu",
+            # or "cpu"). Required so it is always written out; most models use
+            # "npu", while runtimes that target other compute units (e.g.
+            # geniex_llamacpp) set it accordingly.
+            desired_compute_unit: str
+
         class PeakMemoryRangeMB(BaseQAIHMConfig):
             min: int
             max: int
@@ -331,6 +337,7 @@ class QAIHMModelPerf(BaseQAIHMConfig):
                             tokens_per_second=lm.tokens_per_second,
                             time_to_first_token_range_milliseconds=ttft,
                             prefill_tokens_per_second=lm.prefill_tokens_per_second,
+                            desired_compute_unit=lm.desired_compute_unit,
                         )
                     )
 

@@ -275,6 +275,7 @@ def format_perf_table(
             columns.append("Component")
         columns += [
             "Context Len",
+            "Compute Unit",
             "Tokens/sec",
             "Time to First Token (ms)",
             "Prefill Tokens/sec",
@@ -292,6 +293,9 @@ def format_perf_table(
                     row.append(r.component if r.HasField("component") else "")
                 row += [
                     str(lm.context_length),
+                    # desired_compute_unit is unset on records from releases
+                    # before 0.57.0; assume npu in that case.
+                    (lm.desired_compute_unit or "npu").upper(),
                     f"{lm.tokens_per_second:.1f}",
                     _format_double_range(lm.time_to_first_token_range_milliseconds)
                     if lm.HasField("time_to_first_token_range_milliseconds")

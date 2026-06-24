@@ -310,19 +310,23 @@ class ModelInfo(google.protobuf.message.Message):
         CALL_TO_ACTION_FIELD_NUMBER: builtins.int
         GENIE_COMPATIBLE_FIELD_NUMBER: builtins.int
         GENIEX_LLAMACPP_COMPATIBLE_FIELD_NUMBER: builtins.int
+        GENIEX_QAIRT_COMPATIBLE_FIELD_NUMBER: builtins.int
         call_to_action: global___ModelInfo.LLMDetails.CallToAction.ValueType
         genie_compatible: builtins.bool
         """Genie (QNN context binary) support"""
         geniex_llamacpp_compatible: builtins.bool
         """GenieX Llama.cpp (GGUF) support"""
+        geniex_qairt_compatible: builtins.bool
+        """GenieX (QAIRT) support"""
         def __init__(
             self,
             *,
             call_to_action: global___ModelInfo.LLMDetails.CallToAction.ValueType = ...,
             genie_compatible: builtins.bool = ...,
             geniex_llamacpp_compatible: builtins.bool = ...,
+            geniex_qairt_compatible: builtins.bool = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["call_to_action", b"call_to_action", "genie_compatible", b"genie_compatible", "geniex_llamacpp_compatible", b"geniex_llamacpp_compatible"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["call_to_action", b"call_to_action", "genie_compatible", b"genie_compatible", "geniex_llamacpp_compatible", b"geniex_llamacpp_compatible", "geniex_qairt_compatible", b"geniex_qairt_compatible"]) -> None: ...
 
     AIHM_VERSION_FIELD_NUMBER: builtins.int
     ID_FIELD_NUMBER: builtins.int

@@ -313,6 +313,8 @@ class QAIHMModelInfo(BaseQAIHMConfig):
             llm_details = info_pb2.ModelInfo.LLMDetails(
                 call_to_action=call_to_action_to_proto(self.llm_details.call_to_action),
                 genie_compatible=self.llm_details.genie_compatible,
+                geniex_qairt_compatible=self.llm_details.geniex_qairt_compatible,
+                geniex_llamacpp_compatible=self.llm_details.geniex_llamacpp_compatible,
             )
 
         numerics_benchmark = None

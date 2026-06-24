@@ -461,7 +461,7 @@ class TargetRuntime(Enum):
     # https://www.qualcomm.com/developer/software/gen-ai-inference-extensions
     GENIE = "genie"
 
-    # Qualcomm GenieX asset using QAIRT as the inference engine
+    # GenieX with QAIRT backend
     GENIEX_QAIRT = "geniex_qairt"
 
     # GenieX with Llama.cpp backend (GGUF models)
@@ -720,7 +720,7 @@ class TargetRuntime(Enum):
 
         THIS MIGHT BE DIFFERENT THAN AI HUB's DEFAULT VERSION.
         """
-        if self == TargetRuntime.GENIE:
+        if self == TargetRuntime.GENIE or self == TargetRuntime.GENIEX_QAIRT:  # noqa: PLR1714 | Can't merge comparisons and use assert_never
             return QAIRTVersion("2.45")
         return self.inference_engine.default_qairt_version
 

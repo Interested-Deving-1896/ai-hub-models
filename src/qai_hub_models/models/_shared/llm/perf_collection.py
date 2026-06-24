@@ -258,6 +258,8 @@ def _update_perf_yaml_locked(
             max=estimated_max_ttft_ms,
         ),
         prefill_tokens_per_second=prefill_tps,
+        # Genie collection targets the NPU.
+        desired_compute_unit="npu",
     )
 
     if perf_details.llm_metrics is None:

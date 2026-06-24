@@ -94,12 +94,21 @@ def _llm_perf() -> ModelPerf:
                 runtime=Runtime.RUNTIME_GENIE,
                 tool_versions=ToolVersions(qairt="2.31"),
                 llm_metrics=[
+                    # desired_compute_unit unset -> rendered as "npu".
                     ModelPerf.LLMPerfMetrics(
                         context_length=4096,
                         tokens_per_second=20.5,
                         time_to_first_token_range_milliseconds=DoubleRange(
                             min=100, max=150
                         ),
+                    ),
+                    ModelPerf.LLMPerfMetrics(
+                        context_length=4096,
+                        tokens_per_second=8.0,
+                        time_to_first_token_range_milliseconds=DoubleRange(
+                            min=200, max=300
+                        ),
+                        desired_compute_unit="cpu",
                     ),
                 ],
             ),
@@ -174,6 +183,15 @@ def test_perf_llm_table_includes_sdk_versions() -> None:
     assert "Tokens/sec" in table
     assert "SDK Versions" in table
     assert "QAIRT 2.31" in table
+
+
+def test_perf_llm_table_includes_compute_unit() -> None:
+    # The LLM table shows a Compute Unit column (values uppercased); an unset
+    # value renders as NPU, and an explicit one (e.g. cpu) shows as CPU.
+    table = format_perf_table(_llm_perf())
+    assert "Compute Unit" in table
+    assert "NPU" in table
+    assert "CPU" in table
 
 
 def test_numerics_filter() -> None:

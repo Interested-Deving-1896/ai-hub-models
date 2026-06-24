@@ -36,7 +36,7 @@ class LLMDetails(BaseQAIHMConfig):
 
     call_to_action: LLM_CALL_TO_ACTION
     genie_compatible: bool = False
-
+    geniex_qairt_compatible: bool = False
     geniex_llamacpp_compatible: bool = False
 
     # Dict<Device Name, Dict<Long Runtime Name, LLMDeviceRuntimeDetails>

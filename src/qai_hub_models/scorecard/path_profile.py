@@ -84,6 +84,8 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             ScorecardProfilePath.QNN_DLC,
             ScorecardProfilePath.QNN_CONTEXT_BINARY,
             ScorecardProfilePath.GENIE,
+            ScorecardProfilePath.GENIEX_QAIRT,
+            ScorecardProfilePath.GENIEX_LLAMACPP,
             ScorecardProfilePath.VOICE_AI,
         ]
 
@@ -301,14 +303,13 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
     @property
     def website_runtime_name(self) -> str:
         """The name of the runtime on the website that corresponds to this path."""
-        if self == ScorecardProfilePath.VOICE_AI:
-            return self.value
         if self in [
+            ScorecardProfilePath.VOICE_AI,
             ScorecardProfilePath.GENIEX_QAIRT,
             ScorecardProfilePath.GENIE,
             ScorecardProfilePath.GENIEX_LLAMACPP,
         ]:
-            return ScorecardProfilePath.GENIE.value
+            return self.value
         return self.runtime.inference_engine.value
 
 

@@ -79,5 +79,12 @@ message ModelPerf {
     optional DoubleRange time_to_first_token_range_milliseconds = 3;
 
     optional double prefill_tokens_per_second = 4;
+
+    // Available in 0.57.0+
+    //
+    // Compute unit these metrics are intended to run on (e.g. "npu", "gpu",
+    // "cpu"). Unset on releases before 0.57.0; if unset, assume "npu". Set by
+    // runtimes that report per-compute-unit metrics (e.g. geniex_llamacpp).
+    string desired_compute_unit = 5;
   }
 }
