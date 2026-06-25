@@ -139,6 +139,10 @@ class Encoder(BaseModel):
     def from_pretrained(cls) -> Self:
         return cls(get_model(PiperTTS.get_language()))
 
+    @property
+    def context_graph_name(self) -> str:
+        return "encoder"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -147,16 +151,15 @@ class Encoder(BaseModel):
         device: Device | None = None,
         context_graph_name: str | None = None,
     ) -> str:
-        compile_options = super().get_hub_compile_options(
+        if target_runtime != TargetRuntime.ONNX:
+            other_compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
+        return super().get_hub_compile_options(
             target_runtime,
             precision,
             other_compile_options,
             device,
-            context_graph_name="encoder",
+            context_graph_name,
         )
-        if target_runtime != TargetRuntime.ONNX:
-            compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
-        return compile_options
 
 
 class SDP(BaseModel):
@@ -256,21 +259,9 @@ class SDP(BaseModel):
     def from_pretrained(cls) -> Self:
         return cls(get_model(PiperTTS.get_language()))
 
-    def get_hub_compile_options(
-        self,
-        target_runtime: TargetRuntime,
-        precision: Precision,
-        other_compile_options: str = "",
-        device: Device | None = None,
-        context_graph_name: str | None = None,
-    ) -> str:
-        return super().get_hub_compile_options(
-            target_runtime,
-            precision,
-            other_compile_options,
-            device,
-            context_graph_name="sdp",
-        )
+    @property
+    def context_graph_name(self) -> str:
+        return "sdp"
 
 
 class Flow(BaseModel):
@@ -344,21 +335,9 @@ class Flow(BaseModel):
     def from_pretrained(cls) -> Self:
         return cls(get_model(PiperTTS.get_language()))
 
-    def get_hub_compile_options(
-        self,
-        target_runtime: TargetRuntime,
-        precision: Precision,
-        other_compile_options: str = "",
-        device: Device | None = None,
-        context_graph_name: str | None = None,
-    ) -> str:
-        return super().get_hub_compile_options(
-            target_runtime,
-            precision,
-            other_compile_options,
-            device,
-            context_graph_name="flow",
-        )
+    @property
+    def context_graph_name(self) -> str:
+        return "flow"
 
 
 class Decoder(BaseModel):
@@ -400,6 +379,10 @@ class Decoder(BaseModel):
     def from_pretrained(cls) -> Self:
         return cls(get_model(PiperTTS.get_language()))
 
+    @property
+    def context_graph_name(self) -> str:
+        return "decoder"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -415,7 +398,7 @@ class Decoder(BaseModel):
             precision,
             other_compile_options,
             device,
-            context_graph_name="decoder",
+            context_graph_name,
         )
 
 

@@ -403,6 +403,10 @@ class Encoder(BaseModel):
     def searchsorted(self, bin_locations: Tensor, inputs: Tensor) -> Tensor:
         return torch.sum(inputs.unsqueeze(-1) >= bin_locations, dim=-1) - 2
 
+    @property
+    def context_graph_name(self) -> str:
+        return "encoder"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -411,16 +415,15 @@ class Encoder(BaseModel):
         device: Device | None = None,
         context_graph_name: str | None = None,
     ) -> str:
-        compile_options = super().get_hub_compile_options(
+        if target_runtime != TargetRuntime.ONNX:
+            other_compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
+        return super().get_hub_compile_options(
             target_runtime,
             precision,
             other_compile_options,
             device,
-            context_graph_name="encoder",
+            context_graph_name,
         )
-        if target_runtime != TargetRuntime.ONNX:
-            compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
-        return compile_options
 
     def component_precision(self) -> Precision:
         return Precision.float
@@ -531,6 +534,10 @@ class Flow(BaseModel):
             "z": TensorSpec(),
         }
 
+    @property
+    def context_graph_name(self) -> str:
+        return "flow"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -549,7 +556,7 @@ class Flow(BaseModel):
             precision,
             other_compile_options,
             device,
-            context_graph_name="flow",
+            context_graph_name,
         )
 
     def component_precision(self) -> Precision:
@@ -596,6 +603,10 @@ class Decoder(BaseModel):
             "audio": TensorSpec(),
         }
 
+    @property
+    def context_graph_name(self) -> str:
+        return "decoder"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -611,7 +622,7 @@ class Decoder(BaseModel):
             precision,
             other_compile_options,
             device,
-            context_graph_name="decoder",
+            context_graph_name,
         )
 
     def component_precision(self) -> Precision:
@@ -619,6 +630,10 @@ class Decoder(BaseModel):
 
 
 class T5Encoder(_T5EncoderBase):
+    @property
+    def context_graph_name(self) -> str:
+        return "charsiu_encoder"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -634,7 +649,7 @@ class T5Encoder(_T5EncoderBase):
             precision,
             other_compile_options,
             device,
-            context_graph_name="charsiu_encoder",
+            context_graph_name,
         )
 
     def component_precision(self) -> Precision:
@@ -642,6 +657,10 @@ class T5Encoder(_T5EncoderBase):
 
 
 class T5Decoder(_T5DecoderBase):
+    @property
+    def context_graph_name(self) -> str:
+        return "charsiu_decoder"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -657,7 +676,7 @@ class T5Decoder(_T5DecoderBase):
             precision,
             other_compile_options,
             device,
-            context_graph_name="charsiu_decoder",
+            context_graph_name,
         )
 
     def component_precision(self) -> Precision:
@@ -741,6 +760,10 @@ class BertWrapper(BaseModel):
             "hidden_states": TensorSpec(),
         }
 
+    @property
+    def context_graph_name(self) -> str:
+        return "bert"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -749,16 +772,15 @@ class BertWrapper(BaseModel):
         device: Device | None = None,
         context_graph_name: str | None = None,
     ) -> str:
-        compile_options = super().get_hub_compile_options(
+        if target_runtime != TargetRuntime.ONNX:
+            other_compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
+        return super().get_hub_compile_options(
             target_runtime,
             precision,
             other_compile_options,
             device,
-            context_graph_name="bert",
+            context_graph_name,
         )
-        if target_runtime != TargetRuntime.ONNX:
-            compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
-        return compile_options
 
     def component_precision(self) -> Precision:
         return Precision.float

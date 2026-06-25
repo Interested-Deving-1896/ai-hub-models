@@ -445,8 +445,6 @@ class WorkbenchModelCollection(
         other_profile_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        if not context_graph_name and target_runtime.is_aot_compiled:
-            context_graph_name = self.get_component_context_graph_name(component_name)
         return self.components[component_name].get_hub_profile_options(
             target_runtime, other_profile_options, context_graph_name
         )

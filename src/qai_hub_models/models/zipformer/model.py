@@ -212,21 +212,25 @@ class ZipformerEncoder(BaseModel):
             hf_zipformer.encoder.encoder_proj,
         )
 
+    @property
+    def context_graph_name(self) -> str:
+        return "encoder_model"
+
     def get_hub_profile_options(
         self,
         target_runtime: TargetRuntime,
         other_profile_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
-        )
         if (
             target_runtime == TargetRuntime.TFLITE
-            and "--compute_unit" not in profile_options
+            and "--compute_unit" not in other_profile_options
         ):
-            profile_options = profile_options + " --compute_unit gpu"
-        return profile_options + " --max_profiler_iterations 10"
+            other_profile_options += " --compute_unit gpu"
+        other_profile_options += " --max_profiler_iterations 10"
+        return super().get_hub_profile_options(
+            target_runtime, other_profile_options, context_graph_name
+        )
 
     def get_hub_compile_options(
         self,
@@ -238,16 +242,15 @@ class ZipformerEncoder(BaseModel):
     ) -> str:
         if target_runtime.qairt_version_changes_compilation:
             other_compile_options += " --quantize_io false "
-        compile_options = super().get_hub_compile_options(
+        if target_runtime != TargetRuntime.ONNX:
+            other_compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
+        return super().get_hub_compile_options(
             target_runtime,
             precision,
             other_compile_options,
             device,
-            context_graph_name="encoder_model",
+            context_graph_name,
         )
-        if target_runtime != TargetRuntime.ONNX:
-            compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
-        return compile_options
 
     def component_precision(self) -> Precision:
         return Precision.w8a16
@@ -298,6 +301,10 @@ class ZipformerDecoder(BaseModel):
             hf_zipformer.decoder.decoder_proj,
         )
 
+    @property
+    def context_graph_name(self) -> str:
+        return "decoder_model"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -308,16 +315,15 @@ class ZipformerDecoder(BaseModel):
     ) -> str:
         if target_runtime.qairt_version_changes_compilation:
             other_compile_options += " --quantize_io false "
-        compile_options = super().get_hub_compile_options(
+        if target_runtime != TargetRuntime.ONNX:
+            other_compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
+        return super().get_hub_compile_options(
             target_runtime,
             precision,
             other_compile_options,
             device,
-            context_graph_name="decoder_model",
+            context_graph_name,
         )
-        if target_runtime != TargetRuntime.ONNX:
-            compile_options += " --truncate_64bit_tensors --truncate_64bit_io "
-        return compile_options
 
     def component_precision(self) -> Precision:
         return Precision.w16a16
@@ -369,6 +375,10 @@ class ZipformerJoiner(BaseModel):
         hf_zipformer = HfZipformer.from_pretrained()
         return cls(hf_zipformer.joiner.output_linear)
 
+    @property
+    def context_graph_name(self) -> str:
+        return "joiner_model"
+
     def get_hub_compile_options(
         self,
         target_runtime: TargetRuntime,
@@ -384,7 +394,7 @@ class ZipformerJoiner(BaseModel):
             precision,
             other_compile_options,
             device,
-            context_graph_name="joiner_model",
+            context_graph_name,
         )
 
     def component_precision(self) -> Precision:
