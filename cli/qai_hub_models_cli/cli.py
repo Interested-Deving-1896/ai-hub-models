@@ -6,14 +6,21 @@ import argparse
 import sys
 from collections.abc import Callable, Iterable
 from importlib.metadata import PackageNotFoundError, version
-from typing import TypeVar
 
 from packaging.version import Version
-from packaging.version import parse as parse_version
 from prettytable import PrettyTable
 
 from qai_hub_models_cli._internal.utils import is_internal_repo, use_internal_releases
-from qai_hub_models_cli._version import __version__
+from qai_hub_models_cli.args import (
+    RUNTIME_VALUES,
+    add_asset_filter_args,
+    add_chipset_attribute_filter_args,
+    add_model_metric_filter_args,
+    add_quiet_arg,
+    add_version_arg,
+    flatten_multi_arg,
+    parse_version_arg,
+)
 from qai_hub_models_cli.common import (
     AIHUB_MODELS_URL,
     build_filter_command,
@@ -27,6 +34,7 @@ from qai_hub_models_cli.envvars import (
     bool_envvar_value,
 )
 from qai_hub_models_cli.fetch import fetch, get_asset_url
+from qai_hub_models_cli.find import find_matching_releases
 from qai_hub_models_cli.proto.info_pb2 import (
     MODEL_TAG_LLM,
     ModelDomain,
@@ -35,8 +43,6 @@ from qai_hub_models_cli.proto.info_pb2 import (
 )
 from qai_hub_models_cli.proto.manifest_pb2 import ManifestModelEntry
 from qai_hub_models_cli.proto.platform_pb2 import FormFactor, WebsiteWorld
-from qai_hub_models_cli.proto.shared.precision_pb2 import Precision
-from qai_hub_models_cli.proto.shared.runtime_pb2 import Runtime
 from qai_hub_models_cli.proto_helpers.info import get_model_info
 from qai_hub_models_cli.proto_helpers.manifest import get_manifest, get_manifest_entry
 from qai_hub_models_cli.proto_helpers.numerics import (
@@ -67,7 +73,6 @@ from qai_hub_models_cli.proto_helpers.platform_enums import (
     license_proto_to_str,
     normalize_label,
     os_str_to_proto,
-    precision_proto_to_str,
     runtime_proto_to_str,
     runtime_str_to_proto,
     tag_proto_to_str,
@@ -81,10 +86,10 @@ from qai_hub_models_cli.proto_helpers.release_assets import (
     filter_release_assets,
     format_fetch_commands,
     format_release_assets_table,
-    format_tool_versions,
     get_model_asset_details,
     get_model_release_assets,
 )
+from qai_hub_models_cli.proto_helpers.tool_versions import format_tool_versions
 from qai_hub_models_cli.utils import build_table, wrap_table_column
 from qai_hub_models_cli.versions import (
     CURRENT_VERSION,
@@ -92,12 +97,9 @@ from qai_hub_models_cli.versions import (
     UnsupportedVersionError,
     feature_supported,
     get_supported_versions,
-    normalize_version,
     print_upgrade_notice,
     version_flag,
 )
-
-T = TypeVar("T")
 
 
 def _check_version_match() -> None:
@@ -114,65 +116,6 @@ def _check_version_match() -> None:
             "Please reinstall both packages from the same version."
         )
         sys.exit(1)
-
-
-def _parse_version(s: str) -> Version:
-    """Argparse type function: normalize and parse a version string."""
-    return parse_version(normalize_version(s))
-
-
-def _add_version_arg(parser: argparse.ArgumentParser) -> None:
-    """Add the shared ``-v/--version`` argument (stored as ``qaihm_version``)."""
-    parser.add_argument(
-        "-v",
-        "--version",
-        default=CURRENT_VERSION,
-        type=_parse_version,
-        dest="qaihm_version",
-        help=f"AI Hub Models version tag (e.g. v0.45.0 or 0.45.0). Default: {__version__}.",
-    )
-
-
-def _add_quiet_arg(parser: argparse.ArgumentParser, help_text: str) -> None:
-    """Add the shared ``-q/--quiet`` flag with a command-specific help string."""
-    parser.add_argument("-q", "--quiet", action="store_true", help=help_text)
-
-
-def _flatten_multi_arg(value: list[list[T]] | None) -> list[T] | None:
-    """Flatten an ``action="append", nargs="+"`` value into a single list.
-
-    Such args parse to a list-of-lists (one inner list per flag occurrence), so
-    both ``--flag a b`` and repeated ``--flag a --flag b`` accumulate rather than
-    overwrite. Returns None when the flag was not given.
-    """
-    if not value:
-        return None
-    return [item for group in value for item in group]
-
-
-def _add_chipset_attribute_filter_args(parser: argparse.ArgumentParser) -> None:
-    """Add the chipset-attribute filters shared by the devices/chipsets commands."""
-    parser.add_argument(
-        "--fp16",
-        action="store_true",
-        help="Only show entries whose chipset supports fp16.",
-    )
-    parser.add_argument(
-        "--htp-version",
-        nargs="+",
-        action="append",
-        type=int,
-        default=None,
-        help="Filter by chipset HTP version(s).",
-    )
-    parser.add_argument(
-        "--soc-model",
-        nargs="+",
-        action="append",
-        type=int,
-        default=None,
-        help="Filter by chipset SoC model(s).",
-    )
 
 
 def _run_fetch(args: argparse.Namespace) -> None:
@@ -294,65 +237,8 @@ def add_fetch_parser(subparsers: argparse._SubParsersAction) -> argparse.Argumen
         help="Download a pre-compiled model asset.",
     )
     parser.add_argument("model", type=str.lower, help="Model ID (e.g. mobilenet_v2).")
-    runtime_values = ", ".join(
-        [
-            runtime_proto_to_str(r)
-            for r in Runtime.values()
-            if r != Runtime.RUNTIME_UNSPECIFIED
-        ]
-    )
-    parser.add_argument(
-        "-r",
-        "--runtime",
-        default=None,
-        help=f"Target runtime. Known values: {runtime_values}. "
-        "Older releases may support different values. "
-        "Required unless -i/--info is given.",
-    )
-    precision_values = ", ".join(
-        [
-            precision_proto_to_str(p)
-            for p in Precision.values()
-            if p != Precision.PRECISION_UNSPECIFIED
-        ]
-    )
-    parser.add_argument(
-        "-p",
-        "--precision",
-        default=None,
-        type=str.lower,
-        help=f"Model precision. Known values: {precision_values}. "
-        "Older releases may support different values.",
-    )
-    # TODO(#18389): Add a list of valid chipsets
-    # so the CLI can validate and suggest chipset names.
-    target = parser.add_mutually_exclusive_group()
-    target.add_argument(
-        "-c",
-        "--chipset",
-        default=None,
-        type=str.lower,
-        help="Chipset name for device-specific (AOT compiled) runtimes. "
-        "Run `qai-hub-models chipsets` to see supported chipsets.",
-    )
-    target.add_argument(
-        "-d",
-        "--device",
-        default=None,
-        help="Device name for device-specific (AOT compiled) runtimes. "
-        "Run `qai-hub-models devices` to see supported devices. Cannot be specified with chipset.",
-    )
-    parser.add_argument(
-        "-s",
-        "--sdk-version",
-        nargs="+",
-        default=None,
-        type=str.lower,
-        help="Filter by SDK/tool version using 'tool=version' syntax (e.g. "
-        "'litert=1.4.4' or 'qairt=2.20'). Accepts multiple values; an asset "
-        "must match all of them.",
-    )
-    _add_version_arg(parser)
+    add_asset_filter_args(parser)
+    add_version_arg(parser)
     parser.add_argument(
         "--extract",
         action=argparse.BooleanOptionalAction,
@@ -377,79 +263,108 @@ def add_fetch_parser(subparsers: argparse._SubParsersAction) -> argparse.Argumen
         help="List the supported release assets and return without downloading. "
         "The runtime, precision, chipset, device, and sdk-version args act as filters.",
     )
-    _add_quiet_arg(parser, "Suppress all output except the result path.")
+    add_quiet_arg(parser, "Suppress all output except the result path.")
     parser.set_defaults(func=_run_fetch)
     return parser
 
 
-def _add_model_metric_filter_args(parser: argparse.ArgumentParser) -> None:
-    """Add the runtime/precision/chipset/device/sdk filters shared by the
-    ``perf`` and ``numerics`` commands. Mirrors the ``fetch`` filter flags.
-    """
-    runtime_values = ", ".join(
-        runtime_proto_to_str(r)
-        for r in Runtime.values()
-        if r != Runtime.RUNTIME_UNSPECIFIED
+def _run_find(args: argparse.Namespace) -> None:
+    sdk_versions = parse_sdk_version_filters(args.sdk_version or [])
+
+    # Search newest-first; print a progress line per release unless quiet.
+    def _progress(version: Version, found: bool, skip_reason: str | None) -> None:
+        if found:
+            suffix = " (match)"
+        elif skip_reason:
+            suffix = f" ({skip_reason})"
+        else:
+            suffix = " (no matching asset)"
+        print(f"Searching v{version}...{suffix}", file=sys.stderr)
+
+    results = find_matching_releases(
+        args.model,
+        runtime=args.runtime,
+        precision=args.precision,
+        chipset=args.chipset,
+        device=args.device,
+        sdk_versions=sdk_versions,
+        min_version=args.min_version,
+        max_version=args.max_version,
+        first_only=not args.all,
+        progress=None if args.quiet else _progress,
+    )
+
+    if not results:
+        print("\nCould not find a release with an asset matching the given filters.")
+        return
+
+    if args.quiet:
+        for version, _ in results:
+            print(version)
+        return
+
+    for version, release_assets in results:
+        platform = get_platform(version)
+        print(
+            format_release_assets_table(
+                release_assets,
+                platform.chipsets,
+                title=f"Matching Assets (v{version})",
+                platform=platform,
+            )
+        )
+        print()
+        print(
+            format_fetch_commands(
+                release_assets,
+                args.model,
+                subset=False,
+                runtime=args.runtime,
+                precision=args.precision,
+                chipset=args.chipset,
+                device=args.device,
+                sdk_versions=sdk_versions,
+                include_info=True,
+                version=version,
+            )
+        )
+        print()
+
+
+def add_find_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        "find",
+        help="Search past releases for an asset matching the given filters.",
+        description="Search released versions (newest first) for a model asset "
+        "matching the same filters accepted by `fetch`, and report the release(s) "
+        "that have one. Useful when the current release dropped an asset you need. "
+        "By default only the newest matching release is reported.",
+    )
+    parser.add_argument("model", type=str.lower, help="Model ID (e.g. mobilenet_v2).")
+    add_asset_filter_args(parser)
+    parser.add_argument(
+        "--min-version",
+        default=None,
+        type=parse_version_arg,
+        help="Only search releases at or above this version (e.g. 0.52.0).",
     )
     parser.add_argument(
-        "-r",
-        "--runtime",
-        nargs="+",
-        action="append",
+        "--max-version",
         default=None,
-        help="Filter by runtime(s); a record matches any of them. "
-        "May be repeated or given multiple values. "
-        f"Known values: {runtime_values}.",
-    )
-    precision_values = ", ".join(
-        precision_proto_to_str(p)
-        for p in Precision.values()
-        if p != Precision.PRECISION_UNSPECIFIED
+        type=parse_version_arg,
+        help="Only search releases at or below this version (e.g. 0.55.0).",
     )
     parser.add_argument(
-        "-p",
-        "--precision",
-        nargs="+",
-        action="append",
-        default=None,
-        type=str.lower,
-        help="Filter by precision(s); a record matches any of them. "
-        "May be repeated or given multiple values. "
-        f"Known values: {precision_values}.",
+        "--all",
+        action="store_true",
+        help="Report every matching release, not just the newest.",
     )
-    target = parser.add_mutually_exclusive_group()
-    target.add_argument(
-        "-c",
-        "--chipset",
-        nargs="+",
-        action="append",
-        default=None,
-        type=str.lower,
-        help="Filter by chipset(s); a record matches any of them. "
-        "May be repeated or given multiple values. "
-        "Run `qai-hub-models chipsets` to see supported chipsets.",
+    add_quiet_arg(
+        parser,
+        "Print matching release versions only, one per line, with no progress output.",
     )
-    target.add_argument(
-        "-d",
-        "--device",
-        nargs="+",
-        action="append",
-        default=None,
-        help="Filter by device(s); a record matches any of them. "
-        "May be repeated or given multiple values. "
-        "Run `qai-hub-models devices` to see supported devices. "
-        "Cannot be combined with --chipset.",
-    )
-    parser.add_argument(
-        "-s",
-        "--sdk-version",
-        nargs="+",
-        default=None,
-        type=str.lower,
-        help="Filter by SDK/tool version using 'tool=version' syntax (e.g. "
-        "'litert=1.4.4' or 'qairt=2.20'). Accepts multiple values; a record "
-        "must match all of them.",
-    )
+    parser.set_defaults(func=_run_find)
+    return parser
 
 
 def _print_model_metric_footer(command: str, args: argparse.Namespace) -> None:
@@ -464,13 +379,13 @@ def _print_model_metric_footer(command: str, args: argparse.Namespace) -> None:
         command,
         args.model,
         vflag,
-        runtimes=_flatten_multi_arg(args.runtime),
-        precisions=_flatten_multi_arg(args.precision),
-        chipsets=_flatten_multi_arg(args.chipset),
-        devices=_flatten_multi_arg(args.device),
+        runtimes=flatten_multi_arg(args.runtime),
+        precisions=flatten_multi_arg(args.precision),
+        chipsets=flatten_multi_arg(args.chipset),
+        devices=flatten_multi_arg(args.device),
     )
     # The component filter is perf-only; sdk-version applies to both commands.
-    for comp in _flatten_multi_arg(getattr(args, "component", None)) or []:
+    for comp in flatten_multi_arg(getattr(args, "component", None)) or []:
         filter_cmd += f" --component '{comp}'"
     for query in args.sdk_version or []:
         filter_cmd += f" -s '{query}'"
@@ -507,12 +422,12 @@ def _run_perf(args: argparse.Namespace) -> None:
     perf = filter_perf(
         perf,
         platform,
-        runtime=_flatten_multi_arg(args.runtime),
-        precision=_flatten_multi_arg(args.precision),
-        chipset=_flatten_multi_arg(args.chipset),
-        device=_flatten_multi_arg(args.device),
+        runtime=flatten_multi_arg(args.runtime),
+        precision=flatten_multi_arg(args.precision),
+        chipset=flatten_multi_arg(args.chipset),
+        device=flatten_multi_arg(args.device),
         sdk_versions=sdk_versions,
-        components=_flatten_multi_arg(args.component),
+        components=flatten_multi_arg(args.component),
     )
     print(format_perf_table(perf, platform=platform))
     if perf.performance_metrics:
@@ -530,7 +445,7 @@ def add_perf_parser(subparsers: argparse._SubParsersAction) -> argparse.Argument
     parser.add_argument(
         "model", type=str.lower, help="Model ID or display name (e.g. mobilenet_v2)."
     )
-    _add_model_metric_filter_args(parser)
+    add_model_metric_filter_args(parser)
     parser.add_argument(
         "--component",
         nargs="+",
@@ -539,7 +454,7 @@ def add_perf_parser(subparsers: argparse._SubParsersAction) -> argparse.Argument
         help="Filter to the given component(s), for multi-component models. "
         "May be repeated or given multiple values.",
     )
-    _add_version_arg(parser)
+    add_version_arg(parser)
     parser.set_defaults(func=_run_perf)
     return parser
 
@@ -550,10 +465,10 @@ def _run_numerics(args: argparse.Namespace) -> None:
     numerics = filter_numerics(
         numerics,
         platform,
-        runtime=_flatten_multi_arg(args.runtime),
-        precision=_flatten_multi_arg(args.precision),
-        chipset=_flatten_multi_arg(args.chipset),
-        device=_flatten_multi_arg(args.device),
+        runtime=flatten_multi_arg(args.runtime),
+        precision=flatten_multi_arg(args.precision),
+        chipset=flatten_multi_arg(args.chipset),
+        device=flatten_multi_arg(args.device),
         sdk_versions=parse_sdk_version_filters(args.sdk_version or []),
     )
     print(format_numerics_table(numerics, platform=platform))
@@ -574,8 +489,8 @@ def add_numerics_parser(
     parser.add_argument(
         "model", type=str.lower, help="Model ID or display name (e.g. mobilenet_v2)."
     )
-    _add_model_metric_filter_args(parser)
-    _add_version_arg(parser)
+    add_model_metric_filter_args(parser)
+    add_version_arg(parser)
     parser.set_defaults(func=_run_numerics)
     return parser
 
@@ -625,7 +540,7 @@ def _run_list_models(args: argparse.Namespace) -> None:
 
     if args.aot or args.jit or args.runtime:
         platform_runtimes = get_platform(args.qaihm_version).runtimes
-        if runtimes := _flatten_multi_arg(args.runtime):
+        if runtimes := flatten_multi_arg(args.runtime):
             try:
                 runtime_vals = {runtime_str_to_proto(r) for r in runtimes}
             except KeyError as e:
@@ -639,7 +554,7 @@ def _run_list_models(args: argparse.Namespace) -> None:
             jit = {rt.runtime for rt in platform_runtimes if not rt.is_aot_compiled}
             predicates.append(lambda e: bool(jit.intersection(e.supported_runtimes)))
 
-    if tags := _flatten_multi_arg(args.tag):
+    if tags := flatten_multi_arg(args.tag):
         try:
             tag_vals = {tag_str_to_proto(t) for t in tags}
         except KeyError as e:
@@ -746,7 +661,7 @@ def add_list_models_parser(
         help="List all available models.",
         description="List all models available in a given AI Hub Models release.",
     )
-    _add_version_arg(parser)
+    add_version_arg(parser)
     domain_values = ", ".join(
         domain_proto_to_str(d)
         for d in ModelDomain.values()
@@ -774,11 +689,6 @@ def add_list_models_parser(
         action="store_true",
         help="Filter to quantized models.",
     )
-    runtime_values = ", ".join(
-        runtime_proto_to_str(r)
-        for r in Runtime.values()
-        if r != Runtime.RUNTIME_UNSPECIFIED
-    )
     parser.add_argument(
         "-r",
         "--runtime",
@@ -788,7 +698,7 @@ def add_list_models_parser(
         type=str.lower,
         help="Filter to models with assets for all of the given runtimes. "
         "May be repeated or given multiple values. "
-        f"Known values: {runtime_values}.",
+        f"Known values: {RUNTIME_VALUES}.",
     )
     parser.add_argument(
         "--llm",
@@ -839,7 +749,7 @@ def add_list_models_parser(
         "May be repeated or given multiple values. "
         f"Known values: {tag_values}.",
     )
-    _add_quiet_arg(parser, "Print model IDs only, one per line.")
+    add_quiet_arg(parser, "Print model IDs only, one per line.")
     parser.set_defaults(func=_run_list_models)
     return parser
 
@@ -850,16 +760,16 @@ def _run_list_devices(args: argparse.Namespace) -> None:
         platform.devices,
         key=lambda d: (form_factor_proto_to_str(d.form_factor), d.name),
     )
-    types = _flatten_multi_arg(args.type)
-    oses = _flatten_multi_arg(args.os)
+    types = flatten_multi_arg(args.type)
+    oses = flatten_multi_arg(args.os)
     devices = filter_devices(
         devices,
         platform.chipsets,
         form_factor=[form_factor_str_to_proto(t) for t in types] if types else None,
         os=[os_str_to_proto(o) for o in oses] if oses else None,
         fp16=True if args.fp16 else None,
-        htp_version=_flatten_multi_arg(args.htp_version),
-        soc_model=_flatten_multi_arg(args.soc_model),
+        htp_version=flatten_multi_arg(args.htp_version),
+        soc_model=flatten_multi_arg(args.soc_model),
     )
 
     if not devices:
@@ -906,7 +816,7 @@ def add_list_devices_parser(
         help="List all supported devices.",
         description="List all devices supported in a given AI Hub Models release.",
     )
-    _add_version_arg(parser)
+    add_version_arg(parser)
     type_values = ", ".join(
         form_factor_proto_to_str(f)
         for f in FormFactor.values()
@@ -927,8 +837,8 @@ def add_list_devices_parser(
         default=None,
         help="Filter by operating system(s) (e.g. Android, Windows).",
     )
-    _add_chipset_attribute_filter_args(parser)
-    _add_quiet_arg(parser, "Print device names only, one per line.")
+    add_chipset_attribute_filter_args(parser)
+    add_quiet_arg(parser, "Print device names only, one per line.")
     parser.set_defaults(func=_run_list_devices)
     return parser
 
@@ -938,13 +848,13 @@ def _run_list_chipsets(args: argparse.Namespace) -> None:
         get_platform(args.qaihm_version).chipsets,
         key=lambda c: (world_proto_to_str(c.world), c.marketing_name),
     )
-    types = _flatten_multi_arg(args.type)
+    types = flatten_multi_arg(args.type)
     chipsets = filter_chipsets(
         chipsets,
         world=[world_str_to_proto(t) for t in types] if types else None,
         fp16=True if args.fp16 else None,
-        htp_version=_flatten_multi_arg(args.htp_version),
-        soc_model=_flatten_multi_arg(args.soc_model),
+        htp_version=flatten_multi_arg(args.htp_version),
+        soc_model=flatten_multi_arg(args.soc_model),
     )
 
     if not chipsets:
@@ -974,7 +884,7 @@ def add_list_chipsets_parser(
         help="List all supported chipsets.",
         description="List all chipsets supported in a given AI Hub Models release.",
     )
-    _add_version_arg(parser)
+    add_version_arg(parser)
     type_values = ", ".join(
         world_proto_to_str(w)
         for w in WebsiteWorld.values()
@@ -988,8 +898,8 @@ def add_list_chipsets_parser(
         default=None,
         help=f"Filter by chipset type(s). Known values: {type_values}.",
     )
-    _add_chipset_attribute_filter_args(parser)
-    _add_quiet_arg(parser, "Print chipset names only, one per line.")
+    add_chipset_attribute_filter_args(parser)
+    add_quiet_arg(parser, "Print chipset names only, one per line.")
     parser.set_defaults(func=_run_list_chipsets)
     return parser
 
@@ -1020,8 +930,8 @@ def add_list_runtimes_parser(
         help="List all runtimes.",
         description="List all runtimes models can be compiled to.",
     )
-    _add_version_arg(parser)
-    _add_quiet_arg(parser, "Print runtime IDs only, one per line.")
+    add_version_arg(parser)
+    add_quiet_arg(parser, "Print runtime IDs only, one per line.")
     parser.set_defaults(func=_run_list_runtimes)
     return parser
 
@@ -1195,7 +1105,7 @@ def add_info_parser(
         type=str.lower,
         help="Model ID or display name (e.g. mobilenet_v2).",
     )
-    _add_version_arg(parser)
+    add_version_arg(parser)
     parser.set_defaults(func=_run_info)
     return parser
 
@@ -1223,7 +1133,7 @@ def add_versions_parser(
         description="List all AI Hub Models versions supported by this CLI. "
         "Shows which version is currently installed and whether newer versions are available.",
     )
-    _add_quiet_arg(
+    add_quiet_arg(
         parser,
         "Print versions as a plain comma-separated list without the (installed) marker or upgrade notice.",
     )
@@ -1273,6 +1183,7 @@ def main(args: list[str] | None = None) -> None:
     add_list_devices_parser(subparsers)
     add_list_chipsets_parser(subparsers)
     add_list_runtimes_parser(subparsers)
+    add_find_parser(subparsers)
     add_versions_parser(subparsers)
     if use_internal_releases() or is_internal_repo():
         add_validate_aws_parser(subparsers)
@@ -1284,7 +1195,9 @@ def main(args: list[str] | None = None) -> None:
         except Exception as e:
             if bool_envvar_value(VERBOSE_EXCEPTIONS_ENVVAR):
                 raise
-            print(e)
+            # KeyError.__str__ wraps its message in quotes (it uses repr); print
+            # the message text directly so error output reads cleanly.
+            print(e.args[0] if isinstance(e, KeyError) and e.args else e)
             sys.exit(1)
     else:
         parser.print_help()

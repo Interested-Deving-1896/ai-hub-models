@@ -22,9 +22,10 @@ from qai_hub_models_cli.proto_helpers.platform_enums import (
     runtime_proto_to_str,
     runtimes_str_to_proto_set,
 )
-from qai_hub_models_cli.proto_helpers.release_assets import (
+from qai_hub_models_cli.proto_helpers.tool_versions import (
     format_tool_versions,
     tool_versions_match,
+    validate_sdk_tools,
 )
 from qai_hub_models_cli.utils import build_table
 from qai_hub_models_cli.versions import CURRENT_VERSION
@@ -134,6 +135,8 @@ def filter_perf(
     KeyError
         If *runtime*, *chipset*, *device*, or a component is not known.
     """
+    if sdk_versions:
+        validate_sdk_tools(sdk_versions)
     runtime_vals = runtimes_str_to_proto_set(runtime, platform)
     precision_vals = precisions_str_to_proto_set(precision)
     device_names = device_names_for_filter(platform, chipset, device)

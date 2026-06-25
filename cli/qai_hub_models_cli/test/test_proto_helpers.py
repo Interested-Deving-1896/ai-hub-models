@@ -536,9 +536,14 @@ class TestFilterReleaseAssets:
             sdk_versions=parse_sdk_version_filters(["qairt=2.20", "litert=9.9"]),
         ).assets
 
-        # Bad syntax is rejected at parse time; an unknown tool at match time.
+        # Bad syntax is rejected at parse time; an empty version and an unknown
+        # tool at match time.
         with pytest.raises(ValueError, match="tool=version"):
             parse_sdk_version_filters(["2.20"])
+        with pytest.raises(ValueError, match="is empty"):
+            filter_release_assets(
+                assets, platform, sdk_versions=parse_sdk_version_filters(["litert="])
+            )
         with pytest.raises(ValueError, match="Unknown SDK tool"):
             filter_release_assets(
                 assets, platform, sdk_versions=parse_sdk_version_filters(["foo=1.0"])
@@ -793,3 +798,14 @@ class TestInfoDiskCache:
 
         mock_cli.get_info_proto.assert_not_called()
         assert result.id == "mobilenet_v2"
+
+
+class TestToolVersionLabels:
+    def test_labels_match_proto_fields(self) -> None:
+        """_TOOL_VERSION_LABELS must stay 1:1 with the ToolVersions proto fields."""
+        from qai_hub_models_cli.proto.shared.tool_versions_pb2 import ToolVersions
+        from qai_hub_models_cli.proto_helpers.tool_versions import _TOOL_VERSION_LABELS
+
+        labeled_fields = {field for field, _ in _TOOL_VERSION_LABELS}
+        proto_fields = {f.name for f in ToolVersions.DESCRIPTOR.fields}
+        assert labeled_fields == proto_fields

@@ -21,7 +21,6 @@ from qai_hub_models_cli.proto.platform_pb2 import ChipsetInfo, PlatformInfo
 from qai_hub_models_cli.proto.release_assets_pb2 import ModelReleaseAssets
 from qai_hub_models_cli.proto.shared.precision_pb2 import Precision
 from qai_hub_models_cli.proto.shared.runtime_pb2 import Runtime
-from qai_hub_models_cli.proto.shared.tool_versions_pb2 import ToolVersions
 from qai_hub_models_cli.proto_helpers._common import fetch_model_proto
 from qai_hub_models_cli.proto_helpers.info import get_model_info
 from qai_hub_models_cli.proto_helpers.manifest import get_manifest_entry
@@ -36,6 +35,11 @@ from qai_hub_models_cli.proto_helpers.platform_enums import (
     runtime_str_to_proto,
     runtimes_str_to_proto_set,
 )
+from qai_hub_models_cli.proto_helpers.tool_versions import (
+    format_tool_versions,
+    tool_versions_match,
+    validate_sdk_tools,
+)
 from qai_hub_models_cli.utils import build_table
 from qai_hub_models_cli.versions import CURRENT_VERSION, version_flag
 
@@ -44,72 +48,6 @@ class AssetNotFoundError(FileNotFoundError):
     def __init__(self, *args: object, model_sharing_restricted: bool = False) -> None:
         self.model_sharing_restricted = model_sharing_restricted
         super().__init__(*args)
-
-
-# Tool version proto fields paired with their display labels, in display order.
-_TOOL_VERSION_LABELS: list[tuple[str, str]] = [
-    ("qairt", "QAIRT"),
-    ("onnx", "ONNX"),
-    ("onnx_runtime", "ONNX Runtime"),
-    ("tflite", "TFLite"),
-    ("litert", "LiteRT"),
-    ("ai_hub_models", "AI Hub Models"),
-]
-
-
-def format_tool_versions(tool_versions: ToolVersions) -> str:
-    """Format the set tool versions as a comma-separated ``Label X.Y`` string."""
-    parts = [
-        f"{label} {value}"
-        for field, label in _TOOL_VERSION_LABELS
-        if (value := getattr(tool_versions, field))
-    ]
-    return ", ".join(parts) if parts else "—"
-
-
-# Accepted tool names for an SDK version filter, mapped to their proto field.
-# Includes the field name and a normalized form of the display label.
-_SDK_FILTER_TOOLS: dict[str, str] = {
-    **{field: field for field, _ in _TOOL_VERSION_LABELS},
-    **{label.lower(): field for field, label in _TOOL_VERSION_LABELS},
-}
-
-
-def tool_versions_match(
-    tool_versions: ToolVersions, sdk_versions: dict[str, str]
-) -> bool:
-    """Whether *tool_versions* satisfies every entry in *sdk_versions*.
-
-    Parameters
-    ----------
-    tool_versions
-        The asset's tool versions to test.
-    sdk_versions
-        Map of tool name (``qairt``, ``onnx``, ``onnx_runtime``, ``tflite``,
-        ``litert``, ``ai_hub_models``, or a display label) to a version
-        substring, as produced by :func:`parse_sdk_version_filters`. Each tool
-        name is resolved to its proto field here, and its version is matched as
-        a case-insensitive substring of the asset's value for that tool.
-
-    Returns
-    -------
-    bool
-        True if, for every entry, the asset's named tool version contains the
-        requested substring.
-
-    Raises
-    ------
-    ValueError
-        If a tool name does not match a known tool.
-    """
-    for tool, version in sdk_versions.items():
-        field = _SDK_FILTER_TOOLS.get(tool)
-        if field is None:
-            valid = ", ".join(name for name, _ in _TOOL_VERSION_LABELS)
-            raise ValueError(f"Unknown SDK tool {tool!r}. Valid tools: {valid}.")
-        if version not in getattr(tool_versions, field).lower():
-            return False
-    return True
 
 
 @functools.lru_cache(maxsize=1)
@@ -265,6 +203,7 @@ def format_fetch_commands(
     sdk_versions: dict[str, str] | None = None,
     url_only: bool = False,
     include_metrics: bool = False,
+    include_info: bool = False,
     version: Version = CURRENT_VERSION,
 ) -> str:
     """Format the ``fetch``/``devices`` command hints shown beneath a table.
@@ -272,6 +211,7 @@ def format_fetch_commands(
     ``sdk_versions`` (a ``tool -> version`` map) is echoed into the suggested
     command as ``-s tool=version`` flags. When *include_metrics* is True,
     pointers to the ``perf`` and ``numerics`` commands are appended. When
+    *include_info* is True, a pointer to the ``info`` command is appended. When
     *version* is not the installed version, every suggested command carries
     ``-v <version>`` so it stays pinned to the release being browsed.
     """
@@ -304,6 +244,10 @@ def format_fetch_commands(
         )
 
     model_entries = []
+    if include_info:
+        model_entries.append(
+            ("Full model details", sample_command("info", model, vflag))
+        )
     if subset:
         model_entries.append(
             ("See all assets", sample_command("fetch", model, vflag, "-i"))
@@ -385,6 +329,8 @@ def filter_release_assets(
     if chipset is not None and device is not None:
         raise ValueError("Provide at most one of 'chipset' or 'device'.")
 
+    if sdk_versions:
+        validate_sdk_tools(sdk_versions)
     runtime_vals = runtimes_str_to_proto_set(runtime, platform)
     precision_vals = precisions_str_to_proto_set(precision)
     chipset_names: set[str] | None = None

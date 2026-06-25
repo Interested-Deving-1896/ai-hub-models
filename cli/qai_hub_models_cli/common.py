@@ -54,7 +54,8 @@ def parse_sdk_version_filters(queries: list[str]) -> dict[str, str]:
             )
         tool, _, version = query.partition("=")
         tool = tool.strip().lower().replace("-", "_").replace(" ", "_")
-        parsed[tool] = version.strip().lower()
+        version = version.strip().lower()
+        parsed[tool] = version
     return parsed
 
 
