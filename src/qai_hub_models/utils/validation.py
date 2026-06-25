@@ -9,12 +9,12 @@ import inspect
 from qai_hub_models import Precision
 from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
 from qai_hub_models.datasets.common import BaseDataset
-from qai_hub_models.models.protocols import FromPretrainedProtocol
+from qai_hub_models.protocols import FromPretrainedProtocol
 from qai_hub_models.utils.base_collection_model import (
     CollectionModel,
     WorkbenchModelCollection,
 )
-from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphCollectionModel,
     MultiGraphWorkbenchModelCollection,
@@ -33,7 +33,7 @@ def _quantized_precision_names(code_gen: QAIHMModelCodeGen) -> list[str]:
     return [str(p) for p in code_gen.supported_precisions if p != Precision.float]
 
 
-def validate_io_names(instance: BaseModel) -> list[str]:
+def validate_io_names(instance: WorkbenchModel) -> list[str]:
     """
     Validate channel-last declarations match actual I/O names
     and that names don't contain dashes.
@@ -85,7 +85,7 @@ def validate_io_names_collection(
     """
     errors: list[str] = []
     for comp_name, component in model.components.items():
-        if not isinstance(component, BaseModel):
+        if not isinstance(component, WorkbenchModel):
             continue
         errors.extend(
             f"[component '{comp_name}'] {err}" for err in validate_io_names(component)
@@ -94,7 +94,7 @@ def validate_io_names_collection(
 
 
 def validate_eval_datasets(
-    model: BaseModel | CollectionModel | MultiGraphCollectionModel,
+    model: WorkbenchModel | CollectionModel | MultiGraphCollectionModel,
 ) -> list[str]:
     """
     Validate that all dataset classes returned by get_eval_dataset_classes() are valid.
@@ -118,7 +118,7 @@ def validate_eval_datasets(
 
 
 def validate_eval_datasets_have_evaluator(
-    model: BaseModel,
+    model: WorkbenchModel,
 ) -> list[str]:
     """
     Validate that models with eval datasets implement get_evaluator().
@@ -136,14 +136,14 @@ def validate_eval_datasets_have_evaluator(
     """
     if not model.get_eval_dataset_classes():
         return []
-    if model.get_evaluator is BaseModel.get_evaluator:
+    if model.get_evaluator is WorkbenchModel.get_evaluator:
         return [
             "get_eval_dataset_classes() is non-empty but get_evaluator() is not implemented."
         ]
     return []
 
 
-def _litemp_implemented(model: BaseModel, precision: Precision) -> bool:
+def _litemp_implemented(model: WorkbenchModel, precision: Precision) -> bool:
     try:
         model.get_hub_litemp_percentage(precision)
     except NotImplementedError:
@@ -152,7 +152,7 @@ def _litemp_implemented(model: BaseModel, precision: Precision) -> bool:
 
 
 def validate_mixed_precision_litemp(
-    model: BaseModel,
+    model: WorkbenchModel,
     code_gen: QAIHMModelCodeGen,
 ) -> list[str]:
     """
@@ -184,7 +184,7 @@ def validate_mixed_precision_litemp(
     ]
 
 
-def _component_precision_implemented(component: BaseModel) -> bool:
+def _component_precision_implemented(component: WorkbenchModel) -> bool:
     try:
         component.component_precision()
     except NotImplementedError:
@@ -224,7 +224,7 @@ def validate_component_precision(
 
     errors: list[str] = []
     for comp_name, component in model.components.items():
-        if not isinstance(component, BaseModel):
+        if not isinstance(component, WorkbenchModel):
             continue
         if not _component_precision_implemented(component):
             errors.append(
@@ -247,7 +247,7 @@ def validate_component_precision(
 
 
 def perform_runtime_model_validation(
-    model_cls: type,
+    model_cls: type[WorkbenchModel | CollectionModel | MultiGraphCollectionModel],
     model_id: str,
     app_cls: type | None = None,
 ) -> None:
@@ -285,7 +285,7 @@ def perform_runtime_model_validation(
     ):
         errors.extend(validate_io_names_collection(model))
         errors.extend(validate_component_precision(model, code_gen))
-    elif isinstance(model, BaseModel):
+    elif isinstance(model, WorkbenchModel):
         errors.extend(validate_io_names(model))
         errors.extend(validate_mixed_precision_litemp(model, code_gen))
         errors.extend(validate_eval_datasets_have_evaluator(model))

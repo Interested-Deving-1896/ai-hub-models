@@ -18,7 +18,7 @@ from qai_hub_models.utils.base_collection_model import (
     WorkbenchModelCollection,
 )
 from qai_hub_models.utils.base_dataset import DatasetSplit, instantiate_dataset
-from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphCollectionModel,
 )
@@ -34,7 +34,7 @@ from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
 
 def get_calibration_data(
-    model: BaseModel | CollectionModel | MultiGraphCollectionModel,
+    model: WorkbenchModel | CollectionModel | MultiGraphCollectionModel,
     input_spec_arg: InputSpec | dict[str, InputSpec] | None = None,
     num_samples: int | None = None,
     component_name: str | None = None,
@@ -93,7 +93,7 @@ def get_calibration_data(
             input_spec = input_spec_dict.get(component_name)
         model = model.components[component_name]
 
-    assert isinstance(model, BaseModel)
+    assert isinstance(model, WorkbenchModel)
     calibration_dataset_cls = model.get_calibration_dataset_cls()
     if calibration_dataset_cls is None:
         assert num_samples is None, (

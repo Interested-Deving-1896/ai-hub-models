@@ -27,16 +27,11 @@ __all__ = [
     "AIMETQuantizableModelProtocol",
     "EvaluatableModelProtocol",
     "ExecutableModelProtocol",
-    "FromPrecompiledProtocol",
-    "FromPrecompiledTypeVar",
     "FromPretrainedProtocol",
     "FromPretrainedTypeVar",
 ]
 
 FromPretrainedTypeVar = TypeVar("FromPretrainedTypeVar", bound="FromPretrainedProtocol")
-FromPrecompiledTypeVar = TypeVar(
-    "FromPrecompiledTypeVar", bound="FromPrecompiledProtocol"
-)
 
 
 @runtime_checkable
@@ -110,21 +105,6 @@ class FromPretrainedProtocol(Protocol):
         pretrained model. While this function may take arguments, all arguments
         should have default values specified, so that all classes can be invoked
         with `cls.from_pretrained()` and always have it return something reasonable.
-        """
-        ...
-
-
-@runtime_checkable
-class FromPrecompiledProtocol(Protocol):
-    """Models follow this protocol if they can be initiated from a precompiled model."""
-
-    @classmethod
-    def from_precompiled(cls, *args: Any, **kwargs: Any) -> Self:
-        """
-        Utility function that helps users get up and running with a default
-        precompiled model. While this function may take arguments, all arguments
-        should have default values specified, so that all classes can be invoked
-        with `cls.from_precompiled()` and always have it return something reasonable.
         """
         ...
 

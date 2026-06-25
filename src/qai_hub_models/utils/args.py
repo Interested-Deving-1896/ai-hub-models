@@ -23,8 +23,6 @@ from numpydoc.docscrape import FunctionDoc
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.protocols import (
-    FromPrecompiledProtocol,
-    FromPrecompiledTypeVar,
     FromPretrainedProtocol,
     FromPretrainedTypeVar,
 )
@@ -35,8 +33,7 @@ from qai_hub_models.utils.base_collection_model import (
 )
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_model import (
-    BaseModel,
-    BasePrecompiledModel,
+    PrecompiledWorkbenchModel,
     WorkbenchModel,
 )
 from qai_hub_models.utils.envvars import DevModeEnvvar
@@ -157,7 +154,7 @@ class QAIHMArgumentParser(argparse.ArgumentParser):
 
     def __init__(
         self,
-        model_cls: type[FromPretrainedTypeVar | FromPrecompiledTypeVar] | None = None,
+        model_cls: type[FromPretrainedTypeVar] | None = None,
         supported_precision_runtimes: (
             dict[Precision, list[TargetRuntime]] | None
         ) = None,
@@ -240,7 +237,7 @@ class QAIHMArgumentParser(argparse.ArgumentParser):
                 )
             assert self.model_cls is not None
             if not issubclass(self.model_cls, CollectionModel):
-                # BaseModel
+                # WorkbenchModel
                 parsed.quantized_model_id = quantized_model_id_arg
             else:
                 # CollectionModel
@@ -320,7 +317,7 @@ class QAIHMArgumentParser(argparse.ArgumentParser):
 
 
 def get_parser(
-    model_cls: type[FromPretrainedTypeVar | FromPrecompiledTypeVar] | None = None,
+    model_cls: type[FromPretrainedTypeVar] | None = None,
     supported_precision_runtimes: dict[Precision, list[TargetRuntime]] | None = None,
     allow_dupe_args: bool = False,
 ) -> QAIHMArgumentParser:
@@ -584,6 +581,16 @@ def add_function_parser_args(
         and returns the help string for the that arg.
     """
     for name, param in signature.items():
+        # Skip variadic parameters (*args / **kwargs). These have no fixed name
+        # and cannot be expressed as CLI arguments; a generic signature such as
+        # `from_pretrained(*args, **kwargs)` would otherwise produce bogus
+        # `--args` / `--kwargs` flags.
+        if param.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        ):
+            continue
+
         # Determining type from param.annotation is non-trivial (it can be a
         # strings like "bool | None").
         bool_action = None
@@ -687,7 +694,7 @@ def get_model_cli_parser(
 
 
 def add_input_spec_args(
-    cls: type[BaseModel | CollectionModel],
+    cls: type[WorkbenchModel | CollectionModel],
     parser: QAIHMArgumentParser,
 ) -> QAIHMArgumentParser:
     """Adds arguments from get_input_spec."""
@@ -847,14 +854,14 @@ def demo_model_from_cli_args(
     Create this model from an argparse namespace.
     Default behavior is to assume the CLI args have the same names as from_pretrained method args.
 
-    If the model is a BaseModel and an on-device demo is requested,
-        the BaseModel will be wrapped in an OnDeviceModel.
+    If the model is a WorkbenchModel and an on-device demo is requested,
+        the WorkbenchModel will be wrapped in an OnDeviceModel.
     """
     is_on_device = "eval_mode" in cli_args and cli_args.eval_mode == EvalMode.ON_DEVICE
     inference_model: FromPretrainedTypeVar | OnDeviceModel
     inference_model = model_from_cli_args(model_cls, cli_args)
-    if is_on_device and issubclass(model_cls, BaseModel):
-        assert isinstance(inference_model, BaseModel)
+    if is_on_device and issubclass(model_cls, WorkbenchModel):
+        assert isinstance(inference_model, WorkbenchModel)
         device: hub.Device = cli_args.device
         if cli_args.hub_model_id:
             model_from_hub = hub.get_model(cli_args.hub_model_id)
@@ -900,7 +907,7 @@ def _parse_int_list(value: str) -> list[int]:
 
 def _resolve_param_type(
     param: inspect.Parameter,
-    model_cls: type[BaseModel | BasePrecompiledModel | CollectionModel],
+    model_cls: type[WorkbenchModel | PrecompiledWorkbenchModel | CollectionModel],
 ) -> type | Callable:
     """
     Resolve a parameter annotation to a concrete type or callable for argparse.
@@ -934,7 +941,7 @@ def _resolve_param_type(
 
 
 def get_model_input_spec_parser(
-    model_cls: type[BaseModel | CollectionModel],
+    model_cls: type[WorkbenchModel | CollectionModel],
     parser: QAIHMArgumentParser | None = None,
 ) -> QAIHMArgumentParser:
     """
@@ -981,7 +988,7 @@ def input_spec_from_cli_args(
 
 
 def _evaluate_export_common_parser(
-    model_cls: type[FromPretrainedTypeVar | FromPrecompiledTypeVar],
+    model_cls: type[FromPretrainedTypeVar],
     supported_precision_runtimes: dict[Precision, list[TargetRuntime]],
     omit_precision: bool = False,
 ) -> QAIHMArgumentParser:
@@ -1010,7 +1017,7 @@ def _evaluate_export_common_parser(
     )
     if issubclass(model_cls, FromPretrainedProtocol):
         # Skip adding CLI from model for compiled model
-        # TODO: #9408 Refactor BaseModel, BasePrecompiledModel to fetch
+        # TODO: #9408 Refactor WorkbenchModel, PrecompiledWorkbenchModel to fetch
         # parameters from compiled model
         parser = get_model_cli_parser(model_cls, parser)
         parser = add_input_spec_args(model_cls, parser)  # type: ignore[arg-type]
@@ -1114,14 +1121,14 @@ def add_export_function_args(
             type=str,
             default=None,
             help="If set, uses this quantized model ID instead of quantizing during export. "
-            "For BaseModel: --quantized-model-id <id>. "
+            "For WorkbenchModel: --quantized-model-id <id>. "
             "For CollectionModel: --quantized-model-id <id1,id2,...>. "
             "For CollectionModel, IDs must be provided in the same order as the selected components in --components.",
         )
 
 
 def export_parser(
-    model_cls: type[FromPrecompiledProtocol | FromPretrainedProtocol],
+    model_cls: type[FromPretrainedProtocol],
     export_fn: Callable,
     components: list[str] | None = None,
     supported_precision_runtimes: dict[Precision, list[TargetRuntime]] | None = None,
@@ -1185,7 +1192,7 @@ def export_parser(
 
 
 def evaluate_parser(
-    model_cls: type[FromPretrainedTypeVar | FromPrecompiledTypeVar],
+    model_cls: type[FromPretrainedTypeVar],
     supported_dataset_classes: list[type[BaseDataset]],
     supported_precision_runtimes: dict[Precision, list[TargetRuntime]] | None = None,
     uses_quantize_job: bool = True,

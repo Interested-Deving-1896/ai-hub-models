@@ -48,7 +48,7 @@ from qai_hub_models.utils.base_dataset import (
     instantiate_dataset,
 )
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.envvars import IsOnCIEnvvar
 from qai_hub_models.utils.inference import (
     AsyncOnDeviceModel,
@@ -974,7 +974,7 @@ class EvalMode(Enum):
 
 def evaluate_session_on_dataset(
     session: onnxruntime.InferenceSession,
-    torch_model: BaseModel | CollectionModel,
+    torch_model: WorkbenchModel | CollectionModel,
     dataset_cls: type[BaseDataset],
     num_samples: int | None = None,
 ) -> tuple[float, str]:
@@ -1000,7 +1000,7 @@ def evaluate_session_on_dataset(
     formatted_accuracy : str
         Formatted accuracy as a string.
     """
-    assert isinstance(torch_model, BaseModel), (
+    assert isinstance(torch_model, WorkbenchModel), (
         "Evaluation is not yet supported for CollectionModels."
     )
     source_torch_dataset = instantiate_dataset(

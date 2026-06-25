@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.input_spec import get_channel_last
 from qai_hub_models.utils.transpose_channel import transpose_channel_first_to_last
 
@@ -34,7 +34,7 @@ def _flatten_tuple(out_tuple: object) -> tuple[torch.Tensor, ...]:
 
 
 def _torch_inference_impl(
-    model: BaseModel,
+    model: WorkbenchModel,
     sample_inputs: dict[str, list[np.ndarray]],
 ) -> list[np.ndarray]:
     torch_outs: list[list[torch.Tensor]] = []
@@ -57,7 +57,7 @@ def _torch_inference_impl(
 
 
 def torch_inference(
-    model: BaseModel,
+    model: WorkbenchModel,
     sample_inputs: dict[str, list[np.ndarray]],
     return_channel_last_output: bool = True,
 ) -> list[np.ndarray]:

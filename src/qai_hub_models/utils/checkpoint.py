@@ -27,12 +27,12 @@ from qai_hub_models.utils.onnx.helpers import (
 
 if TYPE_CHECKING:
     # these imports are only for the type-checker, never executed at runtime.
-    # BaseModel must stay here (and is referenced only via a string forward-ref
+    # WorkbenchModel must stay here (and is referenced only via a string forward-ref
     # in cast): base_model.py imports CheckpointSpec from this module at runtime,
     # so a top-level import would be circular.
     from transformers import PreTrainedModel
 
-    from qai_hub_models.utils.base_model import BaseModel
+    from qai_hub_models.utils.base_model import WorkbenchModel
 
 
 CheckpointSpec = (
@@ -368,9 +368,9 @@ class FromPretrainedMixin:
 
         # Call on the instance (not cls) so this works whether the model defines
         # get_input_spec/get_output_spec as an instance method (e.g. pi05) or as a
-        # static/classmethod. Cast to BaseModel since these methods live there, not
+        # static/classmethod. Cast to WorkbenchModel since these methods live there, not
         # on torch.nn.Module (string forward-ref keeps the import type-check-only).
-        fp_model_typed = cast("BaseModel", fp_model)
+        fp_model_typed = cast("WorkbenchModel", fp_model)
         input_spec = fp_model_typed.get_input_spec()
 
         example_input = tuple(make_torch_inputs(input_spec))

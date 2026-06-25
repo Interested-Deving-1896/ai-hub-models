@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from packaging import version
 
-from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.base_model import WorkbenchModel
 
 try:
     import aimet_onnx
@@ -37,11 +37,9 @@ from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
 
 from qai_hub_models import Precision, SampleInputsType
-from qai_hub_models.protocols import FromPrecompiledProtocol
 from qai_hub_models.utils.aimet.aimet_dummy_model import zip_aimet_model
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, qaihm_temp_dir
 from qai_hub_models.utils.base_evaluator import _DataLoader
-from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.dataset_util import dataset_entries_to_dataloader
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.onnx.helpers import ONNXBundle, mock_torch_onnx_inference
@@ -126,10 +124,10 @@ def set_aimet_log_level(log_level: int) -> Generator[None, None, None]:
             AimetLogger.set_area_logger_level(area, level)
 
 
-class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
+class AIMETOnnxQuantizableMixin(WorkbenchModel):
     """
     Mixin that allows a model to be quantized & exported to disk using AIMET.
-    Inheritor must implement BaseModel for this mixin to function.
+    Inheritor must implement WorkbenchModel for this mixin to function.
     """
 
     # For pre-calibrated asset lookup
@@ -459,8 +457,10 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel, FromPrecompiledProtocol):
     ) -> SampleInputsType:
         data = self.get_calibration_data()
         if data is None:
-            # Fallback to BaseModel's impl
-            data = BaseModel._sample_inputs_impl(cast(BaseModel, self), input_spec)
+            # Fallback to WorkbenchModel's impl
+            data = WorkbenchModel._sample_inputs_impl(
+                cast(WorkbenchModel, self), input_spec
+            )
         assert isinstance(data, dict)
         return data
 

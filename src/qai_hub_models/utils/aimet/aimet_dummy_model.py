@@ -82,7 +82,7 @@ class AimetEncodingLoaderMixin(AIMETQuantizableModelProtocol):
         self.aimet_encodings = aimet_encodings
         if not isinstance(self, WorkbenchModel):
             raise TypeError(
-                "AimetEncodingLoaderMixin can only be used with BaseModel subclasses"
+                "AimetEncodingLoaderMixin can only be used with WorkbenchModel subclasses"
             )
 
     def quantize(

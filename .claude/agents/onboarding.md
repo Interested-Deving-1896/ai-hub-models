@@ -106,7 +106,7 @@ Each model lives in `qai_hub_models/models/<model_id>/` and requires:
 
 - **BaseModel** - Standard single-model, inherits `torch.nn.Module`
 - **CollectionModel** - Multi-component models (e.g., encoder-decoder where components are compiled separately)
-- **BasePrecompiledModel** - Pre-compiled assets only (no PyTorch source available)
+- **PrecompiledWorkbenchModel** - Pre-compiled assets only (no PyTorch source available)
 
 ### Shared Components
 

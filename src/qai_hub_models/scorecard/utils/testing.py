@@ -25,7 +25,7 @@ from qai_hub.client import SourceModelType
 from tabulate import tabulate
 
 from qai_hub_models import TargetRuntime
-from qai_hub_models.protocols import FromPrecompiledProtocol, FromPretrainedProtocol
+from qai_hub_models.protocols import FromPretrainedProtocol
 from qai_hub_models.scorecard import ScorecardDevice
 from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.envvars import ArtifactsDirEnvvar, DeploymentEnvvar
@@ -38,8 +38,8 @@ from qai_hub_models.utils.asset_loaders import (
 from qai_hub_models.utils.base_collection_model import CollectionModel
 from qai_hub_models.utils.base_dataset import BaseDataset, get_folder_name
 from qai_hub_models.utils.base_model import (
-    BaseModel,
-    BasePrecompiledModel,
+    PrecompiledWorkbenchModel,
+    WorkbenchModel,
 )
 from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphCollectionModel,
@@ -85,9 +85,9 @@ __all__ = [
 ]
 
 AnyModel = (
-    BaseModel
+    WorkbenchModel
     | MultiGraphWorkbenchModel
-    | BasePrecompiledModel
+    | PrecompiledWorkbenchModel
     | CollectionModel
     | MultiGraphCollectionModel
 )
@@ -306,7 +306,7 @@ def get_and_sync_datasets_cache_dir(
     has_channel_transpose: bool,
     dataset_cls: type[BaseDataset],
     samples_per_job: int,
-    model_cls: type[BaseModel | CollectionModel],
+    model_cls: type[WorkbenchModel | CollectionModel],
 ) -> Path:
     """
     Write the validation input and gt hub dataset ids to a file to be
@@ -346,7 +346,8 @@ def get_and_sync_datasets_cache_dir(
     folder_name = "hub_datasets"
     if not has_channel_transpose:
         folder_name += "_nt"
-    assert issubclass(model_cls, BaseModel)
+    assert issubclass(model_cls, WorkbenchModel)
+    assert issubclass(model_cls, FromPretrainedProtocol)
     dataset_name = dataset_cls.dataset_name()
     dataset_folder_name = get_folder_name(
         dataset_name, model_cls.from_pretrained().get_input_spec()
@@ -392,7 +393,7 @@ def get_and_sync_datasets_cache_dir(
 
 
 def mock_get_calibration_data(
-    model: BaseModel | CollectionModel,
+    model: WorkbenchModel | CollectionModel,
     input_spec_arg: InputSpec | dict[str, InputSpec] | None = None,
     num_samples: int | None = None,
     component_name: str | None = None,
@@ -436,7 +437,7 @@ def mock_get_calibration_data(
         component_spec = input_spec_arg.get(component_name)
         cache_prefix_name = f"{model.__class__.__name__}_{component_name}"
     else:
-        assert isinstance(model, BaseModel) and is_input_spec(input_spec_arg)
+        assert isinstance(model, WorkbenchModel) and is_input_spec(input_spec_arg)
         component_spec = input_spec_arg
         calib_cls = model.get_calibration_dataset_cls()
         cache_prefix_name = (
@@ -534,9 +535,10 @@ def get_hub_val_dataset(
     hub.Dataset
         Hub dataset containing validation data.
     """
-    assert issubclass(model_cls, BaseModel), (
+    assert issubclass(model_cls, WorkbenchModel), (
         "CollectionModel is not yet supported by this function."
     )
+    assert issubclass(model_cls, FromPretrainedProtocol)
     dataset_ids = load_yaml(ids_file)
     instance = model_cls.from_pretrained()
     input_spec = instance.get_input_spec()
@@ -700,8 +702,6 @@ def skip_invalid_runtime_device(
     model: AnyModel
     if issubclass(model_cls, FromPretrainedProtocol):
         model = model_cls.from_pretrained()
-    elif issubclass(model_cls, FromPrecompiledProtocol):
-        model = model_cls.from_precompiled()
     else:
         raise NotImplementedError()
 

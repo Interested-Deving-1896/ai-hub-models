@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Any, Generic, TypeVar
 
 from qai_hub import Device
+from typing_extensions import Self
 
 from qai_hub_models import Precision, SampleInputsType, TargetRuntime
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.datasets.common import BaseDataset
+from qai_hub_models.protocols import FromPretrainedProtocol
 from qai_hub_models.utils.base_model import (
     WorkbenchModel,
     _model_cls_name,
@@ -36,7 +38,7 @@ from qai_hub_models.utils.transpose_channel import (
 )
 
 
-class MultiGraphCollectionModel(ABC):
+class MultiGraphCollectionModel(ABC, FromPretrainedProtocol):
     """
     Abstract interface for collection models where components may have multiple graphs.
 
@@ -46,11 +48,7 @@ class MultiGraphCollectionModel(ABC):
     by (component_name, graph_name).
     """
 
-    @property
-    def name(self) -> str:
-        """Model name."""
-        return _model_cls_name(self)
-
+    # -- Subclasses must implement these --
     @property
     @abstractmethod
     def component_names(self) -> list[str]:
@@ -86,6 +84,16 @@ class MultiGraphCollectionModel(ABC):
     ) -> Path:
         """Serialize a component graph to disk in a format suitable for AI Hub compilation."""
         ...
+
+    @classmethod
+    @abstractmethod
+    def from_pretrained(cls, *args: Any, **kwargs: Any) -> Self: ...
+
+    # -- Subclasses may override these --
+    @property
+    def name(self) -> str:
+        """Model name."""
+        return _model_cls_name(self)
 
     def get_component_has_shared_source_model(self, component_name: str) -> bool:
         """Return whether all graphs in a component share a single source model file."""

@@ -35,7 +35,7 @@ from qai_hub_models.models.{{ model_name }} import App
 {%- if not is_precompiled %}
 from qai_hub_models.utils.base_model import BaseModel
 {%- else %}
-from qai_hub_models.utils.base_model import BaseModel, BasePrecompiledModel
+from qai_hub_models.utils.base_model import BaseModel, PrecompiledWorkbenchModel
 from qai_hub_models.utils.base_collection_model import PrecompiledCollectionModel
 {%- endif %}
 import tempfile
@@ -645,7 +645,7 @@ def save_model(
     model: PrecompiledCollectionModel,
     components: list[str],
     {%- else %}
-    model: BasePrecompiledModel,
+    model: PrecompiledWorkbenchModel,
     {%- endif %}
     zip_assets: bool,
 ) -> Path:
@@ -777,7 +777,7 @@ def export_model(
         If set, zip the assets after downloading.
     **additional_model_kwargs
         Additional optional kwargs used to customize
-        `model_cls.from_pre{{ "compiled" if is_precompiled else "trained" }}`
+        `model_cls.from_pretrained`
         {{- "" if is_collection_model else " and `model.get_input_spec`" }}
         {{- " and per-component `get_input_spec`" if is_collection_model else "" }}
 
@@ -857,7 +857,7 @@ def export_model(
     # {{ steps.init }}
     {%- if is_precompiled %}
     print("Initializing model class")
-    model = Model.from_precompiled()
+    model = Model.from_pretrained()
     {%- elif separate_quantize_script %}
     model = Model.from_pretrained(**get_model_kwargs(Model, additional_model_kwargs))
     {%- else %}

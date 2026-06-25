@@ -14,7 +14,7 @@ from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_collection_model import (
     PrecompiledWorkbenchModelCollection,
 )
-from qai_hub_models.utils.base_model import BasePrecompiledModel
+from qai_hub_models.utils.base_model import PrecompiledWorkbenchModel
 from qai_hub_models.utils.input_spec import InputSpec, OutputSpec
 
 MODEL_ID = __name__.split(".")[-2]
@@ -28,7 +28,7 @@ def get_cached_asset(part: int) -> str:
     return os.path.join(model_path, f"weight_sharing_model_{part}_of_4.serialized.bin")
 
 
-class PromptProcessor_Part1(BasePrecompiledModel):
+class PromptProcessor_Part1(PrecompiledWorkbenchModel):
     """
     Prompt Processor Part1 for Qwen2 7B.
 
@@ -37,7 +37,7 @@ class PromptProcessor_Part1(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> PromptProcessor_Part1:
+    def from_pretrained(cls) -> PromptProcessor_Part1:
         return PromptProcessor_Part1(get_cached_asset(part=1))
 
     def get_input_spec(self) -> InputSpec:
@@ -59,7 +59,7 @@ class PromptProcessor_Part1(BasePrecompiledModel):
         )
 
 
-class PromptProcessor_Part2(BasePrecompiledModel):
+class PromptProcessor_Part2(PrecompiledWorkbenchModel):
     """
     Prompt Processor Part2 for Qwen2 7B.
 
@@ -68,7 +68,7 @@ class PromptProcessor_Part2(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> PromptProcessor_Part2:
+    def from_pretrained(cls) -> PromptProcessor_Part2:
         return PromptProcessor_Part2(get_cached_asset(part=2))
 
     def get_input_spec(self) -> InputSpec:
@@ -115,7 +115,7 @@ class PromptProcessor_Part2(BasePrecompiledModel):
         )
 
 
-class PromptProcessor_Part3(BasePrecompiledModel):
+class PromptProcessor_Part3(PrecompiledWorkbenchModel):
     """
     Prompt Processor Part3 for Qwen2 7B.
 
@@ -124,7 +124,7 @@ class PromptProcessor_Part3(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> PromptProcessor_Part3:
+    def from_pretrained(cls) -> PromptProcessor_Part3:
         return PromptProcessor_Part3(get_cached_asset(part=3))
 
     def get_input_spec(self) -> InputSpec:
@@ -171,7 +171,7 @@ class PromptProcessor_Part3(BasePrecompiledModel):
         )
 
 
-class PromptProcessor_Part4(BasePrecompiledModel):
+class PromptProcessor_Part4(PrecompiledWorkbenchModel):
     """
     Prompt Processor Part4 for Qwen2 7B.
 
@@ -180,7 +180,7 @@ class PromptProcessor_Part4(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> PromptProcessor_Part4:
+    def from_pretrained(cls) -> PromptProcessor_Part4:
         return PromptProcessor_Part4(get_cached_asset(part=4))
 
     def get_input_spec(self) -> InputSpec:
@@ -227,7 +227,7 @@ class PromptProcessor_Part4(BasePrecompiledModel):
         )
 
 
-class TokenGenerator_Part1(BasePrecompiledModel):
+class TokenGenerator_Part1(PrecompiledWorkbenchModel):
     """
     Token Generator Part1 for Qwen2 7B.
 
@@ -236,7 +236,7 @@ class TokenGenerator_Part1(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> TokenGenerator_Part1:
+    def from_pretrained(cls) -> TokenGenerator_Part1:
         return TokenGenerator_Part1(get_cached_asset(part=1))
 
     def get_input_spec(self) -> InputSpec:
@@ -258,7 +258,7 @@ class TokenGenerator_Part1(BasePrecompiledModel):
         )
 
 
-class TokenGenerator_Part2(BasePrecompiledModel):
+class TokenGenerator_Part2(PrecompiledWorkbenchModel):
     """
     Token Generator Part2 for Qwen2 7B.
 
@@ -267,7 +267,7 @@ class TokenGenerator_Part2(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> TokenGenerator_Part2:
+    def from_pretrained(cls) -> TokenGenerator_Part2:
         return TokenGenerator_Part2(get_cached_asset(part=2))
 
     def get_input_spec(self) -> InputSpec:
@@ -314,7 +314,7 @@ class TokenGenerator_Part2(BasePrecompiledModel):
         )
 
 
-class TokenGenerator_Part3(BasePrecompiledModel):
+class TokenGenerator_Part3(PrecompiledWorkbenchModel):
     """
     Token Generator Part3 for Qwen2 7B.
 
@@ -323,7 +323,7 @@ class TokenGenerator_Part3(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> TokenGenerator_Part3:
+    def from_pretrained(cls) -> TokenGenerator_Part3:
         return TokenGenerator_Part3(get_cached_asset(part=3))
 
     def get_input_spec(self) -> InputSpec:
@@ -370,7 +370,7 @@ class TokenGenerator_Part3(BasePrecompiledModel):
         )
 
 
-class TokenGenerator_Part4(BasePrecompiledModel):
+class TokenGenerator_Part4(PrecompiledWorkbenchModel):
     """
     Token Generator Part4 for Qwen2 7B.
 
@@ -379,7 +379,7 @@ class TokenGenerator_Part4(BasePrecompiledModel):
     """
 
     @classmethod
-    def from_precompiled(cls) -> TokenGenerator_Part4:
+    def from_pretrained(cls) -> TokenGenerator_Part4:
         return TokenGenerator_Part4(get_cached_asset(part=4))
 
     def get_input_spec(self) -> InputSpec:
@@ -461,14 +461,14 @@ class Qwen2_7B_Instruct(PrecompiledWorkbenchModelCollection):
         )
 
     @classmethod
-    def from_precompiled(cls) -> Qwen2_7B_Instruct:
+    def from_pretrained(cls) -> Qwen2_7B_Instruct:
         return cls(
-            PromptProcessor_Part1.from_precompiled(),
-            PromptProcessor_Part2.from_precompiled(),
-            PromptProcessor_Part3.from_precompiled(),
-            PromptProcessor_Part4.from_precompiled(),
-            TokenGenerator_Part1.from_precompiled(),
-            TokenGenerator_Part2.from_precompiled(),
-            TokenGenerator_Part3.from_precompiled(),
-            TokenGenerator_Part4.from_precompiled(),
+            PromptProcessor_Part1.from_pretrained(),
+            PromptProcessor_Part2.from_pretrained(),
+            PromptProcessor_Part3.from_pretrained(),
+            PromptProcessor_Part4.from_pretrained(),
+            TokenGenerator_Part1.from_pretrained(),
+            TokenGenerator_Part2.from_pretrained(),
+            TokenGenerator_Part3.from_pretrained(),
+            TokenGenerator_Part4.from_pretrained(),
         )

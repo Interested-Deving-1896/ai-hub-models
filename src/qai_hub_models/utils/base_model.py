@@ -13,6 +13,7 @@ from typing import Any, NamedTuple, cast
 
 import torch
 from qai_hub.client import Device
+from typing_extensions import Self
 
 from qai_hub_models import (
     Precision,
@@ -22,7 +23,6 @@ from qai_hub_models import (
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.protocols import (
     EvaluatableModelProtocol,
-    FromPrecompiledProtocol,
     FromPretrainedProtocol,
 )
 from qai_hub_models.utils.base_dataset import BaseDataset
@@ -48,7 +48,8 @@ from qai_hub_models.utils.transpose_channel import (
 
 __all__ = [
     "BaseModel",
-    "BasePrecompiledModel",
+    "PrecompiledWorkbenchModel",
+    "PytorchWorkbenchModel",
     "SerializationSettings",
     "WorkbenchModel",
 ]
@@ -69,7 +70,7 @@ def _model_cls_name(cls_instance: Any) -> str:
     return cli_friendly_class_name(type(cls_instance).__name__)
 
 
-class WorkbenchModel(ABC):
+class WorkbenchModel(ABC, FromPretrainedProtocol, EvaluatableModelProtocol):
     """Base interface for AI Hub Workbench models."""
 
     # -- Subclasses must implement these --
@@ -100,6 +101,11 @@ class WorkbenchModel(ABC):
         """Convert to an AI Hub Workbench source model appropriate for the export method."""
         ...
 
+    @classmethod
+    @abstractmethod
+    def from_pretrained(cls, *args: Any, **kwargs: Any) -> Self: ...
+
+    # -- Subclasses may override these --
     def write_supplementary_files(
         self,
         output_dir: str | os.PathLike,
@@ -119,7 +125,6 @@ class WorkbenchModel(ABC):
         """
         return
 
-    # -- Subclasses may override these --
     @property
     def name(self) -> str:
         """Model name / identifier."""
@@ -129,6 +134,19 @@ class WorkbenchModel(ABC):
     def context_graph_name(self) -> str:
         """The default name used for the graph context when compiling to a QNN Context Binary. May be overriden in the parameters of get_compile_options."""
         return self.name
+
+    @classmethod
+    def get_eval_dataset_classes(cls) -> list[type[BaseDataset]]:
+        """Returns list of dataset classes on which this model can be evaluated."""
+        return []
+
+    def get_evaluator(self) -> BaseEvaluator:
+        """Gets a class for evaluating output of this model."""
+        raise NotImplementedError("No evaluator is supported for this model.")
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Model inference with PyTorch Tensor I/O."""
+        raise NotImplementedError("Python inference is not supported by this model.")
 
     def get_unsupported_reason(
         self, target_runtime: TargetRuntime, device: Device
@@ -155,9 +173,22 @@ class WorkbenchModel(ABC):
             The precision to which this model should be quantized when the parent
             collection model uses "variable" precision.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("This model does not support mixed precision.")
 
     # -- Less likely, but subclasses may override these --
+
+    def get_output_names(self) -> list[str]:
+        """
+        List of output names. If there are multiple outputs, the order of the names
+        should match the order of tuple returned by the model.
+        """
+        outputs = self.get_output_spec().keys()
+        assert outputs, "get_output_spec() is not defined!"
+        return list(outputs)
+
+    def get_calibration_dataset_cls(self) -> type[BaseDataset] | None:
+        """The dataset class used for calibration when quantizing collection components."""
+        return None
 
     def get_hub_quantize_options(
         self, precision: Precision, other_options: str = ""
@@ -246,12 +277,7 @@ class WorkbenchModel(ABC):
         return make_sample_inputs(input_spec)
 
 
-class BaseModel(
-    WorkbenchModel,
-    EvaluatableModelProtocol,
-    FromPretrainedProtocol,
-    torch.nn.Module,
-):
+class PytorchWorkbenchModel(WorkbenchModel, torch.nn.Module):
     """A pre-trained PyTorch model with helpers for submission to AI Hub Workbench."""
 
     def __init__(
@@ -281,26 +307,6 @@ class BaseModel(
         context_fn = nullcontext if self.training else torch.no_grad
         with context_fn():
             return torch.nn.Module.__call__(self, *args, **kwargs)
-
-    # -- Subclasses must implement these --
-
-    # get_input_spec (inherited from WorkbenchModel)
-    # get_output_spec (inherited from WorkbenchModel)
-
-    # -- Subclasses may override these --
-
-    @classmethod
-    def get_eval_dataset_classes(cls) -> list[type[BaseDataset]]:
-        """Returns list of dataset classes on which this model can be evaluated."""
-        return []
-
-    def get_calibration_dataset_cls(self) -> type[BaseDataset] | None:
-        """Dataset class used for calibration when quantizing the model."""
-        return None
-
-    def get_evaluator(self) -> BaseEvaluator:
-        """Gets a class for evaluating output of this model."""
-        raise NotImplementedError("No evaluator is supported for this model.")
 
     def convert_to_torchscript(
         self, input_spec: InputSpec | None = None, check_trace: bool = True
@@ -344,7 +350,13 @@ class BaseModel(
         return output_path
 
 
-class BasePrecompiledModel(WorkbenchModel, FromPrecompiledProtocol):
+# BaseModel is a historical alias of PytorchWorkbenchModel.
+# We will continue to refer to Pytorch models as BaseModel in most code
+# as AI Hub Models does not accept contributions of non-pytorch-base models.
+BaseModel = PytorchWorkbenchModel
+
+
+class PrecompiledWorkbenchModel(WorkbenchModel):
     """
     A pre-compiled hub model.
     Model PyTorch source is not available, but compiled assets are available.

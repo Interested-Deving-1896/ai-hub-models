@@ -150,7 +150,7 @@ For pretrained weights:
 - Each component inherits from `BaseModel`
 - See [`whisper_tiny`](qai_hub_models/models/whisper_tiny/) for an example
 
-**BasePrecompiledModel** - For models where only compiled assets are published (no PyTorch source).
+**PrecompiledWorkbenchModel** - For models where only compiled assets are published (no PyTorch source).
 
 ---
 

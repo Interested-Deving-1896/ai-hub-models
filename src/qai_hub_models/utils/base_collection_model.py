@@ -19,10 +19,9 @@ from qai_hub_models import (
 )
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.datasets.common import BaseDataset
-from qai_hub_models.models.protocols import FromPrecompiledProtocol
 from qai_hub_models.protocols import FromPretrainedProtocol
 from qai_hub_models.utils.base_model import (
-    BasePrecompiledModel,
+    PrecompiledWorkbenchModel,
     WorkbenchModel,
     _model_cls_name,
 )
@@ -48,7 +47,7 @@ from qai_hub_models.utils.transpose_channel import (
 )
 
 
-class CollectionModel(ABC):
+class CollectionModel(ABC, FromPretrainedProtocol):
     """
     Abstract interface for models composed of multiple independently-compiled components.
 
@@ -336,9 +335,7 @@ class CollectionModel(ABC):
 WorkbenchModelT = TypeVar("WorkbenchModelT", bound=WorkbenchModel)
 
 
-class WorkbenchModelCollection(
-    CollectionModel, FromPretrainedProtocol, Generic[WorkbenchModelT]
-):
+class WorkbenchModelCollection(CollectionModel, Generic[WorkbenchModelT]):
     """
     Concrete CollectionModel backed by a dict of WorkbenchModel instances.
 
@@ -468,13 +465,13 @@ class WorkbenchModelCollection(
             component.write_supplementary_files(output_dir, metadata)
 
 
-class PrecompiledCollectionModel(CollectionModel, FromPrecompiledProtocol):
+class PrecompiledCollectionModel(CollectionModel):
     """
     Abstract interface for precompiled collection models.
 
-    Each component is a BasePrecompiledModel whose compiled assets are
+    Each component is a PrecompiledWorkbenchModel whose compiled assets are
     available on disk. Subclasses implement component_names and
-    from_precompiled(), and provide access to each component's target model path.
+    from_pretrained(), and provide access to each component's target model path.
     """
 
     @abstractmethod
@@ -483,16 +480,16 @@ class PrecompiledCollectionModel(CollectionModel, FromPrecompiledProtocol):
         ...
 
 
-PrecompiledModelT = TypeVar("PrecompiledModelT", bound=BasePrecompiledModel)
+PrecompiledModelT = TypeVar("PrecompiledModelT", bound=PrecompiledWorkbenchModel)
 
 
 class PrecompiledWorkbenchModelCollection(
     PrecompiledCollectionModel, Generic[PrecompiledModelT]
 ):
     """
-    Concrete PrecompiledCollectionModel backed by a dict of BasePrecompiledModel instances.
+    Concrete PrecompiledCollectionModel backed by a dict of PrecompiledWorkbenchModel instances.
 
-    Delegates all per-component methods directly to the corresponding BasePrecompiledModel,
+    Delegates all per-component methods directly to the corresponding PrecompiledWorkbenchModel,
     following the same pattern as WorkbenchModelCollection for pretrained models.
     """
 

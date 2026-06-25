@@ -349,6 +349,7 @@ def test_parse_qwen2_7b_export() -> None:
         "fetch_static_assets",
         "components",
         "zip_assets",
+        "precision",
     }
     assert set(vars(args).keys()) == gt_set
 
@@ -543,7 +544,7 @@ def test_default_runtime_follows_precision() -> None:
 
 
 def test_default_runtime_no_precision_arg() -> None:
-    """When there is no --precision arg (BasePrecompiledModel), the default
+    """When there is no --precision arg (PrecompiledWorkbenchModel), the default
     runtime should be the first runtime of the first precision.
     """
     parser = export_parser(

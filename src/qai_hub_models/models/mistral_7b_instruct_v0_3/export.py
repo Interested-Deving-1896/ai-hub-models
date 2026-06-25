@@ -136,7 +136,7 @@ def export_model(
         If set, zip the assets after downloading.
     **additional_model_kwargs
         Additional optional kwargs used to customize
-        `model_cls.from_precompiled` and per-component `get_input_spec`
+        `model_cls.from_pretrained` and per-component `get_input_spec`
 
     Returns
     -------
@@ -177,7 +177,7 @@ def export_model(
 
     # 1. Initialize model
     print("Initializing model class")
-    model = Model.from_precompiled()
+    model = Model.from_pretrained()
     components = components or model.component_names
     for component_name in components:
         if component_name not in model.component_names:

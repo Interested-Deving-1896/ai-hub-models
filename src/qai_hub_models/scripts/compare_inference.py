@@ -32,7 +32,7 @@ from qai_hub_models.utils.args import (
     get_parser,
 )
 from qai_hub_models.utils.base_collection_model import CollectionModel
-from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.compare import METRICS_FUNCTIONS, torch_inference
 from qai_hub_models.utils.kwarg_helpers import filter_kwargs
 from qai_hub_models.utils.path_helpers import MODEL_IDS
@@ -106,7 +106,7 @@ def compare_inference(
         sys.exit(1)
 
     inference_job: hub.InferenceJob
-    model: BaseModel
+    model: WorkbenchModel
 
     # Run export with inference
     if issubclass(model_cls, CollectionModel):
@@ -127,8 +127,8 @@ def compare_inference(
         )
         model_instance = model_cls.from_pretrained(**model_kwargs)
         model = model_instance.components[component]
-        if not isinstance(model, BaseModel):
-            raise TypeError(f"Component {component} is not a BaseModel")
+        if not isinstance(model, WorkbenchModel):
+            raise TypeError(f"Component {component} is not a WorkbenchModel")
     else:
         export_result = export_module.export_model(
             device=device,

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from qai_hub.client import Device
+from typing_extensions import Self
 
 from qai_hub_models import (
     Precision,
@@ -18,7 +19,7 @@ from qai_hub_models import (
     TargetRuntime,
 )
 from qai_hub_models.configs.model_metadata import ModelMetadata
-from qai_hub_models.models.protocols import FromPretrainedProtocol
+from qai_hub_models.protocols import FromPretrainedProtocol
 from qai_hub_models.utils.base_model import _model_cls_name
 from qai_hub_models.utils.export_result import MultiGraphGroup
 from qai_hub_models.utils.input_spec import (
@@ -77,14 +78,18 @@ class MultiGraphWorkbenchModel(ABC, FromPretrainedProtocol):
         input_spec: InputSpec | None = None,
     ) -> Path: ...
 
-    # -- Subclasses may override these --
-    @property
-    def shared_source_model(self) -> bool:
-        return False
+    @classmethod
+    @abstractmethod
+    def from_pretrained(cls, *args: Any, **kwargs: Any) -> Self: ...
 
+    # -- Subclasses may override these --
     @property
     def name(self) -> str:
         return _model_cls_name(self)
+
+    @property
+    def shared_source_model(self) -> bool:
+        return False
 
     def get_unsupported_reason(
         self, target_runtime: TargetRuntime, device: Device

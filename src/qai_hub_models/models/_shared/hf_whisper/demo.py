@@ -60,8 +60,8 @@ def hf_whisper_demo(model_cls: type[HfWhisper], model_id: str, is_test: bool) ->
     )
 
     app = HfWhisperApp(
-        encoder,  # type: ignore[arg-type]
-        decoder,  # type: ignore[arg-type]
+        encoder,
+        decoder,
         model_cls.get_hf_whisper_version(),
     )
 
