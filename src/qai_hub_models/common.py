@@ -174,7 +174,7 @@ class QAIRTVersion:
             QAIRTVersion.LATEST_AIHUB_TAG,
         ]
 
-    def __eq__(self, other: str | QAIRTVersion) -> bool:
+    def __eq__(self, other: object) -> bool:
         other_framework = None
         if isinstance(other, str):
             if other in self.tags:

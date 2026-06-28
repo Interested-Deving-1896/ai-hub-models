@@ -102,12 +102,13 @@ class DeeplabXception(DeepLabV3Model):
 
     def get_input_spec(
         self,
+        batch_size: int = 1,
         height: int = 480,
         width: int = 520,
     ) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(1, 3, height, width),
+                shape=(batch_size, 3, height, width),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),

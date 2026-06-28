@@ -8,17 +8,23 @@ from __future__ import annotations
 import torch
 
 from qai_hub_models.evaluators.superres_evaluator import SuperResolutionOutputEvaluator
+from qai_hub_models.utils.base_evaluator import BaseEvaluator
+from qai_hub_models.utils.metrics import MetricMetadata
 
 
-class StereoEvaluator(SuperResolutionOutputEvaluator):
-    """Evaluator for comparing a batched stereo image output (left + right views)."""
+class StereoEvaluator(BaseEvaluator):
+    """Evaluator for comparing a batched stereo image output (left + right views).
+
+    Reuses :class:`SuperResolutionOutputEvaluator` (per-image YUV-space PSNR,
+    8-bit data range) by composition: the left and right views are
+    concatenated along the batch dimension and forwarded to it.
+    """
+
+    def __init__(self) -> None:
+        self._psnr = SuperResolutionOutputEvaluator()
 
     def add_batch(self, output: list[torch.Tensor], gt: list[torch.Tensor]) -> None:
         """Evaluate one batch of stereo predictions.
-
-        Concatenates the left and right view tensors along the batch dimension
-        and delegates to :meth:`SuperResolutionOutputEvaluator.add_batch` for
-        per-image PSNR computation (YUV-space, 8-bit data range).
 
         Parameters
         ----------
@@ -32,4 +38,16 @@ class StereoEvaluator(SuperResolutionOutputEvaluator):
         combined_output = torch.cat((output[0], output[1]), dim=0)
         combined_gt = torch.cat((gt[0], gt[1]), dim=0)
 
-        super().add_batch(combined_output, combined_gt)
+        self._psnr.add_batch(combined_output, combined_gt)
+
+    def reset(self) -> None:
+        self._psnr.reset()
+
+    def get_accuracy_score(self) -> float:
+        return self._psnr.get_accuracy_score()
+
+    def formatted_accuracy(self) -> str:
+        return self._psnr.formatted_accuracy()
+
+    def get_metric_metadata(self) -> MetricMetadata:
+        return self._psnr.get_metric_metadata()

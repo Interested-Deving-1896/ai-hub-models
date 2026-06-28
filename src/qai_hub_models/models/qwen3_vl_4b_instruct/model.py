@@ -218,7 +218,7 @@ class Qwen3_VL_4B_PreSplit(
             raise ValueError("Model config is not compatible with our implementation.")
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         checkpoint: str | Path = HF_REPO_NAME,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
@@ -401,7 +401,7 @@ class Qwen3_VL_4B_QuantizablePreSplit(  # type: ignore[misc]
             image_size=image_size,
         )
 
-    def save_calibrated_checkpoint(
+    def save_calibrated_checkpoint(  # type: ignore[override]
         self,
         output_checkpoint: str | os.PathLike | Path,
         fp_model: Qwen3_VL_4B_PreSplit | None = None,
@@ -556,13 +556,13 @@ class Qwen3_VL_4B_VisionEncoder(Qwen3VLVisionEncoder):
 
     def get_input_spec(
         self,
-        image_height: int = DEFAULT_IMAGE_HEIGHT,
-        image_width: int = DEFAULT_IMAGE_WIDTH,
+        image_height: int = DEFAULT_IMAGE_HEIGHT,  # type: ignore[override]
+        image_width: int = DEFAULT_IMAGE_WIDTH,  # type: ignore[override]
     ) -> InputSpec:
         return self.get_static_input_spec(image_height, image_width)
 
     @staticmethod
-    def get_static_input_spec(
+    def get_static_input_spec(  # type: ignore[override]
         image_height: int = DEFAULT_IMAGE_HEIGHT,
         image_width: int = DEFAULT_IMAGE_WIDTH,
     ) -> InputSpec:

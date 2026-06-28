@@ -183,23 +183,23 @@ class SAM2(WorkbenchModelCollection):
 
 class SAM2Tiny(SAM2):
     @classmethod
-    def from_pretrained(cls) -> Self:
-        return cls(*SAM2Loader.load(TINY_MODEL_TYPE))
+    def from_pretrained(cls, model_type: str = TINY_MODEL_TYPE) -> Self:
+        return cls(*SAM2Loader.load(model_type))
 
 
 class SAM2Small(SAM2):
     @classmethod
-    def from_pretrained(cls) -> Self:
-        return cls(*SAM2Loader.load(SMALL_MODEL_TYPE))
+    def from_pretrained(cls, model_type: str = SMALL_MODEL_TYPE) -> Self:
+        return cls(*SAM2Loader.load(model_type))
 
 
 class SAM2BasePlus(SAM2):
     @classmethod
-    def from_pretrained(cls) -> Self:
-        return cls(*SAM2Loader.load(BASE_PLUS_MODEL_TYPE))
+    def from_pretrained(cls, model_type: str = BASE_PLUS_MODEL_TYPE) -> Self:
+        return cls(*SAM2Loader.load(model_type))
 
 
 class SAM2Large(SAM2):
     @classmethod
-    def from_pretrained(cls) -> Self:
-        return cls(*SAM2Loader.load(LARGE_MODEL_TYPE))
+    def from_pretrained(cls, model_type: str = LARGE_MODEL_TYPE) -> Self:
+        return cls(*SAM2Loader.load(model_type))

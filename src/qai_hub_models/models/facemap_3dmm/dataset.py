@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import torch
 
-from qai_hub_models.datasets.coco import CocoBodyDataset
+from qai_hub_models.datasets.coco import CocoBodyDatasetBase
 from qai_hub_models.utils.base_dataset import (
     BaseDataset,
     DatasetSplit,
@@ -33,7 +33,7 @@ FACEMAP3DMM_PRIVATE_ASSET = CachedPrivateDatasetAsset(
 )
 
 
-class CocoFaceDataset(CocoBodyDataset):
+class CocoFaceDataset(CocoBodyDatasetBase):
     """
     Wrapper class around CocoFace dataset
     http://images.cocodataset.org/
@@ -59,7 +59,7 @@ class CocoFaceDataset(CocoBodyDataset):
         super().__init__(split, input_spec, num_samples)
         self.kpt_db: list[tuple[Path, int, int, torch.Tensor]]  # type: ignore[assignment]
 
-    def _load_kpt_db(self) -> list[tuple[Path, int, int, torch.Tensor]]:
+    def _load_kpt_db(self) -> list[tuple[Path, int, int, torch.Tensor]]:  # type: ignore[override]
         kpt_db: list[tuple[Path, int, int, torch.Tensor]] = []
         for img_id in self.img_ids:
             img_info = self.cocoGt.loadImgs(img_id)[0]

@@ -2288,7 +2288,7 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             return "input_embeds"
         return "input_ids"
 
-    def _sample_inputs_impl(
+    def _sample_inputs_impl(  # type: ignore[override]
         self, input_spec: InputSpec | None = None
     ) -> SampleInputsType:
         if not input_spec:
@@ -2308,7 +2308,7 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             self.embedding,
         )
 
-    def sample_inputs(self, input_spec: InputSpec | None = None) -> SampleInputsType:
+    def sample_inputs(self, input_spec: InputSpec | None = None) -> SampleInputsType:  # type: ignore[override]
         # This must be defined by the HubModelProtocol protocol via BaseModel
         return self._sample_inputs_impl(input_spec)
 
@@ -2600,7 +2600,7 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
 
         return quant_sim
 
-    def save_calibrated_checkpoint(
+    def save_calibrated_checkpoint(  # type: ignore[override]
         self,
         output_checkpoint: str | os.PathLike | Path,
         fp_model: LLMBase,
@@ -2728,7 +2728,7 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
         if not os.path.isfile(os.path.join(checkpoint, "config.json")):
             fp_model.llm_config.save_pretrained(checkpoint)
 
-    def convert_to_onnx_and_aimet_encodings(
+    def convert_to_onnx_and_aimet_encodings(  # type: ignore[override]
         self,
         output_dir: str | os.PathLike | Path,
         input_spec: InputSpec | None = None,
@@ -2838,8 +2838,8 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
 
     def get_calibration_data(
         self,
-        num_samples: int = 0,
-        input_spec: InputSpec | None = None,
+        num_samples: int = 0,  # type: ignore[override]
+        input_spec: InputSpec | None = None,  # type: ignore[override]
     ) -> DatasetEntries | None:
         from qai_hub_models.datasets import instantiate_dataset
         from qai_hub_models.datasets.wikitext import WikiText
@@ -3230,7 +3230,7 @@ class LLM_QNN(LLMConfigEditor, BaseModel, ABC):
             self.embedding,
         )
 
-    def sample_inputs(self, input_spec: InputSpec | None = None) -> SampleInputsType:
+    def sample_inputs(self, input_spec: InputSpec | None = None) -> SampleInputsType:  # type: ignore[override]
         # This must be defined by the HubModelProtocol protocol via BaseModel
         return self._sample_inputs_impl(input_spec)
 
@@ -3549,7 +3549,7 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
         )
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         host_device: torch.device | None = None,
         precision: Precision = Precision.w4,
@@ -3570,7 +3570,7 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
             use_dynamic_shapes=True,
         )
 
-    def get_calibration_data(
+    def get_calibration_data(  # type: ignore[override]
         self,
         num_samples: int = 0,
         input_spec: InputSpec | None = None,

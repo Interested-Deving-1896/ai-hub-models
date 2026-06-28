@@ -15,7 +15,7 @@ from qai_hub_models.datasets.wikitext import ElectraWikiTextMasked
 from qai_hub_models.evaluators.electra_discriminator_evaluator import (
     ElectraDiscriminatorEvaluator,
 )
-from qai_hub_models.models._shared.bert_hf.model import BaseBertModel
+from qai_hub_models.models._shared.bert_hf.model import BertModelBase
 from qai_hub_models.models._shared.bert_hf.model_patches import (
     patch_get_extended_attention_mask,
 )
@@ -29,7 +29,7 @@ MODEL_ASSET_VERSION = 1
 WEIGHTS_NAME = "google/electra-base-discriminator"
 
 
-class ElectraBertBaseDiscrimGoogle(BaseBertModel):
+class ElectraBertBaseDiscrimGoogle(BertModelBase):
     """Exportable HuggingFace ElectraBertBaseDiscrimGoogle Model"""
 
     def __init__(self, model: torch.nn.Module, tokenizer: Any) -> None:

@@ -5,14 +5,10 @@
 
 from __future__ import annotations
 
-from typing_extensions import Self
-
 from qai_hub_models.models._shared.ffnet.model import FFNet
 
 MODEL_ID = __name__.split(".")[-2]
 
 
 class FFNet40S(FFNet):
-    @classmethod
-    def from_pretrained(cls) -> Self:
-        return super().from_pretrained("segmentation_ffnet40S_dBBB_mobile")
+    variant_name = "segmentation_ffnet40S_dBBB_mobile"

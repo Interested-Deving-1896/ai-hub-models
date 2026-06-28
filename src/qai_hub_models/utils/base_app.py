@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Protocol, runtime_checkable
+from typing import Protocol, TypeVar, runtime_checkable
 
 import torch
 from qai_hub.public_rest_api import DatasetEntries
@@ -19,6 +19,10 @@ from qai_hub_models.utils.base_collection_model import (
 )
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, AsyncOnDeviceResult
 from qai_hub_models.utils.input_spec import InputSpec
+
+CollectionModelT_contra = TypeVar(
+    "CollectionModelT_contra", bound=WorkbenchModelCollection, contravariant=True
+)
 
 RUN_MODEL_RETURN_TYPE = list[torch.Tensor] | torch.Tensor
 
@@ -45,13 +49,13 @@ class BaseCollectionApp(ABC):
 
 
 @runtime_checkable
-class CollectionAppQuantizeProtocol(Protocol):
+class CollectionAppQuantizeProtocol(Protocol[CollectionModelT_contra]):
     """Protocol for apps that provide calibration data for CollectionModels."""
 
     @classmethod
     def get_calibration_data(
         cls,
-        collection_model: WorkbenchModelCollection,
+        collection_model: CollectionModelT_contra,
         component_name: str,
         input_specs: dict[str, InputSpec] | None = None,
         num_samples: int | None = None,

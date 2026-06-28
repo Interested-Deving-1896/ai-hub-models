@@ -172,7 +172,7 @@ class LlamaPositionProcessor(PositionProcessorBase):
         self.context_len = context_length
         self.rope_embedding = RopeEmbedding(max_length=self.context_len, config=config)
 
-    def forward(
+    def forward(  # type: ignore[override]
         self, attention_mask_before_processor: torch.Tensor, position_ids: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         position_ids_cos, position_ids_sin = self.rope_embedding.get_embedding(
@@ -681,7 +681,7 @@ class LlamaPreSplitBase(
             raise ValueError("Model config is not compatible with our implementation.")
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         checkpoint: str | os.PathLike | Path | None = None,
         host_device: torch.device | None = None,

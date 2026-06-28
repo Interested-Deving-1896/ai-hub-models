@@ -64,9 +64,12 @@ class FFNet(CityscapesSegmentor):
 
     model: torch.nn.Module  # narrows BaseModel's Tensor | Module to nn.Module
 
+    # The FFNet source-model variant each concrete subclass loads.
+    variant_name: str
+
     @classmethod
-    def from_pretrained(cls, variant_name: str) -> Self:
-        model = _load_ffnet_source_model(variant_name)
+    def from_pretrained(cls, variant_name: str | None = None) -> Self:
+        model = _load_ffnet_source_model(variant_name or cls.variant_name)
         return cls(model)
 
 
@@ -88,7 +91,7 @@ def _load_ffnet_source_model(variant_name: str) -> torch.nn.Module:
 
 class FFNetLowRes(FFNet):
     @classmethod
-    def from_pretrained(cls, variant_name: str) -> Self:
+    def from_pretrained(cls, variant_name: str | None = None) -> Self:
         instance = super().from_pretrained(variant_name)
         # The _pre_down variants were trained with an internal Gaussian
         # downsample (1024x2048 -> 512x1024). For deployment we feed

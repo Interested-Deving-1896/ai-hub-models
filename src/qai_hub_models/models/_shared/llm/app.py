@@ -211,7 +211,7 @@ class ChatApp:
                 token_id = token_ids[0]
                 end_token_ids.append(token_id)
         end_token_ids.append(self.tokenizer.eos_token_id)
-        inferencer.generation_config = GenerationConfig(
+        inferencer.generation_config = GenerationConfig(  # type: ignore[assignment, unused-ignore]
             max_new_tokens=max_output_tokens,
             eos_token_id=end_token_ids,
             pad_token_id=self.tokenizer.pad_token_id,

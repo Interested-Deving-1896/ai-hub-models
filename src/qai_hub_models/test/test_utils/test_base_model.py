@@ -9,14 +9,15 @@ from typing_extensions import Self
 
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.input_spec import InputSpec, OutputSpec
 
 
 class SimpleBaseModel(BaseModel):
-    def get_input_spec(*args: Any, **kwargs: Any) -> None:
-        return None
+    def get_input_spec(*args: Any, **kwargs: Any) -> InputSpec:
+        return {}
 
-    def get_output_spec(*args: Any, **kwargs: Any) -> None:
-        return None
+    def get_output_spec(*args: Any, **kwargs: Any) -> OutputSpec:
+        return {}
 
     @classmethod
     def from_pretrained(cls) -> Self:

@@ -111,12 +111,13 @@ class TextEncoderQuantizableBase(AIMETOnnxQuantizableMixin, TextEncoderBase):
         TextEncoderBase.__init__(self, None, seq_len=seq_len)
         self.host_device = host_device
 
-    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
         return cast(torch.Tensor, AIMETOnnxQuantizableMixin.forward(self, tokens))
 
     @classmethod
     def from_pretrained(
         cls,
+        *args: Any,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
         host_device: torch.device | str = torch.device("cpu"),
@@ -265,7 +266,7 @@ class UnetQuantizableBase(AIMETOnnxQuantizableMixin, UnetBase):
         UnetBase.__init__(self, None, seq_len=seq_len, text_emb_dim=text_emb_dim)
         self.host_device = host_device
 
-    def forward(
+    def forward(  # type: ignore[override]
         self, latent: torch.Tensor, time_emb: torch.Tensor, text_emb: torch.Tensor
     ) -> torch.Tensor:
         return cast(
@@ -276,6 +277,7 @@ class UnetQuantizableBase(AIMETOnnxQuantizableMixin, UnetBase):
     @classmethod
     def from_pretrained(
         cls,
+        *args: Any,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
         host_device: torch.device | str = torch.device("cpu"),
@@ -388,6 +390,7 @@ class VaeDecoderQuantizableBase(AIMETOnnxQuantizableMixin, VaeDecoderBase):
     @classmethod
     def from_pretrained(
         cls,
+        *args: Any,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
         host_device: torch.device | str = torch.device("cpu"),
@@ -431,7 +434,7 @@ class VaeDecoderQuantizableBase(AIMETOnnxQuantizableMixin, VaeDecoderBase):
             )
         return cls(quant_sim, host_device=host_device, onnx_bundle=bundle)
 
-    def forward(self, latent: torch.Tensor) -> torch.Tensor:
+    def forward(self, latent: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
         return cast(torch.Tensor, AIMETOnnxQuantizableMixin.forward(self, latent))
 
     def get_unsupported_reason(

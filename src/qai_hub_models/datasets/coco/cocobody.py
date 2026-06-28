@@ -28,9 +28,13 @@ COCO_VAL_ANNOTATIONS_ASSET = CachedWebDatasetAsset.from_asset_store(
 )
 
 
-class CocoBodyDataset(BaseDataset):
+class CocoBodyDatasetBase(BaseDataset):
     """
-    Wrapper class around CocoBody Human Pose dataset
+    Shared machinery for COCO-WholeBody-derived datasets (download, keypoint
+    db construction, ``cocoGt`` access). Subclasses implement ``__getitem__``
+    to return the ground truth shape they need (pose keypoints, face crops,
+    wholebody keypoints, etc.).
+
     http://images.cocodataset.org/
 
     COCO keypoints::
@@ -117,6 +121,37 @@ class CocoBodyDataset(BaseDataset):
                 break
         return kpt_db
 
+    def __len__(self) -> int:
+        return len(self.kpt_db)
+
+    def _validate_data(self) -> bool:
+        return (
+            COCO_VAL_DATASET.extracted_path.exists()
+            and COCO_VAL_ANNOTATIONS_ASSET.path.exists()
+        )
+
+    def _download_data(self) -> None:
+        """Download and extract COCO-WholeBody dataset assets."""
+        # Download and extract images
+        COCO_VAL_DATASET.fetch(extract=True)
+        COCO_VAL_ANNOTATIONS_ASSET.fetch()
+
+    @staticmethod
+    def default_samples_per_job() -> int:
+        """The default value for how many samples to run in each inference job."""
+        return 1000
+
+    @staticmethod
+    def get_dataset_metadata() -> DatasetMetadata:
+        return DatasetMetadata(
+            link="http://images.cocodataset.org/",
+            split_description="val2017 split",
+        )
+
+
+class CocoBodyDataset(CocoBodyDatasetBase):
+    """COCO-WholeBody human pose dataset returning cropped person instances."""
+
     def __getitem__(
         self, index: int
     ) -> tuple[torch.Tensor, tuple[int, int, np.ndarray, np.ndarray]]:
@@ -165,30 +200,3 @@ class CocoBodyDataset(BaseDataset):
         ).squeeze(0)
 
         return image, (image_id, category_id, center, scale)
-
-    def __len__(self) -> int:
-        return len(self.kpt_db)
-
-    def _validate_data(self) -> bool:
-        return (
-            COCO_VAL_DATASET.extracted_path.exists()
-            and COCO_VAL_ANNOTATIONS_ASSET.path.exists()
-        )
-
-    def _download_data(self) -> None:
-        """Download and extract COCO-WholeBody dataset assets."""
-        # Download and extract images
-        COCO_VAL_DATASET.fetch(extract=True)
-        COCO_VAL_ANNOTATIONS_ASSET.fetch()
-
-    @staticmethod
-    def default_samples_per_job() -> int:
-        """The default value for how many samples to run in each inference job."""
-        return 1000
-
-    @staticmethod
-    def get_dataset_metadata() -> DatasetMetadata:
-        return DatasetMetadata(
-            link="http://images.cocodataset.org/",
-            split_description="val2017 split",
-        )

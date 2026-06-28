@@ -232,7 +232,7 @@ class TensorSpec(BaseQAIHMConfig):
         """Return 2 for compatibility with tuple length checks."""
         return 2
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[Any]:  # type: ignore[override]
         """Allow unpacking: shape, dtype = spec
 
         Returns Iterator[Any] because Python's type system cannot express

@@ -38,14 +38,18 @@ NAFNetAsRoot = partial(
 )
 
 
-class NAFNetModel(BaseModel):
-    """Base Model for NAFNet."""
+class NAFNetModelBase(BaseModel):
+    """Shared constructor for NAFNet models."""
 
     def __init__(
         self,
         model: torch.nn.Module,
     ) -> None:
         super().__init__(model)
+
+
+class NAFNetModel(NAFNetModelBase):
+    """Single-image NAFNet restoration model."""
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         """

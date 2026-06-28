@@ -141,7 +141,7 @@ class Conv2DInplaceLinear(nn.Module):
         if device:
             self.conv2d.to(device)
 
-    def __getattr__(self, attr: str) -> nn.Module | None:
+    def __getattr__(self, attr: str) -> nn.Module | None:  # type: ignore[override]
         conv2d = self._modules["conv2d"]
         if attr == "conv2d":
             return conv2d

@@ -80,7 +80,13 @@ class YoloV7(Yolo):
             split_output,
         )
 
-    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
+    def get_input_spec(
+        self,
+        batch_size: int = 1,
+        height: int = DEFAULT_YOLO_IMAGE_INPUT_HW,
+        width: int = DEFAULT_YOLO_IMAGE_INPUT_HW,
+    ) -> InputSpec:
+        # This model's input resolution is fixed by the loaded detector.
         return super().get_input_spec(
             batch_size, self.yolov7_detector.h, self.yolov7_detector.w
         )

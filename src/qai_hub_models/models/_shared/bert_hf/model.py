@@ -25,11 +25,59 @@ MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 1
 
 
-class BaseBertModel(BaseModel):
+class BertModelBase(BaseModel):
+    """Shared constructor, compile options, and dataset plumbing for BERT models."""
+
     def __init__(self, model: torch.nn.Module, tokenizer: AutoTokenizer) -> None:
         super().__init__()
         self.model = model
         self.tokenizer = tokenizer
+
+    def get_hub_compile_options(
+        self,
+        target_runtime: TargetRuntime,
+        precision: Precision,
+        other_compile_options: str = "",
+        device: Device | None = None,
+        context_graph_name: str | None = None,
+    ) -> str:
+        compile_options = super().get_hub_compile_options(
+            target_runtime, precision, other_compile_options, device, context_graph_name
+        )
+        if target_runtime != TargetRuntime.ONNX:
+            compile_options += " --truncate_64bit_io --truncate_64bit_tensors"
+
+        return compile_options
+
+    @staticmethod
+    def default_weights() -> str:
+        raise NotImplementedError("Subclasses must define default_weights")
+
+    @classmethod
+    def get_dataset_class(cls, tokenizer_name: str) -> type[WikiTextMasked]:
+        normalized_tokenizer_name = tokenizer_name.replace("/", "_").replace("-", "_")
+
+        class BertWikiTextMasked(WikiTextMasked):
+            def __init__(self, **kwargs: Any) -> None:
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+                super().__init__(tokenizer=tokenizer, **kwargs)
+
+            @classmethod
+            def dataset_name(cls) -> str:
+                return f"wikitext_masked_{normalized_tokenizer_name}"
+
+        return BertWikiTextMasked
+
+    @classmethod
+    def get_eval_dataset_classes(cls) -> list[type[BaseDataset]]:
+        return [cls.get_dataset_class(cls.default_weights())]
+
+    def get_calibration_dataset_cls(self) -> type[BaseDataset]:
+        return self.__class__.get_dataset_class(self.__class__.default_weights())
+
+
+class BaseBertModel(BertModelBase):
+    """HF masked-language-model BERT (predicts the token at a [MASK] index)."""
 
     def forward(
         self,
@@ -86,47 +134,5 @@ class BaseBertModel(BaseModel):
             "token_id": TensorSpec(),
         }
 
-    def get_hub_compile_options(
-        self,
-        target_runtime: TargetRuntime,
-        precision: Precision,
-        other_compile_options: str = "",
-        device: Device | None = None,
-        context_graph_name: str | None = None,
-    ) -> str:
-        compile_options = super().get_hub_compile_options(
-            target_runtime, precision, other_compile_options, device, context_graph_name
-        )
-        if target_runtime != TargetRuntime.ONNX:
-            compile_options += " --truncate_64bit_io --truncate_64bit_tensors"
-
-        return compile_options
-
     def get_evaluator(self) -> BaseEvaluator:
         return MaskedLMEvaluator()
-
-    @staticmethod
-    def default_weights() -> str:
-        raise NotImplementedError("Subclasses must define default_weights")
-
-    @classmethod
-    def get_dataset_class(cls, tokenizer_name: str) -> type[WikiTextMasked]:
-        normalized_tokenizer_name = tokenizer_name.replace("/", "_").replace("-", "_")
-
-        class BertWikiTextMasked(WikiTextMasked):
-            def __init__(self, **kwargs: Any) -> None:
-                tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-                super().__init__(tokenizer=tokenizer, **kwargs)
-
-            @classmethod
-            def dataset_name(cls) -> str:
-                return f"wikitext_masked_{normalized_tokenizer_name}"
-
-        return BertWikiTextMasked
-
-    @classmethod
-    def get_eval_dataset_classes(cls) -> list[type[BaseDataset]]:
-        return [cls.get_dataset_class(cls.default_weights())]
-
-    def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        return self.__class__.get_dataset_class(self.__class__.default_weights())

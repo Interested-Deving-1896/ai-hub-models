@@ -373,18 +373,24 @@ class MediapipeSelfie(SelfieSegmentor):
 
         return self.sigmoid(self.transpose_conv(x))
 
-    def get_input_spec(self) -> InputSpec:
+    def get_input_spec(
+        self,
+        batch_size: int = 1,
+        height: int = 256,
+        width: int = 256,
+    ) -> InputSpec:
+        # Input shape is determined by image_type rather than height/width.
         if self.image_type == "square":
             return {
                 "image": TensorSpec(
-                    shape=(1, 3, *self.DEFAULT_HW),
+                    shape=(batch_size, 3, *self.DEFAULT_HW),
                     dtype="float32",
                     apply_runtime_channel_reordering=True,
                 )
             }
         return {
             "image": TensorSpec(
-                shape=(1, 3, 144, self.DEFAULT_HW[0]),
+                shape=(batch_size, 3, 144, self.DEFAULT_HW[0]),
                 dtype="float32",
                 apply_runtime_channel_reordering=True,
             )

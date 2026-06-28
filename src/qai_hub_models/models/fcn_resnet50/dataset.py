@@ -13,7 +13,7 @@ from torchvision.datasets.coco import CocoDetection
 from torchvision.transforms import InterpolationMode
 from torchvision.transforms import functional as F
 
-from qai_hub_models.datasets.coco import CocoDataset
+from qai_hub_models.datasets.coco import CocoDatasetBase
 from qai_hub_models.utils.base_dataset import DatasetMetadata, DatasetSplit
 from qai_hub_models.utils.image_processing import preprocess_PIL_image
 from qai_hub_models.utils.input_spec import InputSpec, TensorSpec
@@ -58,7 +58,7 @@ IGNORE_INDEX = 255
 _DEFAULT_INPUT_SIZE = 520
 
 
-class CocoVocSegDataset(CocoDataset):
+class CocoVocSegDataset(CocoDatasetBase):
     """COCO 2017 images with VOC semantic segmentation labels.
 
     Implements the COCO-with-VOC-labels evaluation protocol:

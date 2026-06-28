@@ -684,6 +684,9 @@ class T5Decoder(_T5DecoderBase):
 
 
 class BertWrapper(BaseModel):
+    # The TTS language each concrete subclass loads its BERT model for.
+    language: TTSLanguage
+
     def __init__(self, bert_model: BertForMaskedLM) -> None:
         super().__init__()
         self.model: BertForMaskedLM = bert_model
@@ -693,9 +696,11 @@ class BertWrapper(BaseModel):
         self.encoder = self.model.bert.encoder
 
     @classmethod
-    def from_pretrained(cls, language: TTSLanguage) -> Self:
+    def from_pretrained(cls, language: TTSLanguage | None = None) -> Self:
         bert_model: BertForMaskedLM = (
-            AutoModelForMaskedLM.from_pretrained(BERT_MODEL_IDS[language])
+            AutoModelForMaskedLM.from_pretrained(
+                BERT_MODEL_IDS[language or cls.language]
+            )
             .to("cpu")
             .eval()
         )

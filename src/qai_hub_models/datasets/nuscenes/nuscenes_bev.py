@@ -13,7 +13,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from qai_hub_models.datasets.nuscenes.nuscenes import NuscenesDataset
+from qai_hub_models.datasets.nuscenes.nuscenes import NuscenesDatasetBase
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.base_dataset import DatasetSplit
 from qai_hub_models.utils.bounding_box_processing_3d import transform_to_matrix
@@ -30,8 +30,13 @@ NUSCENE_LABEL = CachedWebDatasetAsset.from_asset_store(
 )
 
 
-class NuscenesBevDataset(NuscenesDataset):
-    """Wrapper around nuScenes dataset for Bird's-Eye-View (BEV) segmentation using 6 camera inputs."""
+class NuscenesBevDatasetBase(NuscenesDatasetBase):
+    """
+    Shared machinery for nuScenes Bird's-Eye-View (BEV) segmentation datasets
+    using 6 camera inputs. ``_get_bev_item`` loads the common camera tensors
+    and BEV labels; subclasses implement ``__getitem__`` to reshape these into
+    the per-model input layout.
+    """
 
     def __init__(
         self,
@@ -85,7 +90,7 @@ class NuscenesBevDataset(NuscenesDataset):
                             else None
                         )
 
-    def __getitem__(
+    def _get_bev_item(
         self, idx: int
     ) -> tuple[
         tuple[torch.Tensor, torch.Tensor, torch.Tensor],
@@ -220,7 +225,19 @@ class NuscenesBevDataset(NuscenesDataset):
         ), (gt_bev, visibility)
 
 
-class NuscenesBevGKTDataset(NuscenesBevDataset):
+class NuscenesBevDataset(NuscenesBevDatasetBase):
+    """nuScenes BEV segmentation dataset returning 6-camera inputs."""
+
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        tuple[torch.Tensor, torch.Tensor],
+    ]:
+        return self._get_bev_item(idx)
+
+
+class NuscenesBevGKTDataset(NuscenesBevDatasetBase):
     """Wrapper around nuScenes BEV dataset for GKT model."""
 
     def __getitem__(
@@ -230,7 +247,7 @@ class NuscenesBevGKTDataset(NuscenesBevDataset):
         tuple[torch.Tensor, torch.Tensor],
     ]:
         (images_tensor, intrinsics_tensor, extrinsics_tensor), (gt_bev, visibility) = (
-            super().__getitem__(idx)
+            self._get_bev_item(idx)
         )
         return (
             images_tensor,
@@ -249,7 +266,7 @@ class NuscenesBevGKTDataset(NuscenesBevDataset):
         return "nuscenes_bev_gkt"
 
 
-class NuscenesBevCVTDataset(NuscenesBevDataset):
+class NuscenesBevCVTDataset(NuscenesBevDatasetBase):
     """Wrapper around nuScenes BEV dataset for CVT model."""
 
     def __getitem__(
@@ -259,7 +276,7 @@ class NuscenesBevCVTDataset(NuscenesBevDataset):
         tuple[torch.Tensor, torch.Tensor],
     ]:
         (images_tensor, intrinsics_tensor, extrinsics_tensor), (gt_bev, visibility) = (
-            super().__getitem__(idx)
+            self._get_bev_item(idx)
         )
         return (
             images_tensor,

@@ -38,9 +38,12 @@ GT = CachedWebDatasetAsset.from_asset_store(
 ANNO = {"train": "train.json", "val": "valid.json"}
 
 
-class MPIIDataset(BaseDataset):
+class MPIIDatasetBase(BaseDataset):
     """
-    Wrapper class around MPII Human Pose dataset
+    Shared machinery for MPII Human Pose datasets (download, image indexing).
+    Subclasses implement ``__getitem__`` to return the ground truth shape they
+    need (pose keypoints, calibration-only images, etc.).
+
     https://www.mpi-inf.mpg.de/departments/computer-vision-and-machine-learning/software-and-datasets/mpii-human-pose-dataset/download
 
     MPII keypoints:
@@ -114,7 +117,7 @@ class MPIIDataset(BaseDataset):
             if len(self.images_dict_list) == num_samples:
                 break
 
-    def __getitem__(
+    def _get_keypoint_item(
         self, index: int
     ) -> tuple[
         torch.Tensor,
@@ -193,3 +196,15 @@ class MPIIDataset(BaseDataset):
             link="https://www.mpi-inf.mpg.de/departments/computer-vision-and-machine-learning/software-and-datasets/mpii-human-pose-dataset",
             split_description="validation split",
         )
+
+
+class MPIIDataset(MPIIDatasetBase):
+    """MPII Human Pose dataset returning keypoint ground truth."""
+
+    def __getitem__(
+        self, index: int
+    ) -> tuple[
+        torch.Tensor,
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor, NDArray, NDArray],
+    ]:
+        return self._get_keypoint_item(index)

@@ -78,11 +78,11 @@ def collate_fn(
         return [], ([], [], [], [], [], [])
 
 
-class CocoDataset(BaseDataset, CocoDetection):
+class CocoDatasetBase(BaseDataset, CocoDetection):
     """
-    Wrapper class around COCO dataset https://cocodataset.org/
-
-    Contains object detection samples and labels spanning 80 or 91 classes.
+    Shared machinery for COCO 2017 datasets (download, indexing, class
+    remapping). Subclasses implement ``__getitem__`` to return the ground
+    truth shape they need (detection boxes, segmentation masks, etc.).
 
     This wrapper supports the train and val splits of the 2017 version.
     """
@@ -163,6 +163,69 @@ class CocoDataset(BaseDataset, CocoDetection):
         self.target_h = input_spec["image"][0][2]
         self.target_w = input_spec["image"][0][3]
         self.max_boxes = max_boxes
+
+    def _validate_data(self) -> bool:
+        # Check validation data exists
+        if not self.root.exists():
+            return False
+
+        # Check annotations exist
+        if not COCO_ANNOTATIONS.extracted_path.exists():
+            return False
+
+        if self.split == DatasetSplit.TRAIN:
+            # Ensure there are enough training samples
+            return len(os.listdir(self.root)) >= self.max_train_samples
+        return len(os.listdir(self.root)) == TOTAL_VAL_SAMPLES
+
+    def _download_data(self) -> None:
+        COCO_VAL_DATASET.fetch(extract=True)
+        COCO_ANNOTATIONS.fetch(extract=True)
+
+        if self.split == DatasetSplit.TRAIN:
+            # This requires extra dependencies that we don't want to require
+            # For models that only need the validation set
+            from qai_hub_models.datasets.coco.coco_utils import download_many_urls
+
+            self._resolve_train_samples()
+            asyncio.run(
+                download_many_urls(
+                    self.train_samples, self.root, "file_name", "coco_url"
+                )
+            )
+
+    def _resolve_train_samples(self) -> None:
+        if self.split == DatasetSplit.TRAIN:
+            with open(
+                COCO_ANNOTATIONS.extracted_path / "instances_train2017.json"
+            ) as f:
+                train_metadata = json.loads(f.read())
+            all_samples = sorted(train_metadata["images"], key=lambda k: k["id"])
+            step_size = (len(all_samples)) // self.max_train_samples
+            self.train_samples = all_samples[
+                : step_size * self.max_train_samples : step_size
+            ]
+
+    @staticmethod
+    def default_samples_per_job() -> int:
+        """The default value for how many samples to run in each inference job."""
+        return 300
+
+    @staticmethod
+    def get_dataset_metadata() -> DatasetMetadata:
+        return DatasetMetadata(
+            link="https://cocodataset.org/",
+            split_description="val2017 split",
+        )
+
+
+class CocoDataset(CocoDatasetBase):
+    """
+    COCO object detection dataset spanning 80 or 91 classes.
+
+    Contains object detection samples and labels for the train and val splits
+    of the 2017 version.
+    """
 
     def __getitem__(
         self, index: int
@@ -261,60 +324,6 @@ class CocoDataset(BaseDataset, CocoDetection):
             boxes,
             labels,
             torch.tensor([num_boxes]),
-        )
-
-    def _validate_data(self) -> bool:
-        # Check validation data exists
-        if not self.root.exists():
-            return False
-
-        # Check annotations exist
-        if not COCO_ANNOTATIONS.extracted_path.exists():
-            return False
-
-        if self.split == DatasetSplit.TRAIN:
-            # Ensure there are enough training samples
-            return len(os.listdir(self.root)) >= self.max_train_samples
-        return len(os.listdir(self.root)) == TOTAL_VAL_SAMPLES
-
-    def _download_data(self) -> None:
-        COCO_VAL_DATASET.fetch(extract=True)
-        COCO_ANNOTATIONS.fetch(extract=True)
-
-        if self.split == DatasetSplit.TRAIN:
-            # This requires extra dependencies that we don't want to require
-            # For models that only need the validation set
-            from qai_hub_models.datasets.coco.coco_utils import download_many_urls
-
-            self._resolve_train_samples()
-            asyncio.run(
-                download_many_urls(
-                    self.train_samples, self.root, "file_name", "coco_url"
-                )
-            )
-
-    def _resolve_train_samples(self) -> None:
-        if self.split == DatasetSplit.TRAIN:
-            with open(
-                COCO_ANNOTATIONS.extracted_path / "instances_train2017.json"
-            ) as f:
-                train_metadata = json.loads(f.read())
-            all_samples = sorted(train_metadata["images"], key=lambda k: k["id"])
-            step_size = (len(all_samples)) // self.max_train_samples
-            self.train_samples = all_samples[
-                : step_size * self.max_train_samples : step_size
-            ]
-
-    @staticmethod
-    def default_samples_per_job() -> int:
-        """The default value for how many samples to run in each inference job."""
-        return 300
-
-    @staticmethod
-    def get_dataset_metadata() -> DatasetMetadata:
-        return DatasetMetadata(
-            link="https://cocodataset.org/",
-            split_description="val2017 split",
         )
 
 

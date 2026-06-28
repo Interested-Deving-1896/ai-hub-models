@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Iterator
 from enum import Enum, EnumMeta, unique
 from typing import TYPE_CHECKING, cast
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 class ScorecardProfilePathMeta(EnumMeta):
-    def __iter__(self) -> Generator[ScorecardProfilePath]:
+    def __iter__(self) -> Iterator[ScorecardProfilePath]:  # type: ignore[override]
         return (  # type:ignore[var-annotated]
             cast(ScorecardProfilePath, member) for member in super().__iter__()
         )

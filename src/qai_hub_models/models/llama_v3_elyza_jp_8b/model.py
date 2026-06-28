@@ -123,7 +123,7 @@ class Llama3_Elyza_JP_8B_QuantizablePreSplit(
     default_checkpoint = DEFAULT_CHECKPOINT
     default_precision = DEFAULT_PRECISION
 
-    def get_calibration_data(
+    def get_calibration_data(  # type: ignore[override]
         self,
         num_samples: int = 0,
         input_spec: InputSpec | None = None,

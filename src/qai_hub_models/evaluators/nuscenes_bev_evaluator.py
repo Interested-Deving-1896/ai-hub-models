@@ -6,12 +6,13 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.evaluators.segmentation_evaluator import SegmentationOutputEvaluator
+from qai_hub_models.utils.base_evaluator import BaseEvaluator
+from qai_hub_models.utils.metrics import MEAN_IOU, MetricMetadata
 
 VEHICLE_INDICES = [4, 5, 6, 7, 8, 10, 11]
 
 
-class NuscenesBevSegmentationEvaluator(SegmentationOutputEvaluator):
+class NuscenesBevSegmentationEvaluator(BaseEvaluator):
     """Evaluator for Bird's Eye View (BEV) segmentation on the NuScenes dataset."""
 
     def __init__(
@@ -80,3 +81,6 @@ class NuscenesBevSegmentationEvaluator(SegmentationOutputEvaluator):
 
     def formatted_accuracy(self) -> str:
         return f"mAP@{float(self.iou_thresholds):.2f}: {self.get_accuracy_score():.4f}"
+
+    def get_metric_metadata(self) -> MetricMetadata:
+        return MEAN_IOU

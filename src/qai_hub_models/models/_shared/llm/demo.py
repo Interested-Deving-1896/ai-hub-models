@@ -311,7 +311,7 @@ def _demo_impl(
             end_token_ids.append(token_ids[0])
     end_token_ids.append(tokenizer.eos_token_id)
 
-    generator.generation_config = GenerationConfig(
+    generator.generation_config = GenerationConfig(  # type: ignore[assignment, unused-ignore]
         max_new_tokens=max_output_tokens,
         eos_token_id=end_token_ids,
         pad_token_id=tokenizer.pad_token_id,

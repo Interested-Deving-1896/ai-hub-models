@@ -86,7 +86,7 @@ Special options:
     SPECIAL_SETTING_ENUM = SpecialModelSetting
 
     @classmethod
-    def default(cls) -> set[SpecialModelSetting]:
+    def default(cls) -> set[str | SpecialModelSetting]:
         return {SpecialModelSetting.ALL}
 
 
@@ -148,7 +148,7 @@ If a precision is specified explicitly (not through a special option), it is ena
     SPECIAL_SETTING_ENUM = SpecialPrecisionSetting
 
     @classmethod
-    def default(cls) -> set[SpecialPrecisionSetting]:
+    def default(cls) -> set[str | SpecialPrecisionSetting]:
         return {SpecialPrecisionSetting.DEFAULT}
 
 
@@ -196,7 +196,7 @@ Special options:
     SPECIAL_SETTING_ENUM = SpecialPathSetting
 
     @classmethod
-    def default(cls) -> set[SpecialPathSetting]:
+    def default(cls) -> set[str | SpecialPathSetting]:
         return {SpecialPathSetting.DEFAULT}
 
 
@@ -249,7 +249,7 @@ Special options:
     SPECIAL_SETTING_ENUM = SpecialDeviceSetting
 
     @classmethod
-    def default(cls) -> set[SpecialDeviceSetting]:
+    def default(cls) -> set[str | SpecialDeviceSetting]:
         return {SpecialDeviceSetting.ALL}
 
     @classmethod
@@ -422,7 +422,7 @@ Special options:
     SPECIAL_SETTING_ENUM = SpecialLLMPerfPrecisionSetting
 
     @classmethod
-    def default(cls) -> set[SpecialLLMPerfPrecisionSetting]:
+    def default(cls) -> set[str | SpecialLLMPerfPrecisionSetting]:
         return {SpecialLLMPerfPrecisionSetting.DEFAULT}
 
 

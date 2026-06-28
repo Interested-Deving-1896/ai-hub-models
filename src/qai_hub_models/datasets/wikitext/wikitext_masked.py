@@ -16,7 +16,14 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetMetadata, DatasetSplit
 
 
-class WikiTextMasked(BaseDataset):
+class WikiTextMaskedBase(BaseDataset):
+    """Shared machinery for masked WikiText datasets.
+
+    ``_get_masked_item`` produces the full ``(input_ids, attention_mask,
+    mask_position), label`` sample; subclasses implement ``__getitem__`` to
+    return the shape their model consumes.
+    """
+
     def __init__(
         self,
         tokenizer: PreTrainedTokenizerBase,
@@ -62,7 +69,7 @@ class WikiTextMasked(BaseDataset):
         max_samples = math.ceil(total_tokens / self.block_size)
         return min(max_samples, self.num_samples) if self.num_samples else max_samples
 
-    def __getitem__(
+    def _get_masked_item(
         self, idx: int
     ) -> tuple[tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
         """
@@ -144,7 +151,16 @@ class WikiTextMasked(BaseDataset):
         return "wikitext_masked"
 
 
-class ElectraWikiTextMasked(WikiTextMasked):
+class WikiTextMasked(WikiTextMaskedBase):
+    """Masked WikiText returning ``(input_ids, attention_mask, mask_pos)`` inputs."""
+
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
+        return self._get_masked_item(idx)
+
+
+class ElectraWikiTextMasked(WikiTextMaskedBase):
     """WikiTextMasked variant for the ELECTRA discriminator.
 
     Repacks the batch so that ``mask_indices`` is returned as ground truth
@@ -160,7 +176,9 @@ class ElectraWikiTextMasked(WikiTextMasked):
     def __getitem__(
         self, idx: int
     ) -> tuple[tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
-        (input_tokens, attention_masks, mask_indices), _label = super().__getitem__(idx)
+        (input_tokens, attention_masks, mask_indices), _label = self._get_masked_item(
+            idx
+        )
         return (input_tokens, attention_masks), mask_indices
 
     @classmethod

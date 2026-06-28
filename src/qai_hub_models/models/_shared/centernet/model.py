@@ -38,7 +38,8 @@ class CenterNet(BaseModel):
         super().__init__()
 
     @classmethod
-    def from_pretrained(cls, ckpt_path: str, heads: dict) -> Self:
+    def _load_pose_net(cls, ckpt_path: str, heads: dict) -> Self:
+        """Load the CenterNet pose-net source model with the given heads."""
         DCN.forward = custom_dcn_forward
         model = get_pose_net(
             num_layers=34,

@@ -36,7 +36,7 @@ EXPORT = "qai_hub_models.models._shared.llm.export"
 
 class DummyMockModel(LLM_AIMETOnnx):
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         host_device: torch.device | None = None,
         sequence_length: int = 128,
@@ -104,7 +104,7 @@ class DummyMockModel(LLM_AIMETOnnx):
         return model
 
     @staticmethod
-    def get_input_spec(
+    def get_input_spec(  # type: ignore[override]
         input_spec_arg_a: int = 1,
         input_spec_arg_b: int = 2,
         *args: Any,

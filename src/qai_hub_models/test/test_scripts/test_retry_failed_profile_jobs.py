@@ -70,10 +70,10 @@ class MockHubClient(HubClient):
         self.jobs = jobs
         self._verbose = False
 
-    def get_job(self, job_id: str) -> MockProfileJob | None:
+    def get_job(self, job_id: str) -> MockProfileJob | None:  # type: ignore[override]
         return self.jobs.get(job_id)
 
-    def submit_profile_job(
+    def submit_profile_job(  # type: ignore[override]
         self, model: str, device: str, options: dict[str, str]
     ) -> MockProfileJob:
         job_id = f"new_{len(self.jobs)}"

@@ -260,7 +260,7 @@ class MediaPipeApp(BaseCollectionApp):
 
         return NHWC_int_numpy_frames
 
-    def run_model(
+    def run_model(  # type: ignore[override]
         self, NCHW_fp32_torch_frames: torch.Tensor
     ) -> tuple[RUN_MODEL_RETURN_TYPE, ...] | RUN_MODEL_RETURN_TYPE:
         # Run Bounding Box & Keypoint Detector

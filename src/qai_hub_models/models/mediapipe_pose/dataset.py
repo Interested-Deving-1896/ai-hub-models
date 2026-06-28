@@ -7,11 +7,11 @@ from typing import cast
 import torch
 from PIL import Image
 
-from qai_hub_models.datasets.mpii import MPIIDataset
+from qai_hub_models.datasets.mpii import MPIIDatasetBase
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs
 
 
-class HumanPosesDataset(MPIIDataset):
+class HumanPosesDataset(MPIIDatasetBase):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
         """
         Parameters

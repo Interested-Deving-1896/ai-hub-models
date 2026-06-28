@@ -86,7 +86,7 @@ class CenterNet3D(CenterNet):
         heads = {"hm": 3, "dep": 1, "rot": 8, "dim": 3, "wh": 2, "reg": 2}
         if ckpt_path == "default":
             ckpt_path = str(DEFAULT_WEIGHTS.fetch())
-        model = super().from_pretrained(ckpt_path, heads)
+        model = super()._load_pose_net(ckpt_path, heads)
 
         return cls(model, ddd_decode)
 

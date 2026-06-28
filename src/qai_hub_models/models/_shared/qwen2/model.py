@@ -185,7 +185,7 @@ class QwenPositionProcessor(PositionProcessorBase):
         self.context_len = context_length
         self.rope_embedding = RopeEmbedding(max_length=self.context_len, config=config)  # type: ignore[arg-type, unused-ignore]
 
-    def forward(
+    def forward(  # type: ignore[override]
         self, attention_mask_before_processor: torch.Tensor, position_ids: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         position_ids_cos, position_ids_sin = self.rope_embedding.get_embedding(
@@ -273,7 +273,7 @@ class Qwen2Base_AIMETOnnx(LLM_AIMETOnnx):
             model_name=model_name,
         )
 
-    def forward(
+    def forward(  # type: ignore[override]
         self,
         input_tokens: torch.Tensor,
         attention_mask: torch.Tensor,

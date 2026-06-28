@@ -100,7 +100,7 @@ class LoadGrootMixin(FromPretrainedMixin):
     """
 
     @classmethod
-    def torch_from_pretrained(
+    def torch_from_pretrained(  # type: ignore[override, unused-ignore]
         cls,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",

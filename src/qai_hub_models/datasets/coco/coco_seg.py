@@ -9,11 +9,11 @@ import cv2
 import torch
 from torchvision.datasets.coco import CocoDetection
 
-from qai_hub_models.datasets.coco.coco import CocoDataset, CocoDatasetClass
+from qai_hub_models.datasets.coco.coco import CocoDatasetBase, CocoDatasetClass
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs
 
 
-class CocoSegDataset(CocoDataset):
+class CocoSegDataset(CocoDatasetBase):
     """
     Wrapper class around COCO dataset https://cocodataset.org/
 

@@ -36,9 +36,7 @@ class Decoder_ZH(Decoder):
 
 
 class BertWrapper_ZH(BertWrapper):
-    @classmethod
-    def from_pretrained(cls) -> Self:
-        return super().from_pretrained(TTSLanguage.CHINESE)
+    language = TTSLanguage.CHINESE
 
 
 class MeloTTS_ZH(MeloTTS):

@@ -62,7 +62,7 @@ class RF_DETR(DETR):
         return boxes, scores, labels
 
     @classmethod
-    def from_pretrained(cls) -> Self:
+    def from_pretrained(cls, ckpt_name: str = "") -> Self:
         torch_model = RFDETRBase(resolution=DEFAULT_RESOLUTION, device="cpu")
         torch_model.optimize_for_inference(compile=False)
         return cls(torch_model.model.inference_model)

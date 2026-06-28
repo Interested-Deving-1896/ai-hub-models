@@ -554,7 +554,7 @@ class Qwen3VLTextBase(Qwen3Base):
         return [out["logits"], *flat_output_past_key_values]
 
     @staticmethod
-    def get_input_prompt_with_tags(
+    def get_input_prompt_with_tags(  # type: ignore[override]
         user_input_prompt: str | None = None,
         system_context_prompt: str | None = None,
         include_image: bool | int = False,

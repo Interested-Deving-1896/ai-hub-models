@@ -367,7 +367,7 @@ class Pi05PaliGemmaVisionQuantizable(
         return Pi05PaliGemmaVision(policy).to(host_device).eval()
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
@@ -388,7 +388,7 @@ class Pi05PaliGemmaVisionQuantizable(
             None, host_device=host_device, onnx_bundle=bundle, precision=precision
         )
 
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
+    def forward(self, image: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
         return cast(torch.Tensor, AIMETOnnxQuantizableMixin.forward(self, image))
 
     def component_precision(self) -> Precision:
@@ -1543,7 +1543,7 @@ class Pi05PaliGemmaBackboneQuantizable(
         return Pi05PaliGemmaBackbone(policy).to(host_device).eval()
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
@@ -1564,7 +1564,7 @@ class Pi05PaliGemmaBackboneQuantizable(
             None, host_device=host_device, onnx_bundle=bundle, precision=precision
         )
 
-    def forward(
+    def forward(  # type: ignore[override]
         self,
         hidden_state: torch.Tensor,
         prefix_att_2d_masks: torch.Tensor,
@@ -1641,7 +1641,7 @@ class Pi05ActionExpertQuantizable(
         return Pi05ActionExpert(policy).to(host_device).eval()
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained(  # type: ignore[override]
         cls,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
@@ -1689,7 +1689,7 @@ class Pi05ActionExpertQuantizable(
             input_spec,
         )
 
-    def forward(
+    def forward(  # type: ignore[override]
         self,
         full_att_4d: torch.Tensor,
         rope_emb_sin: torch.Tensor,

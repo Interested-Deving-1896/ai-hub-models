@@ -113,8 +113,12 @@ class BaseDataset(Dataset, Sized, ABC):
         self.download_data()
 
     @staticmethod
-    def collate_fn(batch: list[object]) -> list[object]:
-        """To be passed into DataLoader(..., collate_fn=...)."""
+    def collate_fn(batch: list[Any]) -> Any:
+        """To be passed into DataLoader(..., collate_fn=...).
+
+        The return is typed ``Any`` because each dataset's collated shape
+        differs; subclasses narrow it in their own signatures.
+        """
         return default_collate(batch)
 
     @final

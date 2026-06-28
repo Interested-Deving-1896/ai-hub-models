@@ -73,8 +73,12 @@ class NuScenesSampleInfo:
     ego2global_rotation: np.ndarray
 
 
-class NuscenesDataset(BaseDataset):
-    """Wrapper class around Nuscenes Dataset"""
+class NuscenesDatasetBase(BaseDataset):
+    """
+    Shared machinery for nuScenes datasets (download, sample indexing, sensor
+    transforms). Subclasses implement ``__getitem__`` to return the ground
+    truth shape they need (3D detection inputs, BEV segmentation, etc.).
+    """
 
     def __init__(
         self,
@@ -114,7 +118,7 @@ class NuscenesDataset(BaseDataset):
         self.input_height = input_spec["image"][0][2]
         self.input_width = input_spec["image"][0][3]
 
-    def __getitem__(
+    def _get_detection_item(
         self, index: int
     ) -> tuple[
         tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
@@ -426,3 +430,15 @@ class NuscenesDataset(BaseDataset):
     def default_samples_per_job() -> int:
         """The default value for how many samples to run in each inference job."""
         return 50
+
+
+class NuscenesDataset(NuscenesDatasetBase):
+    """nuScenes dataset returning multi-camera inputs for 3D detection."""
+
+    def __getitem__(
+        self, index: int
+    ) -> tuple[
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
+        tuple[int, torch.Tensor, torch.Tensor],
+    ]:
+        return self._get_detection_item(index)

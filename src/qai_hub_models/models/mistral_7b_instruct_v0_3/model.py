@@ -74,10 +74,13 @@ class PromptProcessor_Part1(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_1_of_4"
@@ -132,10 +135,13 @@ class PromptProcessor_Part2(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_2_of_4"
@@ -190,10 +196,13 @@ class PromptProcessor_Part3(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_3_of_4"
@@ -245,10 +254,13 @@ class PromptProcessor_Part4(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_4_of_4"
@@ -301,10 +313,13 @@ class TokenGenerator_Part1(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_1_of_4"
@@ -359,10 +374,13 @@ class TokenGenerator_Part2(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_2_of_4"
@@ -417,10 +435,13 @@ class TokenGenerator_Part3(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_3_of_4"
@@ -472,10 +493,13 @@ class TokenGenerator_Part4(PrecompiledWorkbenchModel):
         }
 
     def get_hub_profile_options(
-        self, target_runtime: TargetRuntime, other_profile_options: str = ""
+        self,
+        target_runtime: TargetRuntime,
+        other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options
+            target_runtime, other_profile_options, context_graph_name
         )
         return (
             profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_4_of_4"

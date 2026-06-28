@@ -8,7 +8,7 @@ from __future__ import annotations
 import cv2
 import torch
 
-from qai_hub_models.datasets.coco.cocobody import CocoBodyDataset
+from qai_hub_models.datasets.coco.cocobody import CocoBodyDatasetBase
 from qai_hub_models.extern.mmengine import patch_mmengine_pkgresources
 from qai_hub_models.extern.mmpose import patch_mmpose_no_build_deps
 from qai_hub_models.utils.base_dataset import DatasetSplit
@@ -48,7 +48,7 @@ def _set_mmpose_inferencer_show_progress(
     return inferencer
 
 
-class CocoWholeBodyDataset(CocoBodyDataset):
+class CocoWholeBodyDataset(CocoBodyDatasetBase):
     """
     Wrapper class around CocoWholeBody Human Pose dataset
     http://images.cocodataset.org/

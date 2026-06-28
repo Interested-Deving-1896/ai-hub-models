@@ -98,7 +98,7 @@ class EagleBackboneOpt(EagleBackbone):
                 layer.self_attn, "eager_attention_forward", eager_attention_forward_opt
             )
 
-    def forward(
+    def forward(  # type: ignore[override, unused-ignore]
         self, input_embeds: torch.Tensor, llm_attention_mask: torch.Tensor
     ) -> torch.Tensor:
         outputs = self.eagle_model.language_model(
@@ -170,7 +170,7 @@ class ActionHeadDiTOpt(FlowmatchingActionHead):
     def timesteps_tensors(self) -> list[torch.Tensor]:
         return [getattr(self, name) for name in self.timesteps_tensor_names]
 
-    def forward(
+    def forward(  # type: ignore[override, unused-ignore]
         self,
         state: torch.Tensor,
         actions: torch.Tensor,
@@ -294,7 +294,7 @@ class SiglipVisionEmbeddingsOpt(SiglipVisionEmbeddings):
 class SelfAttentionTransformerOpt(SelfAttentionTransformer):
     """Add attention mask arg in the DiT self-attention block forward."""
 
-    def forward(
+    def forward(  # type: ignore[override, unused-ignore]
         self,
         hidden_states: torch.Tensor,  # Shape: (B, T, D)
         attention_mask: torch.Tensor | None = None,
@@ -323,7 +323,7 @@ class AttnProcessorOpt(AttnProcessor2_0):
     cross-attention precomputed KV caching pattern.
     """
 
-    def __call__(
+    def __call__(  # type: ignore[override, unused-ignore]
         self,
         attn: Attention,
         hidden_states: torch.Tensor,
@@ -435,7 +435,7 @@ class BasicTransformerBlockCrossAttnKV(BasicTransformerBlock):
     enabling the DiT cross-attention precomputed KV caching pattern.
     """
 
-    def forward(
+    def forward(  # type: ignore[override, unused-ignore]
         self,
         hidden_states: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
@@ -486,7 +486,7 @@ class DiTCrossAttnKV(DiT):
     (one per cross-attention block).
     """
 
-    def forward(
+    def forward(  # type: ignore[override, unused-ignore]
         self,
         hidden_states: torch.Tensor,  # Shape: (B, T, D)
         encoder_hidden_states_keys: list[torch.Tensor],  # Shape: (N, B, S, D)

@@ -19,13 +19,14 @@ from qai_hub_models.utils.quantization_aimet_onnx import ensure_aimet_onnx_insta
 ensure_aimet_onnx_installed(model_id=MODEL_ID)
 # isort: on
 
-import torch
 from transformers import WhisperConfig
 from typing_extensions import Self
 
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.models._shared.hf_whisper.model import (
     TIKTOKEN_URL,
+    HfWhisperDecoder,
+    HfWhisperEncoder,
 )
 from qai_hub_models.models._shared.hf_whisper.utils import (
     write_whisper_supplementary_files,
@@ -60,11 +61,11 @@ WHISPER_SMALL_QUANTIZED_CAPABILITIES = WhisperCapabilities(
 
 class WhisperSmallEncoderQuantizable(WhisperEncoderQuantizableBase):
     @classmethod
-    def make_torch_model(cls) -> torch.nn.Module:
+    def make_torch_model(cls) -> HfWhisperEncoder:
         return WhisperSmall.from_pretrained().encoder
 
     @classmethod
-    def get_calibrated_aimet_model(cls) -> tuple[Path, Path]:
+    def get_calibrated_aimet_model(cls) -> tuple[Path, Path]:  # type: ignore[override]
         # Returns .onnx and .encodings paths
         onnx_file = CachedWebModelAsset.from_asset_store(
             MODEL_ID,
@@ -81,11 +82,11 @@ class WhisperSmallEncoderQuantizable(WhisperEncoderQuantizableBase):
 
 class WhisperSmallDecoderQuantizable(WhisperDecoderQuantizableBase):
     @classmethod
-    def make_torch_model(cls) -> torch.nn.Module:
+    def make_torch_model(cls) -> HfWhisperDecoder:
         return WhisperSmall.from_pretrained().decoder
 
     @classmethod
-    def get_calibrated_aimet_model(cls) -> tuple[Path, Path]:
+    def get_calibrated_aimet_model(cls) -> tuple[Path, Path]:  # type: ignore[override]
         # Returns .onnx and .encodings paths
         onnx_file = CachedWebModelAsset.from_asset_store(
             MODEL_ID,

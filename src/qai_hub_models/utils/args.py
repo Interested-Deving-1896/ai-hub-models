@@ -58,7 +58,7 @@ class ParseEnumAction(argparse.Action):
         super().__init__(option_strings, dest, **kwargs)
         self.enum_type = enum_type
 
-    def __call__(
+    def __call__(  # type: ignore[override]
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
@@ -100,7 +100,7 @@ def get_quantize_action_with_default(
         def __init__(self, option_strings: list[str], dest: str, **kwargs: Any) -> None:
             super().__init__(option_strings, dest, **kwargs)
 
-        def __call__(
+        def __call__(  # type: ignore[override]
             self,
             parser: argparse.ArgumentParser,
             namespace: argparse.Namespace,
@@ -193,7 +193,7 @@ class QAIHMArgumentParser(argparse.ArgumentParser):
             )
         return None
 
-    def parse_args(
+    def parse_args(  # type: ignore[override]
         self, args: list[str] | None = None, namespace: argparse.Namespace | None = None
     ) -> argparse.Namespace:
         parsed = super().parse_args(args, namespace or argparse.Namespace())

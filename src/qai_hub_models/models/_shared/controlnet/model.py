@@ -273,6 +273,7 @@ class ControlUnetQuantizableBase(AIMETOnnxQuantizableMixin, ControlUnetBase):  #
     @classmethod
     def from_pretrained(
         cls,
+        *args: Any,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
         host_device: torch.device | str = torch.device("cpu"),
@@ -429,9 +430,11 @@ class ControlNetQuantizableBase(AIMETOnnxQuantizableMixin, ControlNetBase):  # t
     @classmethod
     def from_pretrained(
         cls,
+        *args: Any,
         checkpoint: CheckpointSpec = "DEFAULT",
         subfolder: str = "",
         host_device: torch.device | str = torch.device("cpu"),
+        **kwargs: Any,
     ) -> Self:
         """
         Create AimetQuantSim from checkpoint. QuantSim is calibrated if the

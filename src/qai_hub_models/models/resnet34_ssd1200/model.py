@@ -150,7 +150,12 @@ class Resnet34SSD(Yolo):
             image = image.resize((w, h))
         return {"image": [app_to_net_image_inputs(image)[1].numpy()]}
 
-    def get_input_spec(self, batch_size: int = 1) -> InputSpec:
+    def get_input_spec(
+        self,
+        batch_size: int = 1,
+        height: int = 1200,
+        width: int = 1200,
+    ) -> InputSpec:
         """
         Specify the expected input format for the model.
 
@@ -159,6 +164,12 @@ class Resnet34SSD(Yolo):
         batch_size
             Batch size for the input tensor. Default is 1.
 
+        height
+            Input image height. Default (and recommended) is 1200.
+
+        width
+            Input image width. Default (and recommended) is 1200.
+
         Returns
         -------
         InputSpec
@@ -166,7 +177,7 @@ class Resnet34SSD(Yolo):
         """
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, 1200, 1200),
+                shape=(batch_size, 3, height, width),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),

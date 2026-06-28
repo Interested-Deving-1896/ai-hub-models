@@ -89,7 +89,7 @@ class CenterNetPose(CenterNet):
         }
         if ckpt_path == "default":
             ckpt_path = str(DEFAULT_WEIGHTS.fetch())
-        model = super().from_pretrained(ckpt_path, heads)
+        model = super()._load_pose_net(ckpt_path, heads)
 
         return cls(model, multi_pose_decode)
 

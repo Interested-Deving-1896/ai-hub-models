@@ -7,6 +7,7 @@ from qai_hub_models.datasets.coco.coco import (
     DATASET_ASSET_VERSION,
     Coco180Dataset,
     CocoDataset,
+    CocoDatasetBase,
     CocoDatasetClass,
 )
 from qai_hub_models.datasets.coco.coco91class import Coco91ClassDataset
@@ -16,7 +17,10 @@ from qai_hub_models.datasets.coco.coco_keypoints import (
     CocoKeypointsDataset,
 )
 from qai_hub_models.datasets.coco.coco_seg import CocoSegDataset
-from qai_hub_models.datasets.coco.cocobody import CocoBodyDataset
+from qai_hub_models.datasets.coco.cocobody import (
+    CocoBodyDataset,
+    CocoBodyDatasetBase,
+)
 
 __all__ = [
     "COCO_KPT_PERSON_ANNOTATIONS_PATH",
@@ -26,7 +30,9 @@ __all__ = [
     "Coco91ClassDataset",
     "Coco180Dataset",
     "CocoBodyDataset",
+    "CocoBodyDatasetBase",
     "CocoDataset",
+    "CocoDatasetBase",
     "CocoDatasetClass",
     "CocoKeypointsDataset",
     "CocoSegDataset",

@@ -9,6 +9,7 @@ from typing import cast
 
 from qai_hub import Device
 from transformers import WhisperForConditionalGeneration
+from typing_extensions import Self
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models._shared.hf_whisper.model import (
@@ -28,8 +29,8 @@ DISTIL_WHISPER_VERSION = "distil-whisper/distil-small.en"
 
 class DistilWhisperEncoder(HfWhisperEncoder):
     @classmethod
-    def from_pretrained(cls) -> DistilWhisperEncoder:
-        model = DistilWhisper.load_whisper_model()
+    def from_pretrained(cls, hf_whisper_version: str = DISTIL_WHISPER_VERSION) -> Self:
+        model = DistilWhisper.load_whisper_model(hf_whisper_version)
         return cls(model.config, model.get_encoder())
 
     def get_hub_compile_options(
@@ -54,8 +55,8 @@ class DistilWhisperEncoder(HfWhisperEncoder):
 
 class DistilWhisperDecoder(HfWhisperDecoder):
     @classmethod
-    def from_pretrained(cls) -> DistilWhisperDecoder:
-        model = DistilWhisper.load_whisper_model()
+    def from_pretrained(cls, hf_whisper_version: str = DISTIL_WHISPER_VERSION) -> Self:
+        model = DistilWhisper.load_whisper_model(hf_whisper_version)
         return cls(model.config, model.get_decoder())
 
     def get_hub_compile_options(

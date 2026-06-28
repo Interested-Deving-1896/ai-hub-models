@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
-from typing import TypeAlias
+from typing import Generic, TypeAlias, TypeVar
 
+import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
@@ -17,6 +18,7 @@ from qai_hub_models.utils.metrics import MetricMetadata
 
 __all__ = [
     "BaseEvaluator",
+    "EvaluatorIO",
     "_DataLoader",
     "_ModelIO",
     "_for_each_batch",
@@ -26,20 +28,20 @@ _ModelIO: TypeAlias = Collection[torch.Tensor] | torch.Tensor
 # Typically is a torch DataLoader, but anything with the collection signature is acceptable.
 _DataLoader: TypeAlias = DataLoader | Collection[_ModelIO | tuple[_ModelIO, _ModelIO]]
 
+# Values an evaluator may consume as a model output or ground truth.
+EvaluatorIO: TypeAlias = (
+    "np.ndarray | torch.Tensor | torch.types.Number | tuple[EvaluatorIO, ...]"
+)
 
-class BaseEvaluator(ABC):
+OutputT = TypeVar("OutputT", bound=EvaluatorIO)
+GtT = TypeVar("GtT", bound=EvaluatorIO)
+
+
+class BaseEvaluator(ABC, Generic[OutputT, GtT]):
     """Evaluates one or more outputs of a model in comparison to a ground truth."""
 
     @abstractmethod
-    def add_batch(
-        self,
-        output: torch.Tensor
-        | torch.NumberType
-        | Collection[torch.Tensor | torch.NumberType],
-        gt: torch.Tensor
-        | torch.NumberType
-        | Collection[torch.Tensor | torch.NumberType],
-    ) -> None:
+    def add_batch(self, output: OutputT, gt: GtT) -> None:
         """
         Add a batch of data to this evaluator.
 
@@ -109,9 +111,7 @@ class BaseEvaluator(ABC):
             Name of device on which inference should be run.
         """
 
-        def _add_batch(
-            _: torch.Tensor, outputs: torch.Tensor, ground_truth: torch.Tensor
-        ) -> None:
+        def _add_batch(_: torch.Tensor, outputs: OutputT, ground_truth: GtT) -> None:
             self.add_batch(outputs, ground_truth)
 
         _for_each_batch(model, data, eval_iterations, device, True, _add_batch)

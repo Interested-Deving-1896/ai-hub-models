@@ -94,7 +94,7 @@ class ModelFileMetadata(BaseQAIHMConfig):
 
         return cls(inputs=inputs, outputs=outputs)
 
-    def to_yaml(
+    def to_yaml(  # type: ignore[override]
         self,
         path: str | Path,
         write_if_empty: bool = False,
@@ -255,7 +255,7 @@ class GenieMetadata(BaseQAIHMConfig):
 class ChipsetAttributes(ChipsetYaml):
     name: str
 
-    def to_proto(self) -> platform_pb2.ChipsetInfo:
+    def to_proto(self) -> platform_pb2.ChipsetInfo:  # type: ignore[override]
         return super().to_proto(self.name)
 
     @staticmethod
@@ -329,7 +329,7 @@ class ModelMetadata(BaseQAIHMConfig):
     genie: GenieMetadata | None = None
     chipset_attributes: ChipsetAttributes | None = None
 
-    def to_yaml(
+    def to_yaml(  # type: ignore[override]
         self,
         path: str | Path,
         write_if_empty: bool = False,

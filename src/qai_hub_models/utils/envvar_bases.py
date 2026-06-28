@@ -180,7 +180,7 @@ class QAIHMEnvvar(Generic[ParsedT]):
             self.envvar = envvar
             self.setenv = setenv
 
-        def __call__(
+        def __call__(  # type: ignore[override]
             self,
             parser: argparse.ArgumentParser,
             namespace: argparse.Namespace,
@@ -272,7 +272,7 @@ class QAIHMBoolEnvvar(QAIHMEnvvar[bool]):
             self.envvar = envvar
             self.setenv = setenv
 
-        def __call__(
+        def __call__(  # type: ignore[override]
             self,
             parser: argparse.ArgumentParser,
             namespace: argparse.Namespace,

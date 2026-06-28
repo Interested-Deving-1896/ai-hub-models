@@ -17,7 +17,7 @@ class TypedModuleList(nn.ModuleList, Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore[return-value,unused-ignore]
 
-    def append(self, module: T) -> "TypedModuleList[T]":
+    def append(self, module: T) -> "TypedModuleList[T]":  # type: ignore[override]
         return super().append(module)  # type: ignore[return-value,unused-ignore]
 
     @overload
@@ -29,7 +29,7 @@ class TypedModuleList(nn.ModuleList, Generic[T]):
     def __getitem__(self, idx: int | slice) -> T | "TypedModuleList[T]":
         return super().__getitem__(idx)  # type: ignore[return-value]
 
-    def __setitem__(self, idx: int, module: T) -> None:
+    def __setitem__(self, idx: int, module: T) -> None:  # type: ignore[override]
         super().__setitem__(idx, module)
 
 

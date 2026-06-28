@@ -14,7 +14,7 @@ from tqdm import tqdm
 from qai_hub_models.utils.base_evaluator import BaseEvaluator, _DataLoader
 
 if TYPE_CHECKING:
-    from transformers.generation import GenerationMixin
+    from transformers import GenerationMixin
     from transformers.modeling_outputs import CausalLMOutputWithPast
 
 
@@ -74,8 +74,9 @@ class LLMEvaluator(BaseEvaluator):
         model: torch.nn.Module,
         data: _DataLoader,
         eval_iterations: int | None = None,
+        device: str = "cpu",
     ) -> None:
-        from transformers.generation import GenerationMixin
+        from transformers import GenerationMixin
 
         assert isinstance(model, GenerationMixin), "This evaluator only works on LLMs"
 

@@ -188,24 +188,14 @@ class CocoPPEDataset(BaseDataset):
         return 30
 
     @staticmethod
-    def get_dataset_metadata(split: DatasetSplit) -> DatasetMetadata:
+    def get_dataset_metadata() -> DatasetMetadata:
         """
         Get metadata information about the dataset.
-
-        Parameters
-        ----------
-        split
-            The dataset split (TRAIN or VAL).
 
         Returns
         -------
         DatasetMetadata
             Metadata object containing dataset information including link and split description.
-
-        Raises
-        ------
-        ValueError
-            If an unsupported split is provided.
         """
         return DatasetMetadata(
             link="https://cocodataset.org/",

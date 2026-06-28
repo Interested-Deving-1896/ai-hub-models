@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from typing_extensions import Self
 
@@ -149,7 +150,7 @@ class WhisperEncoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperEncoder)
         return cls(fp_encoder.config, quant_sim)
 
     def _sample_inputs_impl(
-        self, input_spec: InputSpec | None = None
+        self, input_spec: InputSpec | None = None, *args: Any, **kwargs: Any
     ) -> SampleInputsType:
         """Override same func in AIMETOnnxQuantizableMixin."""
         return super(HfWhisperEncoder, self)._sample_inputs_impl(input_spec)
@@ -262,7 +263,7 @@ class WhisperDecoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperDecoder)
         return cls(fp_decoder.config, quant_sim)
 
     def _sample_inputs_impl(
-        self, input_spec: InputSpec | None = None
+        self, input_spec: InputSpec | None = None, *args: Any, **kwargs: Any
     ) -> SampleInputsType:
         """Override same impl func in AIMETOnnxQuantizableMixin."""
         return super(HfWhisperDecoder, self)._sample_inputs_impl(input_spec)

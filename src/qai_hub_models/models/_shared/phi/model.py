@@ -125,7 +125,7 @@ class Phi3LongRoPEScaledRotaryEmbedding(Embedding):
         embeddings = [emb[:, :, :emb_size] for emb in embeddings]
         return tuple(emb.unsqueeze(0) for emb in embeddings)
 
-    def get_embedding(
+    def get_embedding(  # type: ignore[override]
         self,
         position_ids: torch.Tensor,
         seq_len: int | None = None,
@@ -172,7 +172,7 @@ class Phi3PositionProcessor(PositionProcessorBase):
             config=config,
         )
 
-    def forward(
+    def forward(  # type: ignore[override]
         self, attention_mask_before_processor: torch.Tensor, position_ids: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         position_ids_cos, position_ids_sin = self.rope_embedding.get_embedding(

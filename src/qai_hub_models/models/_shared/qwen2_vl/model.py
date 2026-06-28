@@ -426,7 +426,7 @@ class Qwen2VLTextBase(Qwen2Base):
     def get_input_prompt_with_tags(
         user_input_prompt: str | None = None,
         system_context_prompt: str | None = None,
-        include_image: bool | int = True,
+        include_image: bool | int = True,  # type: ignore[override]
         enable_thinking: bool = False,
         **kwargs: Any,
     ) -> str:
@@ -930,7 +930,7 @@ class Qwen2VLDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx, Qwen2VLTextBase_AIMETOnnx):
 
         return inputs
 
-    def get_calibration_data(
+    def get_calibration_data(  # type: ignore[override]
         self,
         num_samples: int = 0,
         input_spec: InputSpec | None = None,

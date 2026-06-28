@@ -14,7 +14,7 @@ from typing_extensions import Self
 from qai_hub_models import SampleInputsType
 from qai_hub_models.evaluators.stereo_evaluator import StereoEvaluator
 from qai_hub_models.models._shared.nafnet.model import (
-    NAFNetModel,
+    NAFNetModelBase,
     _load_nafnet_source_model,
 )
 from qai_hub_models.models.nafssr.dataset import Flickr1024Dataset
@@ -43,7 +43,7 @@ DEFAULT_WEIGHTS = "NAFSSR-S_2x.pth"
 DEFAULT_CONFIG = "NAFSSR/NAFSSR-S_2x.yml"
 
 
-class NAFSSR(NAFNetModel):
+class NAFSSR(NAFNetModelBase):
     """Exportable NAFNet stereo super resolution model for image upscaling, end-to-end."""
 
     def __init__(

@@ -14,9 +14,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import torch
 import transformers
-from transformers import PretrainedConfig
+from transformers import GenerationMixin, PretrainedConfig
 from transformers.cache_utils import DynamicCache
-from transformers.generation.utils import GenerationMixin
 from transformers.modeling_attn_mask_utils import AttentionMaskConverter
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
@@ -465,7 +464,7 @@ class LLM_Generator(GenerationMixin, torch.nn.Module):
             ),
         )
 
-    def prepare_inputs_for_generation(
+    def prepare_inputs_for_generation(  # type: ignore[override, unused-ignore]
         self,
         input_ids: torch.Tensor | None = None,
         past_key_values: DynamicCache | None = None,

@@ -108,11 +108,14 @@ class Movenet(BaseModel):
         self,
         target_runtime: TargetRuntime,
         other_profile_options: str = "",
+        context_graph_name: str | None = None,
     ) -> str:
         # NPU has accuracy issues; force CPU execution.
         if "--compute_unit" not in other_profile_options:
             other_profile_options = f"--compute_unit cpu {other_profile_options}"
-        return super().get_hub_profile_options(target_runtime, other_profile_options)
+        return super().get_hub_profile_options(
+            target_runtime, other_profile_options, context_graph_name
+        )
 
     def get_evaluator(self, name: str | None = None) -> BaseEvaluator:
         h, w = self.get_input_spec()["image"][0][2:]

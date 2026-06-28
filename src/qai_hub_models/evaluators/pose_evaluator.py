@@ -41,12 +41,6 @@ class CocoBodyPoseEvaluator(BaseEvaluator):
         """Resets the collected predictions."""
         self.predictions: list[dict[str, Any]] = []
 
-    def add_batch(
-        self, output: tuple[torch.Tensor] | torch.Tensor, gt: list[torch.Tensor]
-    ) -> None:
-        """Processes a batch of model outputs and ground truth"""
-        raise NotImplementedError("add_batch must be implemented in subclass")
-
     def _store_predictions(
         self,
         preds: np.ndarray,
