@@ -29,6 +29,14 @@ on:
           type: string
           default: 'all'
 
+        run_eval:
+          description: |
+            Run the on-device accuracy evaluation (100 default prompts). When
+            false, only TPS/TTFT perf is collected. Maps to test_scope:
+            true for "accuracy"/"perf_and_accuracy", false for "perf".
+          type: boolean
+          default: true
+
 env:
   PYTHONUNBUFFERED: 1
   VENV_PATH: build/ci-envs/qaihm-build
@@ -98,6 +106,6 @@ jobs:
       device: ${{ inputs.device }}
       precision: all
       deployment: ${{ inputs.deployment }}
-      run_eval: true
+      run_eval: ${{ inputs.run_eval }}
       create_pr: false
       release_assets_action_id: ${{ inputs.action_id }}

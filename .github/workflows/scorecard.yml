@@ -206,7 +206,7 @@ jobs:
   scorecard_llm_device_run:
     name: LLM On-Device Run (asset upload, perf, accuracy)
     needs: submit_split_jobs
-    if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && !inputs.skip_llm_perf }}
+    if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && !inputs.skip_llm_perf && inputs.test_scope != 'compile_only' }}
     secrets: inherit
     uses: ./.github/workflows/scorecard_llm_device_run.yml
     with:
@@ -216,6 +216,7 @@ jobs:
                      || 'ephemeral_test_assets' }}
       deployment: ${{ inputs.deployment }}
       device: ${{ inputs.test_devices }}
+      run_eval: ${{ inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy' }}
 
   collect_results_split:
     name: Test Export Scripts, Upload Zip Files & Compute Accuracy
