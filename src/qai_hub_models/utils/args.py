@@ -595,8 +595,12 @@ def add_function_parser_args(
         # strings like "bool | None").
         bool_action = None
         arg_name = f"--{name.replace('_', '-')}"
-        if param.default is not None:
+        type_: Any
+        if param.annotation == "list[int]":
+            type_ = _parse_int_list
+        elif param.default is not None:
             type_ = type(param.default)
+            # resolved_type = _resolve_param_type(param, model_cls)
             if type_ is bool:
                 if param.default:
                     bool_action = "store_false"
@@ -625,7 +629,7 @@ def add_function_parser_args(
         help_str = help_fn(name, param.default)
         if bool_action:
             parser.add_argument(arg_name, dest=name, action=bool_action, help=help_str)
-        elif issubclass(type_, Enum):
+        elif isinstance(type_, type) and issubclass(type_, Enum):
             parser.add_argument(
                 arg_name,
                 type=str,
