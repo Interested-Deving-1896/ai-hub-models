@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------
+# Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+# ---------------------------------------------------------------------
+
+import pytest
+
+from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
+    run_imagenet_classifier_test,
+    run_imagenet_classifier_trace_test,
+)
+from qai_hub_models.models.efficientnet_lite4.demo import main as demo_main
+from qai_hub_models.models.efficientnet_lite4.model import (
+    EFFICIENTNET_LITE4_TRANSFORM,
+    MODEL_ASSET_VERSION,
+    MODEL_ID,
+    EfficientNetLite4,
+)
+
+
+def test_task() -> None:
+    run_imagenet_classifier_test(
+        EfficientNetLite4.from_pretrained(),
+        MODEL_ID,
+        asset_version=MODEL_ASSET_VERSION,
+        probability_threshold=0.6,
+        transform=EFFICIENTNET_LITE4_TRANSFORM,
+    )
+
+
+@pytest.mark.trace
+def test_trace() -> None:
+    run_imagenet_classifier_trace_test(
+        EfficientNetLite4.from_pretrained(),
+        transform=EFFICIENTNET_LITE4_TRANSFORM,
+    )
+
+
+def test_demo() -> None:
+    # Verify demo does not crash
+    demo_main(is_test=True)

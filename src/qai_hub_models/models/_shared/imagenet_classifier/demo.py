@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import torch
+from torchvision import transforms
 
 from qai_hub_models import TargetRuntime
 from qai_hub_models.models._shared.imagenet_classifier.app import ImagenetClassifierApp
@@ -44,6 +45,7 @@ def imagenet_demo(
     model_id: str,
     is_test: bool = False,
     available_target_runtimes: list[TargetRuntime] | None = None,
+    transform: transforms.Compose | None = None,
 ) -> None:
     # Demo parameters
     if available_target_runtimes is None:
@@ -62,7 +64,7 @@ def imagenet_demo(
     validate_on_device_demo_args(args, model_id)
 
     model = demo_model_from_cli_args(model_cls, model_id, args)
-    app = ImagenetClassifierApp(model)
+    app = ImagenetClassifierApp(model, transform=transform)
     print("Model Loaded")
 
     image = load_image(args.image)

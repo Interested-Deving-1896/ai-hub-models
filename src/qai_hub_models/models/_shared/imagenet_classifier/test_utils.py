@@ -5,6 +5,7 @@
 
 import pytest
 import torch
+from torchvision import transforms
 
 from qai_hub_models.models._shared.imagenet_classifier.app import (
     ImagenetClassifierApp,
@@ -50,6 +51,7 @@ def run_imagenet_classifier_test(
     diff_tol: float = 0.0,
     rtol: float = 0.0,
     atol: float = 1e-4,
+    transform: transforms.Compose | None = None,
 ) -> None:
     """
     Evaluates the classifier on a test image and validates the output.
@@ -73,9 +75,11 @@ def run_imagenet_classifier_test(
         Relative tolerance allowed for two numbers to be "close".
     atol
         Absolute tolerance allowed for two numbers to be "close".
+    transform
+        Optional custom preprocessing transform. If None, uses IMAGENET_TRANSFORM (224x224).
     """
     img = load_image(TEST_IMAGENET_IMAGE)
-    app = ImagenetClassifierApp(model)
+    app = ImagenetClassifierApp(model, transform=transform)
     probabilities = app.predict(img)
     expected_output = CachedWebModelAsset.from_asset_store(
         model_name, asset_version, "expected_out.npy"
@@ -100,15 +104,20 @@ def run_imagenet_classifier_trace_test(
     atol: float = 1e-4,
     is_quantized: bool = False,
     check_trace: bool = True,
+    transform: transforms.Compose | None = None,
 ) -> None:
     img = load_image(TEST_IMAGENET_IMAGE)
-    app = ImagenetClassifierApp(model)
+    app = ImagenetClassifierApp(model, transform=transform)
     if not is_quantized:
         trace_app = ImagenetClassifierApp(
-            model.convert_to_torchscript(check_trace=check_trace)
+            model.convert_to_torchscript(check_trace=check_trace),
+            transform=transform,
         )
     else:
-        trace_app = ImagenetClassifierApp(model.convert_to_torchscript())
+        trace_app = ImagenetClassifierApp(
+            model.convert_to_torchscript(),
+            transform=transform,
+        )
     probabilities = app.predict(img)
     trace_probs = trace_app.predict(img)
     assert_most_close(probabilities.numpy(), trace_probs.numpy(), diff_tol, rtol, atol)
