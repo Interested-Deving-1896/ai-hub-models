@@ -24,7 +24,6 @@ from qai_hub_models.utils.kwarg_helpers import filter_kwargs
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
     Precision.float: [
-        TargetRuntime.TFLITE,
         TargetRuntime.QNN_DLC,
         TargetRuntime.QNN_CONTEXT_BINARY,
         TargetRuntime.ONNX,

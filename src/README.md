@@ -169,6 +169,7 @@ and many more.
 | [EfficientFormer](https://aihub.qualcomm.com/models/efficientformer) | `qai_hub_models.models.efficientformer` |
 | [EfficientNet-B0](https://aihub.qualcomm.com/models/efficientnet_b0) | `qai_hub_models.models.efficientnet_b0` |
 | [EfficientNet-B4](https://aihub.qualcomm.com/models/efficientnet_b4) | `qai_hub_models.models.efficientnet_b4` |
+| [EfficientNet-Lite4](https://aihub.qualcomm.com/models/efficientnet_lite4) | `qai_hub_models.models.efficientnet_lite4` |
 | [EfficientNet-V2-s](https://aihub.qualcomm.com/models/efficientnet_v2_s) | `qai_hub_models.models.efficientnet_v2_s` |
 | [EfficientViT-b2-cls](https://aihub.qualcomm.com/models/efficientvit_b2_cls) | `qai_hub_models.models.efficientvit_b2_cls` |
 | [EfficientViT-l2-cls](https://aihub.qualcomm.com/models/efficientvit_l2_cls) | `qai_hub_models.models.efficientvit_l2_cls` |

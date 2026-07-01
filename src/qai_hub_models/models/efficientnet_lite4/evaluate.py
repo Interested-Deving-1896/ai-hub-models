@@ -17,7 +17,6 @@ from qai_hub_models.models.efficientnet_lite4 import MODEL_ID, Model
 from qai_hub_models.models.efficientnet_lite4.export import export_model
 from qai_hub_models.models.protocols import ExecutableModelProtocol
 from qai_hub_models.utils.args import evaluate_parser, get_model_kwargs
-from qai_hub_models.utils.asset_loaders import UNPUBLISHED_MODEL_WARNING, query_yes_no
 from qai_hub_models.utils.evaluate import _load_quant_cpu_onnx, evaluate_on_dataset
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec
@@ -61,9 +60,6 @@ def build_parser(cli_mode: bool = False) -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace | None = None) -> None:
-    print("WARNING:", UNPUBLISHED_MODEL_WARNING)
-    if not query_yes_no("Continue?"):
-        return
     eval_dataset_classes = Model.get_eval_dataset_classes()
     if args is None:
         warnings.warn(

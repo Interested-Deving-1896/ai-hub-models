@@ -34,10 +34,7 @@ from qai_hub_models.utils.args import (
     get_export_model_name,
     get_model_kwargs,
 )
-from qai_hub_models.utils.asset_loaders import (
-    ASSET_CONFIG,
-    check_unpublished_model_warning,
-)
+from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.compare import torch_inference
 from qai_hub_models.utils.export_result import ExportResult
@@ -564,8 +561,6 @@ def build_parser(cli_mode: bool = False) -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace | None = None) -> None:
-    if not check_unpublished_model_warning():
-        return
     if args is None:
         warnings.warn(
             "Running `python -m qai_hub_models.models.efficientnet_lite4.export` is "

@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [EfficientNet-Lite4: Imagenet classifier and general purpose backbone](https://aihub.qualcomm.com/models/efficientnet_lite4)
 
 EfficientNet-Lite4 is a machine learning model that can classify images from the Imagenet dataset. It can also be used as a backbone in building more complex models for specific use cases.

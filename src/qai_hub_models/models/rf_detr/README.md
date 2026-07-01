@@ -22,7 +22,7 @@ qai-hub-models perf RF-DETR
 qai-hub-models numerics RF-DETR
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch RF-DETR --runtime tflite --precision float
+qai-hub-models fetch RF-DETR --runtime qnn_dlc --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
@@ -63,7 +63,7 @@ By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` t
 To run the model on Qualcomm® devices, you must export the model for use with an edge runtime such as
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct. Use the following command to export the model:
 ```bash
-qai-hub-models export rf_detr --target-runtime tflite --precision float
+qai-hub-models export rf_detr --target-runtime qnn_dlc --precision float
 ```
 Additional options are documented with the `--help` option.
 
