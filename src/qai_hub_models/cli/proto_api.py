@@ -22,15 +22,14 @@ from qai_hub_models.configs.info_yaml import QAIHMModelInfo
 from qai_hub_models.configs.numerics_yaml import QAIHMModelNumerics
 from qai_hub_models.configs.perf_yaml import QAIHMModelPerf
 from qai_hub_models.configs.release_assets_yaml import QAIHMModelReleaseAssets
-from qai_hub_models.scripts.build_release_proto import (
-    _build_release_assets_proto,
-    _manifest_filter_fields,
-)
 from qai_hub_models.utils.path_helpers import MODEL_IDS, is_internal_repo
 
 
 def get_manifest_proto() -> ReleaseManifest:
     """Build a ReleaseManifest from local model configs (dev installs)."""
+    # The scripts package is not available in release builds, so import here
+    # to avoid failures.
+    from qai_hub_models.scripts.build_release_proto import _manifest_filter_fields
 
     def _build_entry(model_id: str) -> ManifestModelEntry | None:
         info = QAIHMModelInfo.from_model(model_id)
@@ -92,6 +91,10 @@ def get_platform_proto() -> PlatformInfo:
 
 def get_release_assets_proto(model_id: str) -> ModelReleaseAssets | None:
     """Build a ModelReleaseAssets proto from local model config (dev installs)."""
+    # The scripts package is not available in release builds, so import here
+    # to avoid failures.
+    from qai_hub_models.scripts.build_release_proto import _build_release_assets_proto
+
     return _build_release_assets_proto(
         model_id, str(CURRENT_VERSION), is_internal_repo()
     )
