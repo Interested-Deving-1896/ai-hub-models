@@ -392,6 +392,10 @@ and many more.
 | [Distil-Bert-Base-Uncased-Hf](https://aihub.qualcomm.com/models/distil_bert_base_uncased_hf) | `qai_hub_models.models.distil_bert_base_uncased_hf` |
 | [Electra-Bert-Base-Discrim-Google](https://aihub.qualcomm.com/models/electra_bert_base_discrim_google) | `qai_hub_models.models.electra_bert_base_discrim_google` |
 | [Falcon3-7B-Instruct](https://aihub.qualcomm.com/models/falcon_v3_7b_instruct) | `qai_hub_models.models.falcon_v3_7b_instruct` |
+| [GPT-OSS-20B](https://aihub.qualcomm.com/models/gpt_oss_20b) | `qai_hub_models.models.gpt_oss_20b` |
+| [Gemma-4-E2B-it](https://aihub.qualcomm.com/models/gemma_4_e2b_it) | `qai_hub_models.models.gemma_4_e2b_it` |
+| [Gemma-4-E4B-it](https://aihub.qualcomm.com/models/gemma_4_e4b_it) | `qai_hub_models.models.gemma_4_e4b_it` |
+| [Granite-4.0-Micro](https://aihub.qualcomm.com/models/granite_4_0_micro) | `qai_hub_models.models.granite_4_0_micro` |
 | [IBM-Granite-v3.1-8B-Instruct](https://aihub.qualcomm.com/models/ibm_granite_v3_1_8b_instruct) | `qai_hub_models.models.ibm_granite_v3_1_8b_instruct` |
 | [IndusQ-1.1B](https://aihub.qualcomm.com/models/indus_1b) | `qai_hub_models.models.indus_1b` |
 | [JAIS-6p7b-Chat](https://aihub.qualcomm.com/models/jais_6p7b_chat) | `qai_hub_models.models.jais_6p7b_chat` |
@@ -403,15 +407,23 @@ and many more.
 | [Llama-v3.2-3B-Instruct](https://aihub.qualcomm.com/models/llama_v3_2_3b_instruct) | `qai_hub_models.models.llama_v3_2_3b_instruct` |
 | [Llama-v3.2-3B-Instruct-SSD](https://aihub.qualcomm.com/models/llama_v3_2_3b_instruct_ssd) | `qai_hub_models.models.llama_v3_2_3b_instruct_ssd` |
 | [Llama3-TAIDE-LX-8B-Chat-Alpha1](https://aihub.qualcomm.com/models/llama_v3_taide_8b_chat) | `qai_hub_models.models.llama_v3_taide_8b_chat` |
+| [Ministral-3-3B-Instruct-2512](https://aihub.qualcomm.com/models/ministral_3_3b_instruct_2512) | `qai_hub_models.models.ministral_3_3b_instruct_2512` |
 | [Mistral-7B-Instruct-v0.3](https://aihub.qualcomm.com/models/mistral_7b_instruct_v0_3) | `qai_hub_models.models.mistral_7b_instruct_v0_3` |
 | [Mobile-Bert-Uncased-Google](https://aihub.qualcomm.com/models/mobile_bert_uncased_google) | `qai_hub_models.models.mobile_bert_uncased_google` |
 | [PLaMo-1B](https://aihub.qualcomm.com/models/plamo_1b) | `qai_hub_models.models.plamo_1b` |
 | [Phi-3.5-Mini-Instruct](https://aihub.qualcomm.com/models/phi_3_5_mini_instruct) | `qai_hub_models.models.phi_3_5_mini_instruct` |
+| [Phi-4-Mini-Instruct](https://aihub.qualcomm.com/models/phi_4_mini_instruct) | `qai_hub_models.models.phi_4_mini_instruct` |
 | [Qwen2-7B-Instruct](https://aihub.qualcomm.com/models/qwen2_7b_instruct) | `qai_hub_models.models.qwen2_7b_instruct` |
 | [Qwen2.5-VL-7B-Instruct](https://aihub.qualcomm.com/models/qwen2_5_vl_7b_instruct) | `qai_hub_models.models.qwen2_5_vl_7b_instruct` |
+| [Qwen3-0.6B](https://aihub.qualcomm.com/models/qwen3_0_6b) | `qai_hub_models.models.qwen3_0_6b` |
+| [Qwen3-1.7B](https://aihub.qualcomm.com/models/qwen3_1_7b) | `qai_hub_models.models.qwen3_1_7b` |
 | [Qwen3-4B](https://aihub.qualcomm.com/models/qwen3_4b) | `qai_hub_models.models.qwen3_4b` |
 | [Qwen3-4B-Instruct-2507](https://aihub.qualcomm.com/models/qwen3_4b_instruct_2507) | `qai_hub_models.models.qwen3_4b_instruct_2507` |
 | [Qwen3-8B](https://aihub.qualcomm.com/models/qwen3_8b) | `qai_hub_models.models.qwen3_8b` |
+| [Qwen3-VL-2B-Instruct](https://aihub.qualcomm.com/models/qwen3_vl_2b_instruct) | `qai_hub_models.models.qwen3_vl_2b_instruct` |
+| [Qwen3-VL-4B-Instruct](https://aihub.qualcomm.com/models/qwen3_vl_4b_instruct) | `qai_hub_models.models.qwen3_vl_4b_instruct` |
+| [Qwen3.5-0.8B](https://aihub.qualcomm.com/models/qwen3_5_0_8b) | `qai_hub_models.models.qwen3_5_0_8b` |
+| [Qwen3.5-2B](https://aihub.qualcomm.com/models/qwen3_5_2b) | `qai_hub_models.models.qwen3_5_2b` |
 
 ## Need help?
 Slack: https://aihub.qualcomm.com/community/slack

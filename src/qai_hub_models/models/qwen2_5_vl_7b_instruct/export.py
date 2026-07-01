@@ -505,9 +505,6 @@ def export_model(
     if downloaded_model_path:
         print(f"{model_name} was saved to {downloaded_model_path}\n")
 
-    print(
-        "These models can be deployed on-device using the Genie SDK. For a full tutorial, please follow the instructions here: https://github.com/quic/ai-hub-apps/tree/main/tutorials/llm_on_genie."
-    )
     return MultiGraphCollectionExportResult(
         compile_jobs=compile_result,
         link_jobs=link_result,

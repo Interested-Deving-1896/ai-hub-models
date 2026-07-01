@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Qwen3.5-0.8B: Ultra-compact 0.8B parameter model from the Qwen3.5 series for edge deployment](https://aihub.qualcomm.com/models/qwen3_5_0_8b)
 
 Qwen3.5 is the latest multilingual language model series from Alibaba Cloud with improved reasoning and instruction-following capabilities over Qwen3.

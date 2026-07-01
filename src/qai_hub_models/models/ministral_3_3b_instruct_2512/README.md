@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Ministral-3-3B-Instruct-2512: Efficient 3B parameter instruction-tuned model from Mistral AI](https://aihub.qualcomm.com/models/ministral_3_3b_instruct_2512)
 
 Ministral is a compact language model from Mistral AI designed for on-device deployment, offering strong instruction-following capabilities with low latency.

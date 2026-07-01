@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Qwen3-0.6B: State-of-the-art large language model useful on a variety of language understanding and generation tasks](https://aihub.qualcomm.com/models/qwen3_0_6b)
 
 The Qwen3-0.6B is a state-of-the-art multilingual language model with 0.6 billion parameters, excelling in language understanding, generation, coding, and mathematics.

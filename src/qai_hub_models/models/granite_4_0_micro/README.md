@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Granite-4.0-Micro: Compact language model from IBM optimized for enterprise tasks](https://aihub.qualcomm.com/models/granite_4_0_micro)
 
 Granite 4.0 is a family of open language models from IBM designed for enterprise AI workloads including code generation, summarization, and retrieval-augmented generation.

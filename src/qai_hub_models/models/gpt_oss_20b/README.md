@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [GPT-OSS-20B: State-of-the-art Mixture of Experts large language model with extended context length for text generation tasks](https://aihub.qualcomm.com/models/gpt_oss_20b)
 
 GPT-OSS-20B is a 20.9B parameter Mixture of Experts (MoE) language model with 32 experts (4 active per token). It features an extended 131K context length with YARN rope scaling and uses a GPT-4o compatible tokenizer. The model is quantized to MXFP4 for efficient on-device deployment.
