@@ -24,7 +24,7 @@ from qai_hub_models.utils.args import (
     get_on_device_demo_parser,
     validate_on_device_demo_args,
 )
-from qai_hub_models.utils.evaluate import EvalMode
+from qai_hub_models.utils.evaluate.helpers import EvalMode
 
 
 def _plot_action_chunks(

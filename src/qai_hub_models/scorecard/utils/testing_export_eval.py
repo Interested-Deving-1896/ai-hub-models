@@ -76,7 +76,7 @@ from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphWorkbenchModelCollection,
 )
 from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
-from qai_hub_models.utils.evaluate import (
+from qai_hub_models.utils.evaluate.helpers import (
     DEFAULT_NUM_EVAL_SAMPLES,
     _load_quant_cpu_onnx,
     evaluate_on_dataset,

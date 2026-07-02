@@ -3,30 +3,20 @@
 
 
 from __future__ import annotations
+
 import argparse
 import warnings
 
-import qai_hub as hub
-
-from qai_hub_models.models.{{ model_name }} import MODEL_ID, Model
-from qai_hub_models.utils.export.dispatch import resolve_export_model
-{%- if is_collection_model %}
-from qai_hub_models.models.{{ model_name }} import App
-from qai_hub_models.utils.base_app import CollectionAppEvaluateProtocol
-{%- else %}
-from qai_hub_models.models.protocols import ExecutableModelProtocol
-{%- endif %}
-from qai_hub_models.utils.args import evaluate_parser, get_model_kwargs
-from qai_hub_models.utils.evaluate import _load_quant_cpu_onnx, evaluate_on_dataset
-from qai_hub_models.utils.input_spec import InputSpec
-from qai_hub_models.utils.inference import AsyncOnDeviceModel, compile_model_from_args
-from qai_hub_models.utils.kwarg_helpers import filter_kwargs
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.models.{{ model_name }} import MODEL_ID, Model
 {%- if model_status != "published" %}
 from qai_hub_models.utils.asset_loaders import query_yes_no, UNPUBLISHED_MODEL_WARNING
 {%- endif %}
+from qai_hub_models.utils.args import evaluate_parser
+from qai_hub_models.utils.evaluate.dispatch import resolve_evaluate_model
 
-SUPPORTED_PRECISION_RUNTIMES : {{ common.write_supported_precision_runtimes(supported_precision_runtimes) }}
+
+SUPPORTED_PRECISION_RUNTIMES: {{ common.write_supported_precision_runtimes(supported_precision_runtimes) }}
 
 DEFAULT_EVAL_DEVICE = "{{ default_device }}"
 
@@ -42,9 +32,11 @@ def build_parser(cli_mode: bool = False) -> argparse.ArgumentParser:
         model_cls=Model,
         supported_dataset_classes=Model.get_eval_dataset_classes(),
         supported_precision_runtimes=SUPPORTED_PRECISION_RUNTIMES,
-        {%- if not can_use_quantize_job or not supports_quantization %}uses_quantize_job=False,{% endif %}
+        {%- if not can_use_quantize_job or not supports_quantization %}
+        uses_quantize_job=False,
+        {%- endif %}
         {%- if can_use_quantize_job and supports_quantization and num_calibration_samples %}
-        num_calibration_samples = {{ num_calibration_samples }},
+        num_calibration_samples={{ num_calibration_samples }},
         {%- endif %}
         default_device=DEFAULT_EVAL_DEVICE,
         cli_mode=cli_mode,
@@ -57,8 +49,6 @@ def main(args: argparse.Namespace | None = None) -> None:
     if not query_yes_no("Continue?"):
         return
 {%- endif %}
-    export_model = resolve_export_model(MODEL_ID)
-    eval_dataset_classes = Model.get_eval_dataset_classes()
     if args is None:
         warnings.warn(
             "Running `python -m qai_hub_models.models.{{ model_name }}.evaluate` is "
@@ -70,143 +60,15 @@ def main(args: argparse.Namespace | None = None) -> None:
         args = build_parser().parse_args()
 
     warnings.filterwarnings("ignore")
-    model_kwargs = get_model_kwargs(Model, vars(args))
-    {%- if not is_collection_model %}
-    input_spec_kwargs = filter_kwargs(Model.get_input_spec, vars(args))
-    {%- endif %}
-
-    if len(eval_dataset_classes) == 0:
-        print("Model does not have evaluation dataset specified. Evaluating PSNR on a single sample.")
-        export_model(
-            MODEL_ID,
-            device=args.device,
-            target_runtime=args.target_runtime,
-            skip_downloading=True,
-            skip_profiling=True,
-            compile_options=args.compile_options,
-            profile_options=args.profile_options,
-            {%- if can_use_quantize_job and num_calibration_samples %}
-            num_calibration_samples = args.num_calibration_samples,
-            {%- endif %}
-            {%- if not is_collection_model %}
-            **{**model_kwargs, **input_spec_kwargs},
-            {%- else %}
-            **model_kwargs,
-            {%- endif %}
-        )
-        return
-
-    {% if is_collection_model %}
-    assert isinstance(App, CollectionAppEvaluateProtocol), (
-        "App must implement CollectionAppEvaluateProtocol, when eval_datasets is specified"
+    evaluate_model = resolve_evaluate_model(MODEL_ID)
+    evaluate_model(
+        MODEL_ID,
+        args,
+        {%- if can_use_quantize_job and supports_quantization %}
+        supports_quant_cpu=True,
+        {%- endif %}
     )
 
-    if args.use_dataset_cache:
-        raise ValueError("Collection models do not support use_dataset_cache.")
 
-    collection_model = Model.from_pretrained(**model_kwargs)
-    num_components = len(collection_model.component_names)
-    {%- else %}
-    input_spec: InputSpec | None = None
-    torch_model = Model.from_pretrained(**model_kwargs)
-    model_executors: dict[str, ExecutableModelProtocol] = {}
-    if not args.skip_torch_accuracy:
-        model_executors["torch"] = torch_model
-        input_spec = torch_model.get_input_spec(**input_spec_kwargs)
-
-    if not args.skip_device_accuracy{% if can_use_quantize_job and supports_quantization %} or args.compute_quant_cpu_accuracy{% endif %}:
-        if args.hub_model_id is not None:
-            compiled_model: hub.Model = hub.get_model(args.hub_model_id)
-        else:
-            compiled_result = compile_model_from_args(
-                MODEL_ID, args, {**model_kwargs, **input_spec_kwargs}
-            )
-            assert isinstance(compiled_result, hub.Model)
-            compiled_model = compiled_result
-        if compiled_model.get_producer() is None:
-            raise ValueError(
-                "Compiled models must be compiled with AI Hub Workbench; they cannot be uploaded manually."
-            )
-        on_device_model = AsyncOnDeviceModel(
-            model=compiled_model,
-            input_names=list(input_spec) if input_spec else None,
-            device=args.device,
-            inference_options=args.profile_options,
-        )
-        if not args.skip_device_accuracy:
-            model_executors["on-device"] = on_device_model
-        {%- if can_use_quantize_job and supports_quantization %}
-        if args.compute_quant_cpu_accuracy and args.precision != Precision.float:
-            model_executors["quant cpu"] = _load_quant_cpu_onnx(compiled_model)
-        {%- endif %}
-        input_spec = on_device_model.get_input_spec()
-
-    if input_spec is None:
-        raise ValueError("Cannot extract input spec.")
-    {%- endif %}
-
-    {%- if is_collection_model %}
-    input_spec: InputSpec | None = None
-    torch_model_list = list(collection_model.components.values())
-    model_executors: dict[str, CollectionAppEvaluateProtocol] = {}
-    on_device_model_list: list[AsyncOnDeviceModel] = []
-    if not args.skip_torch_accuracy:
-        model_executors["torch"] = App.from_components(torch_model_list)
-        input_spec = torch_model_list[0].get_input_spec()
-
-    if not args.skip_device_accuracy{% if can_use_quantize_job and supports_quantization %} or args.compute_quant_cpu_accuracy{% endif %}:
-        if args.hub_model_id is not None:
-            hub_model_id = args.hub_model_id.split(",")
-            assert len(hub_model_id) == num_components, (
-                f"Number of hub_model_ids ({len(hub_model_id)}) must equal "
-                f"number of components ({num_components})"
-            )
-            compiled_model_list = [hub.get_model(model_id) for model_id in hub_model_id]
-        else:
-            compiled_model_list = compile_model_from_args(
-                MODEL_ID,
-                args,
-                model_kwargs,
-            )
-            assert isinstance(compiled_model_list, list)
-        for compiled_model in compiled_model_list:
-            if compiled_model.get_producer() is None:
-                raise ValueError(
-                    "Compiled models must be compiled with AI Hub Workbench; they cannot be uploaded manually."
-                )
-            on_device_model_list.append(
-                AsyncOnDeviceModel(
-                    model=compiled_model,
-                    input_names=None,
-                    device=args.device,
-                    inference_options=args.profile_options,
-                )
-            )
-        if not args.skip_device_accuracy:
-            model_executors["on-device"] = App.from_components(on_device_model_list)
-        {%- if can_use_quantize_job and supports_quantization %}
-        if args.compute_quant_cpu_accuracy and args.precision != Precision.float:
-            quant_cpu_model_list = [
-                _load_quant_cpu_onnx(model) for model in compiled_model_list
-            ]
-            model_executors["quant cpu"] = App.from_components(quant_cpu_model_list)
-        {%- endif %}
-
-        input_spec = on_device_model_list[0].get_input_spec()
-
-    if input_spec is None:
-        raise ValueError("Cannot extract input spec.")
-    {%- endif %}
-
-    evaluate_on_dataset(
-        evaluator_func={{ "collection_model" if is_collection_model else "torch_model"}}.get_evaluator,
-        dataset_cls=args.dataset_cls,
-        model_executors=model_executors,
-        input_spec=input_spec,
-        samples_per_job=args.samples_per_job,
-        num_samples=args.num_samples,
-        seed=args.seed,
-        use_cache=args.use_dataset_cache,
-    )
 if __name__ == "__main__":
     main()

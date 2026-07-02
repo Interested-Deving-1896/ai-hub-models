@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 import torch
 from ruamel.yaml import YAML
-from torch import nn
 from typing_extensions import Self
 
 from qai_hub_models import SampleInputsType
@@ -52,9 +51,9 @@ DARKNET53_MODEL_ASSET = CachedWebModelAsset.from_asset_store(
 class RangeNetPlusPlus(BaseModel):
     """RangeNet++ LiDAR semantic segmentation model."""
 
-    def __init__(self, model: nn.Module) -> None:
+    def __init__(self, model: Segmentator) -> None:
         super().__init__()
-        self.model: Segmentator = model  # type: ignore[assignment]
+        self.model: Segmentator = model
         self.learning_map: dict[int, int] = {}
         self.learning_ignore: dict[int, bool] = {}
         self.knn_params: dict = {}

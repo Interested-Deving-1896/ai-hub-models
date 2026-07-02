@@ -23,7 +23,7 @@ from qai_hub_models.models._shared.sam2.model_patches import (
 from qai_hub_models.utils.base_app import CollectionAppQuantizeProtocol
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.draw import create_color_map
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs
 from qai_hub_models.utils.input_spec import InputSpec, get_batch_size
 from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries

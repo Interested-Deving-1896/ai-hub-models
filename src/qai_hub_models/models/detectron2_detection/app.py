@@ -26,7 +26,7 @@ from qai_hub_models.utils.base_app import (
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.bounding_box_processing import batched_nms
 from qai_hub_models.utils.draw import create_color_map, draw_box_from_xyxy
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, AsyncOnDeviceResult
 from qai_hub_models.utils.input_spec import InputSpec, get_batch_size

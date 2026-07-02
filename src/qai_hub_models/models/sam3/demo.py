@@ -23,7 +23,7 @@ from qai_hub_models.utils.args import (
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.display import display_or_save_image
-from qai_hub_models.utils.evaluate import EvalMode
+from qai_hub_models.utils.evaluate.helpers import EvalMode
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
     MODEL_ID, MODEL_ASSET_VERSION, "input_image.jpg"

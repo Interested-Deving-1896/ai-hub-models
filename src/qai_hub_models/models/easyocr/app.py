@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader
 from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.draw import draw_box_from_corners, draw_box_from_xyxy
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
     denormalize_coordinates,

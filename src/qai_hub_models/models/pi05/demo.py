@@ -29,7 +29,7 @@ from qai_hub_models.utils.args import (
     get_on_device_demo_parser,
     validate_on_device_demo_args,
 )
-from qai_hub_models.utils.evaluate import EvalMode
+from qai_hub_models.utils.evaluate.helpers import EvalMode
 
 DATASET_REPO_ID: str = "HuggingFaceVLA/libero"
 HF_MODEL_ID: str = "lerobot/pi05_libero_finetuned"

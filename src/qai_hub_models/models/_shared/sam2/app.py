@@ -20,7 +20,7 @@ from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
 from qai_hub_models.models._shared.sam2.model_patches import mask_postprocessing
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_model import BaseModel
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import (
     numpy_image_to_torch,
     preprocess_PIL_image,

@@ -38,7 +38,7 @@ from qai_hub_models.utils.args import (
     validate_on_device_demo_args,
 )
 from qai_hub_models.utils.display import display_or_save_image, to_uint8
-from qai_hub_models.utils.evaluate import EvalMode
+from qai_hub_models.utils.evaluate.helpers import EvalMode
 
 DEFAULT_PROMPT = "Painting - She Danced By The Light Of The Moon by Steve Henderson"
 

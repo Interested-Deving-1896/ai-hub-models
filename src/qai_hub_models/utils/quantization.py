@@ -22,7 +22,7 @@ from qai_hub_models.utils.base_model import WorkbenchModel
 from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphCollectionModel,
 )
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.input_spec import (
     InputSpec,
     get_batch_size,

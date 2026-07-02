@@ -29,7 +29,7 @@ from qai_hub_models.models.grootn15.model import (
 )
 from qai_hub_models.models.grootn15.model import GrootCollection as Model
 from qai_hub_models.models.protocols import ExecutableModelProtocol
-from qai_hub_models.utils.evaluate import EvalMode
+from qai_hub_models.utils.evaluate.helpers import EvalMode
 from qai_hub_models.utils.inference import OnDeviceModel
 
 

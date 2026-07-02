@@ -23,7 +23,7 @@ from qai_hub_models.utils.base_app import (
     CollectionModelEvalGenerator,
 )
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, AsyncOnDeviceResult
 from qai_hub_models.utils.input_spec import InputSpec, get_batch_size
 from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT

@@ -16,7 +16,7 @@ from qai_hub_models.utils.asset_loaders import qaihm_temp_dir
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetSplit
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
 from qai_hub_models.utils.base_model import BaseModel
-from qai_hub_models.utils.evaluate import evaluate
+from qai_hub_models.utils.evaluate.helpers import evaluate
 from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, make_torch_inputs
 from qai_hub_models.utils.onnx.torch_wrapper import OnnxModelTorchWrapper
 

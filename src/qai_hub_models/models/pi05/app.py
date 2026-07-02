@@ -26,7 +26,7 @@ from qai_hub_models.models.pi05.model import (
 )
 from qai_hub_models.protocols import ExecutableModelProtocol
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import resize_and_normalize
 from qai_hub_models.utils.inference import OnDeviceModel
 from qai_hub_models.utils.input_spec import InputSpec

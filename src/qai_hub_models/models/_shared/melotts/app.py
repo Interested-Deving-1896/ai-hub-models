@@ -32,7 +32,7 @@ from qai_hub_models.models._shared.melotts.utils import download_unidic
 from qai_hub_models.models._shared.voiceai_tts.app_utils import generate_path
 from qai_hub_models.models._shared.voiceai_tts.language import BERT_MODEL_IDS
 from qai_hub_models.utils.base_app import CollectionAppQuantizeProtocol
-from qai_hub_models.utils.evaluate import sample_dataset
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.input_spec import InputSpec, get_batch_size
 from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 

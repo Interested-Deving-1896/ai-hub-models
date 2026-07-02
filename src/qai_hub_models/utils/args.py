@@ -37,7 +37,7 @@ from qai_hub_models.utils.base_model import (
     WorkbenchModel,
 )
 from qai_hub_models.utils.envvars import DevModeEnvvar
-from qai_hub_models.utils.evaluate import EvalMode
+from qai_hub_models.utils.evaluate.helpers import EvalMode
 from qai_hub_models.utils.inference import OnDeviceModel, compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.kwarg_helpers import filter_kwargs, get_params

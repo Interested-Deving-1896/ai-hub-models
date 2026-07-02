@@ -43,7 +43,7 @@ from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphCollectionModel,
 )
 from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
-from qai_hub_models.utils.evaluate import (
+from qai_hub_models.utils.evaluate.helpers import (
     CACHE_SAMPLES_PER_JOB_FILE,
     get_dataset_path,
     get_torch_val_dataloader,
