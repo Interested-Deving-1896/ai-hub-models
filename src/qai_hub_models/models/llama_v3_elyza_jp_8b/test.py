@@ -195,11 +195,11 @@ def test_demo_default(
     QuantizedSplitModelWrapper.release()
     llama_3_elyza_jp_chat_demo(
         fp_model_cls=FPSplitModelWrapper,
-        default_prompt="What is the capital of France?",
+        default_prompt="フランスの首都はどこですか？",  # noqa: RUF001
         test_checkpoint=checkpoint,
     )
     captured = capsys.readouterr()
-    assert "Paris" in captured.out
+    assert "パリ" in captured.out
 
 
 @pytest.mark.skipif(
