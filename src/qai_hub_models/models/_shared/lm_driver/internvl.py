@@ -6,12 +6,6 @@
 from __future__ import annotations
 
 import torch
-from GenAILab.qai_hub_lm.models.base import VLM
-from GenAILab.qai_hub_lm.models.generator import Generator, VLM_Generator
-from GenAILab.qai_hub_lm.models.utils.layer_cache import (
-    LayerCacheDescriptor,
-    _resolve_text_config,
-)
 from transformers import (
     AutoConfig,
     AutoImageProcessor,
@@ -23,6 +17,14 @@ from transformers.models.internvl.processing_internvl import InternVLProcessor
 from transformers.models.internvl.video_processing_internvl import (
     InternVLVideoProcessor,
 )
+
+from GenAILab.qai_hub_lm.models.base import VLM
+from GenAILab.qai_hub_lm.models.generator import Generator, VLM_Generator
+from GenAILab.qai_hub_lm.models.utils.layer_cache import (
+    LayerCacheDescriptor,
+    _resolve_text_config,
+)
+
 
 IMG_CONTEXT_TOKEN = "<IMG_CONTEXT>"
 

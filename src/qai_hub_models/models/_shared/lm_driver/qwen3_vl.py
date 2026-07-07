@@ -7,14 +7,15 @@ import typing
 from collections import OrderedDict
 
 import torch
+
 from transformers import AutoConfig, AutoProcessor, PreTrainedModel, ProcessorMixin
 from transformers.models.qwen3_vl import modeling_qwen3_vl
 
 from .base import VLM
 from .generator import VLM_Generator
-from .qwen2_vl import compute_vision_input_shapes
-from .utils.compat import PositionIdContext
 from .utils.layer_cache import LayerCacheDescriptor
+from .utils.compat import PositionIdContext
+from .qwen2_vl import compute_vision_input_shapes
 
 
 class Qwen_3_VL(VLM):

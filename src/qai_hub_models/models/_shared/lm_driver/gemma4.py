@@ -6,8 +6,8 @@
 from __future__ import annotations
 
 import torch
-from huggingface_hub import hf_hub_download
 from transformers import AutoConfig, AutoProcessor, PreTrainedModel, ProcessorMixin
+from huggingface_hub import hf_hub_download
 
 try:
     from transformers.models.gemma4 import modeling_gemma4

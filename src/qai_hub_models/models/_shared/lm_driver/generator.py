@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import contextlib
 import functools
-import types
-import typing
+import itertools
 from collections import OrderedDict
+import typing
 from typing import Union
+import types
 
 import torch
 import transformers
@@ -23,10 +24,11 @@ from .utils.attention_mask import (
     convert_2d_attention_mask_to_4d,
     convert_2d_attention_mask_to_4d_sliding_window,
 )
+
 from .utils.layer_cache import (
     AttentionType,
-    _resolve_text_config,
     build_layer_cache_descriptors,
+    _resolve_text_config,
 )
 from .utils.rope_embedding import RopeEmbedding, RopeEmbeddingProtocol
 
@@ -75,6 +77,24 @@ class _FlatListCache:
         return [
             (self._flat[i], self._flat[i + 1]) for i in range(0, len(self._flat), 2)
         ]
+
+    def to_flat_list(self) -> list[torch.Tensor]:
+        """Return the flat ``[k0, v0, k1, v1, ...]`` state list."""
+        return list(self._flat)
+
+
+def _flatten_past_key_values(past_key_values) -> list[torch.Tensor]:
+    """Flatten a cache into ``[k0, v0, k1, v1, ...]``.
+
+    Handles the ``_FlatListCache`` produced for hybrid (linear + full) models —
+    which stores the flat list directly and is not iterable as (key, value)
+    pairs — as well as legacy caches that iterate as ``(key, value)`` tuples.
+    """
+    if past_key_values is None or past_key_values.get_seq_length() == 0:
+        return []
+    if isinstance(past_key_values, _FlatListCache):
+        return past_key_values.to_flat_list()
+    return [t for layer_kv in past_key_values for t in (layer_kv[0], layer_kv[1])]
 
 
 def get_past_keyval_with_shift(
@@ -711,9 +731,7 @@ class Generator(GenerationMixin, torch.nn.Module):
             )
 
         global_outputs: dict[str, Union[torch.Tensor | list[torch.Tensor]]] = {
-            "past_key_values": []
-            if past_key_values is None or past_key_values.get_seq_length() == 0
-            else [t for layer_kv in past_key_values for t in (layer_kv[0], layer_kv[1])]
+            "past_key_values": _flatten_past_key_values(past_key_values)
         }
 
         selected_seq_len = self._select_sequence_length(input_tokens.shape[1])
@@ -806,9 +824,7 @@ class Generator(GenerationMixin, torch.nn.Module):
             )
 
         preconsumed_outputs: dict[str, Union[torch.Tensor | list[torch.Tensor]]] = {
-            "past_key_values": []
-            if past_key_values is None or past_key_values.get_seq_length() == 0
-            else [t for layer_kv in past_key_values for t in (layer_kv[0], layer_kv[1])]
+            "past_key_values": _flatten_past_key_values(past_key_values)
         }
 
         slices_iter = self.slice_inputs_for_inference(
