@@ -67,12 +67,12 @@ def detect_postprocess(
     boxes = box_xywh_to_xyxy(boxes)
 
     # Combine confidence and scores.
-    scores *= conf
+    conf_scores = scores * conf
 
     # Get class ID of most likely score.
-    scores, class_idx = get_most_likely_score(scores)
+    final_scores, class_idx = get_most_likely_score(conf_scores)
 
-    return boxes, scores, class_idx.to(torch.uint8)
+    return boxes, final_scores, class_idx.to(torch.uint8)
 
 
 def detect_postprocess_split_input(
@@ -116,7 +116,7 @@ def detect_postprocess_split_input(
     # expensive by a factor of NUM_CLASSES and mathematically equivalent to this.
     class_idx_scores *= conf.squeeze(-1)
 
-    # Cast classes to int8 for imsdk compatibility
+    # Cast classes to uint8 for imsdk compatibility
     return boxes, class_idx_scores, class_idx.to(torch.uint8)
 
 
@@ -136,14 +136,5 @@ def get_most_likely_score(scores: torch.Tensor) -> tuple[torch.Tensor, torch.Ten
     class_idx : torch.Tensor
         Shape is [batch, num_preds] where the last dim is the index of the most probable class of the prediction.
     """
-    # TODO(#8595): QNN crashes when running max on a large tensor
-    # Split into chunks of size 5k to keep the model NPU resident
-    score_splits = torch.split(scores, 5000, dim=-2)
-    max_scores = []
-    max_indices = []
-    for split in score_splits:
-        scores, class_idx = torch.max(split, -1, keepdim=False)
-        max_scores.append(scores)
-        # class_idx needs to be int to make evaluation code work
-        max_indices.append(class_idx.int())
-    return torch.cat(max_scores, dim=-1), torch.cat(max_indices, dim=-1)
+    scores, class_idx = torch.max(scores, -1, keepdim=False)
+    return scores, class_idx

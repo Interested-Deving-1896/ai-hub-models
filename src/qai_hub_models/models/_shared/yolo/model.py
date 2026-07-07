@@ -124,7 +124,7 @@ def yolo_segment_postprocess(
     # Get class ID of most likely score.
     scores, class_idx = get_most_likely_score(scores)
 
-    return boxes, scores, masks, class_idx
+    return boxes, scores, masks, class_idx.to(torch.int32)
 
 
 def yolo_obb_postprocess(

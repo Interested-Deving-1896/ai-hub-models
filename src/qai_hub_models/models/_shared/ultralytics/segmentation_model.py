@@ -220,7 +220,9 @@ class UltralyticsMulticlassSegmentor(BaseModel):
 
         if self.precision == Precision.float:
             classes = classes.to(torch.float32)
-        if self.precision is None:
+        elif self.precision is None:
             classes = classes.to(torch.uint8)
+        else:
+            classes = classes.to(torch.int32)
 
         return boxes, scores, mask_coeffs.permute(0, 2, 1), classes, mask_protos
