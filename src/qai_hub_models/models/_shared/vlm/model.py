@@ -5,13 +5,10 @@
 
 from __future__ import annotations
 
-import gc
 import logging
 import math
-import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 
 from qai_hub_models.models._shared.llm.model import (
@@ -65,112 +62,6 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
             )
             return None
 
-    def _prefill_dataset(
-        self,
-        dataloader: torch.utils.data.DataLoader,
-        num_inputs: int,
-        seq_len: int,
-        use_vision: bool = False,
-        desc: str = "Pre-filling data",
-    ) -> list[list[torch.Tensor | np.ndarray]]:
-        """Shared prefill loop for calibration and weight optimization.
-
-        Writes prefilled tensors to memory-mapped files to avoid RAM blow-up
-        when accumulating large numbers of KV-cache entries. Uses one file
-        per input with uniform entry shapes.
-
-        Note: this assumes every prefilled sample yields the same per-input
-        shapes (locked from the first sample). Callers must ensure that holds
-        -- e.g. by forcing a fixed image size so vision inputs don't vary in
-        token count across samples.
-        """
-        import tempfile
-
-        from tqdm import tqdm
-
-        from qai_hub_models.models._shared.llm.generator_factory import make_generator
-
-        mmap_dir = tempfile.mkdtemp(prefix="vlm_prefill_")
-
-        vision_model = self._load_calibration_vision_model() if use_vision else None
-
-        generator = make_generator(
-            self,
-            sequence_length=seq_len,
-            vision_model=vision_model,
-            model_cls=self.FPModel,
-        )
-
-        num_entries = 0
-        shapes: list[tuple] = []
-        dtypes: list[np.dtype] = []
-        files: list[Any] = []
-        initialized = False
-
-        device = generator.device
-        with self.remove_quantization(), torch.no_grad():
-            for sample in tqdm(dataloader, total=len(dataloader), desc=desc):
-                input_ids, attention_mask, *rest = sample
-                prefill_kwargs: dict[str, torch.Tensor | None] = dict(
-                    input_ids=input_ids.to(device),
-                    attention_mask=attention_mask.to(device),
-                )
-                if use_vision:
-                    pixel_values = rest[1] if len(rest) > 1 else None
-                    prefill_kwargs["pixel_values"] = (
-                        pixel_values.to(device) if pixel_values is not None else None
-                    )
-                    prefill_kwargs["image_grid_thw"] = (
-                        rest[2] if len(rest) > 2 else None
-                    )
-
-                for prefilled_inputs in generator.prefill(**prefill_kwargs):  # type: ignore[arg-type]
-                    arrays = [
-                        tensor.cpu().numpy()
-                        if isinstance(tensor, torch.Tensor)
-                        else np.asarray(tensor)
-                        for tensor in prefilled_inputs.values()
-                    ]
-                    if not initialized:
-                        for i, arr in enumerate(arrays):
-                            shapes.append(arr.shape)
-                            dtypes.append(arr.dtype)
-                            fpath = os.path.join(mmap_dir, f"input_{i}.bin")
-                            # One long-lived handle per input; closed in bulk
-                            # after the loop (not a with-block).
-                            files.append(open(fpath, "wb"))  # noqa: SIM115
-                            files[i].write(arr.tobytes())
-                        initialized = True
-                    else:
-                        for i, arr in enumerate(arrays):
-                            if arr.shape != shapes[i]:
-                                raise ValueError(
-                                    f"Calibration sample {num_entries} input #{i} has "
-                                    f"shape {arr.shape}, expected {shapes[i]} (locked "
-                                    "from the first sample). Vision inputs must have a "
-                                    "fixed shape across samples -- force a fixed "
-                                    "image_size."
-                                )
-                            files[i].write(arr.tobytes())
-                    num_entries += 1
-                del prefill_kwargs
-                gc.collect()
-                torch.cuda.empty_cache()
-
-        for f in files:
-            f.close()
-
-        inputs: list[list[torch.Tensor | np.ndarray]] = [[] for _ in range(num_inputs)]
-        for i in range(num_inputs):
-            fpath = os.path.join(mmap_dir, f"input_{i}.bin")
-            mm = np.memmap(
-                fpath, dtype=dtypes[i], mode="r", shape=(num_entries, *shapes[i])
-            )
-            for j in range(num_entries):
-                inputs[i].append(mm[j])
-
-        return inputs
-
     def get_calibration_data(  # type: ignore[override]
         self,
         num_samples: int = 0,
@@ -191,6 +82,7 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
         from qai_hub_models.datasets.wikitext.interleaved_aokvqa_wikitext import (
             InterleavedAOKVQAWikitext,
         )
+        from qai_hub_models.models._shared.llm.generator_factory import make_generator
         from qai_hub_models.utils.base_dataset import DatasetSplit
         from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
@@ -226,12 +118,37 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
         )
         assert input_spec is not None
 
+        vision_model = self._load_calibration_vision_model()
+        generator = make_generator(
+            self,
+            sequence_length=sequence_length,
+            context_length=context_length,
+            vision_model=vision_model,
+            model_cls=self.FPModel,
+        )
+
+        def multimodal_sample_to_kwargs(
+            sample: tuple[torch.Tensor, ...], device: torch.device
+        ) -> dict[str, torch.Tensor | None]:
+            input_ids, attention_mask, *rest = sample
+            kwargs: dict[str, torch.Tensor | None] = dict(
+                input_ids=input_ids.to(device),
+                attention_mask=attention_mask.to(device),
+            )
+            # Add vision inputs
+            pixel_values = rest[1] if len(rest) > 1 else None
+            kwargs["pixel_values"] = (
+                pixel_values.to(device) if pixel_values is not None else None
+            )
+            kwargs["image_grid_thw"] = rest[2] if len(rest) > 2 else None
+            return kwargs
+
         inputs = self._prefill_dataset(
+            generator,
             dataloader,
             num_inputs=len(input_spec),
-            seq_len=sequence_length,
-            use_vision=True,
-            desc="Pre-filling calibration data (interleaved)",
+            sample_to_kwargs=multimodal_sample_to_kwargs,
+            desc="Pre-filling calibration data (Interleaved WikiText/AOKVQA)",
         )
         return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
 
@@ -247,6 +164,7 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
 
         from qai_hub_models.datasets import instantiate_dataset
         from qai_hub_models.datasets.wikitext import WikiText
+        from qai_hub_models.models._shared.llm.generator_factory import make_generator
         from qai_hub_models.utils.base_dataset import DatasetSplit
         from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
@@ -273,11 +191,28 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
         )
         assert input_spec is not None
 
+        # Text-only: no vision model
+        generator = make_generator(
+            self,
+            sequence_length=sequence_length,
+            context_length=context_length,
+            model_cls=self.FPModel,
+        )
+
+        def text_sample_to_kwargs(
+            sample: tuple[torch.Tensor, ...], device: torch.device
+        ) -> dict[str, torch.Tensor]:
+            input_ids, attention_mask, *_ = sample
+            return dict(
+                input_ids=input_ids.to(device),
+                attention_mask=attention_mask.to(device),
+            )
+
         inputs = self._prefill_dataset(
+            generator,
             dataloader,
             num_inputs=len(input_spec),
-            seq_len=sequence_length,
-            use_vision=False,
-            desc="Pre-filling weight optimization data (text-only)",
+            sample_to_kwargs=text_sample_to_kwargs,
+            desc="Pre-filling weight optimization data (WikiText)",
         )
         return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))

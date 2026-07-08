@@ -17,6 +17,7 @@ except (ImportError, ModuleNotFoundError):
     )
 # isort: on
 
+import atexit
 import contextlib
 import functools
 import gc
@@ -30,7 +31,7 @@ import shutil
 import tempfile
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from enum import Enum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
@@ -148,6 +149,7 @@ except (ImportError, ModuleNotFoundError):
     )
 
 if TYPE_CHECKING:
+    from qai_hub_models.models._shared.lm_driver.generator import Generator
     from qai_hub_models.utils.base_evaluator import BaseEvaluator
 
 MIN_TRANSFORMER_VERSION = "4.45.0"
@@ -1856,7 +1858,7 @@ class LLMBase(BaseModel, LLMConfigEditor, ABC):
             )
         else:
             model = self.LMClass(self.llm_config)
-        model.eval()
+        model.eval().float()
 
         assert self.EmbeddingClass is not None
         self.embedding = self.EmbeddingClass(
@@ -3590,6 +3592,81 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
             use_dynamic_shapes=True,
         )
 
+    def _prefill_dataset(
+        self,
+        generator: Generator,
+        dataloader: torch.utils.data.DataLoader,
+        num_inputs: int,
+        sample_to_kwargs: Callable[[Any, torch.device], dict[str, Any]],
+        desc: str = "Pre-filling data",
+    ) -> list[list[torch.Tensor | np.ndarray]]:
+        """Shared prefill loop for calibration and weight optimization.
+
+        Writes prefilled tensors to memory-mapped files to avoid RAM blow-up
+        when accumulating large numbers of KV-cache entries. Uses one file
+        per input with uniform entry shapes.
+        """
+        mmap_dir = tempfile.mkdtemp(prefix="prefill_")
+        # Register cleanup on normal process exit
+        atexit.register(shutil.rmtree, mmap_dir, ignore_errors=True)
+
+        num_entries = 0
+        shapes: list[tuple] = []
+        dtypes: list[np.dtype] = []
+        files: list[Any] = []
+        initialized = False
+
+        device = generator.device
+        with self.remove_quantization(), torch.no_grad():
+            for sample in tqdm(dataloader, total=len(dataloader), desc=desc):
+                # Generic: let caller transform sample to kwargs
+                prefill_kwargs = sample_to_kwargs(sample, device)
+
+                for prefilled_inputs in generator.prefill(**prefill_kwargs):
+                    arrays = [
+                        tensor.cpu().numpy()
+                        if isinstance(tensor, torch.Tensor)
+                        else np.asarray(tensor)
+                        for tensor in prefilled_inputs.values()
+                    ]
+                    if not initialized:
+                        for i, arr in enumerate(arrays):
+                            shapes.append(arr.shape)
+                            dtypes.append(arr.dtype)
+                            fpath = os.path.join(mmap_dir, f"input_{i}.bin")
+                            # One long-lived handle per input; closed in bulk
+                            # after the loop (not a with-block).
+                            files.append(open(fpath, "wb"))  # noqa: SIM115
+                            files[i].write(arr.tobytes())
+                        initialized = True
+                    else:
+                        for i, arr in enumerate(arrays):
+                            if arr.shape != shapes[i]:
+                                raise ValueError(
+                                    f"Calibration sample {num_entries} input #{i} has "
+                                    f"shape {arr.shape}, expected {shapes[i]} (locked "
+                                    "from the first sample)."
+                                )
+                            files[i].write(arr.tobytes())
+                    num_entries += 1
+                del prefill_kwargs
+                gc.collect()
+                torch.cuda.empty_cache()
+
+        for f in files:
+            f.close()
+
+        inputs: list[list[torch.Tensor | np.ndarray]] = [[] for _ in range(num_inputs)]
+        for i in range(num_inputs):
+            fpath = os.path.join(mmap_dir, f"input_{i}.bin")
+            mm = np.memmap(
+                fpath, dtype=dtypes[i], mode="r", shape=(num_entries, *shapes[i])
+            )
+            for j in range(num_entries):
+                inputs[i].append(mm[j])
+
+        return inputs
+
     def get_calibration_data(  # type: ignore[override]
         self,
         num_samples: int = 0,
@@ -3622,23 +3699,30 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
             llm_io_type=self.llm_io_type,
         )
         assert input_spec is not None
-        inputs: list[list[torch.Tensor | np.ndarray]] = [
-            [] for _ in range(len(input_spec))
-        ]
 
         generator = make_generator(
-            self, sequence_length=sequence_length, context_length=context_length
+            self,
+            sequence_length=sequence_length,
+            context_length=context_length,
+            model_cls=self.FPModel,
         )
 
-        with self.remove_quantization():
-            for sample in tqdm(
-                dataloader, total=len(dataloader), desc="Pre-filling calibration data"
-            ):
-                input_ids, attention_mask, _ = sample
-                for prefilled_inputs in generator.prefill(input_ids, attention_mask):
-                    for i, tensor in enumerate(prefilled_inputs.values()):
-                        inputs[i].append(tensor.cpu())
+        def text_sample_to_kwargs(
+            sample: tuple[torch.Tensor, ...], device: torch.device
+        ) -> dict[str, torch.Tensor]:
+            input_ids, attention_mask, *_ = sample
+            return dict(
+                input_ids=input_ids.to(device),
+                attention_mask=attention_mask.to(device),
+            )
 
+        inputs = self._prefill_dataset(
+            generator,
+            dataloader,
+            num_inputs=len(input_spec),
+            sample_to_kwargs=text_sample_to_kwargs,
+            desc="Pre-filling calibration data (WikiText)",
+        )
         return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
 
     def get_weight_optimization_data(
