@@ -90,12 +90,12 @@ class EasyOCRDetector(BaseModel):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 608,
-        width: int = 800,
+        detector_height: int = 608,
+        detector_width: int = 800,
     ) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, height, width),
+                shape=(batch_size, 3, detector_height, detector_width),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -167,12 +167,12 @@ class EasyOCRRecognizer(BaseModel):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        max_detection_height: int = 64,
-        max_detection_width: int = 800,
+        recognizer_height: int = 64,
+        recognizer_width: int = 800,
     ) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(batch_size, 1, max_detection_height, max_detection_width),
+                shape=(batch_size, 1, recognizer_height, recognizer_width),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -207,17 +207,17 @@ class EasyOCR(WorkbenchModelCollection):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 608,
-        width: int = 800,
-        max_detection_height: int = 64,
-        max_detection_width: int = 800,
+        detector_height: int = 608,
+        detector_width: int = 800,
+        recognizer_height: int = 64,
+        recognizer_width: int = 800,
     ) -> ComponentGroup[InputSpec]:
         return super().get_input_spec(
             batch_size=batch_size,
-            height=height,
-            width=width,
-            max_detection_height=max_detection_height,
-            max_detection_width=max_detection_width,
+            detector_height=detector_height,
+            detector_width=detector_width,
+            recognizer_height=recognizer_height,
+            recognizer_width=recognizer_width,
         )
 
     @classmethod

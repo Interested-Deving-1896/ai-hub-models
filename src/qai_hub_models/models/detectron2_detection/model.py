@@ -102,8 +102,8 @@ class Detectron2ProposalGenerator(Detectron2):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 800,
-        width: int = 800,
+        generator_height: int = 800,
+        generator_width: int = 800,
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -111,7 +111,7 @@ class Detectron2ProposalGenerator(Detectron2):
         """
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, height, width),
+                shape=(batch_size, 3, generator_height, generator_width),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -193,7 +193,11 @@ class Detectron2ROIHead(Detectron2):
         return boxes, scores, classes
 
     def get_input_spec(
-        self, height: int = 50, width: int = 50, num_boxes: int = 200
+        self,
+        batch_size: int = 1,
+        head_height: int = 50,
+        head_width: int = 50,
+        num_boxes: int = 200,
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -201,13 +205,13 @@ class Detectron2ROIHead(Detectron2):
         """
         return {
             "features": TensorSpec(
-                shape=(1, 1024, height, width),
+                shape=(batch_size, 1024, head_height, head_width),
                 dtype="float32",
                 io_type=IoType.TENSOR,
                 apply_runtime_channel_reordering=True,
             ),
             "proposals_boxes": TensorSpec(
-                shape=(1, num_boxes, 4),
+                shape=(batch_size, num_boxes, 4),
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
@@ -258,17 +262,19 @@ class Detectron2Detection(WorkbenchModelCollection):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 800,
-        width: int = 800,
+        generator_height: int = 800,
+        generator_width: int = 800,
+        head_height: int = 50,
+        head_width: int = 50,
         num_boxes: int = 200,
     ) -> ComponentGroup[InputSpec]:
-        return ComponentGroup(
-            {
-                "proposal_generator": self.proposal_generator.get_input_spec(
-                    batch_size=batch_size, height=height, width=width
-                ),
-                "roi_head": self.roi_head.get_input_spec(num_boxes=num_boxes),
-            }
+        return super().get_input_spec(
+            batch_size=batch_size,
+            generator_height=generator_height,
+            generator_width=generator_width,
+            head_height=head_height,
+            head_width=head_width,
+            num_boxes=num_boxes,
         )
 
     @classmethod

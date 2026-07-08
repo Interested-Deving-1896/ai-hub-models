@@ -136,11 +136,11 @@ class BEVFusionEncoder1(BaseModel):
         return x[0]
 
     def get_input_spec(
-        self, batch_size: int = 1, height: int = 256, width: int = 704
+        self, batch_size: int = 1, encoder_height: int = 256, encoder_width: int = 704
     ) -> InputSpec:
         return {
             "imgs": TensorSpec(
-                shape=(batch_size, 6 * 3, height, width),
+                shape=(batch_size, 6 * 3, encoder_height, encoder_width),
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
@@ -203,11 +203,11 @@ class BEVFusionEncoder2(BaseModel):
         return x, lengths, geom_feats
 
     def get_input_spec(
-        self, batch_size: int = 1, height: int = 256, width: int = 704
+        self, batch_size: int = 1, encoder_height: int = 256, encoder_width: int = 704
     ) -> InputSpec:
         return {
             "img": TensorSpec(
-                shape=(batch_size, 6, 256, height // 8, width // 8),
+                shape=(batch_size, 6, 256, encoder_height // 8, encoder_width // 8),
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
@@ -383,11 +383,11 @@ class BEVFusionDecoder(BaseModel):
         return torch.cat(tensors, dim=1)
 
     def get_input_spec(
-        self, batch_size: int = 1, height: int = 128, width: int = 128
+        self, batch_size: int = 1, decoder_height: int = 128, decoder_width: int = 128
     ) -> InputSpec:
         return {
             "x": TensorSpec(
-                shape=(batch_size, 80, height, width),
+                shape=(batch_size, 80, decoder_height, decoder_width),
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
@@ -439,10 +439,18 @@ class BEVFusion(WorkbenchModelCollection):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 256,
-        width: int = 704,
+        encoder_height: int = 256,
+        encoder_width: int = 704,
+        decoder_height: int = 128,
+        decoder_width: int = 128,
     ) -> ComponentGroup[InputSpec]:
-        return super().get_input_spec(batch_size=batch_size, height=height, width=width)
+        return super().get_input_spec(
+            batch_size=batch_size,
+            encoder_height=encoder_height,
+            encoder_width=encoder_width,
+            decoder_height=decoder_height,
+            decoder_width=decoder_width,
+        )
 
     @staticmethod
     def load_model(

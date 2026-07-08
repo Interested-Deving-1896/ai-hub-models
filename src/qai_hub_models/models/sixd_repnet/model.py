@@ -116,12 +116,12 @@ class RetinaFaceDetector(BaseModel):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 640,
-        width: int = 640,
+        detector_height: int = 640,
+        detector_width: int = 640,
     ) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, height, width),
+                shape=(batch_size, 3, detector_height, detector_width),
                 dtype="float32",
                 apply_runtime_channel_reordering=True,
             )
@@ -188,12 +188,12 @@ class PoseEstimator(BaseModel):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = INPUT_IMAGE_DIM,
-        width: int = INPUT_IMAGE_DIM,
+        pose_height: int = INPUT_IMAGE_DIM,
+        pose_width: int = INPUT_IMAGE_DIM,
     ) -> InputSpec:
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, height, width),
+                shape=(batch_size, 3, pose_height, pose_width),
                 dtype="float32",
                 apply_runtime_channel_reordering=True,
             )
@@ -224,9 +224,20 @@ class SixDRepNet(WorkbenchModelCollection):
         self.pose_estimator = pose_estimator
 
     def get_input_spec(
-        self, batch_size: int = 1, height: int = 640, width: int = 640
+        self,
+        batch_size: int = 1,
+        detector_height: int = 640,
+        detector_width: int = 640,
+        pose_height: int = INPUT_IMAGE_DIM,
+        pose_width: int = INPUT_IMAGE_DIM,
     ) -> ComponentGroup[InputSpec]:
-        return super().get_input_spec(batch_size=batch_size, height=height, width=width)
+        return super().get_input_spec(
+            batch_size=batch_size,
+            detector_height=detector_height,
+            detector_width=detector_width,
+            pose_height=pose_height,
+            pose_width=pose_width,
+        )
 
     @classmethod
     def from_pretrained(

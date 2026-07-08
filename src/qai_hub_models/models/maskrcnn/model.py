@@ -143,8 +143,8 @@ class MaskRCNNProposalGenerator(BaseModel):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 800,
-        width: int = 800,
+        generator_height: int = 800,
+        generator_width: int = 800,
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -152,7 +152,7 @@ class MaskRCNNProposalGenerator(BaseModel):
         """
         return {
             "image": TensorSpec(
-                shape=(batch_size, 3, height, width),
+                shape=(batch_size, 3, generator_height, generator_width),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -327,7 +327,11 @@ class MaskRCNNROIHead(BaseModel):
         return boxes_tensor, scores_tensor, labels_tensor, masks_tensor
 
     def get_input_spec(
-        self, height: int = 200, width: int = 200, num_boxes: int = 200
+        self,
+        batch_size: int = 1,
+        head_height: int = 200,
+        head_width: int = 200,
+        num_boxes: int = 200,
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -335,31 +339,31 @@ class MaskRCNNROIHead(BaseModel):
         """
         return {
             "features_0": TensorSpec(
-                shape=(1, 256, height, width),
+                shape=(batch_size, 256, head_height, head_width),
                 dtype="float32",
                 io_type=IoType.TENSOR,
                 apply_runtime_channel_reordering=True,
             ),
             "features_1": TensorSpec(
-                shape=(1, 256, height // 2, width // 2),
+                shape=(batch_size, 256, head_height // 2, head_width // 2),
                 dtype="float32",
                 io_type=IoType.TENSOR,
                 apply_runtime_channel_reordering=True,
             ),
             "features_2": TensorSpec(
-                shape=(1, 256, height // 4, width // 4),
+                shape=(batch_size, 256, head_height // 4, head_width // 4),
                 dtype="float32",
                 io_type=IoType.TENSOR,
                 apply_runtime_channel_reordering=True,
             ),
             "features_3": TensorSpec(
-                shape=(1, 256, height // 8, width // 8),
+                shape=(batch_size, 256, head_height // 8, head_width // 8),
                 dtype="float32",
                 io_type=IoType.TENSOR,
                 apply_runtime_channel_reordering=True,
             ),
             "proposals_boxes": TensorSpec(
-                shape=(1, num_boxes, 4),
+                shape=(batch_size, num_boxes, 4),
                 dtype="float32",
                 io_type=IoType.TENSOR,
             ),
@@ -420,12 +424,19 @@ class MaskRCNN(WorkbenchModelCollection):
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 800,
-        width: int = 800,
+        generator_height: int = 800,
+        generator_width: int = 800,
+        head_height: int = 200,
+        head_width: int = 200,
         num_boxes: int = 200,
     ) -> ComponentGroup[InputSpec]:
         return super().get_input_spec(
-            batch_size=batch_size, height=height, width=width, num_boxes=num_boxes
+            batch_size=batch_size,
+            generator_height=generator_height,
+            generator_width=generator_width,
+            head_height=head_height,
+            head_width=head_width,
+            num_boxes=num_boxes,
         )
 
     @classmethod
