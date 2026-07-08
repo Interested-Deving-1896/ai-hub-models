@@ -138,7 +138,7 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     Llama3_1_SEALION_3_5_8B_R_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    Model.from_pretrained()
+    Model.from_pretrained(checkpoint)
 
 
 @pytest.mark.evaluate

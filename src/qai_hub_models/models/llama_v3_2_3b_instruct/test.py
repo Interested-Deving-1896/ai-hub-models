@@ -128,13 +128,13 @@ def test_create_genie_config() -> None:
 
 # Full model tests
 @pytest.mark.evaluate
-@pytest.mark.parametrize("checkpoint", ["DEFAULT", "DEFAULT_W4A16"])
+@pytest.mark.parametrize("checkpoint", ["DEFAULT", "DEFAULT_W4", "DEFAULT_W4A16"])
 def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     Llama3_2_3B_PreSplit.release()
     Llama3_2_3B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    Model.from_pretrained()
+    Model.from_pretrained(checkpoint)
 
 
 @pytest.mark.evaluate
