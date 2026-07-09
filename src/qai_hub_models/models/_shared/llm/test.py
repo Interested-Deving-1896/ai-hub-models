@@ -20,7 +20,7 @@ import qai_hub as hub
 from qai_hub_models import Precision, QAIRTVersion, TargetRuntime
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.configs.tool_versions import ToolVersions
-from qai_hub_models.models._shared.llm.common import cleanup
+from qai_hub_models.models._shared.llm.common import cleanup, get_qdc_api_token
 from qai_hub_models.models._shared.llm.model import (
     LLM_AIMETOnnx,
     LLMBase,
@@ -797,9 +797,7 @@ def run_llm_perf_test(
         submit_genie_bundle_to_qdc_device,
     )
 
-    api_token = os.environ.get("QDC_API_TOKEN")
-    if not api_token:
-        raise ValueError("QDC_API_TOKEN environment variable is not set")
+    api_token = get_qdc_api_token(device)
 
     # Eval is expensive (100 prompts); run only on the default scorecard device.
     run_eval = (
@@ -816,7 +814,7 @@ def run_llm_perf_test(
         model_id=model_id,
     )
 
-    # Update perf.yaml with only the max context length
+    # Update perf.yaml with only the max context length.
     if not skip_perf_update and tps is not None and ttft is not None:
         update_perf_yaml(
             model_id,

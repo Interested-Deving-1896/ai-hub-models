@@ -154,6 +154,14 @@ def _run_bench(
     return adb(cmd, check=False).returncode
 
 
+def _cleanup_device() -> None:
+    # Drop per-job state (dedicated-pool devices are reused across jobs; leftover
+    # bundles / caches / matrix TSVs would leak into the next tenant's run).
+    # QDC_logs is left alone so retrieval still sees results/logs.
+    adb(f"rm -rf {DEVICE_BUNDLE} {DEVICE_MM_CACHE}", check=False)
+    adb("rm -f /data/local/tmp/matrix-*.tsv", check=False)
+
+
 def test_scorecard() -> None:
     _preflight_network()
     push_bundle()
@@ -161,62 +169,67 @@ def test_scorecard() -> None:
     # run so compute_metrics doesn't ingest another model/plugin's results.
     adb(f"rm -rf {DEVICE_RESULTS}", check=False)
     adb(f"mkdir -p {DEVICE_MM_CACHE} {DEVICE_RESULTS}")
-    bundle_name: str | None = None
-    if PLUGIN == "qairt" and os.path.isdir(HOST_QAIRT_BUNDLES):
-        adb(f"mkdir -p {DEVICE_QAIRT_BUNDLES}")
-        subprocess.run(
-            ["adb", "push", f"{HOST_QAIRT_BUNDLES}/.", DEVICE_QAIRT_BUNDLES],
-            check=True,
-        )
-        names = [
-            d
-            for d in os.listdir(HOST_QAIRT_BUNDLES)
-            if os.path.isdir(os.path.join(HOST_QAIRT_BUNDLES, d))
-        ]
-        assert len(names) == 1, f"expected one qairt bundle, got {names}"
-        bundle_name = names[0]
+    try:
+        bundle_name: str | None = None
+        if PLUGIN == "qairt" and os.path.isdir(HOST_QAIRT_BUNDLES):
+            adb(f"mkdir -p {DEVICE_QAIRT_BUNDLES}")
+            subprocess.run(
+                ["adb", "push", f"{HOST_QAIRT_BUNDLES}/.", DEVICE_QAIRT_BUNDLES],
+                check=True,
+            )
+            names = [
+                d
+                for d in os.listdir(HOST_QAIRT_BUNDLES)
+                if os.path.isdir(os.path.join(HOST_QAIRT_BUNDLES, d))
+            ]
+            assert len(names) == 1, f"expected one qairt bundle, got {names}"
+            bundle_name = names[0]
 
-    chipset = Path(HOST_CHIPSET).read_text().strip()
-    rows = [r for r in Path(HOST_ROWS).read_text().splitlines() if r.strip()]
-    tsv_by_ctx: dict[int, list[str]] = {ctx: [] for ctx in CTXS}
-    for row in rows:
-        name, plugin, devs, model_id, vlm, _image = row.split("|")
-        for d in devs.split(","):
-            for ctx in CTXS:
-                tsv_by_ctx[ctx].append(
-                    f"{name}-{plugin}-{d}-c{ctx}\t{plugin}\t{d}\t{model_id}"
-                    f"\t\t\t\t{vlm}"
-                )
-    assert any(tsv_by_ctx.values()), "no model rows produced"
+        chipset = Path(HOST_CHIPSET).read_text().strip()
+        rows = [r for r in Path(HOST_ROWS).read_text().splitlines() if r.strip()]
+        tsv_by_ctx: dict[int, list[str]] = {ctx: [] for ctx in CTXS}
+        for row in rows:
+            name, plugin, devs, model_id, vlm, _image = row.split("|")
+            for d in devs.split(","):
+                for ctx in CTXS:
+                    tsv_by_ctx[ctx].append(
+                        f"{name}-{plugin}-{d}-c{ctx}\t{plugin}\t{d}\t{model_id}"
+                        f"\t\t\t\t{vlm}"
+                    )
+        assert any(tsv_by_ctx.values()), "no model rows produced"
 
-    lib = f"{DEVICE_BUNDLE}/lib"
-    env = (
-        f"LD_LIBRARY_PATH={lib}:{lib}/llama_cpp:{lib}/qairt "
-        f"ADSP_LIBRARY_PATH={lib} "
-        f"GENIEX_PLUGIN_PATH={lib}"
-    )
-    failures = []
-    for ctx in CTXS:
-        tsv_path = f"/data/local/tmp/matrix-{ctx}.tsv"
-        adb(
-            "printf '%s\\n' "
-            + " ".join(f"'{ln}'" for ln in tsv_by_ctx[ctx])
-            + f" > {tsv_path}"
+        lib = f"{DEVICE_BUNDLE}/lib"
+        env = (
+            f"LD_LIBRARY_PATH={lib}:{lib}/llama_cpp:{lib}/qairt "
+            f"ADSP_LIBRARY_PATH={lib} "
+            f"GENIEX_PLUGIN_PATH={lib}"
         )
-        if _run_bench(ctx, env, tsv_path, chipset, bundle_name) != 0:
-            failures.append(ctx)
+        failures = []
+        for ctx in CTXS:
+            tsv_path = f"/data/local/tmp/matrix-{ctx}.tsv"
+            adb(
+                "printf '%s\\n' "
+                + " ".join(f"'{ln}'" for ln in tsv_by_ctx[ctx])
+                + f" > {tsv_path}"
+            )
+            if _run_bench(ctx, env, tsv_path, chipset, bundle_name) != 0:
+                failures.append(ctx)
 
-    # Confirm cell JSONs exist; adb hides on-device exit codes.
-    ls = adb(f"ls -l {DEVICE_RESULTS}", check=False)
-    count_proc = adb(f"ls {DEVICE_RESULTS} | wc -l", check=False)
-    count = (
-        int(count_proc.stdout.strip().split()[-1]) if count_proc.stdout.strip() else 0
-    )
-    if failures or count == 0:
-        pytest.fail(
-            f"geniex-bench produced no usable output (failed ctxs={failures}, "
-            f"cell_json_count={count}).\n--- {DEVICE_RESULTS} ---\n{ls.stdout}"
+        # Confirm cell JSONs exist; adb hides on-device exit codes.
+        ls = adb(f"ls -l {DEVICE_RESULTS}", check=False)
+        count_proc = adb(f"ls {DEVICE_RESULTS} | wc -l", check=False)
+        count = (
+            int(count_proc.stdout.strip().split()[-1])
+            if count_proc.stdout.strip()
+            else 0
         )
+        if failures or count == 0:
+            pytest.fail(
+                f"geniex-bench produced no usable output (failed ctxs={failures}, "
+                f"cell_json_count={count}).\n--- {DEVICE_RESULTS} ---\n{ls.stdout}"
+            )
+    finally:
+        _cleanup_device()
 
 
 if __name__ == "__main__":

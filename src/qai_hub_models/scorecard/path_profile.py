@@ -76,7 +76,14 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
 
     @staticmethod
     def default_paths() -> list[ScorecardProfilePath]:
-        """The list of paths enabled by default for scorecard."""
+        """
+        The set of first-class scorecard paths.
+
+        Membership here means the path is "published": eligible for
+        perf.yaml/numerics.yaml, release-asset publication, spreadsheet
+        naming via inference_engine, etc. Not every published path is
+        exercised in a default scorecard sweep -- see default_sweep_paths().
+        """
         return [
             ScorecardProfilePath.TFLITE,
             ScorecardProfilePath.ONNX,
@@ -87,6 +94,21 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             ScorecardProfilePath.GENIEX_QAIRT,
             ScorecardProfilePath.GENIEX_LLAMACPP,
             ScorecardProfilePath.VOICE_AI,
+        ]
+
+    @staticmethod
+    def default_sweep_paths() -> list[ScorecardProfilePath]:
+        """
+        Paths compiled/profiled when test_runtimes resolves to 'default'.
+
+        Subset of default_paths(): excludes paths that must be requested
+        explicitly (currently just GENIE -- kept published so historical
+        perf data still renders, but no longer part of the default sweep).
+        """
+        return [
+            p
+            for p in ScorecardProfilePath.default_paths()
+            if p is not ScorecardProfilePath.GENIE
         ]
 
     @property
@@ -102,14 +124,19 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
     def enabled(self) -> bool:
         valid_test_runtimes = EnabledPathsEnvvar.get()
 
-        default_paths = ScorecardProfilePath.default_paths()
-        if SpecialPathSetting.DEFAULT in valid_test_runtimes and self in default_paths:
+        # The "default" keyword enables only the default sweep set
+        # (default_paths minus GENIE); users can still opt into non-sweep
+        # published paths by naming them explicitly.
+        if (
+            SpecialPathSetting.DEFAULT in valid_test_runtimes
+            and self in ScorecardProfilePath.default_sweep_paths()
+        ):
             return True
 
         # Allows users to set 'qnn' to enable both precompiled and dlc,
         # or to set 'onnx' to enable onnx and precompiled onnx.
         if (
-            self in default_paths
+            self in ScorecardProfilePath.default_paths()
             and self.runtime.inference_engine.value in valid_test_runtimes
         ):
             return True
@@ -156,10 +183,13 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
 
         valid_test_runtimes = EnabledPathsEnvvar.get()
 
-        # 1. "default": exact runtime match against supported runtimes
+        # 1. "default": exact runtime match against supported runtimes.
+        # Uses default_sweep_paths() (default_paths minus GENIE) so that
+        # 'test_runtimes=default' never fans out to genie without an
+        # explicit opt-in via `genie` or the `geniex` engine prefix.
         if (
             SpecialPathSetting.DEFAULT in valid_test_runtimes
-            and self in self.default_paths()
+            and self in self.default_sweep_paths()
             and self.runtime in supported_runtimes
         ):
             return True

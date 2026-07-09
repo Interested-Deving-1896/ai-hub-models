@@ -12,6 +12,14 @@ on:
       is_test_models:
         type: boolean
         default: false
+      is_grader:
+        description: Run the LLM response grader against artifacts uploaded by a prior llm_perf_collection run.
+        type: boolean
+        default: false
+      grader_artifacts_run_id:
+        description: Workflow run id whose `llm-perf-results-*` artifacts the grader should pull. Defaults to the current run.
+        type: string
+        default: ''
 
       force_kube:
         description: Force routing through the kube ephemeral pod even if a -gpulv runner is online. Use to keep multiple parallel callers (e.g. nightly's 4 python versions) from queueing on a single GPU node.
@@ -156,6 +164,7 @@ jobs:
       TEST_SUITE: ${{ inputs.is_gpu_nightly && 'nightly' || 'weekly' }}
       HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       QDC_API_TOKEN: ${{ secrets.QDC_API_KEY }}
+      QDC_PRIVATE_API_KEY: ${{ secrets.QDC_PRIVATE_API_KEY }}
       QAIHM_JUNIT_XML_PATH: ${{ github.workspace }}/test-results/models-junit.xml
       QAIHM_TEST_MODELS: ${{ inputs.models }}
     steps:
@@ -275,9 +284,120 @@ jobs:
       run: |
         chown -R 4552456:200 "$GITHUB_WORKSPACE" || true
 
+  run_grader:
+    name: "Grade LLM Responses"
+    needs: [check_gpu_node, start_runner]
+    if: ${{ !cancelled() && inputs.is_grader && needs.check_gpu_node.result == 'success' && (needs.start_runner.result == 'success' || needs.start_runner.result == 'skipped') }}
+    runs-on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && fromJson(format('["{0}"]', inputs.runner-id)) || fromJson('{"group":"GPU"}') }}
+    container: ${{ needs.check_gpu_node.outputs.use_kube == 'false' && fromJson('{"image":"docker-registry.qualcomm.com/library/nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04","options":"--gpus all -v /local:/local"}') || null }}
+    timeout-minutes: 720
+    permissions:
+      id-token: write
+      packages: read
+      contents: read
+    env:
+      HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+      GRADER_VENV: ${{ github.workspace }}/grader_env
+      GRADER_INPUT_DIR: ${{ github.workspace }}/llm-perf-results
+    steps:
+    - name: Setup environment (kube only)
+      if: ${{ needs.check_gpu_node.outputs.use_kube == 'true' }}
+      run: |
+        mkdir -p /scratch/qaihm/tmp /scratch/qaihm/.cache/huggingface
+        echo "HOME=/scratch/qaihm" >> $GITHUB_ENV
+        echo "TMPDIR=/scratch/qaihm/tmp" >> $GITHUB_ENV
+        echo "HF_HOME=/scratch/qaihm/.cache/huggingface" >> $GITHUB_ENV
+        echo "QAIHM_STORE_ROOT=/scratch/qaihm" >> $GITHUB_ENV
+
+    - name: Install git
+      run: |
+        if ! command -v git &>/dev/null; then
+          if [ "$(id -u)" -eq 0 ]; then
+            apt-get update -qq
+            apt-get install -y -qq git
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq git
+          fi
+        fi
+
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Install system dependencies
+      run: bash src/qai_hub_models/scripts/kube/setup_pod.sh
+
+    - name: CI Setup
+      uses: ./.github/actions/ci-setup
+      with:
+        python-version: USE_EXISTING_INSTALL
+        venv-path: ${{ env.VENV_PATH }}
+        hub-deployments: ${{ inputs.deployment }}
+        hub-user-token-prod: ${{ secrets.HUB_USER_TOKEN_PROD }}
+        hub-user-token-staging: ${{ secrets.HUB_USER_TOKEN_STAGING }}
+        hub-user-token-dev: ${{ secrets.HUB_USER_TOKEN_DEV }}
+        hub-user-token-sandbox: ${{ secrets.HUB_USER_TOKEN_SANDBOX }}
+
+    - name: Download eval JSON artifacts
+      uses: actions/download-artifact@v8
+      with:
+        # Pulls llm-perf-results-shared and llm-perf-results-dedicated into
+        # the same flat directory.
+        pattern: llm-perf-results-*
+        merge-multiple: true
+        path: ${{ env.GRADER_INPUT_DIR }}
+        run-id: ${{ inputs.grader_artifacts_run_id != '' && inputs.grader_artifacts_run_id || github.run_id }}
+        github-token: ${{ github.token }}
+
+    - name: Install grader venv
+      run: |
+        python3 scripts/build_and_test.py \
+          --venv="$GRADER_VENV" \
+          install_llm_grader_requirements
+
+    - name: Grade LLM responses
+      id: grade_responses
+      env:
+        QAIHM_GRADE_RESPONSES_DIR: ${{ env.GRADER_INPUT_DIR }}
+      run: |
+        python3 scripts/build_and_test.py \
+          --venv="$GRADER_VENV" \
+          grade_llm_responses
+
+    - name: Add grader scores to GitHub summary
+      if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}
+      run: |
+        python3 scripts/ci/grader_summary.py "$GRADER_INPUT_DIR" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Collect LLM Accuracy CSV
+      if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}
+      env:
+        QAIHM_TEST_ARTIFACTS_DIR: ${{ github.workspace }}/qaihm_test_artifacts
+        QAIHM_GRADE_RESPONSES_DIR: ${{ env.GRADER_INPUT_DIR }}
+      run: |
+        python3 scripts/build_and_test.py \
+          --venv="${{ env.VENV_PATH }}" \
+          collect_llm_accuracy_csv
+
+    - name: Upload Accuracy CSV
+      if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: accuracy-csv
+        path: ${{ github.workspace }}/qaihm_test_artifacts/accuracy.csv
+        if-no-files-found: ignore
+
+    - name: Upload graded results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: llm-perf-results-graded
+        path: ${{ env.GRADER_INPUT_DIR }}
+
   cleanup_runner:
     name: "Cleanup GPU Runner"
-    needs: [check_gpu_node, start_runner, run_test_models, run_gpu_tests]
+    needs: [check_gpu_node, start_runner, run_test_models, run_gpu_tests, run_grader]
     # A cancelled start_runner can leave the Argo workflow alive, so clean up
     # on any non-skipped result.
     if: ${{ always() && needs.check_gpu_node.outputs.use_kube == 'true' && needs.start_runner.result != 'skipped' }}

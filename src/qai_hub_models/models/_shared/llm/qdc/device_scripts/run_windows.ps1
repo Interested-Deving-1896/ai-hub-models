@@ -55,23 +55,32 @@ function Invoke-GenieRetry {
 
 Set-Location C:\Temp\TestContent\
 
+# Drop stale logs from a prior job on this shared device.
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Temp\QDC_logs"
+New-Item -ItemType Directory -Force -Path "C:\Temp\QDC_logs" | Out-Null
+
+try {
+
 # Verify network connectivity before download
 Write-Host "=== Pre-download connectivity check ==="
 Write-Host "Pinging google.com before QAIRT SDK download..."
 $prePing = Test-Connection -ComputerName google.com -Count 1 -Quiet
 if ($prePing) { Write-Host "Pre-download ping: SUCCESS" } else { Write-Host "Pre-download ping: FAILED" }
 
+# Always re-download: dedicated-pool devices are reused, so a partial extract
+# from a previous job would otherwise silently corrupt this run.
+$qairtHome = "C:\Temp\TestContent\qairt\{QAIRT_VERSION}"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Temp\TestContent\qairt"
 $source = "https://softwarecenter.qualcomm.com/api/download/software/sdks/Qualcomm_AI_Runtime_Community/All/{QAIRT_VERSION}/v{QAIRT_VERSION}.zip"
 $output = "C:\Temp\TestContent\qairt.zip"
 (New-Object System.Net.WebClient).DownloadFile($source, $output)
 
-# Verify network connectivity after download
 Write-Host "=== Post-download connectivity check ==="
 Write-Host "Pinging google.com after QAIRT SDK download..."
 $postPing = Test-Connection -ComputerName google.com -Count 1 -Quiet
 if ($postPing) { Write-Host "Post-download ping: SUCCESS (WiFi active)" } else { Write-Host "Post-download ping: FAILED (WiFi down)" }
 Expand-Archive -Path "C:\Temp\TestContent\qairt.zip" -DestinationPath "C:\Temp\TestContent\"
-$env:QAIRT_HOME = "C:\Temp\TestContent\qairt\{QAIRT_VERSION}"
+$env:QAIRT_HOME = $qairtHome
 $env:Path = "$env:QAIRT_HOME\bin\aarch64-windows-msvc;" + $env:Path
 $env:Path = "$env:QAIRT_HOME\lib\aarch64-windows-msvc;" + $env:Path
 $env:ADSP_LIBRARY_PATH = "$env:QAIRT_HOME\lib\hexagon-{HEXAGON_VERSION}\unsigned"
@@ -100,4 +109,12 @@ if (Test-Path $PromptDir) {
         # Short inter-prompt cooldown to keep the HTP from thermal-throttling.
         Start-Sleep -Seconds 3
     }
+}
+
+}
+finally {
+    # Drop everything on exit (dedicated-pool devices are reused).
+    Get-ChildItem -Path "C:\Temp\TestContent" -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne "run_windows.ps1" } |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }

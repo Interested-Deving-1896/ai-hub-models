@@ -3,10 +3,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 import gc
+import os
 from enum import Enum
 
 import torch
 from packaging.version import Version
+
+from qai_hub_models.scorecard.device import (
+    ScorecardDevice,
+    cs_8_elite_qrd,
+    cs_x_elite,
+)
 
 # Minimum torch version required for dynamic-shape ONNX export (dynamo export).
 # Note that earlier versions did support dynamic shapes in general, but did
@@ -27,6 +34,27 @@ def cleanup() -> None:
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     gc.collect()
+
+
+DEDICATED_POOL_DEVICES: frozenset[ScorecardDevice] = frozenset(
+    {cs_8_elite_qrd, cs_x_elite}
+)
+
+
+def get_qdc_api_token(device: ScorecardDevice) -> str:
+    """QDC_PRIVATE_API_KEY for the dedicated pool, QDC_API_TOKEN otherwise."""
+    if device in DEDICATED_POOL_DEVICES:
+        token = os.environ.get("QDC_PRIVATE_API_KEY")
+        if not token:
+            raise ValueError(
+                f"QDC_PRIVATE_API_KEY is not set; required for {device.name} "
+                "(dedicated QDC pool)."
+            )
+        return token
+    token = os.environ.get("QDC_API_TOKEN")
+    if not token:
+        raise ValueError("QDC_API_TOKEN is not set.")
+    return token
 
 
 class LLMIOType(Enum):

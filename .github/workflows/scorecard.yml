@@ -116,14 +116,6 @@ on:
           default: true
           type: boolean
 
-        skip_llm_perf:
-          default: false
-          type: boolean
-
-        skip_llm:
-          default: false
-          type: boolean
-
         tableau_branch_name:
           default: ''
           type: string
@@ -194,7 +186,6 @@ jobs:
       max_models_per_split: ${{ (inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy') && 30 || 60 }}
       max_num_splits: 8
       disable_override_workbench_job_timeout: true
-      skip_llm: ${{ inputs.skip_llm || false }}
 
   fix_flaky_jobs:
     name: Fix Flaky Profile Jobs
@@ -211,7 +202,7 @@ jobs:
   scorecard_llm_device_run:
     name: LLM On-Device Run (asset upload, perf, accuracy)
     needs: submit_split_jobs
-    if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && !(inputs.skip_llm_perf || false) && !(inputs.skip_llm || false) && inputs.test_scope != 'compile_only' }}
+    if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && inputs.test_scope != 'compile_only' }}
     secrets: inherit
     uses: ./.github/workflows/scorecard_llm_device_run.yml
     with:

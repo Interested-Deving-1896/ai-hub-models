@@ -34,6 +34,10 @@ class SpecialModelSetting(Enum):
     # Enable all models that are pyTorch recipes.
     PYTORCH = "pytorch"
 
+    # Enable pyTorch recipes minus those whose code-gen.yaml sets
+    # test_split: llm (i.e. exclude LLMs/VLMs).
+    PYTORCH_NO_LLM = "pytorch_no_llm"
+
     # Enable all models that are "static" (specified in qai_hub_models.scorecard)
     STATIC = "static"
 
@@ -81,6 +85,7 @@ Models are identified by their folder name in qai_hub_models/models or by their 
 Special options:
  * 'all' -- Enable all models
  * 'pytorch' -- Enable pytorch model recipes (all models under qai_hub_models/models)
+ * 'pytorch_no_llm' -- Enable pytorch recipes except those flagged test_split: llm
  * 'static' -- Enable test models in qai_hub_models/scorecard/static
 """
     SPECIAL_SETTING_ENUM = SpecialModelSetting

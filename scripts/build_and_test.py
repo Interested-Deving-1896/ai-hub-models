@@ -402,7 +402,8 @@ class TaskLibrary:
         - QAIHM_LLM_MODELS: Comma-separated model IDs, or "all"
         - QAIHM_TEST_DEVICES: Comma-separated device names
         - QAIRT_SDK_PATH: Path to QAIRT SDK zip
-        - QDC_API_TOKEN: QDC API token
+        - QDC_API_TOKEN: QDC API token (used for all devices except cs_8_elite_qrd)
+        - QDC_PRIVATE_API_KEY: QDC API token for cs_8_elite_qrd (private pool)
 
         Pre-compiled genie bundles are fetched from each model's
         release-assets.yaml.

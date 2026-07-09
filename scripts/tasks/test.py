@@ -31,7 +31,6 @@ from .task import (
 from .util import (
     can_support_aimet,
     check_code_gen_field,
-    check_info_field,
     get_is_hub_quantized,
     get_model_python_version_requirements,
     get_requires_aot_prepare,
@@ -69,33 +68,6 @@ def _model_has_nightly_tests(model_name: str) -> bool:
         capture_output=True,
     )
     # Exit code 5 = no tests collected → no nightly tests for this model.
-    # Exit code 0 = tests found; exit code 2 = collection error (import failure
-    # because deps aren't installed yet) — treat conservatively as "has tests".
-    return result.returncode != 5
-
-
-def _model_has_llm_perf_tests(model_name: str) -> bool:
-    """Return True if a model has model_type_llm in info.yaml and llm_perf-marked tests in test.py."""
-    if not check_info_field(model_name, "model_type_llm"):
-        return False
-    test_path = os.path.join(PY_PACKAGE_MODELS_ROOT, model_name, "test.py")
-    if not os.path.exists(test_path):
-        return False
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "--collect-only",
-            "-q",
-            "-m",
-            "llm_perf",
-            test_path,
-        ],
-        check=False,
-        capture_output=True,
-    )
-    # Exit code 5 = no tests collected → no llm_perf tests for this model.
     # Exit code 0 = tests found; exit code 2 = collection error (import failure
     # because deps aren't installed yet) — treat conservatively as "has tests".
     return result.returncode != 5
@@ -703,16 +675,19 @@ class GenerateTestSummaryTask(RunCommandsTask):
 class CollectLLMPerfTask(CompositeTask):
     """Task to collect LLM performance numbers (TPS/TTFT) via pytest.
 
-    Creates a per-model virtual environment for each LLM, installs the model's
-    dependencies (including QDC wheel and GPU requirements), runs pytest with the
-    llm_perf marker, then removes the venv to free disk space.
+    Runs a single pytest invocation against the shared
+    src/qai_hub_models/scorecard/test/test_llm_perf.py, which parametrizes
+    over every LLM in the repo. All models share the caller-provided venv
+    (no per-model venv churn) — the shared test file only imports shared
+    infrastructure, not any model's source-repo pins, so the qaihm-build
+    venv is enough.
 
     Configuration is passed via environment variables:
     - QAIHM_LLM_MODELS: Comma-separated model IDs, or "all"
     - QAIHM_TEST_DEVICES: Comma-separated device names
     - QAIRT_SDK_PATH: Path to QAIRT SDK zip
-    - QDC_API_TOKEN: QDC API token
-
+    - QDC_API_TOKEN: QDC API token (used for all devices except cs_8_elite_qrd)
+    - QDC_PRIVATE_API_KEY: QDC API token for cs_8_elite_qrd (private pool)
     Pre-compiled genie bundles are fetched from each model's
     release-assets.yaml.
     """
@@ -725,116 +700,74 @@ class CollectLLMPerfTask(CompositeTask):
         home_dir = os.path.expanduser("~")
         tmp_dir = os.environ.get("TMPDIR") or os.path.join(home_dir, "tmp")
 
-        models_env = os.environ.get("QAIHM_LLM_MODELS", "all")
-        if models_env.strip().lower() == "all":
-            models_to_test = [
-                model_name
-                for model_name in get_all_models()
-                if _model_has_llm_perf_tests(model_name)
-                and is_quantized_llm_model(model_name)
-            ]
-        else:
-            models_to_test = [m.strip() for m in models_env.split(",") if m.strip()]
-
         junit_xml_path = os.environ.get("QAIHM_JUNIT_XML_PATH")
+        if junit_xml_path:
+            base_dir = os.path.dirname(junit_xml_path)
+            filename_parts = os.path.splitext(os.path.basename(junit_xml_path))
+            junit_xml_path = os.path.join(
+                base_dir, f"{filename_parts[0]}-llm_perf{filename_parts[1]}"
+            )
 
-        tasks = []
         qdc_wheel_glob = os.path.join(REPO_ROOT, "qualcomm_device_cloud_sdk-*.whl")
-        common_command = (
-            f"mkdir -p {tmp_dir}"
-            f" && rm -rf {home_dir}/.cache/huggingface/hub/models--*"
-            f" {home_dir}/.qaihm/models/* {tmp_dir}/*"
+        shared_test_path = os.path.join(
+            PY_PACKAGE_SRC_ROOT,
+            "scorecard",
+            "test",
+            "test_llm_perf.py",
         )
 
+        # Re-assume the workflow's OIDC role so a stale 12h AWS session doesn't
+        # take down the run mid-pytest (#3647). No-op when AWS_ROLE_ARN is unset
+        # (local dev). Each matrix leg fans out into one pytest invocation that
+        # finishes well inside the 12h cap, so one refresh up front is enough.
         refresh_aws_creds_script = os.path.join(
             REPO_ROOT, "scripts", "ci", "refresh_aws_creds.sh"
         )
-        refresh_aws_creds_enabled = bool(os.environ.get("AWS_ROLE_ARN"))
-
-        for model_name in models_to_test:
-            if refresh_aws_creds_enabled:
-                tasks.append(
-                    RunCommandsTask(
-                        f"Refresh AWS Credentials Before Model {model_name}",
-                        f"bash '{refresh_aws_creds_script}'",
-                        raise_on_failure=True,
-                        retries=2,
-                    )
-                )
-            model_venv = os.path.join(home_dir, "model_envs", model_name)
-
-            # Create per-model venv and install QAIHM + model requirements.
-            tasks.append(CreateVenvTask(model_venv))
+        tasks: list[Task] = []
+        if os.environ.get("AWS_ROLE_ARN"):
             tasks.append(
-                SyncModelVenvTask(
-                    model_name,
-                    model_venv,
-                    include_dev_deps=True,
+                RunCommandsTask(
+                    "Refresh AWS Credentials",
+                    f"bash '{refresh_aws_creds_script}'",
+                    raise_on_failure=True,
+                    retries=2,
                 )
             )
-
-            # Install the QDC wheel so the perf test can submit QDC jobs. No GPU
-            # / AIMET requirements are needed: this task no longer compiles, it
-            # only fetches the pre-compiled genie bundle and runs it on device.
-            tasks.append(
+        tasks.extend(
+            [
                 RunCommandsWithVenvTask(
-                    group_name=f"Install QDC SDK For Model {model_name}",
-                    venv=model_venv,
+                    group_name="Install QDC SDK",
+                    venv=venv,
                     commands=[f"pip install $(ls {qdc_wheel_glob})"],
                     raise_on_failure=False,
                     ignore_return_codes=[5],
                     retries=2,
-                )
-            )
-
-            # Build per-model JUnit XML path (matches GPUPyTestModelsTask pattern).
-            model_junit_xml_path = None
-            if junit_xml_path:
-                base_dir = os.path.dirname(junit_xml_path)
-                filename_parts = os.path.splitext(os.path.basename(junit_xml_path))
-                model_filename = (
-                    f"{filename_parts[0]}-llm_perf-{model_name}{filename_parts[1]}"
-                )
-                model_junit_xml_path = os.path.join(base_dir, model_filename)
-
-            # Set up environment and clear caches before running tests.
-            tasks.append(
+                ),
                 RunCommandsWithVenvTask(
-                    group_name=f"Set Up Environment For Model {model_name}",
-                    venv=model_venv,
-                    commands=[common_command],
+                    group_name="Clear LLM caches",
+                    venv=venv,
+                    commands=[
+                        f"mkdir -p {tmp_dir}"
+                        f" && rm -rf {home_dir}/.cache/huggingface/hub/models--*"
+                        f" {home_dir}/.qaihm/models/* {tmp_dir}/*"
+                    ],
                     raise_on_failure=False,
-                )
-            )
-
-            # -n 3 matches QDC's 3-slot per-user cap; perf.yaml writes are
-            # serialized via FileLock.
-            tasks.append(
+                ),
                 PyTestTask(
-                    group_name=f"Run LLM Perf Tests For Model {model_name}",
-                    venv=model_venv,
-                    files_or_dirs=f"src/qai_hub_models/models/{model_name}/test.py",
-                    extra_args="-s -m 'llm_perf' -n 3",
-                    junit_xml_path=model_junit_xml_path,
+                    group_name="Run LLM Perf Tests (all models)",
+                    venv=venv,
+                    files_or_dirs=shared_test_path,
+                    extra_args="-s -m 'llm_perf'",
+                    junit_xml_path=junit_xml_path,
                     raise_on_failure=False,
                     ignore_no_tests_return_code=True,
-                )
-            )
-
-            # Free disk between models: venv + HF cache + QAIHM store + TMPDIR.
-            tasks.append(
-                RunCommandsTask(
-                    f"Cleanup After Model {model_name}",
-                    f"rm -rf {model_venv}"
-                    f" {home_dir}/.cache/huggingface/hub/models--*"
-                    f" {home_dir}/.qaihm/models/*"
-                    f" {tmp_dir}/*",
-                )
-            )
+                ),
+            ]
+        )
 
         super().__init__(
             "Collect LLM Performance Numbers",
-            list(tasks),
+            tasks,
             continue_after_single_task_failure=True,
             raise_on_failure=raise_on_failure,
         )

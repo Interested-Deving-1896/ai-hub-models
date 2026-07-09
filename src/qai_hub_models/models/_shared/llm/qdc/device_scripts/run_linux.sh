@@ -9,9 +9,16 @@ set -e
 # always succeeds; otherwise the tees below would mask genie failures.
 set -o pipefail
 
-# Tee all output to the log file (for QDC collection) AND the original stdout,
-# so progress is still visible when a failed QDC job never makes the on-device
-# log files available.
+# Drop per-job state on exit (dedicated-pool devices are reused).
+cleanup_device() {
+    rm -rf /data/local/tmp/TestContent/genie_bundle 2>/dev/null || true
+    rm -rf /data/local/tmp/qairt 2>/dev/null || true
+    rm -f /data/local/tmp/qairt.zip 2>/dev/null || true
+}
+trap cleanup_device EXIT
+
+# Drop stale logs from a prior job on this shared device.
+rm -rf /data/local/tmp/QDC_logs
 mkdir -p /data/local/tmp/QDC_logs
 exec > >(tee /data/local/tmp/QDC_logs/script.log) 2>&1
 
@@ -19,16 +26,16 @@ mount -o rw,remount /
 
 cd /data/local/tmp/TestContent/genie_bundle
 
-# Verify network connectivity before download
+# Always re-download: dedicated-pool devices are reused, so a partial extract
+# from a previous job would otherwise silently corrupt this run.
+rm -rf /data/local/tmp/qairt
 echo "=== Pre-download connectivity check ==="
 echo "Pinging google.com before QAIRT SDK download..."
 ping -c 1 google.com && echo "Pre-download ping: SUCCESS" || echo "Pre-download ping: FAILED"
 
-# Download QAIRT SDK
 curl -L -J --output /data/local/tmp/qairt.zip \
   https://softwarecenter.qualcomm.com/api/download/software/sdks/Qualcomm_AI_Runtime_Community/All/{QAIRT_VERSION}/v{QAIRT_VERSION}.zip
 
-# Verify network connectivity after download
 echo "=== Post-download connectivity check ==="
 echo "Pinging google.com after QAIRT SDK download..."
 ping -c 1 google.com && echo "Post-download ping: SUCCESS" || echo "Post-download ping: FAILED"

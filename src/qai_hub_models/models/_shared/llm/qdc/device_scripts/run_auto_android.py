@@ -57,6 +57,12 @@ class TestGenie:
 # makes the on-device log files available. pipefail keeps the pipeline's
 # exit status tied to genie rather than to tee, which always succeeds.
 set -o pipefail
+# Drop per-job state on exit; keep QDC_logs.
+cleanup_device() {{
+    rm -rf /data/local/tmp/genie_bundle \\
+           /data/local/tmp/qxa.qa_adsplib 2>/dev/null || true
+}}
+trap cleanup_device EXIT
 # genie-t2t-run fails randomly on QDC devices; give each invocation one retry
 # before letting the failure (and set -e) abort the whole job. Redirect stderr
 # to a log file: QDC flags jobs Unsuccessful on any stderr output (PR #3641).
@@ -79,6 +85,8 @@ export LD_LIBRARY_PATH={qairt_path}/lib/aarch64-android
 export ADSP_LIBRARY_PATH={qairt_path}/lib/hexagon-<<HEXAGON_VERSION>>/unsigned
 cp /data/local/tmp/qxa.qa_adsplib/libc++.so.1 ${{ADSP_LIBRARY_PATH}}/
 cp /data/local/tmp/qxa.qa_adsplib/libc++abi.so.1 ${{ADSP_LIBRARY_PATH}}/
+# Drop stale logs from a prior job on this shared device.
+rm -rf /data/local/tmp/QDC_logs
 mkdir -p /data/local/tmp/QDC_logs
 genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>>/data/local/tmp/QDC_logs/genie_stderr.log | tee /data/local/tmp/QDC_logs/genie.log
 {full_genie_command}

@@ -168,8 +168,7 @@ class GenieAndroidArtifactHandler(GenieArtifactHandler):
         os.makedirs(genie_folder, exist_ok=True)
         shutil.copytree(genie_bundle_path, genie_folder, dirs_exist_ok=True)
 
-        # Create zip in parent directory to avoid zipping the zip itself
-        zip_path = os.path.join(os.path.dirname(dest_dir), "test.zip")
+        zip_path = os.path.join(dest_dir, "test.zip")
         create_zip(zip_path, dest_dir)
         return zip_path
 
@@ -273,8 +272,7 @@ class GenieLinuxArtifactHandler(GenieArtifactHandler):
         os.makedirs(genie_folder, exist_ok=True)
         shutil.copytree(genie_bundle_path, genie_folder, dirs_exist_ok=True)
 
-        # Create zip in parent directory to avoid zipping the zip itself
-        zip_path = os.path.join(os.path.dirname(dest_dir), "test.zip")
+        zip_path = os.path.join(dest_dir, "test.zip")
         create_zip(zip_path, dest_dir)
         return zip_path
 
@@ -309,7 +307,7 @@ class GenieWindowsArtifactHandler(GenieArtifactHandler):
                 .replace("{NUM_TRIALS}", str(num_trials))
             )
 
-        zip_path = os.path.join(os.path.dirname(dest_dir), "test.zip")
+        zip_path = os.path.join(dest_dir, "test.zip")
         create_zip(zip_path, dest_dir)
         return zip_path
 
@@ -418,8 +416,6 @@ class GenieQDCJobs(QDCJobs):
                     num_trials,
                 )
                 upload_response = self.upload_file(zip_path, ArtifactType.TESTSCRIPT)
-                if os.path.exists(zip_path):
-                    os.unlink(zip_path)
         finally:
             if temp_bundle_dir:
                 shutil.rmtree(temp_bundle_dir, ignore_errors=True)
@@ -700,9 +696,11 @@ def save_eval_metadata_json(
 
 _USE_DEFAULT_PROMPTS = object()
 
-# Bounded retries for a QDC job that finishes with a non-"Successful" result;
-# these device-side failures are usually transient (device availability/flakiness).
-_QDC_EXECUTION_MAX_ATTEMPTS = 2
+# Separate retry budgets per failure class: "Error" (QDC infra abort) and
+# "Unsuccessful" (device-side script failure). Splitting them keeps a run of
+# one class from exhausting the other's budget.
+_QDC_MAX_ATTEMPTS_ERROR = 2
+_QDC_MAX_ATTEMPTS_UNSUCCESSFUL = 2
 
 
 def submit_genie_bundle_to_qdc_device(
@@ -779,10 +777,15 @@ def submit_genie_bundle_to_qdc_device(
         model_id=model_id,
     )
 
-    # A job can reach state "Completed" yet fail device-side (result "Unsuccessful"),
-    # yielding no perf logs; retry the (usually transient) failure, then raise.
+    error_attempts_left = _QDC_MAX_ATTEMPTS_ERROR
+    unsuccessful_attempts_left = _QDC_MAX_ATTEMPTS_UNSUCCESSFUL
+    empty_logs_attempts_left = _QDC_MAX_ATTEMPTS_UNSUCCESSFUL
     last_failure_reason: str | None = None
-    for attempt in range(1, _QDC_EXECUTION_MAX_ATTEMPTS + 1):
+    while (
+        error_attempts_left > 0
+        and unsuccessful_attempts_left > 0
+        and empty_logs_attempts_left > 0
+    ):
         job_id = genie_job.submit_automated_job(
             qdc_device, job_artifacts, entry_script, job_name=job_name
         )
@@ -797,24 +800,26 @@ def submit_genie_bundle_to_qdc_device(
             f"result: {job_result}"
         )
 
-        # Treat a non-"Successful" terminal result as a device-side failure.
         if job_result is not None and job_result != "Successful":
+            if job_result == "Error":
+                error_attempts_left -= 1
+                budget_left = error_attempts_left
+                budget_total = _QDC_MAX_ATTEMPTS_ERROR
+            else:
+                unsuccessful_attempts_left -= 1
+                budget_left = unsuccessful_attempts_left
+                budget_total = _QDC_MAX_ATTEMPTS_UNSUCCESSFUL
             last_failure_reason = (
                 f"QDC job {job_id} on device '{device}' finished with "
                 f"status='{job_status}', result='{job_result}'"
             )
             print(
-                f"[attempt {attempt}/{_QDC_EXECUTION_MAX_ATTEMPTS}] "
-                f"{last_failure_reason}"
+                f"[result={job_result}, {budget_total - budget_left}/{budget_total} "
+                f"attempts used] {last_failure_reason}"
             )
-            if attempt < _QDC_EXECUTION_MAX_ATTEMPTS:
+            if budget_left > 0:
                 print("Retrying QDC job execution...")
-                continue
-            raise RuntimeError(
-                f"{last_failure_reason} after {_QDC_EXECUTION_MAX_ATTEMPTS} "
-                f"attempt(s). The device-side job did not complete successfully; "
-                f"check the QDC job logs for details."
-            )
+            continue
 
         genie_job.log_upload_status(job_id)
         # The file listing lags log-upload-status on the QDC backend, so wait
@@ -825,21 +830,20 @@ def submit_genie_bundle_to_qdc_device(
         # became retrievable; retry the whole job (transient) rather than
         # asserting on None metrics downstream.
         if not job_log_files:
+            empty_logs_attempts_left -= 1
             last_failure_reason = (
                 f"QDC job {job_id} on device '{device}' reported result="
                 f"'{job_result}' but produced no retrievable log files"
             )
             print(
-                f"[attempt {attempt}/{_QDC_EXECUTION_MAX_ATTEMPTS}] "
+                f"[empty logs, "
+                f"{_QDC_MAX_ATTEMPTS_UNSUCCESSFUL - empty_logs_attempts_left}/"
+                f"{_QDC_MAX_ATTEMPTS_UNSUCCESSFUL} attempts used] "
                 f"{last_failure_reason}"
             )
-            if attempt < _QDC_EXECUTION_MAX_ATTEMPTS:
+            if empty_logs_attempts_left > 0:
                 print("Retrying QDC job execution...")
-                continue
-            raise RuntimeError(
-                f"{last_failure_reason} after {_QDC_EXECUTION_MAX_ATTEMPTS} "
-                f"attempt(s). Check the QDC job logs for details."
-            )
+            continue
 
         tps, prefill_tps, ttft = genie_job.compute_metrics(job_log_files)
 
@@ -849,9 +853,12 @@ def submit_genie_bundle_to_qdc_device(
 
         return tps, prefill_tps, ttft, eval_results
 
-    # Unreachable: the loop either returns or raises on the final attempt.
     raise RuntimeError(
-        f"QDC job execution failed for device '{device}': {last_failure_reason}"
+        f"{last_failure_reason} after exhausting retries "
+        f"(Error budget={_QDC_MAX_ATTEMPTS_ERROR}, "
+        f"Unsuccessful budget={_QDC_MAX_ATTEMPTS_UNSUCCESSFUL}). "
+        f"The device-side job did not complete successfully; "
+        f"check the QDC job logs for details."
     )
 
 

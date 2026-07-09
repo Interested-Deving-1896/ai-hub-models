@@ -1,13 +1,5 @@
-##
-## QAI Hub Models LLM Performance Collection
-##
-## Collects TPS (tokens per second) and TTFT (time to first token) metrics
-## for LLM models across specified devices using QDC (Qualcomm Device Cloud).
-##
-## Pre-compiled genie bundles are fetched from each model's release-assets.yaml
-## (no compilation runs in this workflow); the context length is baked into the
-## published assets. Models without an entry in release-assets.yaml will fail.
-##
+# Collects TPS/TTFT for LLM models on QDC. Genie bundles come from each
+# model's release-assets.yaml (no compilation here).
 
 name: LLM Performance Collection
 run-name: "LLM Perf (${{ inputs.model || 'all' }}, ${{ inputs.device == 'default' && 'cs_8_elite_qrd' || inputs.device || 'all' }})"
@@ -106,56 +98,62 @@ defaults:
     shell: bash
 
 jobs:
-  start_gpu_runner:
-    name: "Start Ephemeral GPU Runner"
+  prepare_matrix:
+    name: "Split Devices By QDC Pool"
     runs-on: [tetra-ubuntu-2204, self-hosted]
     outputs:
-      runner-label: ${{ steps.start.outputs.runner-label }}
+      matrix_include: ${{ steps.split.outputs.matrix_include }}
     steps:
     - uses: actions/checkout@v7
-    - id: start
-      uses: ./.github/actions/start-gpu-runner
       with:
-        runner-id: llm-perf-${{ github.run_id }}-${{ github.run_attempt }}
-        gpu-request: "1"
-        cpu-request: "8"
-        memory-request: "512Gi"
-        argo-namespace: "aihub-ci"
-        kubeconfig: ${{ secrets.KUBECONFIG }}
-        pat-token: ${{ secrets.KUBE_GH_TOKEN }}
-        sudo-password: ${{ secrets.TETRASERVICE_PASSWORD }}
+        fetch-depth: 1
+    - id: split
+      env:
+        DEVICE_INPUT: ${{ inputs.device }}
+      run: python3 scripts/ci/split_llm_devices.py
 
   collect_llm_perf:
-    name: "Collect LLM Performance Numbers"
-    needs: start_gpu_runner
-    runs-on: ${{ needs.start_gpu_runner.outputs.runner-label }}
+    name: "Collect LLM Performance (${{ matrix.pool }})"
+    needs: prepare_matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare_matrix.outputs.matrix_include) }}
+    # Perf submit is pure orchestration (S3 → QDC → poll); no GPU needed.
+    runs-on: [tetra-ubuntu-2204, self-hosted]
     timeout-minutes: 2880 # 2 days for multiple models/devices
     permissions:
-      contents: write
+      contents: read
       actions: read
       id-token: write
       packages: read
-      pull-requests: write
     env:
       HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       QDC_API_TOKEN: ${{ secrets.QDC_API_KEY }}
+      QDC_PRIVATE_API_KEY: ${{ secrets.QDC_PRIVATE_API_KEY }}
       QAIHM_JUNIT_XML_PATH: ${{ github.workspace }}/test-results/models-junit.xml
       QAIRT_SDK_PATH: ${{ github.workspace }}/qairt_auto_sdk.zip
-    outputs:
-      branch_name: ${{ steps.push_changes.outputs.branch_name }}
-      has_changes: ${{ steps.check_changes.outputs.has_changes }}
 
     steps:
-    - name: Install git
+    - name: Install git (Kube/container only)
+      if: ${{ !contains(runner.name, 'tetra') }}
       run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq git
+        if ! command -v git &>/dev/null; then
+          if [ "$(id -u)" -eq 0 ]; then
+            apt-get update -qq
+            apt-get install -y -qq git
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq git
+          fi
+        fi
 
     - uses: actions/checkout@v7
       with:
-        fetch-depth: 0
+        fetch-depth: 1
 
-    - name: Install system dependencies
+    - name: Install system dependencies (Kube/container only)
+      if: ${{ !contains(runner.name, 'tetra') }}
       run: bash src/qai_hub_models/scripts/kube/setup_pod.sh
 
     - name: CI Setup
@@ -163,6 +161,8 @@ jobs:
       with:
         python-version: USE_EXISTING_INSTALL
         venv-path: ${{ env.VENV_PATH }}
+        # global_requirements.txt provides transformers (genie_jobs.py needs it).
+        bnt-venv-install-cmd: install_global_requirements
         aws-role-arn: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
         hub-deployments: ${{ inputs.deployment || 'prod' }}
         hub-user-token-prod: ${{ secrets.HUB_USER_TOKEN_PROD }}
@@ -200,17 +200,17 @@ jobs:
       id: run_tests
       env:
         QAIHM_LLM_MODELS: ${{ inputs.model || 'all' }}
-        QAIHM_TEST_DEVICES: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
+        QAIHM_TEST_DEVICES: ${{ matrix.devices }}
         QAIHM_LLM_PERF_PRECISIONS: ${{ inputs.precision }}
         QAIHM_RUN_EVAL: ${{ inputs.run_eval }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
-        QAIHM_LLM_PERF_UPDATES: ${{ github.workspace }}/genie_perf_updates.jsonl
+        QAIHM_LLM_PERF_UPDATES: ${{ github.workspace }}/genie_perf_updates_${{ matrix.pool }}.jsonl
         AWS_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
         AWS_REGION: us-west-2
         AWS_PROFILE_NAME: qaihm
       run: |
         cd $GITHUB_WORKSPACE && \
-          python scripts/build_and_test.py \
+          python3 scripts/build_and_test.py \
             --venv='${{ env.VENV_PATH }}' \
             --only \
             collect_llm_perf
@@ -220,8 +220,8 @@ jobs:
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
-        name: perf-updates-genie
-        path: ${{ github.workspace }}/genie_perf_updates.jsonl
+        name: perf-updates-genie-${{ matrix.pool }}
+        path: ${{ github.workspace }}/genie_perf_updates_${{ matrix.pool }}.jsonl
         if-no-files-found: ignore
 
     - name: Generate Test Failure Summary
@@ -235,27 +235,104 @@ jobs:
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
-        name: test-results
+        name: test-results-${{ matrix.pool }}
         path: ${{ github.workspace }}/test-results
 
-    - name: Check for changes
-      if: ${{ !cancelled() && inputs.create_pr }}
+    - name: Stage eval results for upload
+      if: ${{ !cancelled() }}
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE/llm-perf-results"
+        find "$GITHUB_WORKSPACE" -maxdepth 2 -type f \
+          \( -name '*_eval.json' -o -name '*_eval.meta.json' \) \
+          -exec cp {} "$GITHUB_WORKSPACE/llm-perf-results/" \;
+
+    - name: Upload eval results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: llm-perf-results-${{ matrix.pool }}
+        path: llm-perf-results/
+        if-no-files-found: ignore
+
+    - name: Add CSV to GitHub summary
+      if: ${{ !cancelled() }}
+      run: |
+        source "${{ env.VENV_PATH }}/bin/activate"
+        pip install -q pandas tabulate
+        python -c 'import os, pandas as pd; print("## On-device Results"); fn="test_perf_on_device.csv"; print(pd.read_csv(fn).to_markdown(index=False)) if os.path.exists(fn) else print(f"File {fn} not found.")' >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Fail workflow if tests failed
+      if: ${{ !cancelled() && steps.run_tests.outcome != 'success' }}
+      run: exit 1
+
+  consolidate_pr:
+    name: "Consolidate Perf Updates → PR"
+    needs: collect_llm_perf
+    if: ${{ !cancelled() && inputs.create_pr }}
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: write
+    steps:
+    - name: Install git (Kube/container only)
+      if: ${{ !contains(runner.name, 'tetra') }}
+      run: |
+        if ! command -v git &>/dev/null; then
+          if [ "$(id -u)" -eq 0 ]; then
+            apt-get update -qq
+            apt-get install -y -qq git
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq git
+          fi
+        fi
+
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+
+    - name: CI Setup
+      uses: ./.github/actions/ci-setup
+      with:
+        python-version: USE_EXISTING_INSTALL
+        venv-path: ${{ env.VENV_PATH }}
+        hub-deployments: ${{ inputs.deployment || 'prod' }}
+        hub-user-token-prod: ${{ secrets.HUB_USER_TOKEN_PROD }}
+        hub-user-token-staging: ${{ secrets.HUB_USER_TOKEN_STAGING }}
+        hub-user-token-dev: ${{ secrets.HUB_USER_TOKEN_DEV }}
+        hub-user-token-sandbox: ${{ secrets.HUB_USER_TOKEN_SANDBOX }}
+
+    - name: Download perf updates (all legs)
+      uses: actions/download-artifact@v8
+      with:
+        pattern: perf-updates-genie-*
+        merge-multiple: true
+        path: ${{ github.workspace }}/llm-perf-updates
+        github-token: ${{ github.token }}
+
+    - name: Apply perf updates into perf.yaml files
+      run: |
+        source "${{ env.VENV_PATH }}/bin/activate"
+        python3 -m qai_hub_models.scripts.apply_llm_perf_updates \
+          "$GITHUB_WORKSPACE/llm-perf-updates"
+
+    - name: Check for perf.yaml changes
       id: check_changes
       run: |
         has_modified=$(git diff --quiet src/qai_hub_models/models/*/perf.yaml 2>/dev/null && echo "false" || echo "true")
         has_untracked=$(git ls-files --others --exclude-standard | grep -q 'perf\.yaml$' && echo "true" || echo "false")
-
         if [ "$has_modified" = "true" ] || [ "$has_untracked" = "true" ]; then
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
-          echo "Detected changes: modified=$has_modified, untracked=$has_untracked"
         else
           echo "has_changes=false" >> "$GITHUB_OUTPUT"
           echo "No perf.yaml changes detected"
         fi
 
-    - name: Commit & Push Changes
+    - name: Commit & push
       id: push_changes
-      if: ${{ !cancelled() && (inputs.create_pr) && steps.check_changes.outputs.has_changes == 'true' }}
+      if: ${{ steps.check_changes.outputs.has_changes == 'true' }}
       env:
         QAIHM_TEST_MODELS: ${{ inputs.model || 'all' }}
         QAIHM_TEST_DEVICES: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
@@ -275,64 +352,15 @@ jobs:
           git push -u origin $branch_name
         echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
 
-    - name: Grade LLM Responses
-      id: grade_responses
-      if: ${{ !cancelled() && inputs.run_eval }}
-      env:
-        GRADER_VENV: ${{ github.workspace }}/grader_env
-        QAIHM_GRADE_RESPONSES_DIR: ${{ github.workspace }}
-      run: |
-        python3 scripts/build_and_test.py \
-          --venv="$GRADER_VENV" \
-          grade_llm_responses
-
-    - name: Add Grader Scores to GitHub Summary
-      if: ${{ !cancelled() && inputs.run_eval && steps.grade_responses.outcome == 'success' }}
-      run: |
-        python3 scripts/ci/grader_summary.py "$GITHUB_WORKSPACE" >> "$GITHUB_STEP_SUMMARY"
-
-    - name: Collect LLM Accuracy CSV
-      if: ${{ !cancelled() && inputs.run_eval }}
-      env:
-        QAIHM_TEST_ARTIFACTS_DIR: ${{ github.workspace }}/qaihm_test_artifacts
-        QAIHM_GRADE_RESPONSES_DIR: ${{ github.workspace }}
-      run: |
-        python3 scripts/build_and_test.py \
-          --venv="${{ env.VENV_PATH }}" \
-          collect_llm_accuracy_csv
-
-    - name: Stage results for upload
-      if: ${{ !cancelled() }}
-      run: |
-        mkdir -p "$GITHUB_WORKSPACE/llm-perf-results"
-        find "$GITHUB_WORKSPACE" -type f \
-          \( -name '*_eval.json' -o -name '*_grade.json' -o -name '*_eval.meta.json' \) \
-          -exec cp {} "$GITHUB_WORKSPACE/llm-perf-results/" \;
-
-    - name: Upload Results
-      if: ${{ !cancelled() }}
+    - name: Upload consolidated perf.yaml files
+      if: ${{ steps.check_changes.outputs.has_changes == 'true' }}
       uses: actions/upload-artifact@v7
       with:
-        name: llm-perf-results
-        path: llm-perf-results/
-
-    - name: Upload Accuracy CSV
-      if: ${{ !cancelled() && inputs.run_eval }}
-      uses: actions/upload-artifact@v7
-      with:
-        name: accuracy-csv
-        path: ${{ github.workspace }}/qaihm_test_artifacts/accuracy.csv
-        if-no-files-found: ignore
-
-    - name: Add CSV to GitHub summary
-      if: ${{ !cancelled() }}
-      run: |
-        source "${{ env.VENV_PATH }}/bin/activate"
-        pip install -q pandas tabulate
-        python -c 'import os, pandas as pd; print("## Genie On-device Results"); fn="test_perf_on_device.csv"; print(pd.read_csv(fn).to_markdown(index=False)) if os.path.exists(fn) else print(f"File {fn} not found.")' >> "$GITHUB_STEP_SUMMARY"
+        name: updated-perf-yamls
+        path: src/qai_hub_models/models/**/perf.yaml
 
     - name: Create Pull Request
-      if: ${{ !cancelled() && (inputs.create_pr) && steps.push_changes.outputs.branch_name != '' && steps.check_changes.outputs.has_changes == 'true' }}
+      if: ${{ steps.push_changes.outputs.branch_name != '' && steps.check_changes.outputs.has_changes == 'true' }}
       uses: actions/github-script@v9
       env:
         QAIHM_TEST_MODELS: ${{ inputs.model || 'all' }}
@@ -362,21 +390,22 @@ jobs:
           console.log('PR created:', result.data.html_url);
           return result.data.html_url;
 
-    - name: Fail workflow if tests failed
-      if: ${{ !cancelled() && steps.run_tests.outcome != 'success' }}
-      run: exit 1
-
-  cleanup_runner:
-    name: "Cleanup GPU Runner"
-    needs: [start_gpu_runner, collect_llm_perf]
-    if: always()
-    runs-on: [tetra-ubuntu-2204, self-hosted]
-    steps:
-    - uses: actions/checkout@v7
-    - uses: ./.github/actions/stop-gpu-runner
-      with:
-        runner-ids: ${{ needs.start_gpu_runner.outputs.runner-label }}
-        argo-namespace: "aihub-ci"
-        kubeconfig: ${{ secrets.KUBECONFIG }}
-        pat-token: ${{ secrets.KUBE_GH_TOKEN }}
-        sudo-password: ${{ secrets.TETRASERVICE_PASSWORD }}
+  grade_responses:
+    name: "Grade LLM Responses"
+    needs: collect_llm_perf
+    if: ${{ !cancelled() && inputs.run_eval }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+      actions: read
+    uses: ./.github/workflows/gpu_pod_lifecycle.yml
+    with:
+      is_grader: true
+      runner-id: llm-perf-grader-${{ github.run_id }}-${{ github.run_attempt }}
+      gpu-request: '1'
+      cpu-request: '8'
+      memory-request: '256Gi'
+      deployment: ${{ inputs.deployment || 'prod' }}
+      grader_artifacts_run_id: ${{ github.run_id }}
+    secrets: inherit

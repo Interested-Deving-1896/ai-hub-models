@@ -262,5 +262,6 @@ def test_llm_runtimes_do_not_match_qnn_paths(monkeypatch: pytest.MonkeyPatch) ->
     assert "qnn_dlc_via_qnn_ep" not in path_values
     assert "qnn_dlc" not in path_values
     assert "qnn_context_binary" not in path_values
-    assert "genie" in path_values
+    # GENIE is excluded from the default sweep; see default_sweep_paths().
+    assert "genie" not in path_values
     assert "geniex_qairt" in path_values

@@ -1,5 +1,8 @@
 ## Collects TPS/TTFT via geniex-bench (llama_cpp + qairt plugins) on QDC,
 ## then opens one PR replaying perf.yaml updates from a JSON-lines updates file.
+## Structure mirrors llm_perf_collection.yml (genie) so the two runtimes stay
+## parallel: prepare_matrix -> collect_geniex_bench_perf (matrix over QDC pool)
+## -> consolidate_pr.
 
 name: GenieX Performance Collection
 run-name: "GenieX Perf (${{ inputs.model || 'all' }}, ${{ inputs.device || 'all' }}, ${{ inputs.geniex_version || 'latest' }})"
@@ -98,8 +101,27 @@ defaults:
     shell: bash
 
 jobs:
+  prepare_matrix:
+    name: "Split Devices By QDC Pool"
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+    outputs:
+      matrix_include: ${{ steps.split.outputs.matrix_include }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+    - id: split
+      env:
+        DEVICE_INPUT: ${{ inputs.device }}
+      run: python3 scripts/ci/split_llm_devices.py
+
   collect_geniex_bench_perf:
-    name: "Collect GenieX-bench Performance Numbers"
+    name: "Collect GenieX-bench Performance (${{ matrix.pool }})"
+    needs: prepare_matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare_matrix.outputs.matrix_include) }}
     runs-on: [tetra-ubuntu-2204, self-hosted]
     timeout-minutes: 7200
     permissions:
@@ -109,6 +131,7 @@ jobs:
       packages: read
     env:
       QDC_API_TOKEN: ${{ secrets.QDC_API_KEY }}
+      QDC_PRIVATE_API_KEY: ${{ secrets.QDC_PRIVATE_API_KEY }}
     outputs:
       results_url: ${{ steps.upload-results.outputs.artifact-url }}
       perf_updates_url: ${{ steps.upload-perf-updates.outputs.artifact-url }}
@@ -153,7 +176,7 @@ jobs:
       continue-on-error: true
       env:
         QAIHM_MODELS: ${{ inputs.model || 'all' }}
-        QAIHM_TEST_DEVICES: ${{ inputs.device || 'cs_x2_elite,cs_x_elite' }}
+        QAIHM_TEST_DEVICES: ${{ matrix.devices }}
         GENIEX_BENCH_PLUGIN: ${{ inputs.geniex_bench_plugin || 'all' }}
         GENIEX_BENCH_PRECISIONS: ${{ inputs.precision || 'default' }}
         GENIEX_VERSION: ${{ inputs.geniex_version || '' }}
@@ -165,11 +188,14 @@ jobs:
         if [ -n "$GENIEX_VERSION" ]; then
           extra+=(--geniex-version "$GENIEX_VERSION")
         fi
+        # Per-pool updates file: consolidate_pr downloads all
+        # perf-updates-geniex-* artifacts and replays them in one pass.
         python -m qai_hub_models.scripts.run_geniex_bench_benchmarks \
           --models "$QAIHM_MODELS" \
           --devices "$QAIHM_TEST_DEVICES" \
           --plugin "$GENIEX_BENCH_PLUGIN" \
           --precisions "$GENIEX_BENCH_PRECISIONS" \
+          --perf-updates-json "$GITHUB_WORKSPACE/geniex_perf_updates_${{ matrix.pool }}.jsonl" \
           "${extra[@]}"
 
     - name: Upload geniex-bench results
@@ -177,7 +203,7 @@ jobs:
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
-        name: geniex-bench-results
+        name: geniex-bench-results-${{ matrix.pool }}
         path: |
           ${{ github.workspace }}/geniex_bench_results.csv
           ${{ github.workspace }}/geniex_bench_results/**/*.json
@@ -190,25 +216,27 @@ jobs:
         # perf-updates-* is the shared prefix the scorecard results collector
         # globs to merge every runtime's updates (see llm_perf_collection.yml
         # and scorecard_collect_results.yml).
-        name: perf-updates-geniex
-        path: ${{ github.workspace }}/geniex_perf_updates.jsonl
+        name: perf-updates-geniex-${{ matrix.pool }}
+        path: ${{ github.workspace }}/geniex_perf_updates_${{ matrix.pool }}.jsonl
         if-no-files-found: ignore
 
     - name: Fail workflow if benchmarks failed
       if: ${{ !cancelled() && steps.run_benchmarks.outcome == 'failure' }}
       run: exit 1
 
-  create_perf_pr:
-    name: "Open GenieX Perf PR"
-    needs: [collect_geniex_bench_perf]
+  consolidate_pr:
+    name: "Consolidate Perf Updates → PR"
+    needs: collect_geniex_bench_perf
     if: ${{ !cancelled() && inputs.create_pr }}
     runs-on: [tetra-ubuntu-2204, self-hosted]
+    timeout-minutes: 60
     permissions:
       contents: write
+      actions: read
       pull-requests: write
     outputs:
-      branch_name: ${{ steps.merge.outputs.branch_name }}
-      has_changes: ${{ steps.merge.outputs.has_changes }}
+      branch_name: ${{ steps.push_changes.outputs.branch_name }}
+      has_changes: ${{ steps.check_changes.outputs.has_changes }}
     steps:
     - uses: actions/checkout@v7
       with:
@@ -225,61 +253,67 @@ jobs:
         source ${{ env.VENV_PATH }}/bin/activate
         pip install -e src/
 
-    # Download even on partial failure, then PR can create even if some benchmarks failed.
-    - name: Download geniex perf.yaml updates
-      if: ${{ needs.collect_geniex_bench_perf.result != 'cancelled' }}
+    - name: Download perf updates (all legs)
       uses: actions/download-artifact@v8
       with:
-        name: perf-updates-geniex
-        path: ${{ github.workspace }}/_perf_updates
+        pattern: perf-updates-geniex-*
+        merge-multiple: true
+        path: ${{ github.workspace }}/llm-perf-updates
+        github-token: ${{ github.token }}
 
-    - name: Apply geniex perf.yaml updates & open PR
-      id: merge
+    - name: Apply perf updates into perf.yaml files
+      run: |
+        source "${{ env.VENV_PATH }}/bin/activate"
+        python3 -m qai_hub_models.scripts.apply_llm_perf_updates \
+          "$GITHUB_WORKSPACE/llm-perf-updates"
+
+    - name: Check for perf.yaml changes
+      id: check_changes
+      run: |
+        has_modified=$(git diff --quiet src/qai_hub_models/models/*/perf.yaml 2>/dev/null && echo "false" || echo "true")
+        has_untracked=$(git ls-files --others --exclude-standard | grep -q 'perf\.yaml$' && echo "true" || echo "false")
+        if [ "$has_modified" = "true" ] || [ "$has_untracked" = "true" ]; then
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          echo "No perf.yaml changes detected"
+        fi
+
+    - name: Commit & push
+      id: push_changes
+      if: ${{ steps.check_changes.outputs.has_changes == 'true' }}
       env:
         QAIHM_TEST_MODELS: ${{ inputs.model || 'all' }}
         QAIHM_TEST_DEVICES: ${{ inputs.device || 'all' }}
       run: |
-        set -eo pipefail
-        cd "$GITHUB_WORKSPACE"
-        source ${{ env.VENV_PATH }}/bin/activate
-
-        updates="_perf_updates/geniex_perf_updates.jsonl"
-        if [ ! -s "$updates" ]; then
-          echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          echo "No geniex perf updates; skipping PR."
-          exit 0
-        fi
-
-        # Replay onto the workflow's checkout: add/update geniex entries
-        # only; existing genie numbers are untouched.
-        python -m qai_hub_models.scripts.apply_llm_perf_updates "$updates"
-
-        git add -- 'src/qai_hub_models/models/*/perf.yaml'
-        if git diff --cached --quiet; then
-          echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          echo "Applying the updates produced no perf.yaml changes; skipping PR."
-          exit 0
-        fi
-
+        branch_name="perf/geniex-perf-${{ github.run_id }}"
+        cd $GITHUB_WORKSPACE
         git config user.name 'github-actions[bot]'
         git config user.email 'github-actions[bot]@users.noreply.github.com'
-        branch_name="perf/llm-perf-${{ github.run_id }}"
         git checkout -b "$branch_name"
+        git ls-files -co --exclude-standard | grep 'perf.yaml' | xargs git add
         git commit -m "Add GenieX performance numbers
 
         Models: $QAIHM_TEST_MODELS
-        Devices: $QAIHM_TEST_DEVICES"
+        Devices: $QAIHM_TEST_DEVICES
+
+        Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
         git push -u origin "$branch_name"
         echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
-        echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
-    - name: Open PR
-      if: ${{ steps.merge.outputs.has_changes == 'true' }}
+    - name: Upload consolidated perf.yaml files
+      if: ${{ steps.check_changes.outputs.has_changes == 'true' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: updated-perf-yamls
+        path: src/qai_hub_models/models/**/perf.yaml
+
+    - name: Create Pull Request
+      if: ${{ steps.push_changes.outputs.branch_name != '' && steps.check_changes.outputs.has_changes == 'true' }}
       uses: actions/github-script@v9
       env:
         QAIHM_TEST_MODELS: ${{ inputs.model || 'all' }}
         QAIHM_TEST_DEVICES: ${{ inputs.device || 'all' }}
-        BRANCH_NAME: ${{ steps.merge.outputs.branch_name }}
       with:
         github-token: ${{ secrets.STAGING_GH_TOKEN }}
         result-encoding: string
@@ -287,29 +321,22 @@ jobs:
           const { repo, owner } = context.repo;
           const runId = '${{ github.run_id }}';
           const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
-          const resultsUrl = '${{ needs.collect_geniex_bench_perf.outputs.results_url }}';
-          const perfUpdatesUrl = '${{ needs.collect_geniex_bench_perf.outputs.perf_updates_url }}';
-          const bodyLines = [
-            `Update data for [${runId} scorecard](${runUrl}).`,
-            '',
-          ];
-          if (resultsUrl) {
-            bodyLines.push(`[All Results (zip)](${resultsUrl})`, '');
-          }
-          if (perfUpdatesUrl) {
-            bodyLines.push(`[Perf Updates](${perfUpdatesUrl})`, '');
-          }
-          bodyLines.push(
-            `Models: ${process.env.QAIHM_TEST_MODELS}`,
-            `Devices: ${process.env.QAIHM_TEST_DEVICES}`,
-          );
+          const models = process.env.QAIHM_TEST_MODELS;
+          const devices = process.env.QAIHM_TEST_DEVICES;
           const result = await github.rest.pulls.create({
             title: `[Automated] Add GenieX performance numbers for ${runId} scorecard`,
             owner,
             repo,
-            head: process.env.BRANCH_NAME,
+            head: '${{ steps.push_changes.outputs.branch_name }}',
             base: 'main',
-            body: bodyLines.join('\n')
+            body: [
+              `Update data for [${runId} scorecard](${runUrl}).`,
+              '',
+              `Models: ${models}`,
+              `Devices: ${devices}`,
+              '',
+              `Workflow Run: ${runUrl}`,
+            ].join('\n')
           });
           console.log('PR created:', result.data.html_url);
           return result.data.html_url;

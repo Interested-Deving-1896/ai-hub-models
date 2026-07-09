@@ -79,11 +79,6 @@ on:
         default: false
         type: boolean
 
-      skip_llm:
-        description: Exclude LLM models from the run entirely (no compile/test/profile).
-        default: false
-        type: boolean
-
 env:
   PYTHON_VERSION: ${{ inputs.python_version }}
   VENV_PATH: build/ci-envs/qaihm-build
@@ -118,9 +113,6 @@ jobs:
           fi
           if [[ "${{ inputs.test_scope }}" == "unit" ]]; then
             SPLIT_ARGS="$SPLIT_ARGS --collapse-to-single-split"
-          fi
-          if [[ "${{ inputs.skip_llm }}" == "true" ]]; then
-            SPLIT_ARGS="$SPLIT_ARGS --exclude-test-splits llm"
           fi
           MATRIX=$(python -m qai_hub_models.scripts.split_torch_models $SPLIT_ARGS --output-format github)
           GPU_MATRIX=$(echo "$MATRIX" | python -c "import sys, json; splits=json.load(sys.stdin); print(json.dumps([s for s in splits if (s.get('runs_on') or {}).get('group') == 'GPU']))")

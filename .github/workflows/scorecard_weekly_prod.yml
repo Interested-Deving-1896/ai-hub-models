@@ -12,7 +12,7 @@ jobs:
         uses: ./.github/workflows/scorecard.yml
         with:
           deployment: prod
-          models: all
+          models: pytorch_no_llm,static
           test_devices: all
           test_runtimes: default, qnn_dlc_via_qnn_ep
           test_precisions: default
@@ -21,6 +21,4 @@ jobs:
           test_scope: perf_and_accuracy
           release_scope: upload_export_assets_and_create_pr
           ignore_job_cache: false
-          skip_llm_perf: true
-          skip_llm: true
           tableau_branch_name: weekly-prod

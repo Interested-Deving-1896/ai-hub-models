@@ -15,6 +15,8 @@ Remove-Item -Recurse -Force $OUT -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $LOG, $OUT, $MM_CACHE | Out-Null
 Start-Transcript -Path "$LOG\script.log" -Force | Out-Null
 
+try {
+
 # geniex-bench.exe writes informational lines to stderr even on success.
 # Called via the bare `&` operator, every such line becomes a NativeCommandError
 # ErrorRecord that QDC's parser flags as Unsuccessful — same trap that bit
@@ -102,5 +104,18 @@ foreach ($ctx in $ctxList) {
 }
 
 Write-Output "=== done ==="
-Stop-Transcript | Out-Null
+
+}
+finally {
+    # Drop per-job state on exit (dedicated-pool devices are reused across jobs;
+    # leftover extracted bundles / caches / matrix TSVs would leak into the next
+    # tenant's run).
+    Get-ChildItem -Path $TC -Directory -Filter 'geniex-bench-windows-arm64-*' -ErrorAction SilentlyContinue |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Force "$TC\geniex-bench.zip" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $MM_CACHE -ErrorAction SilentlyContinue
+    Get-ChildItem -Path "C:\Temp" -Filter 'matrix-*.tsv' -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+    Stop-Transcript | Out-Null
+}
 exit 0

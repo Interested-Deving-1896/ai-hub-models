@@ -44,6 +44,13 @@ class TestGenie:
 # makes the on-device log files available. pipefail keeps the pipeline's
 # exit status tied to genie rather than to tee, which always succeeds.
 set -o pipefail
+# Drop per-job state on exit (dedicated-pool devices are reused).
+cleanup_device() {{
+    rm -rf /data/local/tmp/genie_bundle \\
+           /data/local/tmp/qairt \\
+           /data/local/tmp/qairt.zip 2>/dev/null || true
+}}
+trap cleanup_device EXIT
 # genie-t2t-run fails randomly on QDC devices; give each invocation one retry
 # before letting the failure (and set -e) abort the whole job. Redirect stderr
 # to a log file: QDC flags jobs Unsuccessful on any stderr output (PR #3641).
@@ -54,6 +61,9 @@ genie_retry() {{
     }}
 }}
 cd /data/local/tmp/genie_bundle
+# Always re-download: dedicated-pool devices are reused, so a partial extract
+# from a previous job would otherwise silently corrupt this run.
+rm -rf /data/local/tmp/qairt
 echo "=== Pre-download connectivity check ==="
 echo "Pinging google.com before QAIRT SDK download..."
 ping -c 1 google.com && echo "Pre-download ping: SUCCESS" || echo "Pre-download ping: FAILED"
@@ -71,6 +81,8 @@ export PATH={qairt_path}/bin/aarch64-android:${{PATH}}
 export LD_LIBRARY_PATH={qairt_path}/lib/aarch64-android
 export ADSP_LIBRARY_PATH={qairt_path}/lib/hexagon-<<HEXAGON_VERSION>>/unsigned
 
+# Drop stale logs from a prior job on this shared device.
+rm -rf /data/local/tmp/QDC_logs
 mkdir -p /data/local/tmp/QDC_logs
 genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>>/data/local/tmp/QDC_logs/genie_stderr.log | tee /data/local/tmp/QDC_logs/genie.log
 {full_genie_command}

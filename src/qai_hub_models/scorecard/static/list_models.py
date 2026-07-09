@@ -9,6 +9,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen, TestRunnerSplit
 from qai_hub_models.scorecard.envvars import (
     EnabledModelsEnvvar,
     SpecialModelSetting,
@@ -75,6 +76,16 @@ def get_all_bench_models() -> list[str]:
     return get_bench_static_models() + get_bench_pytorch_models()
 
 
+@lru_cache
+def get_pytorch_no_llm_model_ids() -> frozenset[str]:
+    """Pytorch recipes with code_gen.test_split != llm."""
+    return frozenset(
+        m
+        for m in PYTORCH_RECIPE_MODEL_IDS
+        if QAIHMModelCodeGen.from_model(m).test_split != TestRunnerSplit.LLM
+    )
+
+
 def validate_and_split_enabled_models(
     models: set[str | SpecialModelSetting] | None = None,
     static_models_dir: Path | None = None,
@@ -131,6 +142,10 @@ def validate_and_split_enabled_models(
             )
         elif model_id == SpecialModelSetting.PYTORCH:
             enabled_torch_model_ids = all_torch_model_ids
+        elif model_id == SpecialModelSetting.PYTORCH_NO_LLM:
+            enabled_torch_model_ids = enabled_torch_model_ids.union(
+                get_pytorch_no_llm_model_ids()
+            )
         else:
             model_id = model_id.lower()
             if model_id in all_static_model_ids:

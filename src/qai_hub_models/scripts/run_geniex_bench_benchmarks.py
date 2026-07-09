@@ -15,6 +15,7 @@ from pathlib import Path
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
 from qai_hub_models.configs.model_metadata import ModelMetadata
+from qai_hub_models.models._shared.llm.common import get_qdc_api_token
 from qai_hub_models.models._shared.llm.perf_collection import (
     load_release_assets_for_model,
     update_perf_yaml,
@@ -219,7 +220,6 @@ def run_geniex_bench_job(
     model_id: str,
     model_ref: str,
     device_token: str,
-    api_token: str,
     context_lengths: list[int],
     save_dir_root: str,
     plugin: str,
@@ -227,6 +227,8 @@ def run_geniex_bench_job(
     llamacpp_quant: str | None = None,
 ) -> list[GenieXBenchMetrics]:
     sd = _scorecard_device(device_token)
+    # Dedicated-pool devices (cs_8_elite_qrd, cs_x_elite) use QDC_PRIVATE_API_KEY.
+    api_token = get_qdc_api_token(sd)
     device_alias = ",".join(LLAMACPP_DEVICE_ALIASES) if plugin == "llama_cpp" else "npu"
     print(f"\n{'=' * 60}")
     print(f"Model:   {model_id}")
@@ -298,11 +300,6 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    api_token = os.environ.get("QDC_API_TOKEN")
-    if not api_token:
-        print("ERROR: QDC_API_TOKEN environment variable is not set", file=sys.stderr)
-        return 1
-
     plugins = ["llama_cpp", "qairt"] if args.plugin == "all" else [args.plugin]
     precision_setting = LLMPerfPrecisionsEnvvar.parse(args.precisions)
 
@@ -361,7 +358,6 @@ def main() -> int:
                                 model_id,
                                 str(bundle_dir),
                                 device_token,
-                                api_token,
                                 ctx_list,
                                 args.results_dir,
                                 plugin,
@@ -372,7 +368,6 @@ def main() -> int:
                                 model_id,
                                 llamacpp_urls[precision],
                                 device_token,
-                                api_token,
                                 LLAMACPP_CONTEXT_LENGTHS,
                                 args.results_dir,
                                 plugin,

@@ -17,6 +17,7 @@ from transformers import AutoConfig
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.models._shared.llm import test
+from qai_hub_models.models._shared.llm.common import get_qdc_api_token
 from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
@@ -26,10 +27,6 @@ from qai_hub_models.models._shared.llm.llm_helpers import (
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     LLM_QNN,
-)
-from qai_hub_models.models._shared.llm.perf_collection import (
-    LLMPerfConfig,
-    get_llm_perf_parametrization,
 )
 from qai_hub_models.models.llama_v3_2_1b_instruct import Model
 from qai_hub_models.models.llama_v3_2_1b_instruct.demo import llama_3_2_1b_chat_demo
@@ -378,7 +375,7 @@ def test_qdc(
 
     qdc_job_name = f"Genie {MODEL_ID} {precision}"
     tps, prefill_tps, min_ttft_ms, _ = submit_genie_bundle_to_qdc_device(
-        os.environ["QDC_API_TOKEN"],
+        get_qdc_api_token(device),
         device.reference_device.name,
         str(genie_bundle_path),
         job_name=qdc_job_name,
@@ -400,51 +397,3 @@ def test_qdc(
     else:
         assert tps > 10.0
         assert min_ttft_ms < 135.0
-
-
-def _get_llm_perf_params() -> list[tuple[Precision, ScorecardDevice]]:
-    params = get_llm_perf_parametrization(
-        MODEL_ID,
-        default_devices=[cs_8_elite_qrd],
-        default_precisions=[Precision.w4],
-    )
-    return params if params else [(Precision.w4, cs_8_elite_qrd)]
-
-
-@pytest.fixture(scope="session")
-def llm_perf_config() -> LLMPerfConfig:
-    return LLMPerfConfig.from_environment()
-
-
-@pytest.mark.llm_perf
-@pytest.mark.skipif(
-    not importlib.util.find_spec("qualcomm_device_cloud_sdk"),
-    reason="This test requires the qualcomm_device_cloud_sdk package.",
-)
-@pytest.mark.parametrize(("precision", "device"), _get_llm_perf_params())
-def test_llm_perf(
-    precision: Precision,
-    device: ScorecardDevice,
-    llm_perf_config: LLMPerfConfig,
-) -> None:
-    Llama3_2_1B_PreSplit.release()
-    Llama3_2_1B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
-
-    tps, ttft, prefill_tps = test.run_llm_perf_test(
-        model_id=MODEL_ID,
-        device=device,
-        precision=precision,
-        output_dir=test.GENIE_BUNDLES_ROOT,
-        qairt_sdk_path=llm_perf_config.qairt_sdk_path,
-        skip_perf_update=llm_perf_config.skip_perf_update,
-    )
-    log_perf_on_device_result(
-        model_name=MODEL_ID,
-        precision=str(precision),
-        device=device.name,
-        tps=tps,
-        prefill_tps=prefill_tps,
-        ttft_ms=ttft,
-    )

@@ -4,7 +4,6 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-import importlib
 import os
 from pathlib import Path
 from typing import Any
@@ -20,15 +19,10 @@ from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
     log_evaluate_test_result,
-    log_perf_on_device_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     LLM_QNN,
-)
-from qai_hub_models.models._shared.llm.perf_collection import (
-    LLMPerfConfig,
-    get_llm_perf_parametrization,
 )
 from qai_hub_models.models.qwen3_8b import Model
 from qai_hub_models.models.qwen3_8b.demo import qwen3_8b_chat_demo
@@ -180,7 +174,6 @@ def test_evaluate(
     np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.05, atol=0)
 
 
-@pytest.mark.nightly
 @pytest.mark.demo
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
@@ -215,7 +208,6 @@ def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     QuantizedSplitModelWrapper.release()
 
 
-@pytest.mark.nightly
 @pytest.mark.demo
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
@@ -237,7 +229,6 @@ def test_demo_default(
     assert "Paris" in captured.out
 
 
-@pytest.mark.nightly
 @pytest.mark.parametrize(
     ("precision", "scorecard_path", "device", "checkpoint"),
     [
@@ -286,51 +277,3 @@ def test_compile(
         print(f"[provenance] compile_job[{compile_key}]={compile_job.job_id}")
     for link_key, link_job in (result.link_jobs or {}).items():
         print(f"[provenance] link_job[{link_key}]={link_job.job_id}")
-
-
-def _get_llm_perf_params() -> list[tuple[Precision, ScorecardDevice]]:
-    params = get_llm_perf_parametrization(
-        MODEL_ID,
-        default_devices=[cs_8_elite_qrd],
-        default_precisions=[Precision.w4a16],
-    )
-    return params if params else [(Precision.w4a16, cs_8_elite_qrd)]
-
-
-@pytest.fixture(scope="session")
-def llm_perf_config() -> LLMPerfConfig:
-    return LLMPerfConfig.from_environment()
-
-
-@pytest.mark.llm_perf
-@pytest.mark.skipif(
-    not importlib.util.find_spec("qualcomm_device_cloud_sdk"),
-    reason="This test requires the qualcomm_device_cloud_sdk package.",
-)
-@pytest.mark.parametrize(("precision", "device"), _get_llm_perf_params())
-def test_llm_perf(
-    precision: Precision,
-    device: ScorecardDevice,
-    llm_perf_config: LLMPerfConfig,
-) -> None:
-    Qwen3_8B_PreSplit.release()
-    Qwen3_8B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
-
-    tps, ttft, prefill_tps = test.run_llm_perf_test(
-        model_id=MODEL_ID,
-        device=device,
-        precision=precision,
-        output_dir=test.GENIE_BUNDLES_ROOT,
-        qairt_sdk_path=llm_perf_config.qairt_sdk_path,
-        skip_perf_update=llm_perf_config.skip_perf_update,
-    )
-    log_perf_on_device_result(
-        model_name=MODEL_ID,
-        precision=str(precision),
-        device=device.name,
-        tps=tps,
-        prefill_tps=prefill_tps,
-        ttft_ms=ttft,
-    )
