@@ -92,6 +92,7 @@ def test_runtime_model_validation() -> None:
         ENABLED_PRECISION_RUNTIMES,
         PASSING_PRECISION_RUNTIMES,
         can_use_quantize_job=False,
+        is_llm=True,
     ),
     ids=pytest_device_idfn,
 )

@@ -149,7 +149,7 @@ def test_quantize(precision: Precision) -> None:
 
 {%- endif %}
 
-@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_compile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}), ids=pytest_device_idfn)
+@pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_compile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}{{ ", is_llm=True" if is_llm else ''}}), ids=pytest_device_idfn)
 @pytest.mark.compile
 def test_compile(precision: Precision, scorecard_path: ScorecardCompilePath, device: ScorecardDevice) -> None:
     skip_invalid_runtime_device(Model, scorecard_path.runtime, device)
