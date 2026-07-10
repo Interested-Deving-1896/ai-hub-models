@@ -51,8 +51,8 @@ def main() -> None:
     out_path = Path(sys.argv[2])
 
     log_text = log_path.read_text(errors="replace")
-    match = STDOUT_RE.search(log_text)
-    if not match:
+    matches = list(STDOUT_RE.finditer(log_text))
+    if not matches:
         print(
             f"ERROR: no tool stdout containing {BEGIN!r} found in {log_path}.\n"
             "The agent may have failed before emitting drafts, or the SDK "
@@ -61,8 +61,8 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # JSON-decode the captured string to undo \n / \" / \\ escapes.
-    raw = match.group(1).encode("utf-8").decode("unicode_escape")
+    # Take last match: earlier matches may be the agent echoing its own script.
+    raw = matches[-1].group(1).encode("utf-8").decode("unicode_escape")
 
     # Strip everything outside the markers; what's left is the base64 dump
     # `base64` produced (with embedded newlines from the standard wrap).
