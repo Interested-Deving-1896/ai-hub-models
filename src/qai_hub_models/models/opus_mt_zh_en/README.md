@@ -29,7 +29,7 @@ for the full list of commands and filters.
 
 ## Deploying OpusMT-Zh-En on-device
 
-This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from the [Qualcomm Package Manager](https://qpm.qualcomm.com/#/main/tools/details/VoiceAI_ASR) to deploy this model on-device.
+This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from the [Qualcomm Package Manager](https://qpm.qualcomm.com/#/main/tools/details/VoiceAI_Translation) to deploy this model on-device.
 
 ## Setup
 ### 1. Install the package

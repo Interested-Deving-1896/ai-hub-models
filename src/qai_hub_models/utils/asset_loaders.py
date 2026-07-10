@@ -43,6 +43,7 @@ from tqdm import tqdm
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models._version import version
+from qai_hub_models.configs._info_yaml_enums import VOICE_AI_SDK
 from qai_hub_models.utils.aws import can_access_private_s3
 from qai_hub_models.utils.envvars import DevModeEnvvar, IsOnCIEnvvar
 from qai_hub_models.utils.version_helpers import QAIHMVersion
@@ -485,7 +486,7 @@ class ModelZooAssetConfig:
         genie_url: str,
         geniex_url: str,
         geniex_quickstart_url: str,
-        voice_ai_url: str,
+        voice_ai_urls: dict[str, str],
         global_release_asset_folder: str,
         released_asset_folder: str,
         released_asset_filename: str,
@@ -506,11 +507,21 @@ class ModelZooAssetConfig:
         self.genie_url = genie_url
         self.geniex_url = geniex_url
         self.geniex_quickstart_url = geniex_quickstart_url
-        self.voice_ai_url = voice_ai_url
+        self.voice_ai_urls = voice_ai_urls
         self.global_release_asset_folder = global_release_asset_folder
         self.released_asset_folder = released_asset_folder
         self.released_asset_filename = released_asset_filename
         self.released_asset_with_chipset_filename = released_asset_with_chipset_filename
+
+    def get_voice_ai_url(self, sdk: VOICE_AI_SDK) -> str:
+        """Return the QPM download URL for the given VOICE_AI_SDK variant."""
+        try:
+            return self.voice_ai_urls[sdk.value]
+        except KeyError as e:
+            raise ValueError(
+                f"No voice_ai_urls entry for SDK {sdk.value!r}. "
+                f"Known SDKs: {sorted(self.voice_ai_urls)}."
+            ) from e
 
     def get_hugging_face_url(self, model_name: str) -> str:
         return f"https://huggingface.co/{self.get_huggingface_path(model_name)}"
@@ -720,7 +731,7 @@ class ModelZooAssetConfig:
             asset_cfg["genie_url"],
             asset_cfg["geniex_url"],
             asset_cfg["geniex_quickstart_url"],
-            asset_cfg["voice_ai_url"],
+            asset_cfg["voice_ai_urls"],
             asset_cfg["global_release_asset_folder"],
             asset_cfg["released_asset_folder"],
             asset_cfg["released_asset_filename"],
@@ -746,7 +757,7 @@ class ModelZooAssetConfig:
                 "genie_url": str,
                 "geniex_url": str,
                 "geniex_quickstart_url": str,
-                "voice_ai_url": str,
+                "voice_ai_urls": {str: str},
                 "global_release_asset_folder": str,
                 "released_asset_folder": str,
                 "released_asset_filename": str,

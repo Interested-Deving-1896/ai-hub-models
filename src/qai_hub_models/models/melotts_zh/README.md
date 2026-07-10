@@ -29,7 +29,7 @@ for the full list of commands and filters.
 
 ## Deploying MeloTTS-ZH on-device
 
-This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from the [Qualcomm Package Manager](https://qpm.qualcomm.com/#/main/tools/details/VoiceAI_ASR) to deploy this model on-device.
+This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from the [Qualcomm Package Manager](https://qpm.qualcomm.com/#/main/tools/details/VoiceAI_TTS) to deploy this model on-device.
 
 ## Setup
 ### 1. Install System-Level Dependencies

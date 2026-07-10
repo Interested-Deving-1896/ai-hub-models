@@ -23,6 +23,7 @@ from qai_hub_models.configs._info_yaml_enums import (
     MODEL_STATUS,
     MODEL_TAG,
     MODEL_USE_CASE,
+    VOICE_AI_SDK,
 )
 from qai_hub_models.configs._info_yaml_llm_details import LLM_CALL_TO_ACTION, LLMDetails
 from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
@@ -35,6 +36,7 @@ from qai_hub_models.configs.proto_helpers import (
     status_to_proto,
     tag_to_proto,
     use_case_to_proto,
+    voice_ai_sdk_to_proto,
 )
 from qai_hub_models.utils.asset_loaders import (
     ASSET_CONFIG,
@@ -285,8 +287,11 @@ class QAIHMModelInfo(BaseQAIHMConfig):
     # Add per device, download, app and if the model is available for purchase.
     llm_details: LLMDetails | None = None
 
-    # Whether the model is compatible with the Qualcomm Voice AI SDK.
-    voice_ai_compatible: bool = False
+    # Which Qualcomm Voice AI SDK variant the model is compatible with.
+    # Unset means the model has no Voice AI SDK integration; the "Deploying
+    # on-device" section that links to the SDK download page is only emitted
+    # when this is set.
+    voice_ai_sdk: VOICE_AI_SDK | None = None
 
     @staticmethod
     def _technical_details_to_proto(
@@ -361,7 +366,7 @@ class QAIHMModelInfo(BaseQAIHMConfig):
                 form_factor_to_proto(ff)
                 for ff in (self.private_perf_form_factors or [])
             ],
-            voice_ai_compatible=self.voice_ai_compatible,
+            voice_ai_sdk=voice_ai_sdk_to_proto(self.voice_ai_sdk),
         )
 
     @model_validator(mode="after")

@@ -74,6 +74,13 @@ enum ModelStatus {
   MODEL_STATUS_PENDING = 3;
 }
 
+enum VoiceAISdk {
+  VOICE_AI_SDK_UNSPECIFIED = 0;
+  VOICE_AI_SDK_ASR = 1;
+  VOICE_AI_SDK_TTS = 2;
+  VOICE_AI_SDK_TRANSLATION = 3;
+}
+
 enum ModelUseCase {
   MODEL_USE_CASE_UNSPECIFIED = 0;
 
@@ -243,12 +250,16 @@ message ModelInfo {
   // Device form factors for which we don't publish performance data.
   repeated FormFactor private_perf_form_factors = 30;
 
-  // Whether the model is compatible with the Qualcomm Voice AI SDK.
-  bool voice_ai_compatible = 31;
+  reserved 31;
+  reserved "voice_ai_compatible";
 
   // Technical details that only apply to specific runtimes, e.g. a model size
   // that differs per runtime. One entry per runtime that has such details.
   repeated RuntimeTechnicalDetails runtime_technical_details = 32;
+
+  // Which Qualcomm Voice AI SDK variant the model is compatible with.
+  // Unset means the model has no Voice AI SDK integration.
+  VoiceAISdk voice_ai_sdk = 33;
 
   message TechnicalDetail {
     string key = 1;

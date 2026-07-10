@@ -14,6 +14,7 @@ from qai_hub_models.configs._info_yaml_enums import (
     MODEL_STATUS,
     MODEL_TAG,
     MODEL_USE_CASE,
+    VOICE_AI_SDK,
 )
 from qai_hub_models.configs._info_yaml_llm_details import LLM_CALL_TO_ACTION
 from qai_hub_models.utils.device import FormFactor
@@ -200,3 +201,18 @@ def call_to_action_to_proto(cta: LLM_CALL_TO_ACTION) -> int:
     if cta.value not in _CALL_TO_ACTION_TO_PROTO:
         raise ValueError(f"Unknown call to action: {cta.value}")
     return _CALL_TO_ACTION_TO_PROTO[cta.value]
+
+
+_VOICE_AI_SDK_TO_PROTO: dict[str, int] = {
+    VOICE_AI_SDK.ASR.value: info_pb2.VOICE_AI_SDK_ASR,
+    VOICE_AI_SDK.TTS.value: info_pb2.VOICE_AI_SDK_TTS,
+    VOICE_AI_SDK.TRANSLATION.value: info_pb2.VOICE_AI_SDK_TRANSLATION,
+}
+
+
+def voice_ai_sdk_to_proto(sdk: VOICE_AI_SDK | None) -> int:
+    if sdk is None:
+        return info_pb2.VOICE_AI_SDK_UNSPECIFIED
+    if sdk.value not in _VOICE_AI_SDK_TO_PROTO:
+        raise ValueError(f"Unknown voice AI SDK: {sdk.value}")
+    return _VOICE_AI_SDK_TO_PROTO[sdk.value]

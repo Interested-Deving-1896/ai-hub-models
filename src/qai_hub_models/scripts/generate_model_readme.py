@@ -96,8 +96,12 @@ def get_shared_template_args(model_info: QAIHMModelInfo) -> dict[str, Any]:
         "license_url": model_info.license,
         # Flags
         "include_gen_ai_terms": model_info.is_gen_ai_model,
-        "voice_ai_compatible": model_info.voice_ai_compatible,
-        "voice_ai_url": ASSET_CONFIG.voice_ai_url,
+        "voice_ai_sdk": model_info.voice_ai_sdk,
+        "voice_ai_url": (
+            ASSET_CONFIG.get_voice_ai_url(model_info.voice_ai_sdk)
+            if model_info.voice_ai_sdk is not None
+            else None
+        ),
         # On-device deployment section (driven by orchestrator_runtimes)
         "has_geniex_runtime": has_geniex_runtime,
         "has_genie_runtime": has_genie_runtime,

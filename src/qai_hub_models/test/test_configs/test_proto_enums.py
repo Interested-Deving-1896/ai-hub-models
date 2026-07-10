@@ -27,6 +27,7 @@ from qai_hub_models.configs._info_yaml_enums import (
     MODEL_STATUS,
     MODEL_TAG,
     MODEL_USE_CASE,
+    VOICE_AI_SDK,
 )
 from qai_hub_models.configs._info_yaml_llm_details import LLM_CALL_TO_ACTION
 from qai_hub_models.configs.proto_helpers import (
@@ -39,6 +40,7 @@ from qai_hub_models.configs.proto_helpers import (
     _STATUS_TO_PROTO,
     _TAG_TO_PROTO,
     _USE_CASE_TO_PROTO,
+    _VOICE_AI_SDK_TO_PROTO,
 )
 from qai_hub_models.configs.tensor_spec import (
     _BBOX_FORMAT_TO_PROTO,
@@ -115,6 +117,21 @@ class TestFormFactorMapping:
             platform_pb2.DESCRIPTOR.enum_types_by_name["FormFactor"]
         )
         mapped = set(_FORM_FACTOR_TO_PROTO.values())
+        assert proto_values == mapped
+
+
+class TestVoiceAISDKMapping:
+    def test_python_to_proto(self) -> None:
+        for lic in VOICE_AI_SDK:
+            assert lic.value in _VOICE_AI_SDK_TO_PROTO, (
+                f"VOICE_AI_SDK.{lic.name} has no proto mapping"
+            )
+
+    def test_proto_to_python(self) -> None:
+        proto_values = _proto_enum_values(
+            info_pb2.DESCRIPTOR.enum_types_by_name["VoiceAISdk"]
+        )
+        mapped = set(_VOICE_AI_SDK_TO_PROTO.values())
         assert proto_values == mapped
 
 

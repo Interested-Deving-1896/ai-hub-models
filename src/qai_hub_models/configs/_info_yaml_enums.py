@@ -208,6 +208,13 @@ class MODEL_STATUS(Enum):
 
 
 @unique
+class VOICE_AI_SDK(Enum):
+    ASR = "asr"
+    TTS = "tts"
+    TRANSLATION = "translation"
+
+
+@unique
 class MODEL_USE_CASE(Enum):
     # Image: 100 - 199
     IMAGE_CLASSIFICATION = "Image Classification"
