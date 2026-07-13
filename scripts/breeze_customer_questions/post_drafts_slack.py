@@ -14,7 +14,7 @@ draft + KB citation.
 
 Channel routing:
     --test-mode true  -> #tungsten-debug (debug)
-    --test-mode false -> #ai-hub-models (production)
+    --test-mode false -> #ai-hub-github-notify (production)
 Override with --channel <id> if needed.
 """
 
@@ -39,7 +39,7 @@ REMIND_STATUSES = {"no-reply", "ack-only"}
 # overruns this, we truncate with a pointer to the workflow artifact.
 MAX_MESSAGE_CHARS = 3500
 
-DEFAULT_PROD_CHANNEL = "C05LEEK0N8J"  # #ai-hub-models
+DEFAULT_PROD_CHANNEL = "C09GG81GW05"  # #ai-hub-github-notify
 DEFAULT_TEST_CHANNEL = "C09MKAM6AGP"  # #tungsten-debug
 
 SLACK_API = "https://slack.com/api"

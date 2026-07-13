@@ -18,7 +18,7 @@
 ##                       naturally emits reminder-only output when the
 ##                       JSON has no drafts.
 ##
-## Reminders post to #ai-hub-models (or #tungsten-debug in test_mode) as a
+## Reminders post to #ai-hub-github-notify (or #tungsten-debug in test_mode) as a
 ## parent message (+ threaded draft replies when drafting is enabled). No
 ## customer thread is ever touched. The full classified JSON is uploaded
 ## as a workflow artifact for forensic lookback after Slack retention
@@ -27,7 +27,7 @@
 ## Two independent knobs (Pattern B):
 ##  - test_mode (default true) — channel routing only. True routes to
 ##    #tungsten-debug with a [TEST] prefix; false routes to
-##    #ai-hub-models. Does NOT control drafting.
+##    #ai-hub-github-notify. Does NOT control drafting.
 ##  - enable_drafts (default false) — drafting gate. When true, the agent
 ##    reads customer-faq.md and drafts starter answers for no-reply /
 ##    ack-only threads. When false, drafts are omitted entirely (all
@@ -337,11 +337,11 @@ jobs:
             text: "[TEST] Customer-questions reminder workflow encountered a failure.\nScrape: ${{ needs.scrape-questions.result }} (count: ${{ needs.scrape-questions.outputs.question_count || '0' }})\nClassify: ${{ needs.draft-and-post.result }}\nSlack reminder: ${{ needs.post-to-slack.result }}\nWorkflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - uses: slackapi/slack-github-action@v3
-        name: Notify Slack — failure (prod → #ai-hub-models)
+        name: Notify Slack — failure (prod → #ai-hub-github-notify)
         if: ${{ !inputs.test_mode && github.event_name == 'schedule' }}
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
           payload: |
-            channel: "C05LEEK0N8J"
+            channel: "C09GG81GW05"
             text: "Customer-questions reminder workflow encountered a failure.\nScrape: ${{ needs.scrape-questions.result }} (count: ${{ needs.scrape-questions.outputs.question_count || '0' }})\nClassify: ${{ needs.draft-and-post.result }}\nSlack reminder: ${{ needs.post-to-slack.result }}\nWorkflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
