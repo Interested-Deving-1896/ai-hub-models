@@ -19,11 +19,22 @@ import sys
 
 DEDICATED_DEVICES = {"cs_8_elite_qrd", "cs_x_elite"}
 
+# Keep in sync with ALL_GENIEX_DEVICES in
+# src/qai_hub_models/scripts/run_geniex_bench_benchmarks.py.
+ALL_GENIEX_DEVICES = (
+    "cs_x_elite",
+    "cs_x2_elite",
+    "cs_9075",
+    "cs_8_elite_qrd",
+    "cs_8_elite_gen_5_qrd",
+)
+
 
 def split(device_input: str) -> tuple[str, str]:
     device_input = (device_input or "all").strip()
     if device_input.lower() == "all":
-        return "all", ",".join(sorted(DEDICATED_DEVICES))
+        shared = ",".join(d for d in ALL_GENIEX_DEVICES if d not in DEDICATED_DEVICES)
+        return shared, ",".join(sorted(DEDICATED_DEVICES))
 
     shared: list[str] = []
     dedicated: list[str] = []
