@@ -12,13 +12,14 @@ import os
 import re
 import tempfile
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from functools import cache
 from pathlib import Path
 from typing import Any
 
 from prettytable import PrettyTable
-from qai_hub import Client, Job, JobType
+from qai_hub import Client, CompileJob, Job, JobType, LinkJob
 from ruamel.yaml import YAML
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 AIHW_COMPILER_NIGHTLY_PROJECT = os.environ.get("COMPILER_NIGHTLY_PROJECT_ID", "")
 DEFAULT_OUTPUT_DIR = Path("results")
 DEFAULT_MAX_WORKERS = 10
+MAX_RERUN_WORKERS = 50
 KNOWN_FAILURES_CONFIG = Path(__file__).parent / "config" / "known_failures.yaml"
 
 # Job status constants
@@ -76,6 +78,13 @@ def wait_for_job_with_timeout(job: Job, model_name: str) -> str:
         return JOB_STATUS_FAILED
 
 
+def validate_tag(tag: str) -> str:
+    """Reject tags with path-traversal or other unsafe characters."""
+    if not re.fullmatch(r"[\w\-\.]+", tag):
+        raise ValueError(f"Unsafe tag: {tag!r}")
+    return tag
+
+
 def extract_tag_and_dir_from_yaml(yaml_path: Path) -> tuple[str, Path]:
     """Extract tag and output directory from YAML file path.
 
@@ -84,9 +93,7 @@ def extract_tag_and_dir_from_yaml(yaml_path: Path) -> tuple[str, Path]:
     output_dir = yaml_path.parent
     stem = yaml_path.stem
     tag = stem.split("__", 1)[1] if "__" in stem else get_date_str()
-    if not re.fullmatch(r"[\w\-\.]+", tag):
-        raise ValueError(f"Unsafe tag extracted from filename: {tag!r}")
-    return tag, output_dir
+    return validate_tag(tag), output_dir
 
 
 def load_client(profile: str) -> Client:
@@ -329,6 +336,176 @@ def filter_known_failures(
         (known if is_known else real)[model_name] = info
 
     return real, known
+
+
+def _resubmit_identical_job(client: Client, job: Job, project_id: str | None) -> Job:
+    """Resubmit a compile or link job with identical parameters on `client`.
+
+    `project_id` pins the re-run into the same shared Hub project as the
+    original nightly submission (see `get_aihw_compiler_nightly_project`).
+    """
+    if isinstance(job, CompileJob):
+        return client.submit_compile_job(
+            model=job.model,
+            device=job.device,
+            name=job.name,
+            input_specs=job.shapes,
+            options=job.options,
+            project=project_id,
+        )
+    if isinstance(job, LinkJob):
+        return client.submit_link_job(
+            models=job.models,
+            device=job.device,
+            name=job.name,
+            options=job.options,
+            project=project_id,
+        )
+    raise TypeError(
+        f"Cannot resubmit job {job.job_id}: unsupported type {type(job).__name__}"
+    )
+
+
+def _rerun_single_regression(
+    client: Client,
+    model_name: str,
+    info: dict,
+    job_id_key: str,
+    url_key: str,
+    project_id: str | None,
+) -> tuple[str, dict, str]:
+    """Re-run one regression job and wait for its terminal status.
+
+    Returns (model_name, updated_info, status_code). The returned info repoints
+    its job id / url fields to the re-run job and records the original job id.
+    """
+    logger = logging.getLogger(__name__)
+    orig_job_id = info.get(job_id_key)
+    orig_job = client.get_job(orig_job_id)
+    new_job = _resubmit_identical_job(client, orig_job, project_id)
+    if isinstance(new_job, list):
+        if len(new_job) > 1:
+            logger.warning(
+                f"Re-run of {model_name} ({orig_job_id}) returned "
+                f"{len(new_job)} jobs; only the first is awaited/tracked"
+            )
+        new_job = new_job[0]
+
+    status_code = wait_for_job_with_timeout(new_job, model_name)
+
+    updated = info.copy()
+    updated["original_job"] = orig_job_id
+    updated["original_job_url"] = info.get(url_key)
+    updated["rerun_status"] = status_code
+    # Keep dev_status in sync so downstream tables (e.g. post_link_results'
+    # status table) reflect the re-run outcome rather than the stale failure.
+    if "dev_status" in updated:
+        updated["dev_status"] = status_code
+    updated[job_id_key] = new_job.job_id
+    updated[url_key] = new_job.url
+    return model_name, updated, status_code
+
+
+def rerun_regressions(
+    regressions: dict,
+    client: Client,
+    job_id_key: str,
+    max_workers: int | None = None,
+) -> tuple[dict, dict]:
+    """Re-run failed regression jobs to separate real regressions from infra flakes.
+
+    Failed jobs flagged as regressions are sometimes caused by infrastructure
+    issues rather than a genuine compiler/linker change. Each regression is
+    resubmitted with identical parameters and awaited:
+      - Fails again -> real regression.
+      - Passes      -> infrastructure failure (transient).
+
+    Parameters
+    ----------
+    regressions:
+        Regression map (already filtered of known failures).
+    client:
+        Dev hub client used to fetch and resubmit the jobs.
+    job_id_key:
+        Key in each info dict holding the dev job id ("dev_job" for compile,
+        "link_job" for link).
+    max_workers:
+        Parallelism for awaiting re-run jobs. Defaults to one worker per
+        regression (capped at `MAX_RERUN_WORKERS`). This work is I/O-bound
+        (blocking on network polling), so the shared `DEFAULT_MAX_WORKERS` fan-out
+        cap would serialize large regression batches — the exact case this
+        feature exists to catch.
+
+    Returns
+    -------
+    tuple[dict, dict]
+        (real_regressions, infra_failures). Both carry the re-run job id/url and
+        an `original_job` field for traceability.
+    """
+    if not regressions:
+        return {}, {}
+
+    if max_workers is None:
+        max_workers = min(len(regressions), MAX_RERUN_WORKERS)
+
+    # Both compile and link result dicts expose the dev job url under this key.
+    url_key = "dev_job_url"
+
+    # Pin re-runs into the same shared Hub project as the original nightly runs.
+    project_id = get_aihw_compiler_nightly_project()
+
+    logger = logging.getLogger(__name__)
+    log_and_print(
+        f"Re-running {len(regressions)} regression(s) to rule out infra failures",
+        logger,
+    )
+
+    real: dict = {}
+    infra: dict = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(
+                _rerun_single_regression,
+                client,
+                model_name,
+                info,
+                job_id_key,
+                url_key,
+                project_id,
+            ): model_name
+            for model_name, info in regressions.items()
+        }
+        for future in as_completed(futures):
+            model_name = futures[future]
+            try:
+                model_name, updated, status_code = future.result()
+            except Exception:
+                # If the re-run itself errors, keep it as a real regression so it
+                # is not silently dropped.
+                logger.exception(
+                    f"Re-run failed for {model_name}; keeping as regression"
+                )
+                real[model_name] = regressions[model_name]
+                continue
+
+            if status_code == JOB_STATUS_SUCCESS:
+                infra[model_name] = updated
+                log_and_print(
+                    f"  {model_name}: INFRA FAILURE (passed on re-run)", logger
+                )
+            else:
+                real[model_name] = updated
+                log_and_print(
+                    f"  {model_name}: REAL REGRESSION (failed on re-run)", logger
+                )
+
+    log_and_print(
+        f"Re-run complete: {len(real)} real regression(s), "
+        f"{len(infra)} infrastructure failure(s)",
+        logger,
+    )
+    return real, infra
 
 
 def find_passing_known_failures(passing: dict, job_type: JobType) -> dict:

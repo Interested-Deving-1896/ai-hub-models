@@ -22,7 +22,9 @@ from utils import (
     load_yaml_safe,
     log_and_print,
     print_results_table,
+    rerun_regressions,
     save_results_csv,
+    save_yaml_results,
     setup_script_logging,
 )
 
@@ -197,6 +199,17 @@ def main() -> int:
         if known:
             log_and_print(f"Excluded {len(known)} known link failures", logger)
 
+        # Re-run remaining regressions: failures flagged as regressions are
+        # sometimes transient infrastructure issues. Anything that passes on
+        # re-run is reclassified as an infrastructure failure.
+        regressions, infra_failures = rerun_regressions(
+            regressions, dev_client, job_id_key="link_job"
+        )
+        if infra_failures:
+            infra_path = output_dir / f"dev-link-infra-failures__{tag}.yaml"
+            save_yaml_results(infra_failures, infra_path)
+            log_and_print(f"Saved infrastructure failures: {infra_path}", logger)
+
         passing = {k: v for k, v in status_changes.items() if v["dev_success"]}
         passing_known = find_passing_known_failures(passing, JobType.LINK)
 
@@ -218,15 +231,32 @@ def main() -> int:
             "No stale known issues.",
         )
         print_status_table(
+            infra_failures,
+            f"INFRASTRUCTURE FAILURES: {len(infra_failures)} models failed then "
+            "PASSED on re-run (Dev URL is the re-run job)",
+            "No infrastructure failures.",
+        )
+        print_status_table(
             regressions,
-            f"REGRESSIONS: {len(regressions)} models now fail in dev",
+            f"REGRESSIONS: {len(regressions)} models now fail in dev "
+            "(failed again on re-run)",
             "No regressions found! 🎉",
         )
         save_full_table_csv(status_changes, output_dir, tag)
 
+        exit_code = 0
+
         if regressions:
-            log_and_print(f"✗ Found {len(regressions)} link regressions.", logger)
-            return 1
+            log_and_print(f"✗ Found {len(regressions)} real link regressions.", logger)
+            exit_code = 1
+
+        if infra_failures:
+            log_and_print(
+                f"✗ Found {len(infra_failures)} infrastructure failures "
+                "(passed on re-run).",
+                logger,
+            )
+            exit_code = 1
 
         if passing_known:
             log_and_print(
@@ -234,10 +264,11 @@ def main() -> int:
                 "Remove them from known_failures.yaml.",
                 logger,
             )
-            return 1
+            exit_code = 1
 
-        log_and_print("✓ No link regressions found.", logger)
-        return 0
+        if exit_code == 0:
+            log_and_print("✓ No link regressions found.", logger)
+        return exit_code
 
     except Exception:
         logger.exception("✗ Script failed")

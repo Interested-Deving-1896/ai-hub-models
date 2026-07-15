@@ -21,7 +21,10 @@ from utils import (
     load_client,
     load_yaml_safe,
     log_and_print,
+    rerun_regressions,
+    save_yaml_results,
     setup_script_logging,
+    validate_tag,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,6 +41,7 @@ def print_summary(
     passed: dict,
     known: dict,
     passing_known: dict,
+    infra_failures: dict,
     job_yaml_tag: str,
 ) -> None:
     summary_table = PrettyTable()
@@ -46,6 +50,7 @@ def print_summary(
     summary_table.align["Count"] = "r"
     summary_table.add_row(["Passed (Both Prod & Dev)", len(passed)])
     summary_table.add_row(["Regressions", len(regressions)])
+    summary_table.add_row(["Infrastructure Failures", len(infra_failures)])
     summary_table.add_row(["Progressions", len(progressions)])
     summary_table.add_row(["Failures (Both Prod & Dev)", len(failures)])
     summary_table.add_row(["Known Failures (Excluded)", len(known)])
@@ -60,7 +65,15 @@ def print_summary(
     # Print regressions and known failures to console and log
     field_names = ["Model", "Prod Job URL", "Dev Job URL"]
     console_sections = [
-        (regressions, "REGRESSIONS: Prod SUCCESS -> Dev FAILED"),
+        (
+            regressions,
+            "REGRESSIONS: Prod SUCCESS -> Dev FAILED (failed again on re-run)",
+        ),
+        (
+            infra_failures,
+            "INFRASTRUCTURE FAILURES: Dev FAILED then PASSED on re-run "
+            "(Dev Job URL is the re-run job)",
+        ),
         (
             known,
             "KNOWN FAILURES: Prod SUCCESS -> Dev FAILED (excluded from regressions)",
@@ -126,7 +139,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    job_yaml_tag = args.tag or get_date_str()
+    job_yaml_tag = validate_tag(args.tag) if args.tag else get_date_str()
     log_file = setup_script_logging(
         args.results_dir, "post-compile-results", args.verbose, job_yaml_tag
     )
@@ -157,6 +170,17 @@ def main() -> int:
         if known:
             log_and_print(f"Excluded {len(known)} known compile failures", logger)
 
+        # Re-run remaining regressions: failures flagged as regressions are
+        # sometimes transient infrastructure issues. Anything that passes on
+        # re-run is reclassified as an infrastructure failure.
+        regressions, infra_failures = rerun_regressions(
+            regressions, dev_client, job_id_key="dev_job"
+        )
+        if infra_failures:
+            infra_path = args.results_dir / f"dev-infra-failures__{job_yaml_tag}.yaml"
+            save_yaml_results(infra_failures, infra_path)
+            log_and_print(f"Saved infrastructure failures: {infra_path}", logger)
+
         passing = {**passed, **progressions}
         passing_known = find_passing_known_failures(passing, JobType.COMPILE)
 
@@ -167,12 +191,23 @@ def main() -> int:
             passed,
             known,
             passing_known,
+            infra_failures,
             job_yaml_tag,
         )
 
+        exit_code = 0
+
         if regressions:
-            log_and_print(f"✗ Found {len(regressions)} regressions.", logger)
-            return 1
+            log_and_print(f"✗ Found {len(regressions)} real regressions.", logger)
+            exit_code = 1
+
+        if infra_failures:
+            log_and_print(
+                f"✗ Found {len(infra_failures)} infrastructure failures "
+                "(passed on re-run).",
+                logger,
+            )
+            exit_code = 1
 
         if passing_known:
             log_and_print(
@@ -180,10 +215,11 @@ def main() -> int:
                 "Remove them from known_failures.yaml.",
                 logger,
             )
-            return 1
+            exit_code = 1
 
-        log_and_print("✓ No regressions found.", logger)
-        return 0
+        if exit_code == 0:
+            log_and_print("✓ No regressions found.", logger)
+        return exit_code
 
     except Exception:
         logger.exception("✗ Script failed")
