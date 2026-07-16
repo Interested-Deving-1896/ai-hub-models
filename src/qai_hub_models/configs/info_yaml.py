@@ -456,14 +456,8 @@ class QAIHMModelInfo(BaseQAIHMConfig):
             if not os.path.exists(self.get_package_path() / "info.yaml"):
                 raise ValueError("All published models must have an info.yaml")
 
-            # If a model is not running in scorecard and is published,
-            # there must be a perf yaml
-            if (not self.code_gen_config.runs_in_scorecard) and not os.path.exists(
-                self.get_package_path() / "perf.yaml"
-            ):
-                raise ValueError(
-                    "All published models that don't run in scorecard must have a perf.yaml"
-                )
+            if not os.path.exists(self.get_package_path() / "perf.yaml"):
+                raise ValueError("All published models must have a perf.yaml")
 
             if not self.code_gen_config.supports_at_least_1_runtime:
                 raise ValueError(

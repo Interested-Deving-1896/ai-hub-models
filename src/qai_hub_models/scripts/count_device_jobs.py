@@ -15,7 +15,7 @@ from pathlib import Path
 from qai_hub.client import JobType
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen, TestRunnerSplit
+from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
 from qai_hub_models.scorecard.device import ScorecardDevice, cs_universal
 from qai_hub_models.scorecard.envvars import (
     EnabledDevicesEnvvar,
@@ -32,6 +32,10 @@ from qai_hub_models.scorecard.execution_helpers import (
 )
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.results.yaml import ComponentNamesYaml
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+    TestRunnerSplit,
+)
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -61,9 +65,10 @@ def _extract_codegen_test_options(
     bool,
 ]:
     cj = QAIHMModelCodeGen.from_model(model_id)
+    sc = QAIHMModelScorecardConfig.from_model(model_id)
     options = _extract_runtime_and_precision_options(cj)
     return (
-        cj.skip_hub_tests_and_scorecard or cj.skip_scorecard,
+        sc.skip_hub_tests_and_scorecard or sc.skip_scorecard,
         (
             ComponentNamesYaml.from_intermediates().get(model_id)
             or ["dummy_single_component"]
@@ -256,7 +261,7 @@ def count_device_jobs(
     enabled_torch_models = {
         m
         for m in enabled_torch_models
-        if QAIHMModelCodeGen.from_model(m).test_split is not TestRunnerSplit.LLM
+        if QAIHMModelScorecardConfig.from_model(m).test_split is not TestRunnerSplit.LLM
     }
     for model_id in enabled_torch_models:
         # Get profile & inference job paramaterizations, concat them

@@ -24,6 +24,9 @@ from qai_hub_models.scorecard.results.code_gen import (
     update_model_publish_status,
 )
 from qai_hub_models.scorecard.results.yaml import ScorecardAssetYaml
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+)
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -63,10 +66,11 @@ def main() -> None:
     for model_id in sorted(pytorch_models):
         try:
             model_info = QAIHMModelInfo.from_model(model_id)
+            sc = QAIHMModelScorecardConfig.from_model(model_id)
             if (
-                model_info.code_gen_config.skip_hub_tests_and_scorecard
-                or model_info.code_gen_config.skip_scorecard
-                or model_info.code_gen_config.freeze_perf_yaml
+                sc.skip_hub_tests_and_scorecard
+                or sc.skip_scorecard
+                or sc.freeze_perf_yaml
             ):
                 continue
 

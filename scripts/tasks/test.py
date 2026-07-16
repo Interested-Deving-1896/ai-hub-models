@@ -31,7 +31,7 @@ from .task import (
 )
 from .util import (
     can_support_aimet,
-    check_code_gen_field,
+    check_scorecard_config_field,
     get_is_hub_quantized,
     get_model_python_version_requirements,
     get_requires_aot_prepare,
@@ -137,7 +137,9 @@ class GPUPyTestModelsTask(CompositeTask):
                     os.path.join(PY_PACKAGE_MODELS_ROOT, model_name, "test.py")
                 )
                 and (is_quantized_llm_model(model_name))
-                and not check_code_gen_field(model_name, "skip_hub_tests_and_scorecard")
+                and not check_scorecard_config_field(
+                    model_name, "skip_hub_tests_and_scorecard"
+                )
             ):
                 models_to_test.append(model_name)
         if model_names != "all":
@@ -343,20 +345,21 @@ class PyTestModelTask(CompositeTask):
                         )
                     )
 
-            if check_code_gen_field(model_name, "skip_hub_tests_and_scorecard"):
+            if check_scorecard_config_field(model_name, "skip_hub_tests_and_scorecard"):
                 tasks.append(  # greater than this python version
                     RunCommandsTask(
                         f"Skip Model {model_name} Hub Tests",
-                        f'echo "Skipping Tests For Model {model_name} -- skip_hub_tests_and_scorecard is set in code gen"',
+                        f'echo "Skipping Tests For Model {model_name} -- skip_hub_tests_and_scorecard is set in scorecard config"',
                     )
                 )
             elif (
-                check_code_gen_field(model_name, "skip_scorecard") and not run_general
+                check_scorecard_config_field(model_name, "skip_scorecard")
+                and not run_general
             ):  # For scorecard runs, run_general is set to False because it is a test_compile_all_models task rather than a precheckin task with hub tests.
                 tasks.append(  # greater than this python version
                     RunCommandsTask(
                         f"Skip Model {model_name} Scorecard",
-                        f'echo "Skipping Scorecard For Model {model_name} -- skip_scorecard is set in code gen"',
+                        f'echo "Skipping Scorecard For Model {model_name} -- skip_scorecard is set in scorecard config"',
                     )
                 )
             else:
@@ -547,7 +550,7 @@ class PyTestModelsTask(CompositeTask):
         global_models = set()
         if not venv_for_each_model:
             for model_name in models_for_testing:
-                if not check_code_gen_field(
+                if not check_scorecard_config_field(
                     model_name, "global_requirements_incompatible"
                 ):
                     global_models.add(model_name)

@@ -6,9 +6,7 @@
 from __future__ import annotations
 
 import os
-from enum import Enum
 from pathlib import Path
-from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -20,30 +18,6 @@ from qai_hub_models.utils.device import (
     DEFAULT_EXPORT_DEVICE,
 )
 from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT
-
-
-class TestRunnerSplit(Enum):
-    """Named GitHub actions runner splits for grouping models in CI test runs."""
-
-    DEFAULT = "default"  # May be grouped with any other models; optimized to balance model load among many runners.
-    LLM = "llm"
-    PI0_5 = "pi05"
-
-    @property
-    def name(self) -> str:
-        return self.value
-
-    @property
-    def runs_on(self) -> dict[Literal["group", "labels"], str | list[str]] | None:
-        """
-        Runner configuration for this split, matching GitHub Actions runs-on syntax.
-
-        Returns None (use workflow default) or a dict with "group" and/or "labels"
-        (e.g. {"group": "GPU", "labels": ["self-hosted"]}).
-        """
-        if self is TestRunnerSplit.LLM:
-            return {"group": "GPU"}
-        return None
 
 
 class ExternalRepoConfig(BaseQAIHMConfig):
@@ -109,19 +83,6 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
     # encoder and decoder.
     is_collection_model: bool = False
 
-    # If set, skips
-    #  - generating `test_generated.py`
-    #  - weekly scorecard
-    #  - generating perf.yaml
-    skip_hub_tests_and_scorecard: bool = False
-
-    # Second knob for skipping of scorecard generation. Use case, skip scorecard but run hub tests.
-    skip_scorecard: bool = False
-
-    # If set to true, Scorecard will still run this model, but perf.yaml and associated code-gen.yaml / README.md changes will not be written to disk.
-    # This is useful for models whose assets cannot be changed in a release, but we still want to continue testing said models.
-    freeze_perf_yaml: bool = False
-
     # Whether the model uses the pre-compiled pattern instead of the
     # standard pre-trained pattern.
     is_precompiled: bool = False
@@ -144,11 +105,6 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
 
     # If set, disables generating `evaluate.py` (export.py and tests are still generated).
     skip_evaluate: bool = False
-
-    # When possible, package versions in a model's specific `requirements.txt`
-    # should match the versions in `qai_hub_models/global_requirements.txt`.
-    # When this is not possible, set this field to indicate an inconsistency.
-    global_requirements_incompatible: bool = False
 
     # Requirements that must be pre-installed before installing the general model requirements.
     #
@@ -209,9 +165,6 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
 
     # Instructions for installing system-level dependencies before pip install.
     readme_install_system_deps: str | None = None
-
-    # Places this model into a named CI test split.
-    test_split: TestRunnerSplit = TestRunnerSplit.DEFAULT
 
     def is_supported(
         self,
@@ -294,25 +247,6 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
         return None
 
     @property
-    def is_llm(self) -> bool:
-        """
-        True if this model is a large language model and produces perf updates
-        through a QDC workflow.
-        """
-        return self.test_split is TestRunnerSplit.LLM
-
-    @property
-    def skips_profile_and_inference(self) -> bool:
-        """
-        True if this model doesn't have meaningful on-device profile or inference
-        numbers (e.g. LLMs that only run via orchestrator runtimes like genie).
-        Codegen omits test_profile / test_inference / test_val_data_torch /
-        test_torch_accuracy / test_sim_accuracy from test_generated.py for these.
-        Scorecard skips perf.yaml writes and runtime-failure updates as well.
-        """
-        return self.is_llm
-
-    @property
     def supports_at_least_1_runtime(self) -> bool:
         supports_at_least_1_runtime = False
         for precision in self.supported_precisions:
@@ -334,17 +268,13 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
 
     @classmethod
     def from_model(cls: type[QAIHMModelCodeGen], model_id: str) -> QAIHMModelCodeGen:
+        """Load code-gen.yaml for the given model."""
         model_folder = QAIHM_MODELS_ROOT / model_id
         if not os.path.exists(model_folder):
             raise ValueError(f"{model_id} does not exist")
 
         code_gen_path = model_folder / "code-gen.yaml"
-        if not os.path.exists(code_gen_path):
-            out = QAIHMModelCodeGen()
-        else:
-            out = cls.from_yaml(code_gen_path)
-
-        return out
+        return cls.from_yaml(code_gen_path, create_empty_if_no_file=True)
 
     @property
     def can_use_quantize_job(self) -> bool:
@@ -353,11 +283,6 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
         This may return true even if the model does list support for non-float precisions.
         """
         return not self.is_precompiled and not self.is_aimet
-
-    @property
-    def runs_in_scorecard(self) -> bool:
-        """Whether the model runs in scorecard."""
-        return not self.skip_hub_tests_and_scorecard and not self.skip_scorecard
 
     @property
     def supports_quantization(self) -> bool:
@@ -462,14 +387,6 @@ class QAIHMModelCodeGen(BaseQAIHMConfig):
         ):
             raise ValueError(
                 "python_version_less_than_reason is set, but python_version_less_than is not."
-            )
-        if self.pip_install_flags and not self.global_requirements_incompatible:
-            raise ValueError(
-                "If pip_install_flags is set, global_requirements_incompatible must also be true."
-            )
-        if self.pip_pre_build_reqs and not self.global_requirements_incompatible:
-            raise ValueError(
-                "If pip_pre_build_reqs is set, global_requirements_incompatible must also be true."
             )
         for x in self.orchestrator_runtimes:
             if not x.is_orchestrator_runtime:

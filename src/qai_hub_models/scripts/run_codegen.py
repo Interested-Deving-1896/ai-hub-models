@@ -17,6 +17,7 @@ from jinja2 import Environment, FileSystemLoader
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
 from qai_hub_models.configs.info_yaml import QAIHMModelInfo
+from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.scripts.generate_global_readme import generate_global_readme
 from qai_hub_models.scripts.generate_model_readme import generate_and_write_model_readme
 from qai_hub_models.utils.asset_loaders import load_yaml
@@ -274,8 +275,9 @@ def _generate_shared_external_repos(environment: Environment) -> list[str]:
 def generate_code_for_model(model_name: str) -> list[str]:
     model_dir = QAIHM_MODELS_ROOT / model_name
     export_options = QAIHMModelCodeGen.from_model(model_name)
+    scorecard_config = QAIHMModelScorecardConfig.from_model(model_name)
 
-    if export_options.skip_export:
+    if scorecard_config.skip_export:
         print(f"Skipping export.py generation for {model_name}.")
         return []
 
@@ -315,8 +317,9 @@ def generate_code_for_model(model_name: str) -> list[str]:
     _extract_runtime_and_precision_options(export_options, export_options_dict)
 
     export_options_dict["has_external_repos"] = bool(export_options.external_repos)
+    export_options_dict["is_llm"] = scorecard_config.is_llm
 
-    should_generate_tests = not export_options.skip_hub_tests_and_scorecard
+    should_generate_tests = not scorecard_config.skip_hub_tests_and_scorecard
     scorecard_model_dir = QAIHM_PACKAGE_ROOT / "scorecard" / "models" / model_name
     test_path = scorecard_model_dir / "test_generated.py"
     if should_generate_tests:
@@ -364,7 +367,7 @@ def generate_code_for_model(model_name: str) -> list[str]:
             os.remove(conftest_path)
 
     evaluate_path = model_dir / "evaluate.py"
-    if not export_options.is_precompiled and not export_options.skip_evaluate:
+    if not export_options.is_precompiled and not scorecard_config.skip_evaluate:
         generated_files.append(
             _generate_evaluate(
                 environment,

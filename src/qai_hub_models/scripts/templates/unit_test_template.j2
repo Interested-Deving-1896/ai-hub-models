@@ -1,6 +1,5 @@
 {% import 'common_template.j2' as common %}
 {% set has_skipped_runtime = not supports_tflite or not supports_qnn or not supports_onnx -%}
-{% set is_llm = (test_split.value == "llm") -%}
 {%- if is_collection_model and has_multi_graph -%}
     {%- set step_suffix = "multi_graph_collection_" -%}
 {%- elif is_collection_model -%}

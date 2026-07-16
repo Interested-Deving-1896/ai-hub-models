@@ -14,12 +14,16 @@ from typing import Literal
 
 import ruamel.yaml
 
-from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen, TestRunnerSplit
+from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
 from qai_hub_models.scorecard.artifacts import (
     RUNTIME_ALL_STAGES,
     ScorecardArtifact,
 )
 from qai_hub_models.scorecard.envvars import EnabledModelsEnvvar
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+    TestRunnerSplit,
+)
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -197,7 +201,8 @@ def split_torch_models(
         torch_models = {
             m
             for m in torch_models
-            if QAIHMModelCodeGen.from_model(m).test_split not in exclude_test_splits
+            if QAIHMModelScorecardConfig.from_model(m).test_split
+            not in exclude_test_splits
         }
 
     splits: list[dict[str, str | RunsOnValue]] = []
@@ -241,8 +246,9 @@ def split_torch_models(
         all_models_aot = []
         for model in all_torch_models:
             code_gen = QAIHMModelCodeGen.from_model(model)
-            if code_gen.test_split != TestRunnerSplit.DEFAULT:
-                custom_splits.setdefault(code_gen.test_split, []).append(model)
+            scorecard_config = QAIHMModelScorecardConfig.from_model(model)
+            if scorecard_config.test_split != TestRunnerSplit.DEFAULT:
+                custom_splits.setdefault(scorecard_config.test_split, []).append(model)
             elif code_gen.requires_aot_prepare:
                 all_models_aot.append(model)
             else:

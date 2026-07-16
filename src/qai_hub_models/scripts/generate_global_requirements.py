@@ -10,6 +10,7 @@ from pathlib import Path
 
 from packaging import version
 
+from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.utils.asset_loaders import load_yaml
 from qai_hub_models.utils.path_helpers import (
     MODEL_IDS,
@@ -42,11 +43,14 @@ def get_files_to_process() -> list[Path]:
             continue
 
         # skip model if it has opted out via "global_requirements_incompatible: True"
+        if QAIHMModelScorecardConfig.from_model(
+            model_name
+        ).global_requirements_incompatible:
+            continue
+
         code_gen_yaml_file = QAIHM_MODELS_ROOT / model_name / "code-gen.yaml"
         if code_gen_yaml_file.exists():
             code_gen_config = load_yaml(code_gen_yaml_file)
-            if code_gen_config.get("global_requirements_incompatible", False):
-                continue
 
             # Don't include models that aren't applicable for this python version
             ge_version = code_gen_config.get(
@@ -80,7 +84,7 @@ def get_requirements(files: list[Path]) -> dict[str, str]:
 
                 if requirements.get(package, version) != version:
                     raise ValueError(
-                        f"ERROR: Version conflict for {package} in {file}: {requirements[package]} vs {version}. Use option global_requirements_incompatible: True in code-gen.yaml to bypass this check if needed."
+                        f"ERROR: Version conflict for {package} in {file}: {requirements[package]} vs {version}. Use option global_requirements_incompatible: True in scorecard-config.yaml to bypass this check if needed."
                     )
                 requirements[package] = version
 

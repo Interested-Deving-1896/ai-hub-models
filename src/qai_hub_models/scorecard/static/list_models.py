@@ -9,11 +9,14 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen, TestRunnerSplit
 from qai_hub_models.scorecard.envvars import (
     EnabledModelsEnvvar,
     SpecialModelSetting,
     StaticModelsDirEnvvar,
+)
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+    TestRunnerSplit,
 )
 from qai_hub_models.scorecard.static.model_config import DEFAULT_MODELS_DIR
 from qai_hub_models.utils.path_helpers import MODEL_IDS as PYTORCH_RECIPE_MODEL_IDS
@@ -78,11 +81,11 @@ def get_all_bench_models() -> list[str]:
 
 @lru_cache
 def get_pytorch_no_llm_model_ids() -> frozenset[str]:
-    """Pytorch recipes with code_gen.test_split != llm."""
+    """Pytorch recipes with scorecard_config.test_split != llm."""
     return frozenset(
         m
         for m in PYTORCH_RECIPE_MODEL_IDS
-        if QAIHMModelCodeGen.from_model(m).test_split != TestRunnerSplit.LLM
+        if QAIHMModelScorecardConfig.from_model(m).test_split != TestRunnerSplit.LLM
     )
 
 

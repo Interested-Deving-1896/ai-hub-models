@@ -62,6 +62,9 @@ from qai_hub_models.scorecard.results.yaml import (
     ToolVersionsByPathYaml,
     get_model_component_and_graph_names,
 )
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+)
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -346,9 +349,10 @@ def process_e2e_recipe_model(
     # Load configs
     model_info = QAIHMModelInfo.from_model(model_id)
     cj = model_info.code_gen_config
+    sc = QAIHMModelScorecardConfig.from_model(model_id)
 
     # Skip certain models
-    if cj.is_precompiled or cj.skip_hub_tests_and_scorecard or cj.skip_scorecard:
+    if cj.is_precompiled or sc.skip_hub_tests_and_scorecard or sc.skip_scorecard:
         return ResultsSpreadsheet(), None, None
 
     # Get enabled test paths for this model
@@ -388,7 +392,7 @@ def process_e2e_recipe_model(
         for export_test_summary in summaries:
             entries.append_export_test_summary(export_test_summary)
 
-    if sync_code_gen and not cj.freeze_perf_yaml and not cj.skips_profile_and_inference:
+    if sync_code_gen and not sc.freeze_perf_yaml and not sc.is_llm:
         # Enable or disable runtimes on this model depending on whether the default device has passing jobs
         update_code_gen_failure_reasons(summaries, test_params.enabled_paths, cj)
         code_gen_path = cj.to_model_yaml(model_id)
@@ -417,11 +421,7 @@ def process_e2e_recipe_model(
 
         # Load old model card and write new model card
         prev_model_card = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
-        if (
-            not cj.freeze_perf_yaml
-            and not cj.skips_profile_and_inference
-            and model_card_without_failures
-        ):
+        if not sc.freeze_perf_yaml and not sc.is_llm and model_card_without_failures:
             card_path = model_card_without_failures.to_model_yaml(model_id)
             print_with_id(f"Wrote {card_path}")
 
@@ -683,10 +683,11 @@ if __name__ == "__main__":
         assert global_numerics_diff is not None
         try:
             model_info = QAIHMModelInfo.from_model(model_id)
+            sc = QAIHMModelScorecardConfig.from_model(model_id)
             if (
-                model_info.code_gen_config.skip_hub_tests_and_scorecard
-                or model_info.code_gen_config.skip_scorecard
-                or model_info.code_gen_config.freeze_perf_yaml
+                sc.skip_hub_tests_and_scorecard
+                or sc.skip_scorecard
+                or sc.freeze_perf_yaml
             ):
                 continue
 
@@ -700,7 +701,7 @@ if __name__ == "__main__":
                 chipset_registry,
                 model_diff,
                 benchmark=model_info.numerics_benchmark,
-                threshold_override=model_info.code_gen_config.numerics_threshold_override,
+                threshold_override=sc.numerics_threshold_override,
             )
             global_numerics_diff.merge_from(model_diff)
             if numerics is None:
@@ -725,10 +726,7 @@ if __name__ == "__main__":
 
                     # Do not remove failing paths if frozen or LLM
                     # LLMs because it is handled by apply_llm_perf_updates.
-                    if (
-                        not model_info.code_gen_config.freeze_perf_yaml
-                        and not model_info.code_gen_config.is_llm
-                    ):
+                    if not sc.freeze_perf_yaml and not sc.is_llm:
                         perf = remove_perf_failures(
                             perf=QAIHMModelPerf.from_model(
                                 model_id, not_exists_ok=True

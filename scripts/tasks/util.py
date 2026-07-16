@@ -18,6 +18,7 @@ from typing import Any
 from .constants import (
     BASH_EXECUTABLE,
     PY_PACKAGE_MODELS_ROOT,
+    SCORECARD_PACKAGE_MODELS_ROOT,
     process_output,
     run_and_get_output,
 )
@@ -56,6 +57,22 @@ def check_code_gen_field(model_name: str, field_name: str) -> bool:
     to check if a code gen field is true and apply branching logic within CI/scorecard.
     """
     yaml_path = Path(PY_PACKAGE_MODELS_ROOT) / model_name / "code-gen.yaml"
+    if yaml_path.exists():
+        with open(yaml_path) as f:
+            if f"{field_name}: true" in f.read():
+                return True
+    return False
+
+
+@functools.cache
+def check_scorecard_config_field(model_name: str, field_name: str) -> bool:
+    """
+    This process does not have the yaml package, so use this primitive way
+    to check if a scorecard-config field is true and apply branching logic within CI/scorecard.
+    """
+    yaml_path = (
+        Path(SCORECARD_PACKAGE_MODELS_ROOT) / model_name / "scorecard-config.yaml"
+    )
     if yaml_path.exists():
         with open(yaml_path) as f:
             if f"{field_name}: true" in f.read():

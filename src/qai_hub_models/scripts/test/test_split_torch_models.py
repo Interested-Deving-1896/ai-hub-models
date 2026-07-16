@@ -9,10 +9,14 @@ from pathlib import Path
 import pytest
 import ruamel.yaml
 
-from qai_hub_models.configs.code_gen_yaml import QAIHMModelCodeGen
-from qai_hub_models.configs.code_gen_yaml import TestRunnerSplit as _TestRunnerSplit
 from qai_hub_models.scorecard.artifacts import RUNTIME_STAGE_JOB_SUBMISSION
 from qai_hub_models.scorecard.envvars import SpecialModelSetting
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+)
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    TestRunnerSplit as _TestRunnerSplit,
+)
 from qai_hub_models.scripts.split_torch_models import (
     _balance_lpt,
     _split_aot_jit,
@@ -251,7 +255,7 @@ def test_exclude_test_splits_empty_torch_emits_no_torch_split() -> None:
     llm_models = {
         m
         for m in PYTORCH_RECIPE_MODEL_IDS
-        if QAIHMModelCodeGen.from_model(m).test_split is _TestRunnerSplit.LLM
+        if QAIHMModelScorecardConfig.from_model(m).test_split is _TestRunnerSplit.LLM
     }
     if not llm_models:
         pytest.skip("No LLM models available to exercise this edge case.")
