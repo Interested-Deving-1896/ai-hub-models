@@ -1,0 +1,35 @@
+diff --git a/retinaface/detector.py b/retinaface/detector.py
+index 6267e15..474059e 100644
+--- a/retinaface/detector.py
++++ b/retinaface/detector.py
+@@ -83,4 +83,4 @@ class RetinafaceDetector:
+         return dets, landms
+ 
+ 
+-detector = RetinafaceDetector(net='mnet')
++detector = RetinafaceDetector(net='mnet',type='cpu')
+diff --git a/retinaface/loader.py b/retinaface/loader.py
+index ef03305..c3e0e46 100644
+--- a/retinaface/loader.py
++++ b/retinaface/loader.py
+@@ -28,7 +28,8 @@ def remove_prefix(state_dict, prefix):
+ 
+ def load_model(net='mnet'):
+     if net == 'mnet':
+-        pretrained_path = 'retinaface/weights/mobilenet0.25_Final.pth'
++        import os
++        pretrained_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"weights/mobilenet0.25_Final.pth")
+         # print('Loading pretrained model from {}'.format(pretrained_path))
+         model = RetinaFace(cfg=cfg_mnet, phase='test')
+     else:
+@@ -36,8 +37,8 @@ def load_model(net='mnet'):
+         # print('Loading pretrained model from {}'.format(pretrained_path))
+         model = RetinaFace(cfg=cfg_re50, phase='test')
+ 
+-    device = torch.cuda.current_device()
+-    pretrained_dict = torch.load(pretrained_path, map_location=lambda storage, loc: storage.cuda(device))
++
++    pretrained_dict = torch.load(pretrained_path, map_location="cpu")
+     if "state_dict" in pretrained_dict.keys():
+         pretrained_dict = remove_prefix(pretrained_dict['state_dict'], 'module.')
+     else:
