@@ -13,12 +13,26 @@ from typing import Any, Generic
 import ruamel.yaml
 from pydantic import BaseModel, ConfigDict, GetCoreSchemaHandler
 from pydantic_core import core_schema
-from pydantic_yaml import parse_yaml_file_as, to_yaml_file, to_yaml_str
+from pydantic_yaml import parse_yaml_file_as, to_yaml_str
 from ruamel.yaml.representer import RoundTripRepresenter
 from typing_extensions import Self, TypeVar
 
 # Size of an 'empty' YAML serialization. When a BaseQAIHMConfig's values are all defaults, it will serialize to the below string.
 EMPTY_SERIALIZED_YAML_SIZE = len(b"{}\n")
+
+
+def _sorted_mappings(value: Any) -> Any:
+    """Return ``value`` with every dict's keys sorted alphabetically (recursively).
+
+    Used by :meth:`BaseQAIHMConfig.to_yaml` so on-disk YAML files have a stable
+    key order regardless of insertion order. The actual order doesn't matter,
+    only that it's deterministic.
+    """
+    if isinstance(value, dict):
+        return {k: _sorted_mappings(value[k]) for k in sorted(value, key=str)}
+    if isinstance(value, list):
+        return [_sorted_mappings(v) for v in value]
+    return value
 
 
 class BaseQAIHMConfig(BaseModel):
@@ -54,6 +68,11 @@ class BaseQAIHMConfig(BaseModel):
     ) -> bool:
         """
         Converts this class to a dict and saves that dict to a YAML file.
+
+        Every dict in the output (including the top-level mapping) has its keys
+        sorted alphabetically. The actual order is irrelevant; the goal is just
+        that regenerated YAML files have stable diffs regardless of which order
+        the scorecard / codegen happened to populate fields in.
 
         Parameters
         ----------
@@ -105,15 +124,19 @@ class BaseQAIHMConfig(BaseModel):
 
             yaml.representer.add_representer(list, _yaml_repr_list)
 
-        # Dump data
-        to_yaml_file(
-            path,
+        # Render via pydantic_yaml first (handles JSON-mode serializers, custom
+        # types, etc.), then re-parse and recursively sort every mapping's keys
+        # so the on-disk file has a deterministic order.
+        rendered = to_yaml_str(
             self,
             custom_yaml_writer=yaml,
             exclude_defaults=exclude_defaults,
             exclude_none=True,
             **kwargs,
         )
+        data = ruamel.yaml.YAML(typ="safe", pure=True).load(rendered)
+        with open(path, "w") as f:
+            yaml.dump(_sorted_mappings(data), f)
 
         # Remove file if empty
         if (not write_if_empty or delete_if_empty) and os.path.getsize(path) in (
