@@ -21,6 +21,8 @@ def nomic_embed_text_demo(
     is_test: bool = False,
     default_text: str | None = None,
 ) -> None:
+    if default_text is None:
+        default_text = "search_query: What is nomic embed text?"
     # Demo parameters
     parser = get_model_cli_parser(model_cls)
     parser = get_on_device_demo_parser(parser, add_output_dir=True)

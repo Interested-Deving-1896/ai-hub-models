@@ -275,6 +275,41 @@ class GenieMetadata(google.protobuf.message.Message):
 global___GenieMetadata = GenieMetadata
 
 @typing.final
+class TokenizerMetadata(google.protobuf.message.Message):
+    """Structured description of the tokenizer required to run a model.
+
+    Embedded in ModelMetadata so that applications can discover tokenizer
+    parameters directly from metadata.json without consulting external
+    documentation.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    VOCAB_FILE_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    MAX_LENGTH_FIELD_NUMBER: builtins.int
+    DO_LOWER_CASE_FIELD_NUMBER: builtins.int
+    vocab_file: builtins.str
+    """File name of the vocabulary file, relative to the export directory."""
+    type: builtins.str
+    """Tokenizer algorithm, e.g. "wordpiece" or "bpe"."""
+    max_length: builtins.int
+    """Maximum sequence length the model accepts."""
+    do_lower_case: builtins.bool
+    """Whether the tokenizer lowercases input text before tokenizing."""
+    def __init__(
+        self,
+        *,
+        vocab_file: builtins.str = ...,
+        type: builtins.str = ...,
+        max_length: builtins.int = ...,
+        do_lower_case: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["do_lower_case", b"do_lower_case", "max_length", b"max_length", "type", b"type", "vocab_file", b"vocab_file"]) -> None: ...
+
+global___TokenizerMetadata = TokenizerMetadata
+
+@typing.final
 class ModelMetadata(google.protobuf.message.Message):
     """Metadata for a model that may have multiple model files.
 
@@ -295,6 +330,7 @@ class ModelMetadata(google.protobuf.message.Message):
     SUPPLEMENTARY_FILES_FIELD_NUMBER: builtins.int
     GENIE_FIELD_NUMBER: builtins.int
     CHIPSET_ATTRIBUTES_FIELD_NUMBER: builtins.int
+    TOKENIZER_FIELD_NUMBER: builtins.int
     aihm_version: builtins.str
     model_id: builtins.str
     model_name: builtins.str
@@ -323,6 +359,10 @@ class ModelMetadata(google.protobuf.message.Message):
         AoT-compiled runtimes.
         """
 
+    @property
+    def tokenizer(self) -> global___TokenizerMetadata:
+        """Optional structured tokenizer parameters required to preprocess inputs."""
+
     def __init__(
         self,
         *,
@@ -336,12 +376,15 @@ class ModelMetadata(google.protobuf.message.Message):
         supplementary_files: collections.abc.Iterable[global___SupplementaryFileMetadata] | None = ...,
         genie: global___GenieMetadata | None = ...,
         chipset_attributes: platform_pb2.ChipsetInfo | None = ...,
+        tokenizer: global___TokenizerMetadata | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "tool_versions", b"tool_versions"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "aihm_version", b"aihm_version", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "model_files", b"model_files", "model_id", b"model_id", "model_name", b"model_name", "precision", b"precision", "runtime", b"runtime", "supplementary_files", b"supplementary_files", "tool_versions", b"tool_versions"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "_tokenizer", b"_tokenizer", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "tokenizer", b"tokenizer", "tool_versions", b"tool_versions"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "_tokenizer", b"_tokenizer", "aihm_version", b"aihm_version", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "model_files", b"model_files", "model_id", b"model_id", "model_name", b"model_name", "precision", b"precision", "runtime", b"runtime", "supplementary_files", b"supplementary_files", "tokenizer", b"tokenizer", "tool_versions", b"tool_versions"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_chipset_attributes", b"_chipset_attributes"]) -> typing.Literal["chipset_attributes"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_genie", b"_genie"]) -> typing.Literal["genie"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_tokenizer", b"_tokenizer"]) -> typing.Literal["tokenizer"] | None: ...
 
 global___ModelMetadata = ModelMetadata

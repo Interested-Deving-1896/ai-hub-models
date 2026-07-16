@@ -88,6 +88,24 @@ message GenieMetadata {
   }
 }
 
+// Structured description of the tokenizer required to run a model.
+//
+// Embedded in ModelMetadata so that applications can discover tokenizer
+// parameters directly from metadata.json without consulting external
+// documentation.
+message TokenizerMetadata {
+  // File name of the vocabulary file, relative to the export directory.
+  string vocab_file = 1;
+
+  // Tokenizer algorithm, e.g. "wordpiece" or "bpe".
+  string type = 2;
+
+  // Maximum sequence length the model accepts.
+  int32 max_length = 3;
+
+  // Whether the tokenizer lowercases input text before tokenizing.
+  bool do_lower_case = 4;
+}
 
 // Metadata for a model that may have multiple model files.
 //
@@ -118,4 +136,7 @@ message ModelMetadata {
   // Chipset identifiers for the compiled bundle. Populated for
   // AoT-compiled runtimes.
   optional ChipsetInfo chipset_attributes = 10;
+
+  // Optional structured tokenizer parameters required to preprocess inputs.
+  optional TokenizerMetadata tokenizer = 11;
 }

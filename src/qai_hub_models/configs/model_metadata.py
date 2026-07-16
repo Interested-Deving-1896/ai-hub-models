@@ -281,6 +281,32 @@ class ChipsetAttributes(ChipsetYaml):
         )
 
 
+class TokenizerMetadata(BaseQAIHMConfig):
+    """
+    Structured description of the tokenizer required to run a model.
+
+    This is embedded in ModelMetadata so that applications can discover
+    tokenizer parameters directly from metadata.json without consulting
+    external documentation.
+
+    Attributes
+    ----------
+    vocab_file
+        File name of the vocabulary file, relative to the export directory.
+    type
+        Tokenizer algorithm, e.g. "wordpiece" or "bpe".
+    max_length
+        Maximum sequence length the model accepts.
+    do_lower_case
+        Whether the tokenizer lowercases input text before tokenizing.
+    """
+
+    vocab_file: str
+    type: str
+    max_length: int
+    do_lower_case: bool
+
+
 class ModelMetadata(BaseQAIHMConfig):
     """
     Metadata for a model that may have multiple model files.
@@ -320,6 +346,10 @@ class ModelMetadata(BaseQAIHMConfig):
     chipset_attributes
         Hardware attributes relevant to the compiled model asset.
         Only populated for AoT-compiled models; None for JIT runtimes.
+    tokenizer
+        Optional structured tokenizer parameters required to preprocess inputs.
+        When present, applications can use this to configure the tokenizer without
+        consulting external documentation.
     """
 
     model_id: str = ""
@@ -331,6 +361,7 @@ class ModelMetadata(BaseQAIHMConfig):
     supplementary_files: dict[str, str] = {}
     genie: GenieMetadata | None = None
     chipset_attributes: ChipsetAttributes | None = None
+    tokenizer: TokenizerMetadata | None = None
 
     def to_yaml(
         self,

@@ -8,17 +8,20 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
 import sys
 from pathlib import Path
 from unittest import mock
 
 import torch
 import torch.nn.functional as F
+from huggingface_hub import hf_hub_download
 from torch import nn
 from transformers import AutoModel
 from transformers.utils.hub import HF_MODULES_CACHE
 from typing_extensions import Self
 
+from qai_hub_models.configs.model_metadata import ModelMetadata, TokenizerMetadata
 from qai_hub_models.models.nomic_embed_text.dataset import (
     AmazonCounterfactualClassificationDataset,
 )
@@ -35,6 +38,11 @@ MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 1
 DEFAULT_MODEL_VERSION = "1.5"
 MATRYOSHIKA_DIM = 512
+
+BERT_BASE_UNCASED_REPO_ID = "google-bert/bert-base-uncased"
+VOCAB_FILE_NAME = "vocab.txt"
+TOKENIZER_JSON_FILE_NAME = "tokenizer.json"
+TOKENIZER_CONFIG_FILE_NAME = "tokenizer_config.json"
 
 
 # Modify transformers so that it creates modules that can be traced.
@@ -186,3 +194,48 @@ class NomicEmbedText(BaseModel):
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
         return AmazonCounterfactualClassificationDataset
+
+    def write_supplementary_files(
+        self,
+        output_dir: str | os.PathLike,
+        metadata: ModelMetadata,
+    ) -> None:
+        """
+        Download and bundle the bert-base-uncased tokenizer files alongside
+        the exported model so that downstream applications can tokenize inputs
+        without needing to locate them separately.
+
+        Files written:
+          - vocab.txt             - WordPiece vocabulary for tokenizing inputs.
+          - tokenizer.json        - HuggingFace fast-tokenizer configuration.
+          - tokenizer_config.json - HuggingFace tokenizer_config for bert-base-uncased.
+
+        All three files are published by Google under the Apache 2.0 license
+        (https://huggingface.co/bert-base-uncased/blob/main/LICENSE).
+        """
+        for filename, description in [
+            (
+                VOCAB_FILE_NAME,
+                "WordPiece vocabulary file for tokenizing text inputs before inference.",
+            ),
+            (
+                TOKENIZER_JSON_FILE_NAME,
+                "HuggingFace tokenizer configuration (fast tokenizer) for bert-base-uncased.",
+            ),
+            (
+                TOKENIZER_CONFIG_FILE_NAME,
+                "HuggingFace tokenizer_config.json for bert-base-uncased.",
+            ),
+        ]:
+            cached = hf_hub_download(
+                repo_id=BERT_BASE_UNCASED_REPO_ID, filename=filename
+            )
+            shutil.copy(cached, Path(output_dir) / filename)
+            metadata.supplementary_files[filename] = description
+
+        metadata.tokenizer = TokenizerMetadata(
+            vocab_file=VOCAB_FILE_NAME,
+            type="wordpiece",
+            max_length=self.seq_length,
+            do_lower_case=True,
+        )
