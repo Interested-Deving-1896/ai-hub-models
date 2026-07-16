@@ -55,10 +55,16 @@ trap cleanup_device EXIT
 # before letting the failure (and set -e) abort the whole job. Redirect stderr
 # to a log file: QDC flags jobs Unsuccessful on any stderr output (PR #3641).
 genie_retry() {{
-    "$@" || {{
-        echo "genie_retry: command failed, retrying once: $*" >&2
-        "$@"
-    }}
+    tmp_out=$(mktemp)
+    if ! "$@" | tee "$tmp_out"; then
+        if grep -q "Context Size was exhausted" "$tmp_out"; then
+            echo "genie_retry: context size exhausted, skipping retry: $*" >&2
+        else
+            echo "genie_retry: command failed, retrying once: $*" >&2
+            "$@"
+        fi
+    fi
+    rm -f "$tmp_out"
 }}
 cd /data/local/tmp/genie_bundle
 # Always re-download: dedicated-pool devices are reused, so a partial extract

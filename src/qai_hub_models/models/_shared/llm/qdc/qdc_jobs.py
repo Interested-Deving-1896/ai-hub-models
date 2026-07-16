@@ -51,7 +51,7 @@ QDC_REST_BASE_URL = "https://api.qualcomm.com/deviceloud/v1"
 # QDC job limit
 QDC_JOB_LIMIT = 3
 # Default timeout for job status polling (in seconds)
-DEFAULT_JOB_TIMEOUT = 10800  # 3 hours
+DEFAULT_JOB_TIMEOUT = 21600  # 6 hours
 # Polling interval for job status checks (in seconds)
 POLL_INTERVAL = 30
 # Backoff schedule for retrying a *failed* QDC call (distinct from the steady
@@ -380,7 +380,7 @@ class QDCJobs:
             ID of the job to monitor.
         timeout
             Maximum time to wait for job completion in seconds.
-            Defaults to DEFAULT_JOB_TIMEOUT (3 hours).
+            Defaults to DEFAULT_JOB_TIMEOUT (6 hours).
 
         Returns
         -------
@@ -482,7 +482,7 @@ class QDCJobs:
             Name of the job to submit.
         timeout
             Maximum time to wait for a job slot to become available in seconds.
-            Defaults to DEFAULT_JOB_TIMEOUT (3 hours).
+            Defaults to DEFAULT_JOB_TIMEOUT (6 hours).
 
         Returns
         -------
@@ -541,7 +541,7 @@ class QDCJobs:
             ID of the job to monitor.
         timeout
             Maximum time to wait for log upload in seconds.
-            Defaults to DEFAULT_JOB_TIMEOUT (3 hours).
+            Defaults to DEFAULT_JOB_TIMEOUT (6 hours).
 
         Raises
         ------
