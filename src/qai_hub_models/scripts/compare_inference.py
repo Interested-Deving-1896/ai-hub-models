@@ -16,7 +16,6 @@ Usage:
 
 from __future__ import annotations
 
-import importlib
 import sys
 import warnings
 from typing import Any
@@ -33,8 +32,20 @@ from qai_hub_models.utils.args import (
 )
 from qai_hub_models.utils.base_collection_model import CollectionModel
 from qai_hub_models.utils.base_model import WorkbenchModel
+from qai_hub_models.utils.base_multi_graph_collection_model import (
+    MultiGraphCollectionModel,
+)
+from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
 from qai_hub_models.utils.compare import METRICS_FUNCTIONS, torch_inference
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.dispatch import (
+    ResolvedModel,
+    resolve_model,
+    select_pipeline,
+)
+from qai_hub_models.utils.export.result import (
+    CollectionExportResult,
+    LegacyCollectionExportResult,
+)
 from qai_hub_models.utils.kwarg_helpers import filter_kwargs
 from qai_hub_models.utils.path_helpers import MODEL_IDS
 from qai_hub_models.utils.printing import print_inference_metrics
@@ -43,122 +54,139 @@ from qai_hub_models.utils.transpose_channel import transpose_channel_last_to_fir
 ALL_METRICS = ",".join(k for k in METRICS_FUNCTIONS if k not in ("top1", "top5"))
 
 
-def load_model_module(model_id: str) -> Any:
-    """Dynamically load a model module by model ID."""
+def load_model(model_id: str) -> ResolvedModel:
+    """Resolve a model ID to its metadata, with a friendly error if unknown."""
     if model_id not in MODEL_IDS:
         raise ValueError(
             f"Unknown model ID: {model_id}. "
             f"Available models: {', '.join(MODEL_IDS[:10])}..."
         )
-    return importlib.import_module(f"qai_hub_models.models.{model_id}")
+    return resolve_model(model_id)
 
 
-def compare_inference(
+def get_component_inference_job(
+    export_result: Any,
+    component: str,
+) -> hub.InferenceJob | None:
+    """Return the inference job for one component of a collection export result.
+
+    ``CollectionExportResult`` and ``LegacyCollectionExportResult`` store
+    per-component jobs under different shapes; this resolves both to a single
+    inference job (or None if the export skipped inferencing). Multi-graph
+    collection models are rejected before reaching this point, since they have
+    no per-component inference job.
+    """
+    if isinstance(export_result, LegacyCollectionExportResult):
+        return export_result.components[component].inference_job
+    if isinstance(export_result, CollectionExportResult):
+        if export_result.inference_jobs is None:
+            return None
+        return export_result.inference_jobs[component]
+    raise TypeError(f"Unexpected collection export result: {type(export_result)}")
+
+
+def export(
     model_id: str,
     device: hub.Device,
     target_runtime: TargetRuntime = TargetRuntime.TFLITE,
     precision: Precision = Precision.float,
+    component: str | None = None,
+    **additional_model_kwargs: Any,
+) -> tuple[WorkbenchModel, hub.InferenceJob | None]:
+    """Export a model (or one collection component) with on-device inference.
+
+    Pass ``component`` to export a single component of a collection model;
+    otherwise the whole (non-collection) model is exported. Returns the local
+    model together with its on-device inference job (``None`` if the export
+    skipped inferencing). Raises ``ValueError`` if ``model_id`` is a multi-graph
+    model (no on-device inference path) or if ``component`` is inconsistent with
+    the model kind.
+    """
+    resolved = load_model(model_id)
+    model_cls: Any = resolved.model_cls
+
+    # Multi-graph models (sharded LLMs, e.g. qwen VL) have no on-device
+    # inference path -- their export pipelines hardcode skip_inferencing -- so
+    # there is nothing to compare against local CPU inference.
+    is_multi_graph = issubclass(
+        model_cls, (MultiGraphWorkbenchModel, MultiGraphCollectionModel)
+    )
+    if is_multi_graph:
+        raise ValueError(
+            f"Model {model_id} is a multi-graph model, which has no on-device "
+            "inference path to compare against."
+        )
+
+    # Validate the --component argument against the model kind.
+    is_collection = issubclass(model_cls, CollectionModel)
+    if is_collection and not component:
+        raise ValueError(
+            f"Model {model_id} is a collection model. Use --component to specify one."
+        )
+    if not is_collection and component:
+        raise ValueError(
+            f"Model {model_id} is not a collection model, "
+            "--component is not applicable."
+        )
+
+    export_model = select_pipeline(resolved)
+    export_kwargs: dict[str, Any] = dict(
+        device=device,
+        target_runtime=target_runtime,
+        precision=precision,
+        skip_profiling=True,
+        skip_inferencing=False,
+        skip_downloading=True,
+        skip_summary=True,
+        **additional_model_kwargs,
+    )
+    model_kwargs = get_model_kwargs(
+        model_cls, dict(**additional_model_kwargs, precision=precision)
+    )
+
+    if is_collection:
+        assert component is not None  # validated above
+        export_result = export_model(model_id, components=[component], **export_kwargs)
+        inference_job = get_component_inference_job(export_result, component)
+        model = model_cls.from_pretrained(**model_kwargs).components[component]
+        if not isinstance(model, WorkbenchModel):
+            raise TypeError(f"Component {component} is not a WorkbenchModel")
+        return model, inference_job
+
+    export_result = export_model(model_id, **export_kwargs)
+    return model_cls.from_pretrained(**model_kwargs), export_result.inference_job
+
+
+def compare_inference(
+    model: WorkbenchModel,
+    inference_job: hub.InferenceJob,
     metrics: str = ALL_METRICS,
     outputs_to_skip: list[int] | None = None,
-    component: str | None = None,
     channel_last_outputs: list[str] | None = None,
     **additional_model_kwargs: Any,
 ) -> None:
     """
-    Compare local CPU inference with on-device inference from AI Hub.
+    Compare a model's local CPU inference against its on-device outputs.
 
     Parameters
     ----------
-    model_id
-        Model ID (e.g., resnet50).
-    device
-        Device for which to export the model.
-    target_runtime
-        Which on-device runtime to target. Default is TFLite.
-    precision
-        The precision to which this model should be quantized.
+    model
+        The local model to run on CPU.
+    inference_job
+        The completed on-device inference job to compare against.
     metrics
         Comma-separated list of metrics to compute.
     outputs_to_skip
         List of output indices to skip.
-    component
-        For collection models, specify which component to compare.
     channel_last_outputs
         List of output names that are in channel-last format on device.
     **additional_model_kwargs
-        Additional kwargs for model.from_pretrained and model.get_input_spec.
+        Additional kwargs for model.get_input_spec.
     """
-    model_module = load_model_module(model_id)
-    export_model = select_pipeline(resolve_model(model_id))
-    model_cls = model_module.Model
-
-    # Validate component argument
-    if issubclass(model_cls, CollectionModel):
-        if not component:
-            print(
-                f"Model {model_id} is a collection model with components. Use --component to specify one."
-            )
-            sys.exit(1)
-    elif component:
-        print(
-            f"Model {model_id} is not a collection model, "
-            "--component is not applicable."
-        )
-        sys.exit(1)
-
-    inference_job: hub.InferenceJob
-    model: WorkbenchModel
-
-    # Run export with inference
-    if issubclass(model_cls, CollectionModel):
-        export_result = export_model(
-            model_id,
-            device=device,
-            target_runtime=target_runtime,
-            precision=precision,
-            skip_profiling=True,
-            skip_inferencing=False,
-            skip_downloading=True,
-            skip_summary=True,
-            components=[component],
-            **additional_model_kwargs,
-        )
-        inference_job_opt = export_result.components[component].inference_job
-        model_kwargs = get_model_kwargs(
-            model_cls, dict(**additional_model_kwargs, precision=precision)
-        )
-        model_instance = model_cls.from_pretrained(**model_kwargs)
-        model = model_instance.components[component]
-        if not isinstance(model, WorkbenchModel):
-            raise TypeError(f"Component {component} is not a WorkbenchModel")
-    else:
-        export_result = export_model(
-            model_id,
-            device=device,
-            target_runtime=target_runtime,
-            precision=precision,
-            skip_profiling=True,
-            skip_inferencing=False,
-            skip_downloading=True,
-            skip_summary=True,
-            **additional_model_kwargs,
-        )
-        inference_job_opt = export_result.inference_job
-        model_kwargs = get_model_kwargs(
-            model_cls, dict(**additional_model_kwargs, precision=precision)
-        )
-        model = model_cls.from_pretrained(**model_kwargs)
-
-    if inference_job_opt is None:
-        print("Error: Export did not produce an inference job.")
-        sys.exit(1)
-    inference_job = inference_job_opt
-
     # Download on-device results
     device_outputs = inference_job.download_output_data()
     if device_outputs is None:
-        print("Error: Failed to download inference results.")
-        sys.exit(1)
+        raise RuntimeError("Failed to download inference results.")
 
     output_names = list(model.get_output_spec())
 
@@ -220,7 +248,6 @@ def main() -> None:
 
     parser.add_argument(
         "--component",
-        "-c",
         type=str,
         default=None,
         help="For collection models, specify which component to compare.",
@@ -264,14 +291,27 @@ def main() -> None:
     if args.channel_last_outputs:
         channel_last_outputs = [x.strip() for x in args.channel_last_outputs.split(",")]
 
+    try:
+        model, inference_job_opt = export(
+            model_id=args.model,
+            device=args.device,
+            target_runtime=args.target_runtime,
+            precision=args.precision,
+            component=args.component,
+        )
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    if inference_job_opt is None:
+        print("Error: Export did not produce an inference job.")
+        sys.exit(1)
+
     compare_inference(
-        model_id=args.model,
-        device=args.device,
-        target_runtime=args.target_runtime,
-        precision=args.precision,
+        model=model,
+        inference_job=inference_job_opt,
         metrics=args.metrics,
         outputs_to_skip=outputs_to_skip,
-        component=args.component,
         channel_last_outputs=channel_last_outputs,
     )
 
