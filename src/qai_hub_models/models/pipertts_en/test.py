@@ -7,10 +7,11 @@ from qai_hub_models.models._shared.pipertts.test_utils import (
 )
 from qai_hub_models.models.pipertts_en.demo import main as demo_main
 from qai_hub_models.models.pipertts_en.model import PiperTTS_EN
+from qai_hub_models.models.whisper_large_v3_turbo.model import WhisperLargeV3Turbo
 
 
 def test_synthesized_audio() -> None:
-    pipertts_synthesize_and_verify(PiperTTS_EN)
+    pipertts_synthesize_and_verify(PiperTTS_EN, WhisperLargeV3Turbo)
 
 
 def test_demo() -> None:

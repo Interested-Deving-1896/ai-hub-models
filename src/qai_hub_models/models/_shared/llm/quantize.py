@@ -29,7 +29,6 @@ from qai_hub_models.models._shared.llm.model import (
     LLMDynamicBase,
     SplitForwardMixin,
 )
-from qai_hub_models.models._shared.vlm.model import VLMDynamic_AIMETOnnx
 from qai_hub_models.utils.args import get_quantize_action_with_default
 from qai_hub_models.utils.dataset_util import dataset_entries_to_dataloader
 from qai_hub_models.utils.version_helpers import ensure_supported_version
@@ -135,19 +134,12 @@ def quantize(
     if use_ada_scale and ada_scale_num_samples is not None:
         num_max_samples = max(num_max_samples, ada_scale_num_samples)
 
-    if isinstance(model_quant, VLMDynamic_AIMETOnnx):
-        assert image_size is not None, "image_size must be provided for quantizing VLMs"
+    if isinstance(model_quant, LLMDynamic_AIMETOnnx):
         calib_data = model_quant.get_calibration_data(
             num_samples=num_max_samples,
             sequence_length=seq_len,
             context_length=context_length,
             image_size=image_size,
-        )
-    elif isinstance(model_quant, LLMDynamic_AIMETOnnx):
-        calib_data = model_quant.get_calibration_data(
-            num_samples=num_max_samples,
-            sequence_length=seq_len,
-            context_length=context_length,
         )
     else:
         assert isinstance(model_quant, LLM_AIMETOnnx)
@@ -158,21 +150,12 @@ def quantize(
     weight_optim_dataloader = None
     if (use_seq_mse or use_ada_scale) and isinstance(model_quant, LLMDynamic_AIMETOnnx):
         optim_num_samples = max(seq_mse_num_samples or 0, ada_scale_num_samples or 0)
-        if isinstance(model_quant, VLMDynamic_AIMETOnnx):
-            # VLMs need image_size so the deepstack input spec matches calibration.
-            assert image_size is not None
-            optim_data = model_quant.get_weight_optimization_data(
-                num_samples=optim_num_samples,
-                sequence_length=seq_len,
-                context_length=context_length,
-                image_size=image_size,
-            )
-        else:
-            optim_data = model_quant.get_weight_optimization_data(
-                num_samples=optim_num_samples,
-                sequence_length=seq_len,
-                context_length=context_length,
-            )
+        optim_data = model_quant.get_weight_optimization_data(
+            num_samples=optim_num_samples,
+            sequence_length=seq_len,
+            context_length=context_length,
+            image_size=image_size,
+        )
         if optim_data is not None:
             weight_optim_dataloader = dataset_entries_to_dataloader(optim_data)
 

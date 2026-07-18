@@ -3674,6 +3674,7 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
         input_spec: InputSpec | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
+        image_size: tuple[int, int] | None = None,
     ) -> DatasetEntries | None:
         from qai_hub_models.datasets import instantiate_dataset
         from qai_hub_models.datasets.wikitext import WikiText
@@ -3732,5 +3733,6 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
         input_spec: InputSpec | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
+        image_size: tuple[int, int] | None = None,
     ) -> DatasetEntries | None:
         return None

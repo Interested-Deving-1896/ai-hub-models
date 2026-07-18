@@ -5,7 +5,7 @@
 
 import os
 
-from qai_hub_models.models._shared.stable_diffusion.demo import stable_diffusion_demo
+from qai_hub_models.models._shared.diffusion.demo import stable_diffusion_demo
 from qai_hub_models.models.controlnet_canny import MODEL_ID, Model
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 

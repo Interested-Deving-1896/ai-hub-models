@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 # isort: off
-from qai_hub_models.models._shared.stable_diffusion.app import (
+from qai_hub_models.models._shared.diffusion.app import (
     StableDiffusionApp as App,
 )
 from qai_hub_models.models.stable_diffusion_v1_5.model import (

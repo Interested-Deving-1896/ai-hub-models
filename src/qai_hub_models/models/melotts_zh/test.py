@@ -7,10 +7,11 @@ from qai_hub_models.models._shared.melotts.test_utils import (
 )
 from qai_hub_models.models.melotts_zh.demo import main as demo_main
 from qai_hub_models.models.melotts_zh.model import MeloTTS_ZH
+from qai_hub_models.models.whisper_large_v3_turbo.model import WhisperLargeV3Turbo
 
 
 def test_synthesized_audio() -> None:
-    melotts_synthesize_and_verify(MeloTTS_ZH)
+    melotts_synthesize_and_verify(MeloTTS_ZH, WhisperLargeV3Turbo)
 
 
 def test_demo() -> None:

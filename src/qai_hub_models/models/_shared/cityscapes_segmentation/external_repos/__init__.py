@@ -16,7 +16,7 @@ from qai_hub_models.utils.external_repo import (
     setup_external_repos,
 )
 
-MODEL_ID = "ffnet"
+MODEL_ID = "cityscapes_segmentation"
 EXTERNAL_REPO_PATHS: dict[str, Path] = {}
 
 if not TYPE_CHECKING:

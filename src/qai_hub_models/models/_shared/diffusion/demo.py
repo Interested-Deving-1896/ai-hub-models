@@ -14,22 +14,22 @@ from qai_hub_models import (
     Precision,
     TargetRuntime,
 )
-from qai_hub_models.models._shared.controlnet.model import (
-    ControlNetBase,
-    ControlUnetBase,
-)
-from qai_hub_models.models._shared.stable_diffusion.app import (
+from qai_hub_models.models._shared.diffusion.app import (
     OUT_H,
     OUT_W,
     StableDiffusionApp,
 )
-from qai_hub_models.models._shared.stable_diffusion.model import (
+from qai_hub_models.models._shared.diffusion.controlnet import (
+    ControlNetBase,
+    ControlUnetBase,
+)
+from qai_hub_models.models._shared.diffusion.stable_diffusion import (
     StableDiffusionBase,
     TextEncoderBase,
     UnetBase,
     VaeDecoderBase,
 )
-from qai_hub_models.models._shared.stable_diffusion.utils import make_canny
+from qai_hub_models.models._shared.diffusion.utils import make_canny
 from qai_hub_models.utils.args import (
     demo_model_components_from_cli_args,
     get_model_cli_parser,

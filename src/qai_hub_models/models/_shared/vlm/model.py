@@ -68,7 +68,7 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
         input_spec: InputSpec | None = None,
         sequence_length: int = DEFAULT_CALIBRATION_SEQ_LEN,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
-        image_size: tuple[int, int] = DEFAULT_IMAGE_SIZE,
+        image_size: tuple[int, int] | None = DEFAULT_IMAGE_SIZE,
     ) -> DatasetEntries | None:
         """Get interleaved (wikitext + AOKVQA) calibration data for VLM.
 
@@ -155,9 +155,10 @@ class VLMDynamic_AIMETOnnx(LLMDynamic_AIMETOnnx):
     def get_weight_optimization_data(
         self,
         num_samples: int = 0,
-        sequence_length: int = DEFAULT_CALIBRATION_SEQ_LEN,  # type: ignore[override]
+        input_spec: InputSpec | None = None,
+        sequence_length: int = DEFAULT_CALIBRATION_SEQ_LEN,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
-        image_size: tuple[int, int] = DEFAULT_IMAGE_SIZE,  # type: ignore[override]
+        image_size: tuple[int, int] | None = DEFAULT_IMAGE_SIZE,
     ) -> DatasetEntries | None:
         """Get plain text (WikiText) data for seqMSE/AdaScale weight optimization."""
         from torch.utils.data import DataLoader

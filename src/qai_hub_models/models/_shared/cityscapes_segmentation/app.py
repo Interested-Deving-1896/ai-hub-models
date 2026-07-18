@@ -14,12 +14,12 @@ import torchvision.transforms as standard_transforms
 from PIL import Image as ImageModule
 from PIL.Image import Image
 
+from qai_hub_models.models._shared.cityscapes_segmentation.external_repos.ffnet.ffnet_datasets.cityscapes.dataloader.get_dataloaders import (
+    return_dataloader,
+)
 from qai_hub_models.models._shared.cityscapes_segmentation.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
-)
-from qai_hub_models.models._shared.ffnet.external_repos.ffnet.ffnet_datasets.cityscapes.dataloader.get_dataloaders import (
-    return_dataloader,
 )
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.image_processing import pil_resize_pad, pil_undo_resize_pad

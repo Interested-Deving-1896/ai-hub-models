@@ -9,7 +9,7 @@ import requests
 import torch
 from PIL import Image, UnidentifiedImageError
 
-from qai_hub_models.models._shared.stable_diffusion.utils import make_canny
+from qai_hub_models.models._shared.diffusion.utils import make_canny
 
 
 def download_img(url: str) -> Image.Image | None:

@@ -8,21 +8,21 @@ import os
 import re
 
 import soundfile
+import torch.nn
 
 from qai_hub_models.models._shared.hf_whisper.app import HfWhisperApp
-from qai_hub_models.models.whisper_large_v3_turbo.model import WhisperLargeV3Turbo
 
 
 def assert_transcription_matches(
     audio_path: str | os.PathLike,
     expected_text: str,
+    whisper_encoder: torch.nn.Module,
+    whisper_decoder: torch.nn.Module,
+    whisper_version: str,
 ) -> None:
     wav, sample_rate = soundfile.read(audio_path)
 
-    model = WhisperLargeV3Turbo.from_pretrained()
-    app = HfWhisperApp(
-        model.encoder, model.decoder, WhisperLargeV3Turbo.get_hf_whisper_version()
-    )
+    app = HfWhisperApp(whisper_encoder, whisper_decoder, whisper_version)
     transcription = app.transcribe(wav, sample_rate)
 
     trans = "".join(re.findall(r"\b\w+\b", transcription))

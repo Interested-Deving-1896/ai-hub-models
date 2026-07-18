@@ -13,7 +13,7 @@ import torch
 from diffusers import AutoencoderKL, UNet2DConditionModel
 from transformers import CLIPTextModel, CLIPTokenizer
 
-from qai_hub_models.models._shared.stable_diffusion.model import (
+from qai_hub_models.models._shared.diffusion.stable_diffusion import (
     StableDiffusionBase,
     TextEncoderQuantizableBase,
     UnetQuantizableBase,

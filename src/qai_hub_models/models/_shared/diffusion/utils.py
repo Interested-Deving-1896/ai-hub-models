@@ -20,7 +20,7 @@ from qai_hub.public_rest_api import DatasetEntries
 from tqdm import tqdm
 from transformers import CLIPTokenizer
 
-from qai_hub_models.models._shared.stable_diffusion.app import (
+from qai_hub_models.models._shared.diffusion.app import (
     UNET_EXTRA_INPUT_NAMES,
     run_diffusion_steps_on_latents,
 )

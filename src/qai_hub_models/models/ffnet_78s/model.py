@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.ffnet.model import FFNet
+from qai_hub_models.models._shared.cityscapes_segmentation.ffnet_model import FFNet
 
 MODEL_ID = __name__.split(".")[-2]
 

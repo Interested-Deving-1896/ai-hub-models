@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 import torch
 from diffusers import ControlNetModel, UNet2DConditionModel
 
-from qai_hub_models.models._shared.stable_diffusion.model_adaptation import (
+from qai_hub_models.models._shared.diffusion.model_adaptation import (
     get_timestep_embedding,
     monkey_patch_model,
 )
@@ -315,7 +315,7 @@ class ControlUnetQuantizableBase(AIMETOnnxQuantizableMixin, ControlUnetBase):  #
         return cls(quant_sim, host_device=host_device, onnx_bundle=bundle)
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        from qai_hub_models.models._shared.stable_diffusion.dataset import (
+        from qai_hub_models.models._shared.diffusion.dataset import (
             StableDiffusionCalibDatasetUnet,
         )
 
@@ -403,7 +403,7 @@ class ControlNetBase(BaseModel, FromPretrainedMixin):
         }
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        from qai_hub_models.models._shared.stable_diffusion.dataset import (
+        from qai_hub_models.models._shared.diffusion.dataset import (
             StableDiffusionCalibDatasetUnet,
         )
 
@@ -475,7 +475,7 @@ class ControlNetQuantizableBase(AIMETOnnxQuantizableMixin, ControlNetBase):  # t
         return cls(quant_sim, host_device=host_device, onnx_bundle=bundle)
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        from qai_hub_models.models._shared.stable_diffusion.dataset import (
+        from qai_hub_models.models._shared.diffusion.dataset import (
             StableDiffusionCalibDatasetControlNet,
         )
 

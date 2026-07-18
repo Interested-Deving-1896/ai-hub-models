@@ -11,13 +11,13 @@ from abc import ABC, abstractmethod
 import torch
 from qai_hub.public_rest_api import DatasetEntries
 
-from qai_hub_models.models._shared.controlnet.model import ControlNetBase
-from qai_hub_models.models._shared.stable_diffusion.model import (
+from qai_hub_models.models._shared.diffusion.controlnet import ControlNetBase
+from qai_hub_models.models._shared.diffusion.stable_diffusion import (
     StableDiffusionBase,
     TextEncoderBase,
     UnetBase,
 )
-from qai_hub_models.models._shared.stable_diffusion.utils import (
+from qai_hub_models.models._shared.diffusion.utils import (
     load_calib_dataset_entries,
     load_calib_tokens,
     load_unet_calib_dataset_entries,

@@ -14,7 +14,7 @@ import torch
 from diffusers.schedulers.scheduling_utils import SCHEDULER_CONFIG_NAME
 from huggingface_hub import hf_hub_download
 
-from qai_hub_models.models._shared.stable_diffusion.model import StableDiffusionBase
+from qai_hub_models.models._shared.diffusion.stable_diffusion import StableDiffusionBase
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.checkpoint import CheckpointSpec, hf_repo_exists
 from qai_hub_models.utils.dataset_util import dataset_entries_to_dataloader

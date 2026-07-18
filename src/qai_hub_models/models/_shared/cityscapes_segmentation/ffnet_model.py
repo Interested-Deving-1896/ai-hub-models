@@ -13,11 +13,11 @@ import torch
 from typing_extensions import Self
 
 from qai_hub_models.datasets.cityscapes import CityscapesLowResDataset
+from qai_hub_models.models._shared.cityscapes_segmentation.external_repos.ffnet.models.model_registry import (
+    model_entrypoint,
+)
 from qai_hub_models.models._shared.cityscapes_segmentation.model import (
     CityscapesSegmentor,
-)
-from qai_hub_models.models._shared.ffnet.external_repos.ffnet.models.model_registry import (
-    model_entrypoint,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_dataset import BaseDataset

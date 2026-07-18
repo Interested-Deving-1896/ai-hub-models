@@ -59,9 +59,9 @@ def test_import_expression_matches_real_imports() -> None:
 
 def test_import_expression_for_shared_module() -> None:
     """Shared modules under _shared/ should also resolve correctly."""
-    filepath = "src/qai_hub_models/models/_shared/stable_diffusion/model.py"
+    filepath = "src/qai_hub_models/models/_shared/diffusion/model.py"
     expr = get_python_import_expression(filepath)
-    assert expr == "qai_hub_models.models._shared.stable_diffusion.model"
+    assert expr == "qai_hub_models.models._shared.diffusion.model"
 
 
 def test_import_expression_for_init() -> None:
@@ -76,7 +76,7 @@ def test_shared_model_change_detects_dependent_models() -> None:
     Changing a _shared module should detect the concrete models
     that import from it.
     """
-    changed = ["src/qai_hub_models/models/_shared/stable_diffusion/model.py"]
+    changed = ["src/qai_hub_models/models/_shared/diffusion/model.py"]
     models = resolve_affected_models(changed)
     assert "stable_diffusion_v1_5" in models
     assert "controlnet_canny" in models
@@ -155,7 +155,7 @@ def test_shared_change_does_not_detect_shared_as_model() -> None:
     in the output even though they're under models/.
     """
     models = resolve_affected_models(
-        ["src/qai_hub_models/models/_shared/stable_diffusion/model.py"]
+        ["src/qai_hub_models/models/_shared/diffusion/model.py"]
     )
     for m in models:
         assert not m.startswith("_shared")

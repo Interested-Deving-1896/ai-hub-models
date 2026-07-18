@@ -37,8 +37,8 @@ from onnxsim import simplify
 from qai_hub.client import Device
 
 from qai_hub_models import TargetRuntime
-from qai_hub_models.models._shared.stable_diffusion import utils
-from qai_hub_models.models._shared.stable_diffusion.model_adaptation import (
+from qai_hub_models.models._shared.diffusion import utils
+from qai_hub_models.models._shared.diffusion.model_adaptation import (
     get_timestep_embedding,
     monkey_patch_model,
 )
@@ -173,7 +173,7 @@ class TextEncoderQuantizableBase(AIMETOnnxQuantizableMixin, TextEncoderBase):
         return cls(quant_sim, host_device=host_device, onnx_bundle=bundle)
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        from qai_hub_models.models._shared.stable_diffusion.dataset import (
+        from qai_hub_models.models._shared.diffusion.dataset import (
             StableDiffusionCalibDatasetTextEncoder,
         )
 
@@ -322,7 +322,7 @@ class UnetQuantizableBase(AIMETOnnxQuantizableMixin, UnetBase):
         return cls(quant_sim, host_device=host_device, onnx_bundle=bundle)
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        from qai_hub_models.models._shared.stable_diffusion.dataset import (
+        from qai_hub_models.models._shared.diffusion.dataset import (
             StableDiffusionCalibDatasetUnet,
         )
 
@@ -448,7 +448,7 @@ class VaeDecoderQuantizableBase(AIMETOnnxQuantizableMixin, VaeDecoderBase):
         )
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        from qai_hub_models.models._shared.stable_diffusion.dataset import (
+        from qai_hub_models.models._shared.diffusion.dataset import (
             StableDiffusionCalibDatasetVae,
         )
 
