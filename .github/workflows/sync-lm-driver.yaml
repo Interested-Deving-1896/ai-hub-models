@@ -36,19 +36,27 @@ jobs:
         run: |
           set -euo pipefail
 
+          LOCAL_ONLY_PATHS=(
+            /requirements.txt
+            /manifest.yaml
+          )
+
           TMPDIR=$(mktemp -d)
           trap 'rm -rf "$TMPDIR"' EXIT
 
-          # Clone AIMET sparse (only the source directory)
           git clone --depth=1 --filter=blob:none --sparse \
             --branch "$SOURCE_BRANCH" "$SOURCE_REPO" "$TMPDIR/aimet"
           cd "$TMPDIR/aimet"
           git sparse-checkout set "$SOURCE_DIR"
           cd -
 
-          # Sync files from AIMET into target directory
+          EXCLUDES=()
+          for path in "${LOCAL_ONLY_PATHS[@]}"; do
+            EXCLUDES+=(--exclude="$path")
+          done
+
           mkdir -p "$TARGET_DIR"
-          rsync -a --delete "$TMPDIR/aimet/$SOURCE_DIR/" "$TARGET_DIR"/
+          rsync -a --delete "${EXCLUDES[@]}" "$TMPDIR/aimet/$SOURCE_DIR/" "$TARGET_DIR"/
 
       - name: Check for changes
         id: changes
