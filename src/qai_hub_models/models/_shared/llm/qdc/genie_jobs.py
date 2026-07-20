@@ -68,6 +68,12 @@ def _prepare_eval_prompts_in_bundle(
     Uses the tokenizer from the bundle to apply the correct chat template.
     If the bundle tokenizer lacks a chat_template, loads the tokenizer from
     the model's HF repo instead.
+
+    Thinking mode is disabled for the eval prompts so the model returns a direct
+    answer within the on-device token budget instead of spending it on a
+    reasoning trace that may be truncated before any answer is produced. Passing
+    enable_thinking=False is safe for non-thinking models -- their chat templates
+    simply ignore the unused variable.
     """
     tokenizer = AutoTokenizer.from_pretrained(genie_bundle_path)
 
@@ -87,12 +93,18 @@ def _prepare_eval_prompts_in_bundle(
         ]
         try:
             formatted = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
             )
         except Exception:
             messages = [{"role": "user", "content": prompt}]
             formatted = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
             )
         prompt_file = os.path.join(prompts_dir, f"prompt_{idx:03d}.txt")
         with open(prompt_file, "w", encoding="utf-8") as f:
