@@ -326,7 +326,7 @@ jobs:
     if: ${{ !cancelled() && (needs.scrape-questions.result == 'failure' || needs.draft-and-post.result == 'failure' || needs.post-to-slack.result == 'failure') }}
     runs-on: [tetra-ubuntu-2204, self-hosted]
     steps:
-      - uses: slackapi/slack-github-action@v3
+      - uses: slackapi/slack-github-action@v4
         name: Notify Slack — failure (test mode → #tungsten-debug)
         if: ${{ inputs.test_mode }}
         with:
@@ -336,7 +336,7 @@ jobs:
             channel: "C09MKAM6AGP"
             text: "[TEST] Customer-questions reminder workflow encountered a failure.\nScrape: ${{ needs.scrape-questions.result }} (count: ${{ needs.scrape-questions.outputs.question_count || '0' }})\nClassify: ${{ needs.draft-and-post.result }}\nSlack reminder: ${{ needs.post-to-slack.result }}\nWorkflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-      - uses: slackapi/slack-github-action@v3
+      - uses: slackapi/slack-github-action@v4
         name: Notify Slack — failure (prod → #ai-hub-github-notify)
         if: ${{ !inputs.test_mode && github.event_name == 'schedule' }}
         with:

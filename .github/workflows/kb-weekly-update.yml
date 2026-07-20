@@ -90,7 +90,7 @@ jobs:
       runs-on: [tetra-ubuntu-2204, self-hosted]
       steps:
         - name: Send Slack Notification
-          uses: slackapi/slack-github-action@v3
+          uses: slackapi/slack-github-action@v4
           with:
             method: chat.postMessage
             token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}

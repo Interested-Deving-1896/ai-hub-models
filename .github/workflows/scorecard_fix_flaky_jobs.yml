@@ -213,7 +213,7 @@ jobs:
 
       - name: Notify AI Hub Interesting Jobs Channel about Flaky Jobs
         if: github.event_name == 'schedule' && steps.fix-flaky-jobs.outputs.flaky_jobs_found == 'true'
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@v4
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}

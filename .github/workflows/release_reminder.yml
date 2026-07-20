@@ -43,7 +43,7 @@ jobs:
       - id: notify_release
         if: ${{ ( github.event_name != 'schedule' && inputs.notify_release ) || ( steps.calc_week_diff.outputs.is_release_week == 1 && steps.calc_week_diff.outputs.day_of_week == 1 ) }}
         name: Notify Slack - Release
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@v4
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
@@ -54,7 +54,7 @@ jobs:
       - id: notify_prep_llm_release
         if: ${{ ( github.event_name != 'schedule' && inputs.notify_prep_release_llm ) || ( steps.calc_week_diff.outputs.is_release_week == 0 && steps.calc_week_diff.outputs.day_of_week == 1 ) }}
         name: Notify Slack - Prep LLM Release
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@v4
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
@@ -71,7 +71,7 @@ jobs:
       - id: notify_weekly_meeting
         if: ${{ ( github.event_name != 'schedule' && inputs.notify_weekly_meeting ) || ( steps.calc_week_diff.outputs.day_of_week == 1 ) }}
         name: Notify Slack - Weekly Meeting
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@v4
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
@@ -82,7 +82,7 @@ jobs:
       - id: notify_prep_release
         if: ${{ ( github.event_name != 'schedule' && inputs.notify_prep_release ) || ( steps.calc_week_diff.outputs.is_release_week == 0 && steps.calc_week_diff.outputs.day_of_week == 3 ) }}
         name: Notify Slack - Prep Release
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@v4
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
