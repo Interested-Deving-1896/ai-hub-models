@@ -54,11 +54,17 @@ def llm_chat_demo(
     raw: bool = False,
     test_checkpoint: CheckpointSpec | None = None,
     supports_thinking: bool = False,
+    enable_thinking: bool | None = None,
     # VLM parameters (optional)
     vision_encoder_cls: Any | None = None,
     default_sequence_length: list[int] | int | None = None,
 ) -> None:
-    """Shared Chat Demo App to generate output for provided input prompt."""
+    """Shared Chat Demo App to generate output for provided input prompt.
+
+    When enable_thinking is not None it overrides the --thinking / --no-thinking
+    CLI flag. Tests pass enable_thinking=False so small thinking models answer
+    directly instead of looping in an unterminated reasoning trace.
+    """
     parser = get_model_cli_parser(
         model_cls,
         suppress_help_arguments=["--host-device", "--fp-model", "--precision"],
@@ -175,10 +181,11 @@ def llm_chat_demo(
         ) -> str:
             return user_input_prompt
     elif supports_thinking:
+        thinking = enable_thinking if enable_thinking is not None else args.thinking
         preprocess_prompt_fn = partial(
             fp_model_cls.get_input_prompt_with_tags,
             tokenizer=tokenizer,
-            enable_thinking=args.thinking,
+            enable_thinking=thinking,
         )
     else:
         preprocess_prompt_fn = partial(

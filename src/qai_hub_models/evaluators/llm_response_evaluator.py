@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import gc
 import json
+import os
 import subprocess
 import textwrap
 from collections.abc import Callable
@@ -214,6 +215,10 @@ class LLMResponseEvaluator(LLMEvaluator):
         callback: Callable | None = None,
     ) -> None:
         set_seed(self.seed)
+        # Greedy decoding argmaxes over logits, so cuBLAS/cuDNN nondeterminism
+        # can flip a near-tie and diverge the whole generation across hosts.
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        torch.use_deterministic_algorithms(True)
         self._build_generation_config(generator)
 
         # Prefer generator device (in case this has been configured different

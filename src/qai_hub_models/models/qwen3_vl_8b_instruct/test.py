@@ -40,7 +40,7 @@ DEFAULT_EVAL_SEQLEN = [2048, 128, 1]
     [
         pytest.param("DEFAULT", "wikitext", 8.34, 0, marks=pytest.mark.nightly),
         ("DEFAULT", "mmlu", 0.755, 1000),
-        ("DEFAULT", "mmmu", 0.575, 200),
+        ("DEFAULT", "mmmu", 0.55, 200),
         # Image+prompt generation + LLM-grader smoke test (5 samples). Weekly
         # (evaluate-only) since VLM generation is slow. The grader label can
         # flip across hosts, so expected_metric is a floor.

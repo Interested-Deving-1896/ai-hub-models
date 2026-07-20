@@ -29,6 +29,7 @@ def qwen3_1_7b_chat_demo(
     hf_repo_url: str = HF_REPO_URL,
     default_prompt: str | None = None,
     test_checkpoint: CheckpointSpec | None = None,
+    enable_thinking: bool | None = None,
 ) -> None:
     llm_chat_demo(
         model_cls=model_cls,
@@ -41,6 +42,7 @@ def qwen3_1_7b_chat_demo(
         default_prompt=default_prompt,
         test_checkpoint=test_checkpoint,
         supports_thinking=True,
+        enable_thinking=enable_thinking,
     )
 
 
