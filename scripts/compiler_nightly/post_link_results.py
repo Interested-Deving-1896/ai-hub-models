@@ -105,6 +105,36 @@ def print_status_table(data: dict, title: str, empty_message: str) -> None:
     )
 
 
+def _infra_failure_status_row(model_name: str, info: dict) -> list:
+    return [
+        model_name,
+        info["prod_status"],
+        info["dev_status"],
+        info.get("prod_job_url", "N/A"),
+        info.get("original_job_url", "N/A"),
+        info.get("dev_job_url", "N/A"),
+    ]
+
+
+def print_infra_failure_table(data: dict, title: str, empty_message: str) -> None:
+    print_results_table(
+        data,
+        title=title,
+        field_names=[
+            "Model",
+            "Prod Status",
+            "Dev Status",
+            "Prod URL",
+            "Failed Dev URL",
+            "Re-run Dev URL",
+        ],
+        row_extractor=_infra_failure_status_row,
+        sort_key=lambda x: x[0],
+        empty_message=empty_message,
+        print_to_console=True,
+    )
+
+
 def save_full_table_csv(status_changes: dict, output_dir: Path, tag: str) -> Path:
     field_names = ["Model", "Prod Status", "Dev Status", "Prod Job URL", "Dev Job URL"]
     csv_path = output_dir / f"link-results__{tag}.csv"
@@ -230,10 +260,10 @@ def main() -> int:
             "remove from known_failures.yaml",
             "No stale known issues.",
         )
-        print_status_table(
+        print_infra_failure_table(
             infra_failures,
             f"INFRASTRUCTURE FAILURES: {len(infra_failures)} models failed then "
-            "PASSED on re-run (Dev URL is the re-run job)",
+            "PASSED on re-run",
             "No infrastructure failures.",
         )
         print_status_table(

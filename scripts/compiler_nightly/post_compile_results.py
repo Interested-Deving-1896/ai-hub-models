@@ -34,6 +34,15 @@ def _compile_row(model_name: str, info: dict) -> list:
     return [model_name, info["prod_job_url"], info["dev_job_url"]]
 
 
+def _infra_failure_row(model_name: str, info: dict) -> list:
+    return [
+        model_name,
+        info["prod_job_url"],
+        info["original_job_url"],
+        info["dev_job_url"],
+    ]
+
+
 def print_summary(
     regressions: dict,
     progressions: dict,
@@ -68,24 +77,31 @@ def print_summary(
         (
             regressions,
             "REGRESSIONS: Prod SUCCESS -> Dev FAILED (failed again on re-run)",
+            field_names,
+            _compile_row,
         ),
         (
             infra_failures,
-            "INFRASTRUCTURE FAILURES: Dev FAILED then PASSED on re-run "
-            "(Dev Job URL is the re-run job)",
+            "INFRASTRUCTURE FAILURES: Dev FAILED then PASSED on re-run",
+            ["Model", "Prod Job URL", "Failed Dev Job URL", "Re-run Dev Job URL"],
+            _infra_failure_row,
         ),
         (
             known,
             "KNOWN FAILURES: Prod SUCCESS -> Dev FAILED (excluded from regressions)",
+            field_names,
+            _compile_row,
         ),
         (
             passing_known,
             "KNOWN ISSUES PASSING NOW: remove from known_failures.yaml",
+            field_names,
+            _compile_row,
         ),
     ]
-    for data, title in console_sections:
+    for data, title, fields, row_fn in console_sections:
         if data:
-            table = create_results_table(data, field_names, _compile_row)
+            table = create_results_table(data, fields, row_fn)
             log_and_print(f"\n{DISPLAY_SEPARATOR}", logger)
             log_and_print(title, logger)
             log_and_print(DISPLAY_SEPARATOR, logger)
