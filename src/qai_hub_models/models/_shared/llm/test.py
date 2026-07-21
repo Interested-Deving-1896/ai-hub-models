@@ -32,7 +32,10 @@ from qai_hub_models.models._shared.llm.common import (
     make_key,
     save_job,
 )
+from qai_hub_models.models._shared.llm.evaluate import evaluate
+from qai_hub_models.models._shared.llm.llm_helpers import log_evaluate_test_result
 from qai_hub_models.models._shared.llm.model import (
+    LLM_QNN,
     LLM_AIMETOnnx,
     LLMBase,
 )
@@ -781,6 +784,97 @@ def setup_test_quantization(
         )
         cleanup()
     return output_path
+
+
+PROMPTS_TASKS = {"prompts", "multimodal_prompts"}
+
+
+def run_llm_evaluate_test(
+    task: str,
+    checkpoint: str,
+    expected_metric: float,
+    num_samples: int,
+    dataset_cls: type,
+    quantized_split_cls: type,
+    fp_split_cls: type,
+    quantized_presplit_cls: type,
+    fp_presplit_cls: type,
+    prompt_sequence_length: int | list[int],
+    context_length: int,
+    model_id: str,
+    tmp_path: Path | None = None,
+    rtol: float = 0.03,
+    log_checkpoint: str | None = None,
+    evaluate_kwargs: dict[str, Any] | None = None,
+    add_unquantized_extra_kwargs: bool = True,
+    fp_baseline_uses_presplit: bool = False,
+) -> float:
+    """Shared body for the split-model ``test_evaluate`` parametrization.
+
+    Forward-only metrics (wikitext, mmlu, ...) run through the split-Parts
+    wrappers so the reported degradation isolates the quantization effect.
+    Prompt-generation tasks grade greedily-decoded output, which is
+    nondeterministic on the split-Parts ORT-CUDA path, so they always run on
+    the monolithic FP PreSplit (deterministic torch) regardless of checkpoint.
+
+    Returns the measured metric and asserts it against ``expected_metric`` (a
+    floor for prompt tasks, a two-sided tolerance otherwise).
+
+    ``add_unquantized_extra_kwargs`` threads the ``_skip_quantsim_creation`` /
+    ``fp_model`` kwargs the split LLMs pass for the unquantized baseline; the
+    VLMs don't take them. ``fp_baseline_uses_presplit`` evaluates the FP
+    baseline on the monolithic PreSplit rather than the split wrapper.
+    """
+    is_prompts = task in PROMPTS_TASKS
+    is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
+    if is_prompts:
+        assert tmp_path is not None, "tmp_path is required for prompt-generation tasks"
+        eval_checkpoint = "DEFAULT_UNQUANTIZED"
+        quantized_model_cls = quantized_presplit_cls
+        fp_model_cls = fp_presplit_cls
+    else:
+        eval_checkpoint = checkpoint
+        quantized_model_cls = quantized_split_cls
+        # Some models evaluate the FP baseline on the monolithic PreSplit while
+        # the quantized rows still go through the split wrapper.
+        fp_model_cls = (
+            fp_presplit_cls
+            if fp_baseline_uses_presplit and is_unquantized
+            else fp_split_cls
+        )
+
+    extra_kwargs = (
+        {"_skip_quantsim_creation": False, "fp_model": None}
+        if add_unquantized_extra_kwargs and eval_checkpoint == "DEFAULT_UNQUANTIZED"
+        else {}
+    )
+    task_kwargs = {"output_dir": str(tmp_path)} if is_prompts else None
+
+    actual_metric, _ = evaluate(
+        quantized_model_cls=quantized_model_cls,
+        fp_model_cls=fp_model_cls,
+        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+        num_samples=num_samples,
+        dataset_cls=dataset_cls,
+        prompt_sequence_length=prompt_sequence_length,
+        context_length=context_length,
+        kwargs=dict(checkpoint=eval_checkpoint, **extra_kwargs),
+        task_kwargs=task_kwargs,
+        **(evaluate_kwargs or {}),
+    )
+    log_evaluate_test_result(
+        model_name=model_id,
+        checkpoint=log_checkpoint or checkpoint,
+        metric=task,
+        value=actual_metric,
+    )
+    if is_prompts:
+        assert actual_metric >= expected_metric, (
+            f"{task} grader score {actual_metric:.3f} below floor {expected_metric}"
+        )
+    else:
+        np.testing.assert_allclose(actual_metric, expected_metric, rtol=rtol, atol=0)
+    return actual_metric
 
 
 # ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import random
+import shutil
 import time
 import uuid
 import zipfile
@@ -665,8 +666,14 @@ def create_zip(zip_path: str, source_dir: str | os.PathLike) -> None:
     already-compressed binaries.
     """
     source_dir = str(source_dir)
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED, allowZip64=True) as zf:
         for root, _, files in os.walk(source_dir):
             for fn in files:
                 abs_path = os.path.join(root, fn)
-                zf.write(abs_path, os.path.relpath(abs_path, source_dir))
+                arcname = os.path.relpath(abs_path, source_dir)
+                # force_zip64 so stored members over 2 GiB don't abort mid-write.
+                with (
+                    open(abs_path, "rb") as src,
+                    zf.open(arcname, "w", force_zip64=True) as dest,
+                ):
+                    shutil.copyfileobj(src, dest)

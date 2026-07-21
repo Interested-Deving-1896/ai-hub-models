@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pytest
 import torch
 from transformers import AutoConfig
@@ -17,16 +16,13 @@ from transformers import AutoConfig
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models._shared.llm import test
 from qai_hub_models.models._shared.llm.common import cleanup, get_qdc_api_token
-from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
-    log_evaluate_test_result,
     log_perf_on_device_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     DEFAULT_SEQUENCE_LENGTH,
-    LLM_QNN,
 )
 from qai_hub_models.models.qwen3_4b_instruct_2507 import Model
 from qai_hub_models.models.qwen3_4b_instruct_2507.model import (
@@ -189,36 +185,24 @@ def test_evaluate(
     Qwen3_4B_Instruct_2507_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
-    extra_kwargs = (
-        {"_skip_quantsim_creation": False, "fp_model": None} if is_unquantized else {}
-    )
     # Unquantized FP baseline is the monolithic PreSplit (torch forward); the
     # split-Parts ONNX path shifts WikiText PPL (9.39 -> 10.6). W4A16 keeps the
     # split wrapper since that's the production on-device graph.
-    fp_model_cls = (
-        Qwen3_4B_Instruct_2507_PreSplit if is_unquantized else FPSplitModelWrapper
-    )
-    actual_metric, _ = evaluate(
-        quantized_model_cls=QuantizedSplitModelWrapper,
-        fp_model_cls=fp_model_cls,
-        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+    test.run_llm_evaluate_test(
+        task=task,
+        checkpoint=checkpoint,
+        expected_metric=expected_metric,
         num_samples=num_samples,
         dataset_cls=dataset_cls,
+        quantized_split_cls=QuantizedSplitModelWrapper,
+        fp_split_cls=FPSplitModelWrapper,
+        quantized_presplit_cls=Qwen3_4B_Instruct_2507_QuantizablePreSplit,
+        fp_presplit_cls=Qwen3_4B_Instruct_2507_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
-        kwargs=dict(
-            checkpoint=checkpoint,
-            **extra_kwargs,
-        ),
+        model_id=MODEL_ID,
+        fp_baseline_uses_presplit=True,
     )
-    log_evaluate_test_result(
-        model_name=MODEL_ID,
-        checkpoint=checkpoint,
-        metric=task,
-        value=actual_metric,
-    )
-    np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.03, atol=0)
 
 
 @pytest.mark.skipif(

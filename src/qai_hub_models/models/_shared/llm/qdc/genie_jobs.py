@@ -221,11 +221,14 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
             f"[QDC] Adding QAIRT SDK from {self.qairt_sdk_path} to {zip_path}...",
             flush=True,
         )
-        with zipfile.ZipFile(zip_path, "a") as zf:
-            zf.write(
-                self.qairt_sdk_path,
-                arcname=os.path.join("genie_bundle", "qairt_sdk.zip"),
-            )
+        arcname = os.path.join("genie_bundle", "qairt_sdk.zip")
+        # force_zip64 so a >2 GiB SDK doesn't abort mid-write.
+        with (
+            zipfile.ZipFile(zip_path, "a", allowZip64=True) as zf,
+            open(self.qairt_sdk_path, "rb") as src,
+            zf.open(arcname, "w", force_zip64=True) as dest,
+        ):
+            shutil.copyfileobj(src, dest)
         print("[QDC] QAIRT SDK addition to zip complete", flush=True)
         return zip_path
 

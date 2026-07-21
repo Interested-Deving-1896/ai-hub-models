@@ -8,21 +8,17 @@ import os
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pytest
 import torch
 from transformers import AutoConfig
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
-    log_evaluate_test_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
-    LLM_QNN,
 )
 from qai_hub_models.models.qwen3_4b import Model
 from qai_hub_models.models.qwen3_4b.demo import qwen3_4b_chat_demo
@@ -149,33 +145,20 @@ def test_evaluate(
     Qwen3_4B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
-    extra_kwargs = (
-        {"_skip_quantsim_creation": False, "fp_model": None} if is_unquantized else {}
-    )
-    # Both FP and W4A16 run through the split-Parts wrapper so the reported
-    # degradation isolates the pure quantization effect (matches the Llama 3.2
-    # split models).
-    actual_metric, _ = evaluate(
-        quantized_model_cls=QuantizedSplitModelWrapper,
-        fp_model_cls=FPSplitModelWrapper,
-        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+    test.run_llm_evaluate_test(
+        task=task,
+        checkpoint=checkpoint,
+        expected_metric=expected_metric,
         num_samples=num_samples,
         dataset_cls=dataset_cls,
+        quantized_split_cls=QuantizedSplitModelWrapper,
+        fp_split_cls=FPSplitModelWrapper,
+        quantized_presplit_cls=Qwen3_4B_QuantizablePreSplit,
+        fp_presplit_cls=Qwen3_4B_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
-        kwargs=dict(
-            checkpoint=checkpoint,
-            **extra_kwargs,
-        ),
+        model_id=MODEL_ID,
     )
-    log_evaluate_test_result(
-        model_name=MODEL_ID,
-        checkpoint=checkpoint,
-        metric=task,
-        value=actual_metric,
-    )
-    np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.03, atol=0)
 
 
 @pytest.mark.nightly

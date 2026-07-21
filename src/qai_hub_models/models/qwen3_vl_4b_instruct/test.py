@@ -6,20 +6,16 @@ from __future__ import annotations
 
 import importlib
 
-import numpy as np
 import pytest
 import torch
 
 from qai_hub_models import Precision
 from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
-    log_evaluate_test_result,
     log_perf_on_device_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
-    LLM_QNN,
 )
 from qai_hub_models.models._shared.llm.perf_collection import (
     LLMPerfConfig,
@@ -81,28 +77,29 @@ def test_evaluate(
     )
     Qwen3_VL_4B_PreSplit.release()
     Qwen3_VL_4B_QuantizablePreSplit.release()
-    actual_metric, _ = evaluate(
-        quantized_model_cls=Qwen3_VL_4B_QuantizablePreSplit,
-        fp_model_cls=Qwen3_VL_4B_PreSplit,
-        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+    # This VLM has no split-Parts wrapper; the monolithic PreSplit classes serve
+    # both the forward-only and prompt-generation paths.
+    test.run_llm_evaluate_test(
+        task=task,
+        checkpoint=checkpoint,
+        expected_metric=expected_metric,
         num_samples=num_samples,
         dataset_cls=dataset_cls,
+        quantized_split_cls=Qwen3_VL_4B_QuantizablePreSplit,
+        fp_split_cls=Qwen3_VL_4B_PreSplit,
+        quantized_presplit_cls=Qwen3_VL_4B_QuantizablePreSplit,
+        fp_presplit_cls=Qwen3_VL_4B_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
-        kwargs=dict(
-            checkpoint=checkpoint,
+        model_id=MODEL_ID,
+        log_checkpoint="DEFAULT_W4A16" if checkpoint == "DEFAULT" else checkpoint,
+        add_unquantized_extra_kwargs=False,
+        evaluate_kwargs=dict(
+            vision_encoder_cls=VisionEncoder,
+            hf_repo_name=HF_REPO_NAME,
+            vlm_image_size=(DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT),
         ),
-        vision_encoder_cls=VisionEncoder,
-        hf_repo_name=HF_REPO_NAME,
-        vlm_image_size=(DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT),
     )
-    log_evaluate_test_result(
-        model_name=MODEL_ID,
-        checkpoint="DEFAULT_W4A16" if checkpoint == "DEFAULT" else checkpoint,
-        metric=task,
-        value=actual_metric,
-    )
-    np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.03, atol=0)
 
 
 def _get_llm_perf_params() -> list[tuple[Precision, ScorecardDevice]]:

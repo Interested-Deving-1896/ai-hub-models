@@ -9,23 +9,19 @@ import os
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pytest
 import torch
 from transformers import AutoConfig
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
-    log_evaluate_test_result,
     log_perf_on_device_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     DEFAULT_SEQUENCE_LENGTH,
-    LLM_QNN,
 )
 from qai_hub_models.models._shared.llm.perf_collection import (
     LLMPerfConfig,
@@ -139,13 +135,12 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
         # QT (w4a16): PPL 16.59, MMLU 56.65%, AutogradedPrompts 97.8%.
         pytest.param("DEFAULT_W4A16", "wikitext", 16.59, 0, marks=pytest.mark.nightly),
         ("DEFAULT_W4A16", "mmlu", 0.5665, 1000),
-        # Prompt-generation + LLM-grader smoke test (5 samples). The grader
-        # label can flip across hosts (we've seen 0.88, 0.94, 1.0), so
-        # expected_metric is a floor.
-        pytest.param("DEFAULT_W4A16", "prompts", 0.88, 5, marks=pytest.mark.nightly),
+        # Prompt-generation + LLM-grader smoke test (5 samples). Always runs on
+        # the FP PreSplit regardless of checkpoint, so both rows share a floor.
+        pytest.param("DEFAULT_W4A16", "prompts", 0.75, 5, marks=pytest.mark.nightly),
         # FP (unquantized). Baselines re-aligned to observed values; the earlier
-        # numbers regressed (PPL 15.63 -> 18.5, MMLU 0.5996 -> 0.51, prompts
-        # 0.88 -> 0.78), likely from the tokenizer/chat-template change in #4014.
+        # numbers regressed (PPL 15.63 -> 18.5, MMLU 0.5996 -> 0.51), likely from
+        # the tokenizer/chat-template change in #4014.
         # Tracked in qcom-ai-hub/tetracode#20453.
         ("DEFAULT_UNQUANTIZED", "wikitext", 18.51, 0),
         ("DEFAULT_UNQUANTIZED", "mmlu", 0.511, 1000),
@@ -170,44 +165,21 @@ def test_evaluate(
     Qwen3_1_7B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
-    extra_kwargs = (
-        {"_skip_quantsim_creation": False, "fp_model": None} if is_unquantized else {}
-    )
-    # Both FP and W4A16 run through the split-Parts wrapper so the reported
-    # degradation isolates the pure quantization effect (matches the Llama 3.2
-    # split models).
-    # The prompt-generation task persists responses and grades them; everything
-    # else scores a forward-only metric inline.
-    task_kwargs = {"output_dir": str(tmp_path)} if task == "prompts" else None
-    actual_metric, _ = evaluate(
-        quantized_model_cls=QuantizedSplitModelWrapper,
-        fp_model_cls=FPSplitModelWrapper,
-        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+    test.run_llm_evaluate_test(
+        task=task,
+        checkpoint=checkpoint,
+        expected_metric=expected_metric,
         num_samples=num_samples,
         dataset_cls=dataset_cls,
+        quantized_split_cls=QuantizedSplitModelWrapper,
+        fp_split_cls=FPSplitModelWrapper,
+        quantized_presplit_cls=Qwen3_1_7B_QuantizablePreSplit,
+        fp_presplit_cls=Qwen3_1_7B_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
-        kwargs=dict(
-            checkpoint=checkpoint,
-            **extra_kwargs,
-        ),
-        task_kwargs=task_kwargs,
+        tmp_path=tmp_path,
+        model_id=MODEL_ID,
     )
-    log_evaluate_test_result(
-        model_name=MODEL_ID,
-        checkpoint=checkpoint,
-        metric=task,
-        value=actual_metric,
-    )
-    if task == "prompts":
-        # Grader score is monotonic (higher = better) and its argmax can flip
-        # across hosts, so assert a floor rather than a two-sided tolerance.
-        assert actual_metric >= expected_metric, (
-            f"{task} grader score {actual_metric:.3f} below floor {expected_metric}"
-        )
-    else:
-        np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.03, atol=0)
 
 
 @pytest.mark.nightly

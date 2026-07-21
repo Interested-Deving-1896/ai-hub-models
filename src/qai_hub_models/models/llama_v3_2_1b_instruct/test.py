@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pytest
 import torch
 from transformers import AutoConfig
@@ -17,15 +16,12 @@ from transformers import AutoConfig
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models._shared.llm import test
 from qai_hub_models.models._shared.llm.common import get_qdc_api_token
-from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
-    log_evaluate_test_result,
     log_perf_on_device_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
-    LLM_QNN,
 )
 from qai_hub_models.models.llama_v3_2_1b_instruct import Model
 from qai_hub_models.models.llama_v3_2_1b_instruct.demo import llama_3_2_1b_chat_demo
@@ -178,44 +174,21 @@ def test_evaluate(
     Llama3_2_1B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
-    extra_kwargs = (
-        {"_skip_quantsim_creation": False, "fp_model": None} if is_unquantized else {}
-    )
-    # The prompt-generation tasks persist responses and grade them in a
-    # separate venv; everything else scores a forward-only metric inline.
-    task_kwargs = (
-        {"output_dir": str(tmp_path)}
-        if task in {"prompts", "multimodal_prompts"}
-        else None
-    )
-    actual_metric, _ = evaluate(
-        quantized_model_cls=QuantizedSplitModelWrapper,
-        fp_model_cls=FPSplitModelWrapper,
-        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+    test.run_llm_evaluate_test(
+        task=task,
+        checkpoint=checkpoint,
+        expected_metric=expected_metric,
         num_samples=num_samples,
         dataset_cls=dataset_cls,
+        quantized_split_cls=QuantizedSplitModelWrapper,
+        fp_split_cls=FPSplitModelWrapper,
+        quantized_presplit_cls=Llama3_2_1B_QuantizablePreSplit,
+        fp_presplit_cls=Llama3_2_1B_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
-        kwargs=dict(
-            checkpoint=checkpoint,
-            **extra_kwargs,
-        ),
-        task_kwargs=task_kwargs,
+        tmp_path=tmp_path,
+        model_id=MODEL_ID,
     )
-    log_evaluate_test_result(
-        model_name=MODEL_ID,
-        checkpoint=checkpoint,
-        metric=task,
-        value=actual_metric,
-    )
-    if task in {"prompts", "multimodal_prompts"}:
-        # Grader score is monotonic (higher = better); assert a floor.
-        assert actual_metric >= expected_metric, (
-            f"{task} grader score {actual_metric:.3f} below floor {expected_metric}"
-        )
-    else:
-        np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.03, atol=0)
 
 
 @pytest.mark.nightly

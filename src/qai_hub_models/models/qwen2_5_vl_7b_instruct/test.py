@@ -8,20 +8,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pytest
 import torch
 
 from qai_hub_models import Precision
 from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.evaluate import evaluate
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
-    log_evaluate_test_result,
 )
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
-    LLM_QNN,
 )
 from qai_hub_models.models._shared.qwen2_vl.model import get_vlm_config
 from qai_hub_models.models.qwen2_5_vl_7b_instruct import (
@@ -187,42 +183,31 @@ def test_evaluate(
     )
     Qwen2_5_VL_7B_PreSplit.release()
     Qwen2_5_VL_7B_QuantizablePreSplit.release()
-    # The prompt-generation tasks persist responses and grade them in a
-    # separate venv; everything else scores a forward-only metric inline.
-    task_kwargs = (
-        {"output_dir": str(tmp_path)}
-        if task in {"prompts", "multimodal_prompts"}
-        else None
-    )
-    actual_metric, _ = evaluate(
-        quantized_model_cls=Qwen2_5_VL_7B_QuantizablePreSplit,
-        fp_model_cls=Qwen2_5_VL_7B_PreSplit,
-        qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]  # placeholder — no QNN variant yet
+    # This VLM has no split-Parts wrapper; the monolithic PreSplit classes serve
+    # both the forward-only and prompt-generation paths.
+    test.run_llm_evaluate_test(
+        task=task,
+        checkpoint=checkpoint,
+        expected_metric=expected_metric,
         num_samples=num_samples,
         dataset_cls=dataset_cls,
+        quantized_split_cls=Qwen2_5_VL_7B_QuantizablePreSplit,
+        fp_split_cls=Qwen2_5_VL_7B_PreSplit,
+        quantized_presplit_cls=Qwen2_5_VL_7B_QuantizablePreSplit,
+        fp_presplit_cls=Qwen2_5_VL_7B_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
-        kwargs=dict(
-            checkpoint=checkpoint,
+        tmp_path=tmp_path,
+        model_id=MODEL_ID,
+        rtol=0.06,
+        log_checkpoint="DEFAULT_W4A16" if checkpoint == "DEFAULT" else checkpoint,
+        add_unquantized_extra_kwargs=False,
+        evaluate_kwargs=dict(
+            vision_encoder_cls=VisionEncoder,
+            hf_repo_name=HF_REPO_NAME,
+            vlm_image_size=(DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT),
         ),
-        vision_encoder_cls=VisionEncoder,
-        hf_repo_name=HF_REPO_NAME,
-        vlm_image_size=(DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT),
-        task_kwargs=task_kwargs,
     )
-    log_evaluate_test_result(
-        model_name=MODEL_ID,
-        checkpoint="DEFAULT_W4A16" if checkpoint == "DEFAULT" else checkpoint,
-        metric=task,
-        value=actual_metric,
-    )
-    if task in {"prompts", "multimodal_prompts"}:
-        # Grader score is monotonic (higher = better); assert a floor.
-        assert actual_metric >= expected_metric, (
-            f"{task} grader score {actual_metric:.3f} below floor {expected_metric}"
-        )
-    else:
-        np.testing.assert_allclose(actual_metric, expected_metric, rtol=0.06, atol=0)
 
 
 @pytest.mark.nightly
