@@ -3,15 +3,23 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
+from typing import cast
+
 import numpy as np
 
 from qai_hub_models.models.bevdet.app import BEVDetApp
-from qai_hub_models.models.bevdet.model import MODEL_ASSET_VERSION, MODEL_ID, BEVDet
+from qai_hub_models.models.bevdet.model import (
+    MODEL_ASSET_VERSION,
+    MODEL_ID,
+    BEVDet,
+    BEVDetDecoder,
+    BEVDetEncoder,
+    BEVDetPooler,
+)
 from qai_hub_models.utils.args import (
-    demo_model_from_cli_args,
+    demo_model_components_from_cli_args,
     get_model_cli_parser,
     get_on_device_demo_parser,
-    model_from_cli_args,
     validate_on_device_demo_args,
 )
 from qai_hub_models.utils.asset_loaders import (
@@ -55,14 +63,17 @@ def main(is_test: bool = False) -> None:
     parser = get_on_device_demo_parser(parser, add_output_dir=True)
     args = parser.parse_args([] if is_test else None)
 
-    inference_model = model_from_cli_args(BEVDet, args)
-    model = demo_model_from_cli_args(BEVDet, MODEL_ID, args)
     validate_on_device_demo_args(args, MODEL_ID)
 
-    # Load
-    shape = inference_model.get_input_spec()["image"][0]
+    inference_model, (encoder, pooler, decoder) = demo_model_components_from_cli_args(
+        BEVDet, MODEL_ID, args
+    )
+
+    shape = inference_model.encoder.get_input_spec()["image"][0]
     app = BEVDetApp(
-        model,  # type: ignore[arg-type]
+        cast(BEVDetEncoder, encoder),
+        cast(BEVDetPooler, pooler),
+        cast(BEVDetDecoder, decoder),
         inference_model.bboxcoder,
         model_input_shape=(shape[-2], shape[-1]),
     )

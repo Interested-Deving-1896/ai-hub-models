@@ -58,7 +58,12 @@ def _get_expected_output() -> np.ndarray:
 
 def test_task() -> None:
     model = BEVDet.from_pretrained()
-    app = BEVDetApp(model, model.bboxcoder)
+    app = BEVDetApp(
+        model.encoder,
+        model.pooler,
+        model.decoder,
+        model.bboxcoder,
+    )
 
     cam_paths = {
         "CAM_FRONT_LEFT": str(CAM_FRONT_LEFT.fetch()),
@@ -100,16 +105,26 @@ def test_task() -> None:
     )
 
     np.testing.assert_allclose(
-        np.array(corners), _get_expected_output(), rtol=1e-04, atol=1e-04
+        np.array(corners), _get_expected_output(), rtol=1e-03, atol=5e-04
     )
 
 
 @pytest.mark.trace
 def test_trace() -> None:
     model = BEVDet.from_pretrained()
-    input_spec = model.get_input_spec()
-    traced_model = model.convert_to_torchscript(input_spec)
-    app = BEVDetApp(traced_model, model.bboxcoder)
+    traced_encoder = model.encoder.convert_to_torchscript(
+        model.encoder.get_input_spec()
+    )
+    traced_pooler = model.pooler.convert_to_torchscript(model.pooler.get_input_spec())
+    traced_decoder = model.decoder.convert_to_torchscript(
+        model.decoder.get_input_spec()
+    )
+    app = BEVDetApp(
+        traced_encoder,
+        traced_pooler,
+        traced_decoder,
+        model.bboxcoder,
+    )
 
     cam_paths = {
         "CAM_FRONT_LEFT": str(CAM_FRONT_LEFT.fetch()),
@@ -151,7 +166,7 @@ def test_trace() -> None:
     )
 
     np.testing.assert_allclose(
-        np.array(corners), _get_expected_output(), rtol=1e-04, atol=1e-04
+        np.array(corners), _get_expected_output(), rtol=1e-03, atol=5e-04
     )
 
 

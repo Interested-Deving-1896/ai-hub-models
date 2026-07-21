@@ -391,7 +391,7 @@ class NuscenesObjectDetectionEvaluator(BaseEvaluator):
                     tp = calc_tp(metric_data, cfg.min_recall, metric_name)
                 metrics.add_label_tp(class_name, metric_name, tp)
 
-        return metrics.mean_ap * 100, metrics.nd_score
+        return metrics.mean_ap * 100, metrics.nd_score * 100
 
     def get_accuracy_score(self) -> float:
         mAP, _NDS = self.evaluate()

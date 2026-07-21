@@ -13,7 +13,6 @@ from mmengine.model import BaseModule
 from torch import nn
 
 from qai_hub_models.extern.mmcv import patch_mmcv_no_extensions
-from qai_hub_models.utils.optimization import optimized_cumsum
 
 with patch_mmcv_no_extensions():
     from mmcv.cnn import ConvModule, build_conv_layer
@@ -44,7 +43,7 @@ def bev_pool_v2(
     ranks_bev
         Rank of the voxel that a point is belong to with shape (N_Points).
     bev_feat_shape
-        Shape of BEV feature (D, bev_H, bev_W, C)
+        Shape of BEV feature (D, bev_H, bev_W, C).
     interval_starts
         Interval starts.
 
@@ -76,8 +75,8 @@ def bev_pool_v2(
     ends = torch.cat([change_points, torch.tensor([W], dtype=torch.int)])
     lengths = ends - starts
 
-    weighted_feat = optimized_cumsum(weighted_feat).reshape(-1, c)
-    ends = optimized_cumsum(lengths.reshape(5, 32, 70, 1))
+    weighted_feat = weighted_feat.reshape(-1, c).cumsum(0)
+    ends = lengths.reshape(-1, 1).cumsum(0)
     ends = ends.reshape(-1) - 1  # -1 because ends are exclusive
 
     # euivalent to torch.diff(weighted_feat, end)
@@ -375,7 +374,7 @@ class LSSViewTransformerOptimized(BaseModule):
 
         # Fixed Dynamic to Static by replacing torch.where
         # Fixed kept as 11200
-        cumsum = optimized_cumsum(kept)
+        cumsum = kept.reshape(-1, 1).cumsum(0).reshape(kept.shape)
         mask = (cumsum <= torch.full(cumsum.shape, 11200)).to(kept.dtype) * kept
         index = ((cumsum - 1) * mask).reshape(-1).long()
         positions = torch.arange(kept.view(-1).size(0)).long()
@@ -390,42 +389,67 @@ class LSSViewTransformerOptimized(BaseModule):
             interval_starts.contiguous(),
         )
 
-    def forward(self, xlist: list[torch.Tensor]) -> torch.Tensor:
-        """Transform image-view feature into bird-eye-view feature.
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Device-friendly half of the view transformer: the depth_net conv.
 
         Parameters
         ----------
-        xlist
-            List of tensors containing:
-            img-view feature: torch.Tensor of shape [N, C, H, W] as float32
-            sensor2keyegos: torch.Tensor of shape [B, N, 4, 4] as float32
-                transformation matix to convert from camera sensor
-                to ego-vehicle at front camera coordinate frame
-            inv_intrins: torch.Tensor of shape [B, N, 3, 3] as float32
-                Inverse of Camera intrinsic matrix
-                used to project 2D image coordinates to 3D points
-            inv_post_rots: torch.Tensor with shape [B, N, 3, 3] as float32
-                inverse post rotation matrix in camera coordinate system
-            post_trans: torch.Tensor with shape [B, N, 1, 3] as float32
-                post translation tensor in camera coordinate system
+        x
+            Image-view feature of shape [N, C, H, W] as float32.
 
         Returns
         -------
-        bev_feature : torch.Tensor
-            Bird-eye-view feature in shape (B, C, H_BEV, W_BEV).
+        depth : torch.Tensor
+            Per-pixel depth distribution (softmax over D), shape [N, D, H, W].
+        feat : torch.Tensor
+            Context features, shape [N, out_channels, H, W].
         """
-        x = xlist[0]
-        B = 1
-
         x = self.depth_net(x)
 
         depth_digit: torch.Tensor = x[:, : self.D, ...]
         feat = x[:, self.D : self.D + self.out_channels, ...]
         depth = depth_digit.softmax(dim=1)
-        # Begin Qualcomm modification:
-        # Split the input based on num_cam for memory efficiency.
-        coor = self.get_lidar_coor(*xlist[1:5])
-        # End Qualcomm modification
+        return depth, feat
+
+    def pool_to_bev(
+        self,
+        depth: torch.Tensor,
+        feat: torch.Tensor,
+        sensor2keyegos: torch.Tensor,
+        inv_intrins: torch.Tensor,
+        inv_post_rots: torch.Tensor,
+        post_trans: torch.Tensor,
+    ) -> torch.Tensor:
+        """Host-side BEV pooling: geometry, voxel index prep, and the pooling cumsum.
+
+        Run on the host (fp32 / int64) because every step here is HTP-inaccurate.
+
+        Parameters
+        ----------
+        depth
+            Per-pixel depth distribution from ``forward``, shape [B, N, D, H, W].
+        feat
+            Context features from ``forward``, shape [B, N, C, H, W].
+        sensor2keyegos
+            torch.Tensor of shape [B, N, 4, 4] as float32.
+        inv_intrins
+            torch.Tensor of shape [B, N, 3, 3] as float32.
+        inv_post_rots
+            torch.Tensor of shape [B, N, 3, 3] as float32.
+        post_trans
+            torch.Tensor of shape [B, N, 1, 3] as float32.
+
+        Returns
+        -------
+        bev_feature : torch.Tensor
+            BEV feature of shape (B, C, bev_H, bev_W).
+        """
+        depth = depth.flatten(0, 1)
+        feat = feat.flatten(0, 1)
+
+        coor = self.get_lidar_coor(
+            sensor2keyegos, inv_intrins, inv_post_rots, post_trans
+        )
 
         (
             ranks_bev,
@@ -436,14 +460,12 @@ class LSSViewTransformerOptimized(BaseModule):
 
         feat = feat.permute(0, 2, 3, 1)
         bev_feat_shape = (
-            B * int(self.grid_size[2]),
+            int(self.grid_size[2]),
             int(self.grid_size[1]),
             int(self.grid_size[0]),
             feat.shape[-1],
         )
 
-        # Begin Qualcomm modification:
-        # add bev_pool_v2 function without cuda ops
         return bev_pool_v2(
             depth,
             feat,
@@ -453,7 +475,6 @@ class LSSViewTransformerOptimized(BaseModule):
             bev_feat_shape,
             interval_starts,
         )
-        # End Qualcomm modification
 
 
 class SeparateHead(BaseModule):

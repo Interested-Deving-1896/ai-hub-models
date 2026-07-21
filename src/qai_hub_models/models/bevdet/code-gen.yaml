@@ -5,15 +5,11 @@ external_repos:
     patches_filename: bevdet_patches.diff
 supported_precisions:
 - float
-- w8a16_mixed_fp16
-has_on_target_demo: true
+- mixed_with_float
 disabled_paths:
-  w8a16_mixed_fp16:
-    onnx:
-      scorecard_failure: 'Failing jobs: jgd0jxe6p'
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jgl7jv625'
-  float:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jgzw1dkxg'
+  mixed_with_float:
+    tflite:
+      scorecard_failure: 'w8a16 is not supported on TFLite.'
+has_on_target_demo: true
+is_collection_model: true
 pip_pre_build_reqs: nuscenes-devkit==1.2.0 --no-deps

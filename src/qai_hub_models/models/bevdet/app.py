@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Callable, Generator, Sequence
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -16,16 +16,31 @@ from qai_hub_models.extern.mmdet import patch_mmdet_no_build_deps
 with patch_mmdet_no_build_deps():
     from mmdet.models.task_modules import BaseBBoxCoder
 from PIL import Image
+from qai_hub.client import DatasetEntries
+from torch.utils.data import DataLoader
 
+from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
+from qai_hub_models.models.bevdet.model import BEVDet
+from qai_hub_models.models.protocols import ExecutableModelProtocol
+from qai_hub_models.utils.base_app import (
+    CollectionAppEvaluateProtocol,
+    CollectionAppQuantizeProtocol,
+    CollectionModelEvalGenerator,
+)
+from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.bounding_box_processing_3d import (
     circle_nms,
     draw_3d_bbox,
     rotation_3d_in_axis,
 )
+from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
     get_post_rot_and_tran,
 )
+from qai_hub_models.utils.inference import AsyncOnDeviceModel, AsyncOnDeviceResult
+from qai_hub_models.utils.input_spec import InputSpec, get_batch_size
+from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
 OBJECT_CLASSES = {
     "car": (255, 158, 0),
@@ -41,7 +56,7 @@ OBJECT_CLASSES = {
 }
 
 
-class BEVDetApp:
+class BEVDetApp(CollectionAppEvaluateProtocol, CollectionAppQuantizeProtocol):
     """
     This class is required to perform end to end inference for BEVDet Model
 
@@ -54,14 +69,23 @@ class BEVDetApp:
 
     def __init__(
         self,
-        model: Callable[
+        encoder: Callable[
+            [torch.Tensor],
+            tuple[torch.Tensor, torch.Tensor],
+        ],
+        pooler: Callable[
             [
                 torch.Tensor,
                 torch.Tensor,
                 torch.Tensor,
                 torch.Tensor,
                 torch.Tensor,
+                torch.Tensor,
             ],
+            torch.Tensor,
+        ],
+        decoder: Callable[
+            [torch.Tensor],
             tuple[
                 torch.Tensor,
                 torch.Tensor,
@@ -82,8 +106,14 @@ class BEVDetApp:
 
         Parameters
         ----------
-        model
-            BEVDet Model.
+        encoder
+            BEVDet encoder component (image -> (depth, feat)).
+        pooler
+            BEVDet pooler component, which runs the geometry + voxel pooling:
+            (depth, feat, sensor2keyegos, inv_intrins, inv_post_rots, post_trans)
+            -> BEV feature.
+        decoder
+            BEVDet decoder component (BEV feature -> raw detection head outputs).
         bbox_coder
             CenterPointBBoxCoder for BEVDet Model.
         model_input_shape
@@ -95,7 +125,9 @@ class BEVDetApp:
         nms_post_max_size
             Default is 500
         """
-        self.model = model
+        self.encoder = encoder
+        self.pooler = pooler
+        self.decoder = decoder
         self.bbox_coder = bbox_coder
         self.model_input_shape = model_input_shape
         self.score_threshold = score_threshold
@@ -166,20 +198,32 @@ class BEVDetApp:
 
         # model supports only single batch
         assert imgs.shape[0] == 1
-        reg, height, dim, rot, vel, heatmap = self.model(
-            imgs,
+
+        # Encoder (device): images -> per-pixel depth distribution + context features.
+        depth, feat = self.encoder(imgs)
+
+        # Pooler (CPU): geometry projection + voxel index prep + BEV-pool cumsum.
+        # Runs on the QNN CPU backend because the HTP cannot reproduce the
+        # float->int voxel quantization (fp16 corrupts ~11% of voxel ranks at
+        # +-70m coords, breaking detection). No learned compute leaves the device.
+        bev_feature = self.pooler(
+            depth,
+            feat,
             sensor2keyegos,
             inv_intrins,
             inv_post_rots,
             post_trans,
         )
 
+        # Decoder (device): BEV feature -> raw detection head outputs.
+        reg, height, dim, rot, vel, heatmap = self.decoder(bev_feature)
+
         corners_pt, scores_pt, labels_pt = self.get_bboxes(
             reg, height, dim, rot, vel, heatmap
         )[0]
 
         if raw_output:
-            return corners_pt.numpy()
+            return corners_pt.detach().numpy()
 
         # Filter based on confidence score
         indices = scores_pt >= self.score_threshold
@@ -349,3 +393,121 @@ class BEVDetApp:
             corners += bboxes[:, :3].view(-1, 1, 3)
             ret.append((corners, scores, labels))
         return ret
+
+    @classmethod
+    def from_components(
+        cls,
+        models: Sequence[ExecutableModelProtocol] | Sequence[AsyncOnDeviceModel],
+    ) -> BEVDetApp:
+        torch_model = BEVDet.from_pretrained()
+        return cls(
+            models[0],  # type: ignore[arg-type]
+            models[1],  # type: ignore[arg-type]
+            models[2],  # type: ignore[arg-type]
+            torch_model.bboxcoder,
+        )
+
+    def run_model_for_eval(
+        self,
+        model_input: Generator[AsyncOnDeviceResult]
+        | tuple[torch.Tensor, ...]
+        | torch.Tensor,
+        model_batch_size: int,
+    ) -> CollectionModelEvalGenerator:
+        image, sensor2keyegos, inv_intrins, inv_post_rots, post_trans = model_input
+
+        enc_output = self.encoder(cast(torch.Tensor, image))
+        yield enc_output
+
+        if isinstance(enc_output, AsyncOnDeviceResult):
+            depth, feat = enc_output.wait()
+            pool_output = self.pooler(
+                depth.split(model_batch_size, dim=0),
+                feat.split(model_batch_size, dim=0),
+                sensor2keyegos,
+                inv_intrins,
+                inv_post_rots,
+                post_trans,
+            )
+        else:
+            depth, feat = enc_output
+            pool_output = (
+                self.pooler(
+                    depth,
+                    feat,
+                    cast(torch.Tensor, sensor2keyegos),
+                    cast(torch.Tensor, inv_intrins),
+                    cast(torch.Tensor, inv_post_rots),
+                    cast(torch.Tensor, post_trans),
+                ),
+            )
+        yield pool_output
+
+        if isinstance(pool_output, AsyncOnDeviceResult):
+            bev_feature = cast(torch.Tensor, pool_output.wait())
+            dec_output = self.decoder(bev_feature.split(model_batch_size, dim=0))
+        else:
+            dec_output = self.decoder(*pool_output)
+
+        yield dec_output
+        return dec_output
+
+    @classmethod
+    def get_calibration_data(
+        cls,
+        collection_model: WorkbenchModelCollection,
+        component_name: str,
+        input_specs: dict[str, InputSpec] | None = None,
+        num_samples: int | None = None,
+    ) -> DatasetEntries:
+        model = collection_model.components[component_name]
+        input_spec = (
+            input_specs[component_name] if input_specs else model.get_input_spec()
+        )
+        batch_size = get_batch_size(input_spec) or 1
+
+        encoder = collection_model.components["encoder"]
+        pooler = collection_model.components["pooler"]
+        enc_spec = (input_specs or {}).get("encoder", encoder.get_input_spec())
+
+        calibration_dataset_cls = encoder.get_calibration_dataset_cls()
+        assert calibration_dataset_cls is not None
+        dataset = instantiate_dataset(
+            calibration_dataset_cls,
+            DatasetSplit.TRAIN,
+            input_spec=enc_spec,
+        )
+        num_samples = num_samples or dataset.default_num_calibration_samples()
+        num_samples = (num_samples // batch_size) * batch_size
+        print(f"Loading {num_samples} calibration samples.")
+        torch_dataset = sample_dataset(dataset, num_samples)
+        dataloader = DataLoader(torch_dataset, batch_size=batch_size)
+        inputs: list[list[torch.Tensor | np.ndarray]] = [
+            [] for _ in range(len(input_spec))
+        ]
+        with torch.no_grad():
+            for sample_input, _ in dataloader:
+                image, sensor2keyegos, inv_intrins, inv_post_rots, post_trans = (
+                    sample_input
+                )
+                if component_name == "encoder":
+                    sample_input = (image,)
+                else:
+                    depth, feat = encoder(image)
+                    pool_input = (
+                        depth,
+                        feat,
+                        sensor2keyegos,
+                        inv_intrins,
+                        inv_post_rots,
+                        post_trans,
+                    )
+                    if component_name == "pooler":
+                        sample_input = pool_input
+                    elif component_name == "decoder":
+                        sample_input = (pooler(*pool_input),)
+                    else:
+                        raise ValueError(f"Invalid component name: {component_name}")
+                for i, tensor in enumerate(sample_input):
+                    inputs[i].append(tensor)
+        return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
