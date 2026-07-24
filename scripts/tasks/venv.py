@@ -264,13 +264,14 @@ class InstallLLMGraderRequirementsTask(RunCommandsWithVenvTask):
     """
 
     def __init__(self, venv_path: str | None) -> None:
+        commands = [
+            f'{get_pip()} install -r "{GRADER_REQUIREMENTS_PATH}"',
+            f'{get_pip()} install --no-deps -e "{PY_PACKAGE_INSTALL_ROOT}"',
+        ]
         super().__init__(
             group_name="Install LLM Grader Requirements",
             venv=venv_path,
-            commands=[
-                f'{get_pip()} install -r "{GRADER_REQUIREMENTS_PATH}"',
-                f'{get_pip()} install --no-deps -e "{PY_PACKAGE_INSTALL_ROOT}"',
-            ],
+            commands=commands,
             retries=2,
         )
 
