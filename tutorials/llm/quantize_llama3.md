@@ -149,7 +149,7 @@ accompanying external weights file (`.data`), and an AIMET encodings file
 containing the calibration parameters (`.encodings`). The model config will be copied to the output checkpoint folder so that later steps can load the quantized model correctly.
 
 For even better results, we can add an algorithm called [Sequential
-MSE](https://quic.github.io/aimet-pages/releases/latest/featureguide/seq_mse.html).
+MSE](https://qualcomm.github.io/aimet-pages/releases/latest/ptq_techniques/seq_mse.html).
 This can greatly improve the weight quantization, although is expensive to
 compute. The quantization process can now take 5+ hours, depending on the size
 of the model and the speed of your CUDA GPU.
@@ -172,7 +172,7 @@ qualitatively on select prompts.
 
 To evaluate on the quantized model, you will have to provide the Hugging Face model name or the default model config will be used.
 
-Evaluate PPL score on [WikiText (English)](../../src/qai_hub_models/datasets/wikitext.py) using the unquantized model:
+Evaluate PPL score on [WikiText (English)](../../src/qai_hub_models/datasets/wikitext/wikitext.py) using the unquantized model:
 
 ```sh
 python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
@@ -207,7 +207,7 @@ Evaluate [tinyMMLU](https://HuggingFace.co/datasets/tinyBenchmarks/tinyMMLU) usi
 ```sh
 python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
     --checkpoint meta-llama/Llama-3.2-3B-Instruct \
-    --task tiny-mmlu
+    --task tiny_mmlu
 ```
 
 Evaluate using the quantized model:
@@ -215,7 +215,7 @@ Evaluate using the quantized model:
 ```sh
 python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
     --checkpoint ./quantized_model \
-    --task tiny-mmlu
+    --task tiny_mmlu
 ```
 For example, Llama 3.2 with the original weights, the unquantized model's
 tinyMMLU is 64% and the tinyMMLU after quantization (with Sequential MSE) is
