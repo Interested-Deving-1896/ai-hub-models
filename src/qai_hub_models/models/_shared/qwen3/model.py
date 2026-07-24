@@ -29,7 +29,6 @@ import contextlib
 import copy
 import json
 import os
-import shutil
 from collections.abc import Collection
 from enum import Enum
 from pathlib import Path
@@ -65,7 +64,6 @@ from qai_hub_models.models._shared.qwen3.model_adaptations import (
     SHAQwen3Attention,
 )
 from qai_hub_models.utils.aimet.encodings import propagate_memory_encodings
-from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.input_spec import InputSpec, TensorSpec
 from qai_hub_models.utils.onnx.helpers import ONNXBundle
 from qai_hub_models.utils.printing import print_with_box
@@ -349,30 +347,13 @@ class Qwen3DynamicBase(LLMDynamicBase, Qwen3Base):
     def get_full_onnx_bundle(self, temp_path: Path) -> ONNXBundle:
         """Export full ONNX from PyTorch with dynamic shapes.
 
-        Caches the exported ONNX to the default checkpoint directory
-        (alongside model.encodings) so subsequent runs skip the ~30 min
-        export.
+        Always exports fresh into ``temp_path``. The FP export is deliberately
+        NOT cached to disk: the natural cache dir (the default checkpoint dir,
+        keyed by precision) is the same path the published quantized asset
+        extracts to, whose ``model_dynamic.onnx`` could be SpinQuant-rotated. Reusing
+        that path let a rotated graph pose as the FP export and get fed back
+        into rotation (double-SpinQuant -> R1 fails on a leftover R3 node).
         """
-        precision_dir = self.default_checkpoint.get(self.default_precision)
-        cache_dir = (
-            ASSET_CONFIG.get_local_store_model_path(
-                self.model_id, self.model_asset_version, precision_dir
-            )
-            if precision_dir
-            else None
-        )
-
-        if cache_dir is not None:
-            cached_onnx = cache_dir / "model_dynamic.onnx"
-            cached_data = cache_dir / "model.data"
-            if cached_onnx.exists() and cached_data.exists():
-                print(f"\nLoading cached dynamic ONNX from {cache_dir}")
-                bundle_dir = temp_path / "full_dynamic"
-                bundle_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy(cached_onnx, bundle_dir / "model.onnx")
-                shutil.copy(cached_data, bundle_dir / "model.data")
-                return ONNXBundle.from_bundle_path(bundle_dir, "model")
-
         print_with_box(
             [
                 "Exporting ONNX model with dynamic shapes.",
@@ -391,12 +372,6 @@ class Qwen3DynamicBase(LLMDynamicBase, Qwen3Base):
             llm_io_type=self.llm_io_type,
             quiet=True,
         )
-
-        if cache_dir is not None:
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(onnx_dir / "model.onnx", cache_dir / "model_dynamic.onnx")
-            shutil.copy(onnx_dir / "model.data", cache_dir / "model.data")
-            print(f"\nCached dynamic ONNX to {cache_dir}")
 
         return ONNXBundle.from_bundle_path(onnx_dir, "model")
 
