@@ -763,6 +763,9 @@ def setup_test_quantization(
     checkpoint: str | None = None,
     num_samples: int = 0,
     use_seq_mse: bool = False,
+    use_ada_scale: bool = False,
+    ada_scale_num_samples: int | None = None,
+    ada_scale_num_iterations: int | None = None,
     image_size: tuple[int, int] | None = None,
     spinquant_config: dict | None = None,
 ) -> str:
@@ -781,6 +784,9 @@ def setup_test_quantization(
             checkpoint=checkpoint,
             num_samples=num_samples,
             use_seq_mse=use_seq_mse,
+            use_ada_scale=use_ada_scale,
+            ada_scale_num_samples=ada_scale_num_samples,
+            ada_scale_num_iterations=ada_scale_num_iterations,
             image_size=image_size,
             spinquant_config=spinquant_config,
         )
