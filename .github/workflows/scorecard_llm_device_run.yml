@@ -144,7 +144,11 @@ jobs:
   collect_llm_perf:
     name: Collect LLM Performance Numbers (Genie)
     needs: [determine_llm_models, combine_llm_release_assets]
-    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && (inputs.test_runtimes == 'default' || inputs.test_runtimes == '' || contains(format(',{0},', inputs.test_runtimes), ',genie,')) }}
+    # GENIE is opt-in only: the export sweep excludes it from 'default'
+    # (path_profile.py::default_sweep_paths), so a 'default' run builds no genie
+    # assets. Only collect Genie perf when 'genie' is named explicitly, else this
+    # job fails with "No genie release asset found".
+    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && contains(format(',{0},', inputs.test_runtimes), ',genie,') }}
     secrets: inherit
     uses: ./.github/workflows/llm_perf_collection.yml
     with:

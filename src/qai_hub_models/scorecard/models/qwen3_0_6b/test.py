@@ -24,17 +24,18 @@ from qai_hub_models.models._shared.llm.perf_collection import (
     LLMPerfConfig,
     get_llm_perf_parametrization,
 )
-from qai_hub_models.models.qwen3_1_7b import Model
-from qai_hub_models.models.qwen3_1_7b.demo import qwen3_1_7b_chat_demo
-from qai_hub_models.models.qwen3_1_7b.export import (
+from qai_hub_models.models.qwen3_0_6b import Model
+from qai_hub_models.models.qwen3_0_6b.demo import qwen3_0_6b_chat_demo
+from qai_hub_models.models.qwen3_0_6b.export import (
     export_model,
 )
-from qai_hub_models.models.qwen3_1_7b.model import (
+from qai_hub_models.models.qwen3_0_6b.model import (
     MODEL_ID,
+    SPINQUANT_CONFIG,
     FPSplitModelWrapper,
     QuantizedSplitModelWrapper,
-    Qwen3_1_7B_PreSplit,
-    Qwen3_1_7B_QuantizablePreSplit,
+    Qwen3_0_6B_PreSplit,
+    Qwen3_0_6B_QuantizablePreSplit,
 )
 from qai_hub_models.scorecard import (
     ScorecardCompilePath,
@@ -46,45 +47,42 @@ from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 from qai_hub_models.utils.export.result import MultiGraphCollectionExportResult
 
+# Multi-sequence-length eval (matches qwen3_4b/8b/1.7b): prefill in the 2048
+# bucket, decode in the 1 bucket.
 DEFAULT_EVAL_SEQLEN = [2048, 128, 1]
 
 
+# Full model tests
 @pytest.mark.evaluate
 @pytest.mark.parametrize("checkpoint", ["DEFAULT", "DEFAULT_W4A16"])
 def test_load_encodings_to_quantsim(checkpoint: str) -> None:
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
     Model.from_pretrained(checkpoint)
 
 
-# qwen3_1_7b is the qwen nightly canary: its SpinQuant R1 rotation makes it the
-# model that surfaces quantization regressions (e.g. SpinQuant being reapplied),
-# which R2+R3-only models like qwen3_0_6b tolerate silently. It runs the full
-# eval matrix + quantize/demo on nightly; qwen3_0_6b/qwen3_4b are weekly and keep
-# only one cheap W4A16 MMLU row on nightly.
+# qwen3_1_7b is the qwen nightly canary (its SpinQuant R1 path surfaces
+# quantization regressions). This model runs the full eval matrix weekly and
+# keeps only one cheap row -- the W4A16 MMLU headline metric -- on
+# @pytest.mark.nightly for a nightly regression signal.
 @pytest.mark.evaluate
-@pytest.mark.nightly
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
 )
 @pytest.mark.parametrize(
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
-        # Validated recipe (SpinQuant R1+R3 -> AdaScale -> Calibration):
-        # QT (w4a16): PPL 16.59, MMLU 56.65%, AutogradedPrompts 97.8%.
-        ("DEFAULT_W4A16", "wikitext", 16.59, 0),
-        ("DEFAULT_W4A16", "mmlu", 0.5665, 1000),
-        # Prompt-generation + LLM-grader smoke test (5 samples). Always runs on
-        # the FP PreSplit regardless of checkpoint, so both rows share a floor.
+        # Recipe: SpinQuant R2+R3 -> AdaScale -> Calibration. Baselines are
+        # measured nightly values. `prompts` rows grade the deterministic FP
+        # PreSplit regardless of checkpoint, so both share a conservative floor.
+        ("DEFAULT_W4A16", "wikitext", 20.67, 0),
+        pytest.param("DEFAULT_W4A16", "mmlu", 0.418, 1000, marks=pytest.mark.nightly),
         ("DEFAULT_W4A16", "prompts", 0.75, 5),
-        # FP (unquantized). Baselines re-aligned to observed values; the earlier
-        # numbers regressed (PPL 15.63 -> 18.5, MMLU 0.5996 -> 0.51), likely from
-        # the tokenizer/chat-template change in #4014.
-        # Tracked in qcom-ai-hub/tetracode#20453.
-        ("DEFAULT_UNQUANTIZED", "wikitext", 18.51, 0),
-        ("DEFAULT_UNQUANTIZED", "mmlu", 0.511, 1000),
+        # FP (unquantized): PPL 19.15, MMLU 47.07%.
+        ("DEFAULT_UNQUANTIZED", "wikitext", 19.15, 0),
+        ("DEFAULT_UNQUANTIZED", "mmlu", 0.4707, 1000),
         ("DEFAULT_UNQUANTIZED", "prompts", 0.75, 5),
     ],
 )
@@ -100,8 +98,8 @@ def test_evaluate(
         for d in FPSplitModelWrapper.get_eval_dataset_classes()
         if d.dataset_name() == task
     )
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
     test.run_llm_evaluate_test(
@@ -112,49 +110,50 @@ def test_evaluate(
         dataset_cls=dataset_cls,
         quantized_split_cls=QuantizedSplitModelWrapper,
         fp_split_cls=FPSplitModelWrapper,
-        quantized_presplit_cls=Qwen3_1_7B_QuantizablePreSplit,
-        fp_presplit_cls=Qwen3_1_7B_PreSplit,
+        quantized_presplit_cls=Qwen3_0_6B_QuantizablePreSplit,
+        fp_presplit_cls=Qwen3_0_6B_PreSplit,
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
         tmp_path=tmp_path,
         model_id=MODEL_ID,
+        # Unquantized FP baseline is the monolithic PreSplit (torch forward); the
+        # split-Parts ONNX path shifts WikiText PPL. W4A16 keeps the split
+        # wrapper since that's the production on-device graph.
+        fp_baseline_uses_presplit=True,
     )
 
 
-# Nightly quantize canary. This is the model that surfaces SpinQuant issues:
-# it quantizes from scratch (DEFAULT_UNQUANTIZED) with R1+R3, so a bug like
-# SpinQuant being reapplied compounds R1's full-residual rotation and shows up
-# here, whereas qwen3_0_6b's R2+R3-only recipe would tolerate it silently.
-@pytest.mark.nightly
+# Weekly-only (no @pytest.mark.nightly): qwen3_1_7b is the nightly quantize
+# canary (R1+R3 surfaces SpinQuant regressions that this R2+R3 recipe tolerates).
 @pytest.mark.demo
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
 )
 def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Quantize the model and verify it can respond with 'Paris'."""
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    # Quantize from scratch: start from the FP weights (DEFAULT_UNQUANTIZED), not
-    # the pre-quantized AIMET checkpoint that "DEFAULT" resolves to. SpinQuant
-    # isn't applied on its own, so pass the R1+R3 config explicitly -- without it
-    # the quantized model emits garbage instead of a usable response.
+    # Calibrate on the PreSplit (monolithic QuantSim) like production and the
+    # sibling tests; a split-forward wrapper stacks one ORT session per Part and
+    # can OOM. The demo below still exercises the split wrapper.
+    # Quantize from scratch, so start from the FP weights (DEFAULT_UNQUANTIZED),
+    # not the pre-quantized AIMET checkpoint that "DEFAULT" resolves to. SpinQuant
+    # isn't applied on its own, so pass the model's R2+R3 config explicitly --
+    # without it the quantized model emits garbage instead of a usable response.
     checkpoint_path = test.setup_test_quantization(
-        Qwen3_1_7B_QuantizablePreSplit,
-        Qwen3_1_7B_PreSplit,
+        Qwen3_0_6B_QuantizablePreSplit,
+        Qwen3_0_6B_PreSplit,
         str(tmp_path),
         precision=Precision.w4a16,
         checkpoint="DEFAULT_UNQUANTIZED",
         use_seq_mse=False,
-        use_ada_scale=True,
-        ada_scale_num_samples=128,
-        ada_scale_num_iterations=2048,
-        spinquant_config={"enable_r1": True, "enable_r2": False, "enable_r3": True},
+        spinquant_config=SPINQUANT_CONFIG,
     )
-    # Disable thinking mode: the 1.7B model otherwise loops in an unterminated
+    # Disable thinking mode: the model otherwise loops in an unterminated
     # reasoning trace and never emits the answer within the token budget.
-    qwen3_1_7b_chat_demo(
+    qwen3_0_6b_chat_demo(
         fp_model_cls=FPSplitModelWrapper,
         default_prompt="What is the capital of France?",
         test_checkpoint=checkpoint_path,
@@ -162,14 +161,13 @@ def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     )
     captured = capsys.readouterr()
     assert "Paris" in captured.out
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
 
 
-# Nightly demo coverage lives on this canary (see test_quantize_and_demo above).
-@pytest.mark.nightly
+# Weekly-only (no @pytest.mark.nightly); nightly demo coverage is on qwen3_1_7b.
 @pytest.mark.demo
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
@@ -178,11 +176,11 @@ def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
 def test_demo_default(
     checkpoint: CheckpointSpec, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    qwen3_1_7b_chat_demo(
+    qwen3_0_6b_chat_demo(
         fp_model_cls=FPSplitModelWrapper,
         default_prompt="What is the capital of France?",
         test_checkpoint=checkpoint,
@@ -191,6 +189,9 @@ def test_demo_default(
     assert "Paris" in captured.out
 
 
+@pytest.mark.skip(
+    reason="On-device compile is covered by the scorecard; skipped in the test suite."
+)
 @pytest.mark.nightly
 @pytest.mark.skipif(
     not torch.cuda.is_available(),
@@ -209,8 +210,8 @@ def test_compile(
     device: ScorecardDevice,
     checkpoint: CheckpointSpec,
 ) -> None:
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
     # Pass both prompt (ar128) and token (ar1) sequence lengths so the
@@ -265,6 +266,9 @@ def llm_perf_config() -> LLMPerfConfig:
     return LLMPerfConfig.from_environment()
 
 
+@pytest.mark.skip(
+    reason="On-device QDC perf is covered by the scorecard; skipped in the test suite."
+)
 @pytest.mark.llm_perf
 @pytest.mark.skipif(
     not importlib.util.find_spec("qualcomm_device_cloud_sdk"),
@@ -276,8 +280,8 @@ def test_llm_perf(
     device: ScorecardDevice,
     llm_perf_config: LLMPerfConfig,
 ) -> None:
-    Qwen3_1_7B_PreSplit.release()
-    Qwen3_1_7B_QuantizablePreSplit.release()
+    Qwen3_0_6B_PreSplit.release()
+    Qwen3_0_6B_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
 
