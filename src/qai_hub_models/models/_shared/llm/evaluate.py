@@ -255,6 +255,21 @@ def llm_evaluate(
     )
     parser = add_input_spec_args(quantized_model_cls, parser)
 
+    for action in parser._actions:  # pylint: disable=protected-access
+        if action.dest == "checkpoint":
+            allowed_checkpoints_for_precisions = ",".join(
+                f"DEFAULT_{str(prec).upper()}"
+                for prec in quantized_model_cls.supported_precisions
+            )
+            action.help = (
+                "Path to your quantized checkpoint or 'DEFAULT' to use the\n"
+                "checkpoint for the default precision of the model.\n"
+                "You can also specify a precision-specific default checkpoint\n"
+                "by using 'DEFAULT_<PRECISION>', e.g. 'DEFAULT_W4A16'.\n"
+                "Available precisions for this model are:\n"
+                f"{allowed_checkpoints_for_precisions}."
+            )
+
     if default_sequence_length is None:
         default_sequence_length = [
             *DEFAULT_EXPORT_SEQUENCE_LENGTHS,

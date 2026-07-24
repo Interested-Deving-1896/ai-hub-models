@@ -835,19 +835,30 @@ class DynamicQuantizablePreSplitMixin(
         Parameters
         ----------
         checkpoint
-            Path to checkpoint with ONNX + encodings, or ``"DEFAULT"``
-            to fetch from the asset store.
+            Controls whether evaluation/inference runs floating point or
+            quantized (QuantSim):
+              - "DEFAULT": quantized simulation, using the default
+                published quantized checkpoint.
+              - "DEFAULT_UNQUANTIZED": floating-point baseline, using
+                the default published FP weights.
+              - Local folder: quantized (model*.onnx + model.encodings)
+                or floating point (config.yaml + model.safetensor),
+                inferred from folder contents.
+            Use DEFAULT_UNQUANTIZED vs. DEFAULT to compare FP
+            accuracy against quantized accuracy.
         host_device
             Device for computation.
         precision
-            Quantization precision. Defaults to ``cls.default_precision``.
+            Quantization precision. Defaults to cls.default_precision.
         fp_model
             Optional FP model, passed by the evaluate framework to avoid
             creating a duplicate. If not provided and checkpoint starts
-            with ``"DEFAULT"``, one is created automatically.
+            with "DEFAULT", one is created automatically.
         _skip_quantsim_creation
-            Skip QuantSim creation (for testing). When ``None`` (the
-            default), falls back to ``cls.skip_quantsim_creation_default``.
+            Skip QuantSim creation (for testing). Only relevant when
+            checkpoint resolves to a quantized checkpoint; ignored
+            for floating-point evaluation. When None (the default),
+            falls back to cls.skip_quantsim_creation_default.
 
         Returns
         -------
@@ -2223,6 +2234,8 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
     supports_thinking: bool = False
 
     split_lm_head: bool = False
+
+    supported_precisions: list[Precision]
 
     @classmethod
     def get_chat_template(cls) -> dict[str, str]:
