@@ -79,12 +79,8 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
         # Prompt-generation + LLM-grader smoke test (5 samples). Always runs on
         # the FP PreSplit regardless of checkpoint, so both rows share a floor.
         ("DEFAULT_W4A16", "prompts", 0.75, 5),
-        # FP (unquantized). Baselines re-aligned to observed values; the earlier
-        # numbers regressed (PPL 15.63 -> 18.5, MMLU 0.5996 -> 0.51), likely from
-        # the tokenizer/chat-template change in #4014.
-        # Tracked in qcom-ai-hub/tetracode#20453.
-        ("DEFAULT_UNQUANTIZED", "wikitext", 18.51, 0),
-        ("DEFAULT_UNQUANTIZED", "mmlu", 0.511, 1000),
+        ("DEFAULT_UNQUANTIZED", "wikitext", 15.63, 0),
+        ("DEFAULT_UNQUANTIZED", "mmlu", 0.5996, 1000),
         ("DEFAULT_UNQUANTIZED", "prompts", 0.75, 5),
     ],
 )

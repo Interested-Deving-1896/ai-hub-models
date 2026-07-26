@@ -78,7 +78,7 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
         # measured nightly values. `prompts` rows grade the deterministic FP
         # PreSplit regardless of checkpoint, so both share a conservative floor.
         ("DEFAULT_W4A16", "wikitext", 20.67, 0),
-        pytest.param("DEFAULT_W4A16", "mmlu", 0.418, 1000, marks=pytest.mark.nightly),
+        pytest.param("DEFAULT_W4A16", "mmlu", 0.441, 1000, marks=pytest.mark.nightly),
         ("DEFAULT_W4A16", "prompts", 0.75, 5),
         # FP (unquantized): PPL 19.15, MMLU 47.07%.
         ("DEFAULT_UNQUANTIZED", "wikitext", 19.15, 0),
