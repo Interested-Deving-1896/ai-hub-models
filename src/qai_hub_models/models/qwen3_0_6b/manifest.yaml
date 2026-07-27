@@ -74,3 +74,9 @@ pip_install_flags_gpu: onnxruntime-gpu==1.23.2 https://github.com/quic/aimet/rel
 local_device_deployment: true
 has_multi_graph: true
 separate_quantize_script: true
+disabled_paths:
+  w4a16:
+    geniex_qairt:
+      scorecard_accuracy_failure: 'Device accuracy (70.3 %) deviates from benchmark (94.9 %) by -24.600 %, threshold: 10.0 %'
+    genie:
+      scorecard_accuracy_failure: 'Device accuracy (70.3 %) deviates from benchmark (94.9 %) by -24.600 %, threshold: 10.0 %'

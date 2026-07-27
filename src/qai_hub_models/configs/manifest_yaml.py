@@ -796,10 +796,18 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         if precision and not runtime.supports_precision(precision):
             return f"{runtime} does not support precision {precision!s}."
 
-        if self.requires_aot_prepare and not runtime.is_aot_compiled:
+        if (
+            self.requires_aot_prepare
+            and not runtime.is_aot_compiled
+            and runtime != TargetRuntime.GENIEX_LLAMACPP
+        ):
             return "Only runtimes that are compiled to context binary ahead of time are supported."
 
-        if self.has_multi_graph and not runtime.uses_hub_link:
+        if (
+            self.has_multi_graph
+            and not runtime.uses_hub_link
+            and runtime != TargetRuntime.GENIEX_LLAMACPP
+        ):
             return "Multi-graph models require runtimes that support linking (uses_hub_link)."
 
         if (
