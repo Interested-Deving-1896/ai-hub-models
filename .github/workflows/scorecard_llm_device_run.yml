@@ -164,7 +164,10 @@ jobs:
   collect_llm_perf_geniex:
     name: Collect LLM Performance Numbers (GenieX-QAIRT)
     needs: [determine_llm_models, combine_llm_release_assets]
-    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && (inputs.test_runtimes == 'default' || inputs.test_runtimes == '' || contains(format(',{0},', inputs.test_runtimes), ',geniex_qairt,')) }}
+    # GENIEX_QAIRT is in default_sweep_paths, so a 'default' token in
+    # test_runtimes should enable it -- match on comma-tokens rather than a
+    # string equality check so 'default,other-runtime' variants keep working.
+    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && (contains(format(',{0},', inputs.test_runtimes), ',default,') || contains(format(',{0},', inputs.test_runtimes), ',geniex_qairt,') || inputs.test_runtimes == '') }}
     secrets: inherit
     uses: ./.github/workflows/llm_perf_collection_geniex.yml
     with:
