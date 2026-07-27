@@ -214,6 +214,7 @@ class TestInfoFieldCoverage:
                 "is_collection_model",
                 "is_precompiled",
                 "local_device_deployment",
+                "models",
                 "num_calibration_samples",
                 "only_allow_orchestrator_runtimes",
                 "orchestrator_runtimes",

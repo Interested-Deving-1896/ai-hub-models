@@ -348,6 +348,11 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     # Keys are repo names used as import paths (e.g., "gkt" -> external_repos.gkt.module).
     external_repos: dict[str, ExternalRepoConfig] | None = None
 
+    # Direct dependencies on other model folders under qai_hub_models/models/.
+    # Only the model's own direct imports; transitive deps are captured in
+    # the depended-on model's own manifest.yaml.
+    models: list[str] = Field(default_factory=list)
+
     # Whether the model is quantized with aimet.
     is_aimet: bool = False
 
