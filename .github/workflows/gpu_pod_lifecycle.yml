@@ -343,9 +343,7 @@ jobs:
     - name: Download eval JSON artifacts
       uses: actions/download-artifact@v8
       with:
-        # Pulls llm-perf-results-shared and llm-perf-results-dedicated into
-        # the same flat directory.
-        pattern: llm-perf-results-*
+        pattern: llm-perf-results-${{ inputs.split_name != '' && inputs.split_name || 'genie' }}-*
         merge-multiple: true
         path: ${{ env.GRADER_INPUT_DIR }}
         run-id: ${{ inputs.grader_artifacts_run_id != '' && inputs.grader_artifacts_run_id || github.run_id }}

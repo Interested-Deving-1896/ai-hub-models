@@ -73,11 +73,12 @@ _EVAL_NUM_PROMPTS = 100
 
 
 def _qairt_precisions(model_id: str) -> list[Precision]:
+    # Mirror Genie: filter on runtime capability only, ignore disabled_paths.
     cg = QAIHMModelManifest.from_model(model_id)
     return [
         p
         for p in cg.supported_precisions
-        if cg.is_supported(p, TargetRuntime.GENIEX_QAIRT)
+        if TargetRuntime.GENIEX_QAIRT.supports_precision(p)
     ]
 
 

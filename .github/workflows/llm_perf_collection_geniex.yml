@@ -10,6 +10,7 @@ run-name: "GenieX Perf (${{ inputs.model || 'all' }}, ${{ inputs.device || 'all'
 env:
   VENV_PATH: build/ci-envs/qaihm-build
   QAIHM_CI: 1
+  QAIHM_TEST_DEVICES_RESOLVED: ${{ inputs.device == 'default' && 'cs_8_elite_qrd' || inputs.device || 'all' }}
 
 on:
   # Allows this workflow to be manually triggered.
@@ -285,7 +286,8 @@ jobs:
       if: ${{ !cancelled() && inputs.scope != 'perf' }}
       uses: actions/upload-artifact@v7
       with:
-        name: llm-perf-results-${{ matrix.pool }}
+        # Runtime-scoped so this doesn't collide with the genie workflow.
+        name: llm-perf-results-geniex-${{ matrix.pool }}
         path: llm-perf-results/
         if-no-files-found: ignore
 
@@ -365,21 +367,21 @@ jobs:
       if: ${{ steps.check_changes.outputs.has_changes == 'true' }}
       env:
         QAIHM_TEST_MODELS: ${{ inputs.model || 'all' }}
-        QAIHM_TEST_DEVICES: ${{ inputs.device || 'all' }}
+        QAIHM_TEST_DEVICES: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
       run: |
-        branch_name="perf/geniex-perf-${{ github.run_id }}"
-        cd $GITHUB_WORKSPACE
-        git config user.name 'github-actions[bot]'
-        git config user.email 'github-actions[bot]@users.noreply.github.com'
-        git checkout -b "$branch_name"
-        git ls-files -co --exclude-standard | grep 'perf.yaml' | xargs git add
-        git commit -m "Add GenieX performance numbers
+        branch_name=perf/geniex-perf-${{ github.run_id }}
+        cd $GITHUB_WORKSPACE && \
+          git config user.name 'github-actions[bot]' && \
+          git config user.email 'github-actions[bot]@users.noreply.github.com' && \
+          git checkout -b $branch_name && \
+          git ls-files -co --exclude-standard | grep 'perf.yaml' | xargs git add && \
+          git commit -m "Add GenieX performance numbers
 
         Models: $QAIHM_TEST_MODELS
         Devices: $QAIHM_TEST_DEVICES
 
-        Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-        git push -u origin "$branch_name"
+        Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>" && \
+          git push -u origin $branch_name
         echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
 
     - name: Upload consolidated perf.yaml files
@@ -394,7 +396,7 @@ jobs:
       uses: actions/github-script@v9
       env:
         QAIHM_TEST_MODELS: ${{ inputs.model || 'all' }}
-        QAIHM_TEST_DEVICES: ${{ inputs.device || 'all' }}
+        QAIHM_TEST_DEVICES: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
       with:
         github-token: ${{ secrets.STAGING_GH_TOKEN }}
         result-encoding: string
