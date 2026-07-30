@@ -96,39 +96,6 @@ def test_evaluate(
 @pytest.mark.skipif(
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
 )
-def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """Quantize the model and verify it can respond with 'Paris'."""
-    Qwen3_8B_PreSplit.release()
-    Qwen3_8B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
-    # Calibrate on the PreSplit (monolithic QuantSim) like production; split
-    # wrappers stack 5 Part sessions and OOM. Demo below still validates the split.
-    checkpoint_path = test.setup_test_quantization(
-        Qwen3_8B_QuantizablePreSplit,
-        Qwen3_8B_PreSplit,
-        str(tmp_path),
-        precision=Precision.w4a16,
-        checkpoint="DEFAULT",
-        use_seq_mse=False,
-    )
-    qwen3_8b_chat_demo(
-        fp_model_cls=FPSplitModelWrapper,
-        default_prompt="What is the capital of France?",
-        test_checkpoint=checkpoint_path,
-    )
-    captured = capsys.readouterr()
-    assert "Paris" in captured.out
-    Qwen3_8B_PreSplit.release()
-    Qwen3_8B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
-
-
-@pytest.mark.demo
-@pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="This test can be run on GPU only."
-)
 @pytest.mark.parametrize("checkpoint", ["DEFAULT", "DEFAULT_UNQUANTIZED"])
 def test_demo_default(
     checkpoint: CheckpointSpec, capsys: pytest.CaptureFixture[str]

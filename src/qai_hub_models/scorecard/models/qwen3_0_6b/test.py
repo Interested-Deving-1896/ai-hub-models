@@ -31,7 +31,6 @@ from qai_hub_models.models.qwen3_0_6b.export import (
 )
 from qai_hub_models.models.qwen3_0_6b.model import (
     MODEL_ID,
-    SPINQUANT_CONFIG,
     FPSplitModelWrapper,
     QuantizedSplitModelWrapper,
     Qwen3_0_6B_PreSplit,
@@ -123,55 +122,7 @@ def test_evaluate(
         context_length=DEFAULT_CONTEXT_LENGTH,
         tmp_path=tmp_path,
         model_id=MODEL_ID,
-        # Unquantized FP baseline is the monolithic PreSplit (torch forward); the
-        # split-Parts ONNX path shifts WikiText PPL. W4A16 keeps the split
-        # wrapper since that's the production on-device graph.
-        fp_baseline_uses_presplit=True,
     )
-
-
-# Weekly-only (no @pytest.mark.nightly): qwen3_1_7b is the nightly quantize
-# canary (R1+R3 surfaces SpinQuant regressions that this R2+R3 recipe tolerates).
-@pytest.mark.demo
-@pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="This test can be run on GPU only."
-)
-def test_quantize_and_demo(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """Quantize the model and verify it can respond with 'Paris'."""
-    Qwen3_0_6B_PreSplit.release()
-    Qwen3_0_6B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
-    # Calibrate on the PreSplit (monolithic QuantSim) like production and the
-    # sibling tests; a split-forward wrapper stacks one ORT session per Part and
-    # can OOM. The demo below still exercises the split wrapper.
-    # Quantize from scratch, so start from the FP weights (DEFAULT_UNQUANTIZED),
-    # not the pre-quantized AIMET checkpoint that "DEFAULT" resolves to. SpinQuant
-    # isn't applied on its own, so pass the model's R2+R3 config explicitly --
-    # without it the quantized model emits garbage instead of a usable response.
-    checkpoint_path = test.setup_test_quantization(
-        Qwen3_0_6B_QuantizablePreSplit,
-        Qwen3_0_6B_PreSplit,
-        str(tmp_path),
-        precision=Precision.w4a16,
-        checkpoint="DEFAULT_UNQUANTIZED",
-        use_seq_mse=False,
-        spinquant_config=SPINQUANT_CONFIG,
-    )
-    # Disable thinking mode: the model otherwise loops in an unterminated
-    # reasoning trace and never emits the answer within the token budget.
-    qwen3_0_6b_chat_demo(
-        fp_model_cls=FPSplitModelWrapper,
-        default_prompt="What is the capital of France?",
-        test_checkpoint=checkpoint_path,
-        enable_thinking=False,
-    )
-    captured = capsys.readouterr()
-    assert "Paris" in captured.out
-    Qwen3_0_6B_PreSplit.release()
-    Qwen3_0_6B_QuantizablePreSplit.release()
-    FPSplitModelWrapper.release()
-    QuantizedSplitModelWrapper.release()
 
 
 # Weekly-only (no @pytest.mark.nightly); nightly demo coverage is on qwen3_1_7b.

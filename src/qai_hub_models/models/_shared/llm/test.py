@@ -815,23 +815,26 @@ def run_llm_evaluate_test(
     log_checkpoint: str | None = None,
     evaluate_kwargs: dict[str, Any] | None = None,
     add_unquantized_extra_kwargs: bool = True,
-    fp_baseline_uses_presplit: bool = False,
+    fp_baseline_uses_presplit: bool = True,
 ) -> float:
     """Shared body for the split-model ``test_evaluate`` parametrization.
 
-    Forward-only metrics (wikitext, mmlu, ...) run through the split-Parts
-    wrappers so the reported degradation isolates the quantization effect.
-    Prompt-generation tasks grade greedily-decoded output, which is
-    nondeterministic on the split-Parts ORT-CUDA path, so they always run on
-    the monolithic FP PreSplit (deterministic torch) regardless of checkpoint.
+    Quantized forward-only metrics (wikitext, mmlu, ...) run through the
+    split-Parts wrapper so the reported degradation reflects the production
+    on-device graph. The FP baseline runs on the monolithic PreSplit
+    (deterministic torch forward): the split-Parts ORT-CUDA path has produced
+    garbage logits on some FP checkpoints (e.g. qwen3_8b WikiText PPL ~8e10)
+    and shifts the metric on others. Prompt-generation tasks likewise always
+    run on the FP PreSplit regardless of checkpoint, because greedy decoding
+    is nondeterministic on the split-Parts path.
 
     Returns the measured metric and asserts it against ``expected_metric`` (a
     floor for prompt tasks, a two-sided tolerance otherwise).
 
     ``add_unquantized_extra_kwargs`` threads the ``_skip_quantsim_creation`` /
     ``fp_model`` kwargs the split LLMs pass for the unquantized baseline; the
-    VLMs don't take them. ``fp_baseline_uses_presplit`` evaluates the FP
-    baseline on the monolithic PreSplit rather than the split wrapper.
+    VLMs don't take them. ``fp_baseline_uses_presplit`` (default True) can be
+    set False to route the FP baseline through the split wrapper instead.
     """
     is_prompts = task in PROMPTS_TASKS
     is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"

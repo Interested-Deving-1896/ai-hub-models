@@ -120,9 +120,6 @@ def test_evaluate(
     Qwen3_4B_Instruct_2507_QuantizablePreSplit.release()
     FPSplitModelWrapper.release()
     QuantizedSplitModelWrapper.release()
-    # Unquantized FP baseline is the monolithic PreSplit (torch forward); the
-    # split-Parts ONNX path shifts WikiText PPL (9.39 -> 10.6). W4A16 keeps the
-    # split wrapper since that's the production on-device graph.
     test.run_llm_evaluate_test(
         task=task,
         checkpoint=checkpoint,
@@ -136,7 +133,6 @@ def test_evaluate(
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
         model_id=MODEL_ID,
-        fp_baseline_uses_presplit=True,
     )
 
 
