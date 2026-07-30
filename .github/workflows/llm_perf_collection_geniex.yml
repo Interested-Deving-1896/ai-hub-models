@@ -144,6 +144,7 @@ jobs:
       id-token: write
       packages: read
     env:
+      HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       QDC_API_TOKEN: ${{ secrets.QDC_API_KEY }}
       QDC_PRIVATE_API_KEY: ${{ secrets.QDC_PRIVATE_API_KEY }}
       JOBS_FILE: ${{ github.workspace }}/src/qai_hub_models/scorecard/intermediates/geniex_jobs_${{ matrix.pool }}_pool.yaml
@@ -171,6 +172,11 @@ jobs:
       run: |
         source ${{ env.VENV_PATH }}/bin/activate
         pip install -e src/
+
+    - name: Override transformers for qwen3_vl chat templating
+      run: |
+        source ${{ env.VENV_PATH }}/bin/activate
+        pip install --upgrade transformers==5.7.0
 
     - name: Download QDC wheel and install
       run: |

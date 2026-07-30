@@ -691,21 +691,20 @@ def _resolve_tokenizer_source(
 ) -> str:
     """Where to load the chat template from.
 
-    Prefers ``HF_REPO_NAME`` from the model module: bundle-shipped tokenizers
-    can carry newer chat_template formats (list-of-dicts) that older
-    transformers versions mishandle with "'list' object has no attribute
-    'keys'". The HF repo tokenizer is what apply_chat_template is exercised
-    against upstream. Falls back to the local genie bundle for qairt when no
-    HF repo is available.
+    For qairt, uses the local genie/geniex bundle: its tokenizer matches
+    what ships on-device, avoids gated-HF auth, and (with a current
+    transformers) parses the newer list-of-dicts chat_template format
+    correctly. For llama_cpp (gguf refs have no local tokenizer directory),
+    uses ``HF_REPO_NAME`` from the model module.
     """
+    if plugin == "qairt":
+        return model_rows[0][1]
     hf_repo: str | None = None
     if model_id:
         module = importlib.import_module(f"qai_hub_models.models.{model_id}")
         hf_repo = getattr(module, "HF_REPO_NAME", None)
     if hf_repo:
         return hf_repo
-    if plugin == "qairt":
-        return model_rows[0][1]
     raise ValueError(
         f"{model_id or '<unknown>'} has no HF_REPO_NAME; cannot resolve a "
         "chat template for llama_cpp eval prompts."

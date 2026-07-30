@@ -47,15 +47,16 @@ DEFAULT_EVAL_PROMPTS_PATH = os.path.normpath(
 def _write_eval_prompts_to_dir(
     prompts_dir: str,
     prompts: list[str],
-    tokenizer_fallback_source: str,
+    genie_bundle_path: str,
     model_id: str | None = None,
 ) -> None:
     """Write chat-templated prompt files into ``prompts_dir``.
 
-    Loads the tokenizer from the model's HF repo (HF_REPO_NAME) to apply
-    the correct chat template. Falls back to ``tokenizer_fallback_source``
-    (typically the Genie bundle path) only when ``model_id`` is not
-    provided or the model module lacks ``HF_REPO_NAME``.
+    Loads the tokenizer from the local Genie bundle: it matches what ships
+    on-device, avoids gated-HF auth, and (with a current transformers)
+    parses the newer list-of-dicts chat_template format correctly. Falls
+    back to the model's HF repo (HF_REPO_NAME) only when the bundle path
+    isn't available.
 
     Thinking mode is disabled for the eval prompts so the model returns a
     direct answer within the on-device token budget instead of spending it
@@ -67,12 +68,8 @@ def _write_eval_prompts_to_dir(
     if model_id:
         model_module = importlib.import_module(f"qai_hub_models.models.{model_id}")
         hf_repo = getattr(model_module, "HF_REPO_NAME", None)
-    # Loading from the bundle dir can fail on newer chat_template formats
-    # (list-of-dicts) that some transformers versions mishandle with
-    # "'list' object has no attribute 'keys'". Prefer the HF repo tokenizer,
-    # which is what apply_chat_template is exercised against upstream.
     tokenizer = AutoTokenizer.from_pretrained(
-        hf_repo if hf_repo else tokenizer_fallback_source
+        genie_bundle_path if genie_bundle_path else hf_repo
     )
 
     os.makedirs(prompts_dir, exist_ok=True)

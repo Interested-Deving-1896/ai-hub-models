@@ -169,6 +169,11 @@ jobs:
         source ${{ env.VENV_PATH }}/bin/activate
         pip install qualcomm_device_cloud_sdk-*.whl
 
+    - name: Override transformers for qwen3_vl chat templating
+      run: |
+        source ${{ env.VENV_PATH }}/bin/activate
+        pip install --upgrade transformers==5.7.0
+
     - name: Download Fresh Release Assets
       if: ${{ inputs.release_assets_action_id != '' }}
       uses: actions/download-artifact@v8
