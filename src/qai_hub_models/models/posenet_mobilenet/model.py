@@ -9,7 +9,6 @@ import os
 from typing import Any
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 from typing_extensions import Self
 
@@ -78,11 +77,9 @@ class PosenetMobilenet(BaseModel):
     # AttributeError: 'str' object has no attribute '__name__'. Did you mean: '__ne__'?
     def forward(
         self, image: Any
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Image inputs are expected to be in RGB format in the range [0, 1]."""
-        raw_output = self.model(image * 2.0 - 1.0)
-        max_vals = F.max_pool2d(raw_output[0], 3, stride=1, padding=1)
-        return (*raw_output, max_vals)
+        return self.model(image * 2.0 - 1.0)
 
     def get_input_spec(
         self,
@@ -109,7 +106,6 @@ class PosenetMobilenet(BaseModel):
             "offsets_result": TensorSpec(),
             "displacement_fwd_result": TensorSpec(),
             "displacement_bwd_result": TensorSpec(),
-            "max_vals": TensorSpec(),
         }
 
     def _sample_inputs_impl(

@@ -12,6 +12,7 @@ from typing import Any
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 
@@ -300,7 +301,7 @@ def get_instance_score_fast(
 
 
 def build_part_with_score_torch(
-    score_threshold: float, max_vals: torch.Tensor, scores: torch.Tensor
+    score_threshold: float, scores: torch.Tensor
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Get candidate keypoints to be considered the root for a pose.
@@ -311,8 +312,6 @@ def build_part_with_score_torch(
     ----------
     score_threshold
         Minimum score for a keypoint to be considered as a root.
-    max_vals
-        See `decode_multiple_poses`.
     scores
         See `decode_multiple_poses`.
 
@@ -324,7 +323,17 @@ def build_part_with_score_torch(
         Indices of the considered keypoints. Shape (N, 3) where the 3 indices
         map to the dimensions of the scores tensor with shape (17, h, w).
     """
-    max_loc = (scores == max_vals) & (scores >= score_threshold)
+    # Compute the local maxima of `scores` via maxpool, then keep positions that
+    # equal their local max (i.e. peaks) and clear the score threshold. The
+    # maxpool is recomputed here from `scores` (as upstream does) rather than
+    # taken as a separate model output: on device a separate output would be
+    # quantized independently from `scores`, so the `==` comparison would rarely
+    # hold -> zero peaks -> mAP collapse. Recomputing keeps the equality exact
+    # regardless of quantization.
+    # https://github.com/rwightman/posenet-pytorch/blob/6f7376d/posenet/decode_multi.py#L28
+    lmd = 2 * LOCAL_MAXIMUM_RADIUS + 1
+    max_pooled_vals = F.max_pool2d(scores, lmd, stride=1, padding=LOCAL_MAXIMUM_RADIUS)
+    max_loc = (scores == max_pooled_vals) & (scores >= score_threshold)
     max_loc_idx = max_loc.nonzero()
     scores_vec = scores[max_loc]
     sort_idx = torch.argsort(scores_vec, descending=True)
@@ -336,7 +345,6 @@ def decode_multiple_poses(
     offsets: torch.Tensor,
     displacements_fwd: torch.Tensor,
     displacements_bwd: torch.Tensor,
-    max_vals: torch.Tensor,
     max_pose_detections: int = 10,
     score_threshold: float = 0.25,
     nms_radius: int = 20,
@@ -365,8 +373,6 @@ def decode_multiple_poses(
     displacements_bwd
         Same as displacements_fwd, except when traversing keypoint connections
         in the opposite direction.
-    max_vals
-        Same as scores except with a max pool applied with kernel size 3.
     max_pose_detections
         Maximum number of distinct poses to detect in a single image.
     score_threshold
@@ -386,9 +392,7 @@ def decode_multiple_poses(
     pose_keypoint_coords : np.ndarray
         Numpy array of keypoint coordinates.
     """
-    part_scores_pt, part_idx_pt = build_part_with_score_torch(
-        score_threshold, max_vals, scores
-    )
+    part_scores_pt, part_idx_pt = build_part_with_score_torch(score_threshold, scores)
     part_scores = part_scores_pt.cpu().numpy()
     part_idx = part_idx_pt.cpu().numpy()
 
@@ -570,7 +574,7 @@ class PosenetApp:
         self,
         model: Callable[
             [torch.Tensor],
-            tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
         ],
         input_spec: InputSpec | None = None,
     ) -> None:
@@ -630,14 +634,12 @@ class PosenetApp:
             offsets_result,
             displacement_fwd_result,
             displacement_bwd_result,
-            max_vals,
         ) = self.model(tensor)
         pose_scores, keypoint_scores, keypoint_coords = decode_multiple_poses(
             heatmaps_result.squeeze(0),
             offsets_result.squeeze(0),
             displacement_fwd_result.squeeze(0),
             displacement_bwd_result.squeeze(0),
-            max_vals.squeeze(0),
             max_pose_detections=10,
             min_pose_score=0.25,
         )

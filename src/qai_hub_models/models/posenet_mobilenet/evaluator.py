@@ -26,9 +26,7 @@ class PosenetMobilenetEvaluator(CocoBodyPoseEvaluator):
 
     def add_batch(
         self,
-        output: tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
-        ],
+        output: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
         gt: list[torch.Tensor],
     ) -> None:
         """Process a batch of Posenet Mobilenet model outputs and ground truth data.
@@ -46,8 +44,6 @@ class PosenetMobilenetEvaluator(CocoBodyPoseEvaluator):
                 Tensor (float), [batch, 32, 33, 17].
             displacement_bwd_result
                 Tensor (float), [batch, 32, 33, 17].
-            max_vals
-                Tensor (float), [batch, 17, 33, 17].
         gt
             Ground truth data containing:
 
@@ -60,7 +56,7 @@ class PosenetMobilenetEvaluator(CocoBodyPoseEvaluator):
             scale
                 Tensor (float), [batch, 2].
         """
-        heatmaps, offsets, disp_fwd, disp_bwd, max_vals = output
+        heatmaps, offsets, disp_fwd, disp_bwd = output
         img_ids, cat_ids, centers, scales = gt
 
         pose_coords_list: list[np.ndarray] = []
@@ -72,7 +68,6 @@ class PosenetMobilenetEvaluator(CocoBodyPoseEvaluator):
                 offsets[idx : idx + 1].squeeze(0),
                 disp_fwd[idx : idx + 1].squeeze(0),
                 disp_bwd[idx : idx + 1].squeeze(0),
-                max_vals[idx : idx + 1].squeeze(0),
                 max_pose_detections=10,
                 min_pose_score=0.25,
             )
