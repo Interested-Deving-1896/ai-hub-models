@@ -17,7 +17,6 @@ import qai_hub as hub
 from ruamel.yaml import YAML
 from tflite import Model as TFModel
 
-from qai_hub_models import TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.asset_loaders import qaihm_temp_dir
 from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
@@ -183,7 +182,16 @@ def main() -> None:
             continue
         try:
             if not skip_compile:
+                supported_paths = manifest.get_supported_paths_for_testing()
                 for precision in precisions:
+                    if not (runtimes := supported_paths.get(precision)):
+                        print(
+                            f"Skipping {model_name} precision {precision!s} since it "
+                            "has no supported target runtime."
+                        )
+                        continue
+                    target_runtime = runtimes[0]
+
                     # Install dependencies
                     requirements_file = None
 
@@ -202,7 +210,7 @@ def main() -> None:
                         skip_profiling=True,
                         skip_inferencing=True,
                         skip_summary=True,
-                        target_runtime=TargetRuntime.TFLITE,
+                        target_runtime=target_runtime,
                         precision=precision,
                     )
 
