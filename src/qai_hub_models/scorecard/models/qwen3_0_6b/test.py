@@ -72,18 +72,23 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     not torch.cuda.is_available(), reason="This test can be run on GPU only."
 )
 @pytest.mark.parametrize(
-    ("checkpoint", "task", "expected_metric", "num_samples"),
+    ("checkpoint", "task", "expected_metric", "num_samples", "rtol"),
     [
         # Recipe: SpinQuant R2+R3 -> AdaScale -> Calibration. Baselines are
         # measured nightly values. `prompts` rows grade the deterministic FP
         # PreSplit regardless of checkpoint, so both share a conservative floor.
-        ("DEFAULT_W4A16", "wikitext", 20.67, 0),
-        pytest.param("DEFAULT_W4A16", "mmlu", 0.441, 1000, marks=pytest.mark.nightly),
-        ("DEFAULT_W4A16", "prompts", 0.75, 5),
+        ("DEFAULT_W4A16", "wikitext", 20.67, 0, 0.03),
+        # MMLU output varies node-to-node on the GPU nightly runners
+        # (observed 0.418 vs 0.441; see qcom-ai-hub/tetracode#20593). Center
+        # at 0.426 with rtol=0.04 so the window [0.409, 0.443] covers both.
+        pytest.param(
+            "DEFAULT_W4A16", "mmlu", 0.426, 1000, 0.04, marks=pytest.mark.nightly
+        ),
+        ("DEFAULT_W4A16", "prompts", 0.75, 5, 0.03),
         # FP (unquantized): PPL 19.15, MMLU 47.07%.
-        ("DEFAULT_UNQUANTIZED", "wikitext", 19.15, 0),
-        ("DEFAULT_UNQUANTIZED", "mmlu", 0.4707, 1000),
-        ("DEFAULT_UNQUANTIZED", "prompts", 0.75, 5),
+        ("DEFAULT_UNQUANTIZED", "wikitext", 19.15, 0, 0.03),
+        ("DEFAULT_UNQUANTIZED", "mmlu", 0.4707, 1000, 0.03),
+        ("DEFAULT_UNQUANTIZED", "prompts", 0.75, 5, 0.03),
     ],
 )
 def test_evaluate(
@@ -91,6 +96,7 @@ def test_evaluate(
     task: str,
     expected_metric: float,
     num_samples: int,
+    rtol: float,
     tmp_path: Path,
 ) -> None:
     dataset_cls = next(
@@ -107,6 +113,7 @@ def test_evaluate(
         checkpoint=checkpoint,
         expected_metric=expected_metric,
         num_samples=num_samples,
+        rtol=rtol,
         dataset_cls=dataset_cls,
         quantized_split_cls=QuantizedSplitModelWrapper,
         fp_split_cls=FPSplitModelWrapper,
