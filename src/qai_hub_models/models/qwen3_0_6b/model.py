@@ -39,9 +39,6 @@ from qai_hub_models.models._shared.llm.model import (
     SplitForwardMixin,
 )
 from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_EXPORT_CONTEXT_LENGTHS as GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS,
-)
-from qai_hub_models.models._shared.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
 from qai_hub_models.models._shared.lm_driver.generator import HubCompatibleGenerator
@@ -56,7 +53,9 @@ from qai_hub_models.utils.input_spec import InputSpec
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EXPORT_CONTEXT_LENGTHS = GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS
+# The shared 5-CL family default overflows HTP memory on IQ9 (qcs9075), so pin a
+# 3-CL set for every Qwen3-0.6B export.
+DEFAULT_EXPORT_CONTEXT_LENGTHS = [512, 1024, 4096]
 DEFAULT_EXPORT_SEQUENCE_LENGTHS = GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS
 
 # Model identification
@@ -229,6 +228,7 @@ class Qwen3_0_6B_Collection(Qwen3PreSplitCollectionBase):
     fp_presplit_cls = Qwen3_0_6B_PreSplit
     part_base_cls = Qwen3_0_6B_PartBase
     supports_thinking = True
+    default_context_lengths = DEFAULT_EXPORT_CONTEXT_LENGTHS
     parts = {
         "part1_of_2": Qwen3_0_6B_Part1_Of_2,
         "part2_of_2": Qwen3_0_6B_Part2_Of_2,
