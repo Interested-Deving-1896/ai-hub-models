@@ -8,7 +8,7 @@ from __future__ import annotations
 import torch
 from typing_extensions import Self
 
-from qai_hub_models import SampleInputsType
+from qai_hub_models import Precision, SampleInputsType
 from qai_hub_models.models._shared.segmentation.segmentation_evaluator import (
     SegmentationOutputEvaluator,
 )
@@ -55,6 +55,15 @@ class UNet(BaseModel):
             state_dict = load_torch(checkpoint_path)
             net.load_state_dict(state_dict)
         return cls(net)
+
+    def get_hub_quantize_options(
+        self, precision: Precision, other_options: str | None = None
+    ) -> str:
+        # min_max avoids tf_enhanced clipping UNet's wide-range edge activations (~3pt mIOU on w8a8).
+        options = other_options or ""
+        if "--range_scheme" in options:
+            return options
+        return options + " --range_scheme min_max"
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         """
