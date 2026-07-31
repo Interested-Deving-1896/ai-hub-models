@@ -668,6 +668,19 @@ class TestResolveChipset:
         with pytest.raises(KeyError, match="qai-hub-models chipsets"):
             resolve_chipset(cs, dv, chipset="nope")
 
+    def test_unknown_chipset_suggests_close_match(self) -> None:
+        from qai_hub_models_cli.proto_helpers.platform import resolve_chipset
+
+        platform = _platform_info()
+        cs, dv = platform.chipsets, platform.devices
+        with pytest.raises(KeyError, match="Did you mean 'sd8gen3'"):
+            resolve_chipset(cs, dv, chipset="sd8gen4")
+        with pytest.raises(KeyError, match="Did you mean 'sd8gen3'"):
+            resolve_chipset(cs, dv, chipset="SD8GEN4")
+        with pytest.raises(KeyError, match="qai-hub-models chipsets") as exc:
+            resolve_chipset(cs, dv, chipset="xyz")
+        assert "Did you mean" not in str(exc.value)
+
 
 def test_form_factor_and_world_display_names() -> None:
     from qai_hub_models_cli.proto.platform_pb2 import FormFactor, WebsiteWorld

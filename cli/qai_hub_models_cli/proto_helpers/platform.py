@@ -4,6 +4,7 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import difflib
 import functools
 from collections.abc import Iterable
 from pathlib import Path
@@ -229,7 +230,9 @@ def resolve_chipset(
     ValueError
         If neither or both of *device* and *chipset* are provided.
     KeyError
-        If the reference does not match any known device or chipset.
+        If the reference does not match any known device or chipset. When
+        resolving by *chipset*, the message may include a "Did you mean ...?"
+        suggestion pointing at the closest known chipset name or alias.
     """
     if (device is None) == (chipset is None):
         raise ValueError("Provide exactly one of 'device' or 'chipset'.")
@@ -244,12 +247,17 @@ def resolve_chipset(
 
     assert chipset is not None  # exactly one of device/chipset, checked above
     chipset_key = normalize_hw_name(chipset)
+    known_refs: dict[str, str] = {}
     for c in chipsets_by_name.values():
         candidates = [c.name, c.marketing_name, *c.aliases]
         if any(normalize_hw_name(candidate) == chipset_key for candidate in candidates):
             return c
+        for candidate in candidates:
+            known_refs.setdefault(normalize_hw_name(candidate), candidate)
+    matches = difflib.get_close_matches(chipset_key, known_refs.keys(), n=1)
+    hint = f" Did you mean {known_refs[matches[0]]!r}?" if matches else ""
     raise KeyError(
-        f"Unknown chipset {chipset!r}. "
+        f"Unknown chipset {chipset!r}.{hint} "
         "Run `qai-hub-models chipsets` to see supported chipsets."
     )
 
