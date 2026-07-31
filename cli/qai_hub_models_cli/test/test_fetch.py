@@ -13,6 +13,8 @@ from packaging.version import Version
 
 from qai_hub_models_cli.cli import _run_fetch, add_fetch_parser
 from qai_hub_models_cli.fetch import _asset_url, fetch, get_asset_url
+from qai_hub_models_cli.proto.info_pb2 import ModelInfo
+from qai_hub_models_cli.proto.manifest_pb2 import ManifestModelEntry
 from qai_hub_models_cli.proto.platform_pb2 import (
     ChipsetInfo,
     DeviceInfo,
@@ -296,6 +298,46 @@ def test_get_asset_url_quiet_omits_table(mock_assets: MagicMock) -> None:
     assert "2 assets match" in msg
     assert "Precision" not in msg  # no table
     assert "fetch mobilenet_v2 -i" not in msg  # no command hints
+
+
+def _llama_cpp_platform(*_args: object) -> PlatformInfo:
+    return PlatformInfo(
+        aihm_version="0.45.0",
+        runtimes=[
+            RuntimeInfo(runtime=_TFLITE, is_aot_compiled=False),
+            RuntimeInfo(runtime=Runtime.RUNTIME_GENIEX_LLAMACPP, is_aot_compiled=False),
+        ],
+    )
+
+
+@patch("qai_hub_models_cli.fetch.get_platform", _llama_cpp_platform)
+@patch("qai_hub_models_cli.fetch.get_manifest_entry")
+@patch("qai_hub_models_cli.fetch.get_model_info")
+@patch("qai_hub_models_cli.fetch.get_model_release_assets")
+def test_get_asset_url_geniex_llamacpp_points_to_readme(
+    mock_assets: MagicMock,
+    mock_info: MagicMock,
+    mock_entry: MagicMock,
+) -> None:
+    mock_info.return_value = ModelInfo(
+        id="qwen3_5_0_8b",
+        llm_details=ModelInfo.LLMDetails(geniex_llamacpp_compatible=True),
+    )
+    mock_entry.return_value = ManifestModelEntry(
+        id="qwen3_5_0_8b", display_name="Qwen3.5 0.8B"
+    )
+    with pytest.raises(AssetNotFoundError) as exc:
+        get_asset_url(
+            model="qwen3_5_0_8b",
+            runtime="geniex_llamacpp",
+            precision="float",
+            version=_VERSION,
+        )
+    msg = str(exc.value)
+    assert "Qwen3.5 0.8B" in msg
+    assert "README" in msg
+    assert "/qwen3_5_0_8b" in msg
+    mock_assets.assert_not_called()  # short-circuit before touching release assets
 
 
 # ── fetch ────────────────────────────────────────────────────────────

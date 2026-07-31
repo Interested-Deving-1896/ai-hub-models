@@ -14,10 +14,13 @@ from qai_hub_models_cli.common import (
     AIHUB_MODELS_URL,
     ASSET_FOLDER,
     STORE_URL,
+    model_repo_url,
     sample_command,
 )
 from qai_hub_models_cli.proto.shared.precision_pb2 import Precision
 from qai_hub_models_cli.proto.shared.runtime_pb2 import Runtime
+from qai_hub_models_cli.proto_helpers.info import get_model_info
+from qai_hub_models_cli.proto_helpers.manifest import get_manifest_entry
 from qai_hub_models_cli.proto_helpers.platform import (
     get_platform,
     resolve_runtime,
@@ -164,8 +167,30 @@ def get_asset_url(
         raise ValueError("Provide at most one of 'chipset' or 'device'.")
 
     if version >= MIN_MANIFEST_VERSION:
-        release_assets = get_model_release_assets(model, version)
         platform = get_platform(version)
+
+        # geniex_llamacpp assets aren't distributed as S3 zips; direct users
+        # to the model README instead of attempting a download that will fail.
+        if runtime is not None:
+            try:
+                runtime_info = resolve_runtime(platform.runtimes, runtime)
+            except KeyError:
+                runtime_info = None
+            if (
+                runtime_info is not None
+                and runtime_info.runtime == Runtime.RUNTIME_GENIEX_LLAMACPP
+            ):
+                info_proto = get_model_info(model, version)
+                if info_proto.llm_details.geniex_llamacpp_compatible:
+                    entry = get_manifest_entry(model, version)
+                    raise AssetNotFoundError(
+                        f"geniex_llamacpp assets for {entry.display_name} are not "
+                        "distributed via qai-hub-models fetch. See the model "
+                        f"README for setup instructions: "
+                        f"{model_repo_url(entry.id, version)}"
+                    )
+
+        release_assets = get_model_release_assets(model, version)
 
         # Filter the assets down to the user's args.
         matches = filter_release_assets(
