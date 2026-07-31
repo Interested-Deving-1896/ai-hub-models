@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import json
 import os
 from enum import Enum
@@ -29,18 +28,6 @@ from qai_hub_models.utils.image_processing import (
     transform_resize_pad_normalized_coordinates,
 )
 from qai_hub_models.utils.input_spec import InputSpec, TensorSpec
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
-
-
-@functools.cache
-def get_coco80_label_map() -> dict[int, str]:
-    """
-    Return a mapping from the 80-class COCO index to its human-readable label.
-
-    Cached so the labels file is read from disk only once per process.
-    """
-    with open(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels.txt") as f:
-        return {i: line.strip() for i, line in enumerate(f)}
 
 
 class CocoDatasetClass(Enum):

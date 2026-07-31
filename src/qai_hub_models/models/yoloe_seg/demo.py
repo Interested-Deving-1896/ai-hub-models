@@ -13,7 +13,6 @@ from qai_hub_models.models.yoloe_seg.app import (
     YoloESegmentationApp,
 )
 from qai_hub_models.models.yoloe_seg.model import (
-    COCO_LABELS,
     MODEL_ASSET_VERSION,
     MODEL_ID,
     YoloESegmentor,
@@ -33,6 +32,7 @@ from qai_hub_models.utils.asset_loaders import (
 )
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.display import display_or_save_image
+from qai_hub_models.utils.labels import get_class_names
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
     "yoloe_seg", MODEL_ASSET_VERSION, "test_images/bus.jpg"
@@ -78,31 +78,21 @@ def yolo_prompt_segmentation_demo(
     parser.add_argument(
         "--model-classes",
         type=str,
-        default=COCO_LABELS,
+        default=None,
         help=(
             "Comma-separated list of ALL classes the model was exported with "
             "(e.g. 'bus,person'). Required when running on-device (--eval-mode "
             "on-device) and --prompt-text specifies only a subset of those classes. "
             "When omitted for local inference the class list is read directly from "
-            "the loaded model."
+            "the loaded model. Defaults to the full COCO-80 class list."
         ),
     )
-    # Override the default for --prompt-text to None so we can detect whether
-    # the user explicitly passed it.  The from_pretrained default (COCO_LABELS)
-    # is restored below before model loading so local inference is unaffected.
     parser.set_defaults(prompt_text=None)
 
     args = parser.parse_args([] if is_test else None)
     validate_on_device_demo_args(args, model_id)
 
-    # Remember whether the user explicitly supplied --prompt-text.
-    # args.prompt_text is None when the argument was not passed on the CLI.
     user_prompt: str | None = args.prompt_text
-
-    # Restore a valid default so that model loading / compilation always
-    # receives a proper class list (from_pretrained does not accept None).
-    if args.prompt_text is None:
-        args.prompt_text = COCO_LABELS
 
     # Load image & model
     model = demo_model_from_cli_args(model_type, model_id, args)
@@ -121,7 +111,9 @@ def yolo_prompt_segmentation_demo(
     else:
         # On-device inference: parse the full exported class list from
         # --model-classes (defaults to all COCO labels).
-        if args.model_classes.endswith(".txt"):
+        if args.model_classes is None:
+            model_classes = get_class_names("coco")
+        elif args.model_classes.endswith(".txt"):
             with open(args.model_classes) as f:
                 lines = f.readlines()
             model_classes = [t.rstrip("\r\n").strip() for t in lines if t.strip()]

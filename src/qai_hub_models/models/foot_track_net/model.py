@@ -291,4 +291,4 @@ class FootTrackNet(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("foot_track_net_labels.txt", output_dir, metadata)
+        write_labels_file("foot_track_net", output_dir, metadata)

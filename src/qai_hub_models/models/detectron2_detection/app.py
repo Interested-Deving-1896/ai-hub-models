@@ -30,7 +30,7 @@ from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, AsyncOnDeviceResult
 from qai_hub_models.utils.input_spec import InputSpec, get_batch_size
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
 
@@ -185,8 +185,7 @@ class Detectron2DetectionApp(
         )
 
         color = create_color_map(self.num_classes + 1)
-        with open(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels.txt") as f:
-            labels_list = [line.strip() for line in f]
+        labels_list = get_class_names("coco")
 
         out_images = []
         for i, (boxes, scores, labels) in enumerate(

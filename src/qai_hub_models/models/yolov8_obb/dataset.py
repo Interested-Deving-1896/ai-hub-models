@@ -16,7 +16,7 @@ from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetMetadata, DatasetSplit
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 from qai_hub_models.utils.input_spec import InputSpec, TensorSpec
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 
 DATASET_ID = "dota128"
 DATASET_ASSET_VERSION = 1
@@ -32,9 +32,7 @@ DOTA128_IMAGES_ASSET = CachedWebDatasetAsset(
     "dota128.zip",
 )
 
-DOTA_V1_CLASSES = (
-    (QAIHM_PACKAGE_ROOT / "labels" / "dota_v1_labels.txt").read_text().splitlines()
-)
+DOTA_V1_CLASSES = get_class_names("dota_v1")
 
 
 class Dota128Dataset(BaseDataset):

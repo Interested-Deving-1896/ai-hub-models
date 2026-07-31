@@ -24,7 +24,7 @@ from qai_hub_models.utils.image_processing import (
     undo_resize_pad,
 )
 from qai_hub_models.utils.input_spec import InputSpec
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 
 
 class MaskRCNNApp(ProposalBasedDetectionApp):
@@ -104,8 +104,7 @@ class MaskRCNNApp(ProposalBasedDetectionApp):
         self.max_vis_boxes = max_vis_boxes
         self.mask_threshold = mask_threshold
         self.num_classes = 91
-        with open(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels_91.txt") as f:
-            self.labels_list = [line.strip() for line in f]
+        self.labels_list = get_class_names("coco_91")
 
     def predict(
         self,

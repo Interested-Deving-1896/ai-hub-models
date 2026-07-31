@@ -176,6 +176,10 @@ MANUAL_EDGES = {
     "src/qai_hub_models/utils/evaluate.py": REPRESENTATIVE_EXPORT_FILES,
     "src/qai_hub_models/utils/inference.py": REPRESENTATIVE_EXPORT_FILES,
     "src/qai_hub_models/utils/input_spec.py": REPRESENTATIVE_EXPORT_FILES,
+    "src/qai_hub_models/utils/labels.py": [
+        "src/qai_hub_models/models/yamnet/model.py",
+        "src/qai_hub_models/models/yolov8_det/model.py",
+    ],
     "src/qai_hub_models/utils/onnx/torch_wrapper.py": REPRESENTATIVE_EXPORT_FILES,
     "src/qai_hub_models/utils/path_helpers.py": REPRESENTATIVE_EXPORT_FILES,
     "src/qai_hub_models/utils/printing.py": REPRESENTATIVE_EXPORT_FILES,

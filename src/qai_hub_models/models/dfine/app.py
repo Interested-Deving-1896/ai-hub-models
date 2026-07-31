@@ -12,12 +12,12 @@ import numpy.typing as npt
 import torch
 from PIL.Image import Image, Resampling
 
-from qai_hub_models.datasets.coco.coco import get_coco80_label_map
 from qai_hub_models.utils.draw import draw_box_from_xyxy
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
     preprocess_PIL_image,
 )
+from qai_hub_models.utils.labels import get_class_names
 
 
 class DFineApp:
@@ -87,7 +87,7 @@ class DFineApp:
         boxes = torch.cat(boxes_per_batch, dim=0)
         labels = torch.cat(labels_per_batch, dim=0)
 
-        coco80_label_map = get_coco80_label_map()
+        coco_labels = get_class_names("coco")
         for batch_idx in range(len(NHWC_int_numpy_frames)):
             for box, label in zip(
                 boxes_per_batch[batch_idx], labels_per_batch[batch_idx], strict=False
@@ -98,7 +98,7 @@ class DFineApp:
                     box[2:4].int(),
                     color=(0, 255, 0),
                     size=2,
-                    text=f"{coco80_label_map[int(label.item())]}",
+                    text=coco_labels[int(label.item())],
                 )
 
         return NHWC_int_numpy_frames, pred_scores[mask], labels, boxes

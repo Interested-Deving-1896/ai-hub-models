@@ -14,7 +14,6 @@ import torch
 from qai_hub_models.datasets.kinetics400.video_utils import (
     DEFAULT_NUM_CLIPS,
     DEFAULT_NUM_CROPS,
-    get_class_name_kinetics_400,
     multi_crop,
     preprocess_video_224,
     preprocess_video_kinetics_400,
@@ -26,6 +25,7 @@ from qai_hub_models.datasets.kinetics400.video_utils import (
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetMetadata, DatasetSplit
 from qai_hub_models.utils.input_spec import InputSpec
+from qai_hub_models.utils.labels import get_class_names
 
 KINETICS400_FOLDER_NAME = "kinetics400"
 KINETICS400_VERSION = 2
@@ -72,7 +72,7 @@ def _get_labeled_data(
     video_paths: list[str] = []
     label_indices: list[int] = []
     label_index_map = {
-        label: i for (i, label) in enumerate(get_class_name_kinetics_400())
+        label: i for (i, label) in enumerate(get_class_names("kinetics400"))
     }
     for _, row in join_df.iterrows():
         assert isinstance(row, pd.Series)

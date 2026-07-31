@@ -12,7 +12,6 @@ import torch
 from qai_hub_models.datasets.kinetics400 import (
     DEFAULT_NUM_CLIPS,
     DEFAULT_NUM_CROPS,
-    get_class_name_kinetics_400,
     multi_crop,
     preprocess_video_kinetics_400,
     read_video_at_fps,
@@ -21,6 +20,7 @@ from qai_hub_models.datasets.kinetics400 import (
     sample_video,
 )
 from qai_hub_models.models._shared.video_classifier.model import KineticsClassifier
+from qai_hub_models.utils.labels import get_class_names
 
 
 def recognize_action_kinetics_400(prediction: torch.Tensor) -> list[str]:
@@ -40,7 +40,7 @@ def recognize_action_kinetics_400(prediction: torch.Tensor) -> list[str]:
     # Get top 5 class probabilities
     prediction = torch.topk(prediction.flatten(), 5).indices
 
-    actions = get_class_name_kinetics_400()
+    actions = get_class_names("kinetics400")
     return [actions[pred] for pred in prediction]
 
 

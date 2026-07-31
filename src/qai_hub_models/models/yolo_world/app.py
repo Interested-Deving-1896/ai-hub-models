@@ -26,13 +26,8 @@ from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.evaluate.helpers import sample_dataset
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, AsyncOnDeviceResult
 from qai_hub_models.utils.input_spec import InputSpec, get_batch_size
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
-
-
-def _load_coco_labels() -> list[str]:
-    with open(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels.txt") as f:
-        return [line.strip() for line in f if line.strip()]
 
 
 class YoloWorldDetectionApp(
@@ -108,7 +103,7 @@ class YoloWorldDetectionApp(
             WorkbenchModel Collection application supporting Evaluation and Quantization
         """
         if prompt_text is None:
-            prompt_text = _load_coco_labels()
+            prompt_text = get_class_names("coco")
 
         detector_component = models[0]
         text_encoder_component = models[1]
@@ -146,7 +141,7 @@ class YoloWorldDetectionApp(
 
         if component_name == "text_encoder":
             # Text encoder takes fixed COCO token IDs — produce N identical copies.
-            tokens = YoloWorldTextEncoder.tokenize_classes(_load_coco_labels())
+            tokens = YoloWorldTextEncoder.tokenize_classes(get_class_names("coco"))
             num_samples = num_samples or 128
             token_data: list[torch.Tensor | np.ndarray] = [tokens] * num_samples
             return make_hub_dataset_entries((token_data,), ["tokens"])
@@ -172,7 +167,7 @@ class YoloWorldDetectionApp(
         torch_dataset = sample_dataset(dataset, num_samples)
         dataloader = DataLoader(torch_dataset, batch_size=batch_size)
 
-        txt_feats = text_encoder_component.encode_classes(_load_coco_labels())
+        txt_feats = text_encoder_component.encode_classes(get_class_names("coco"))
 
         inputs: list[list[torch.Tensor | np.ndarray]] = [
             [] for _ in range(len(input_spec))

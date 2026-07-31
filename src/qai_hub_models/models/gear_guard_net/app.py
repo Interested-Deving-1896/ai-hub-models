@@ -10,7 +10,7 @@ from collections.abc import Callable
 import torch
 
 from qai_hub_models.models._shared.gear_guard_net import BodyDetectionApp
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 
 # Define color map for gear guard classes
 GEAR_GUARD_COLOR_MAP = {0: (255, 0, 0), 1: (0, 255, 0), -1: (255, 255, 255)}
@@ -35,7 +35,6 @@ class GearGuardNetApp(BodyDetectionApp):
     """
 
     COLOR_MAP = GEAR_GUARD_COLOR_MAP
-    _class_names = None  # Cache for loaded class names
 
     def __init__(
         self,
@@ -79,8 +78,6 @@ class GearGuardNetApp(BodyDetectionApp):
         """
         Get the label text for a detected object.
 
-        Loads class names from the labels file on first call and caches them.
-
         Parameters
         ----------
         class_idx
@@ -91,11 +88,7 @@ class GearGuardNetApp(BodyDetectionApp):
         label : str | None
             The class name (e.g., "helmet", "vest") or "unknown" for invalid indices.
         """
-        # Load class names from file on first call
-        if GearGuardNetApp._class_names is None:
-            with open(QAIHM_PACKAGE_ROOT / "labels" / "ppe_labels.txt") as f:
-                GearGuardNetApp._class_names = [line.strip() for line in f]
-
-        if 0 <= class_idx < len(GearGuardNetApp._class_names):
-            return GearGuardNetApp._class_names[class_idx]
+        class_names = get_class_names("ppe")
+        if 0 <= class_idx < len(class_names):
+            return class_names[class_idx]
         return "unknown"

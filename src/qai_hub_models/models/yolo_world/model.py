@@ -46,7 +46,7 @@ from qai_hub_models.utils.input_spec import (
     OutputSpec,
     TensorSpec,
 )
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 
 MODEL_ASSET_VERSION = 1
 MODEL_ID = __name__.split(".")[-2]
@@ -59,11 +59,6 @@ SUPPORTED_WEIGHTS = [
 DEFAULT_WEIGHTS = "yolov8s-worldv2.pt"
 
 CLIP_CONTEXT_LENGTH = 77
-
-
-def _load_coco_labels() -> list[str]:
-    with open(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels.txt") as f:
-        return [line.strip() for line in f if line.strip()]
 
 
 class YoloWorldTextEncoder(BaseModel):
@@ -116,7 +111,7 @@ class YoloWorldTextEncoder(BaseModel):
         else:
             num_classes = 80
             context_length = CLIP_CONTEXT_LENGTH
-        coco_tokens = YoloWorldTextEncoder.tokenize_classes(_load_coco_labels())
+        coco_tokens = YoloWorldTextEncoder.tokenize_classes(get_class_names("coco"))
         # Tile/slice to match num_classes.
         repeats = (num_classes + coco_tokens.shape[0] - 1) // coco_tokens.shape[0]
         tokens = coco_tokens.repeat(repeats, 1)[:num_classes, :context_length]

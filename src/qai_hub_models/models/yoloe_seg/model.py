@@ -18,7 +18,7 @@ from qai_hub_models.models._shared.ultralytics.segmentation_model import (
 )
 from qai_hub_models.models._shared.yolo.model import YoloSegEvalMixin
 from qai_hub_models.models.yoloe_seg.model_patches import BNContrastiveHeadInf
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 
 MODEL_ASSET_VERSION = 1
 MODEL_ID = __name__.split(".")[-2]
@@ -27,9 +27,6 @@ SUPPORTED_WEIGHTS = [
     "yoloe-v8l-seg.pt",
 ]
 DEFAULT_WEIGHTS = "yoloe-v8l-seg.pt"
-
-
-COCO_LABELS = str(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels.txt")
 
 
 class YoloESegmentor(UltralyticsMulticlassSegmentor, YoloSegEvalMixin):
@@ -46,7 +43,7 @@ class YoloESegmentor(UltralyticsMulticlassSegmentor, YoloSegEvalMixin):
     @classmethod
     def from_pretrained(
         cls,
-        prompt_text: list[str] | str = COCO_LABELS,
+        prompt_text: list[str] | str | None = None,
         ckpt_name: str = DEFAULT_WEIGHTS,
     ) -> Self:
         if ckpt_name not in SUPPORTED_WEIGHTS:
@@ -55,7 +52,9 @@ class YoloESegmentor(UltralyticsMulticlassSegmentor, YoloSegEvalMixin):
                 f"Supported checkpoints are {list(SUPPORTED_WEIGHTS)}."
             )
 
-        if isinstance(prompt_text, str):
+        if prompt_text is None:
+            prompt_text = get_class_names("coco")
+        elif isinstance(prompt_text, str):
             if prompt_text.endswith(".txt"):
                 with open(prompt_text) as f:
                     lines = f.readlines()

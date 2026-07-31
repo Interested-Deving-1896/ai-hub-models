@@ -7,8 +7,6 @@
 import torch
 from torchvision.transforms import functional as TF
 
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
-
 DEFAULT_NUM_CLIPS = 5
 DEFAULT_NUM_CROPS = 1
 DEFAULT_NUM_VIEWS = DEFAULT_NUM_CLIPS * DEFAULT_NUM_CROPS
@@ -332,18 +330,3 @@ def preprocess_video_224(
     if center_crop:
         input_video = TF.center_crop(input_video, [224, 224])
     return input_video
-
-
-def get_class_name_kinetics_400() -> list[str]:
-    """
-    Return the list of class names in the correct order, where the class index
-    within this list corresponds to logit at the same index of the model output.
-
-    Returns
-    -------
-    class_names : list[str]
-        List of class names for Kinetics-400 dataset.
-    """
-    labels_path = QAIHM_PACKAGE_ROOT / "labels" / "kinetics400_labels.txt"
-    with open(labels_path) as f:
-        return [line.strip() for line in f]

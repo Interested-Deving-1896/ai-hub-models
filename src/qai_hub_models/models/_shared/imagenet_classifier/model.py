@@ -161,7 +161,7 @@ class ImagenetClassifier(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("imagenet_labels.txt", output_dir, metadata)
+        write_labels_file("imagenet", output_dir, metadata)
 
 
 class ImagenetClassifierWithModelBuilder(ImagenetClassifier):

@@ -31,7 +31,7 @@ from qai_hub_models.utils.asset_loaders import CachedWebAsset, load_image
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.display import display_or_save_image
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.labels import get_class_names
 
 
 # Run Yolo end-to-end on a sample image.
@@ -109,8 +109,11 @@ def yolo_prompt_detect_demo(
     parser.add_argument(
         "--prompt-text",
         type=str,
-        default=str(QAIHM_PACKAGE_ROOT / "labels" / "coco_labels.txt"),
-        help="Comma separated list for all classes for the model to export/demo execution",
+        default=None,
+        help=(
+            "Comma separated list of all classes for the model to export/demo "
+            "execution. Defaults to the full COCO-80 class list."
+        ),
     )
     parser.add_argument(
         "--score-threshold",
@@ -126,7 +129,9 @@ def yolo_prompt_detect_demo(
     )
     args = parser.parse_args([] if is_test else None)
 
-    if args.prompt_text.endswith(".txt"):
+    if args.prompt_text is None:
+        requested_classes = get_class_names("coco")
+    elif args.prompt_text.endswith(".txt"):
         with open(args.prompt_text) as f:
             requested_classes = [t.rstrip("\r\n").strip() for t in f if t.strip()]
     else:

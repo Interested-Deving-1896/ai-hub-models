@@ -128,4 +128,4 @@ class DeepLabV3Model(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("voc_labels.txt", output_dir, metadata)
+        write_labels_file("voc", output_dir, metadata)

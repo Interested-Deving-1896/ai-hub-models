@@ -377,4 +377,4 @@ class GearGuardNet(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("ppe_labels.txt", output_dir, metadata)
+        write_labels_file("ppe", output_dir, metadata)

@@ -109,7 +109,7 @@ class YamNet(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("yamnet_labels.txt", output_dir, metadata)
+        write_labels_file("yamnet", output_dir, metadata)
 
 
 def _load_yamnet_source_model_from_weights(

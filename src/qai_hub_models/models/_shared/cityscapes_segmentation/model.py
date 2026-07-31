@@ -124,4 +124,4 @@ class CityscapesSegmentor(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("cityscapes_labels.txt", output_dir, metadata)
+        write_labels_file("cityscapes", output_dir, metadata)

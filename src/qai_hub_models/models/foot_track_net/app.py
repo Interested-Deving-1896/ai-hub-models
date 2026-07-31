@@ -5,9 +5,7 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -20,26 +18,17 @@ from qai_hub_models.utils.bounding_box_processing import get_iou
 from qai_hub_models.utils.draw import draw_box_from_xyxy, draw_points
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 from qai_hub_models.utils.input_spec import InputSpec
+from qai_hub_models.utils.labels import get_class_names
 
 GREEN_COLOR = (170, 255, 0)
 RED_COLOR = (255, 0, 0)
-LABELS_PATH = (
-    Path(os.path.dirname(__file__)).parent.parent
-    / "labels"
-    / "foot_track_net_labels.txt"
-)
-
-with open(LABELS_PATH) as labels_f:
-    CLASSNAME_TO_ID_MAP = {
-        line.strip(): idx for idx, line in enumerate(labels_f.readlines())
-    }
 
 
 def id_to_classname(class_id: int) -> str:
-    """CLASSNAME_TO_ID_MAP traverse the ID, return the corresponding class name"""
-    for k, v in CLASSNAME_TO_ID_MAP.items():
-        if v == class_id:
-            return k
+    """Return the class name (e.g. "face"/"person") for the given class id."""
+    class_names = get_class_names("foot_track_net")
+    if 0 <= class_id < len(class_names):
+        return class_names[class_id]
     raise RuntimeError(f"Class for id {class_id} not found.")
 
 

@@ -253,7 +253,7 @@ class Yolo(BaseModel):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("coco_labels.txt", output_dir, metadata)
+        write_labels_file("coco", output_dir, metadata)
 
 
 class YoloSegEvalMixin(BaseModel):

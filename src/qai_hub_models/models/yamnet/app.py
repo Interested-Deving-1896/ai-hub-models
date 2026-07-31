@@ -13,9 +13,7 @@ import soundfile as sf
 import torch
 
 from qai_hub_models.protocols import ExecutableModelProtocol
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
-
-YAMNET_LABELS_PATH = QAIHM_PACKAGE_ROOT / "labels" / "yamnet_labels.txt"
+from qai_hub_models.utils.labels import get_class_names
 
 SAMPLE_RATE = 16000
 CHUNK_LENGTH = 0.98
@@ -48,26 +46,6 @@ def preprocessing_yamnet_from_source(
     )
 
     return patches, spectrogram
-
-
-def parse_category_meta(labels_path: str | Path = YAMNET_LABELS_PATH) -> list[str]:
-    """
-    Read the class name definition file and return a list of strings.
-
-    Parameters
-    ----------
-    labels_path
-        Path to yamnet_labels.txt (one class name per line). Defaults to the
-        file bundled with the Python package. For exported models, pass the
-        path to the bundled labels.txt.
-
-    Returns
-    -------
-    list[str]
-        List of 521 AudioSet class labels.
-    """
-    with open(labels_path) as f:
-        return [line.rstrip("\n") for line in f if line.strip()]
 
 
 def chunk_and_resample_audio(
@@ -155,20 +133,14 @@ class YamNetApp:
     def __init__(
         self,
         model: ExecutableModelProtocol[torch.Tensor],
-        labels_path: str | Path = YAMNET_LABELS_PATH,
     ) -> None:
         """
         Parameters
         ----------
         model
             Executable model for inference.
-        labels_path
-            Path to yamnet_labels.txt (one class name per line). Defaults to the
-            file bundled with the Python package. For exported models, pass the
-            path to the bundled labels.txt.
         """
         self.model = model
-        self.labels_path = labels_path
 
     def predict(
         self, path: str | Path, audio_sample_rate: int | None = None
@@ -206,7 +178,7 @@ class YamNetApp:
         # Report the highest-scoring classes.
         top_class_indices = np.argsort(mean_scores)[::-1][:top_N]
         # Label each audio one-by-one, for all the chunks,
-        actions = parse_category_meta(self.labels_path)
+        actions = get_class_names("yamnet")
         return [actions[prediction] for prediction in top_class_indices]
 
     def classify(self, segment: np.ndarray) -> np.ndarray:

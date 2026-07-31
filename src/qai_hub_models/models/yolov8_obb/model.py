@@ -165,7 +165,7 @@ class YoloV8OBB(Yolo):
         output_dir: str | os.PathLike,
         metadata: ModelMetadata,
     ) -> None:
-        write_labels_file("dota_v1_labels.txt", output_dir, metadata)
+        write_labels_file("dota_v1", output_dir, metadata)
 
     def get_evaluator(self) -> BaseEvaluator:
         from qai_hub_models.models.yolov8_obb.evaluator import OBBEvaluator
