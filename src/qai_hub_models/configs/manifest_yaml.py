@@ -969,6 +969,10 @@ class QAIHMModelManifest(BaseQAIHMConfig):
             # All AOT paths will fail if QNN fails.
             runtime = TargetRuntime.QNN_DLC
 
+        if runtime == TargetRuntime.GENIE:
+            # Don't surface Genie as a supported path when GenieX (QAIRT) fails.
+            runtime = TargetRuntime.GENIEX_QAIRT
+
         if (
             reason := self.disabled_paths.get_disable_reasons(precision, runtime)
         ) and reason.has_failure:
