@@ -288,3 +288,43 @@ def test_apply_similar_devices_adds_real_chipset() -> None:
     chips_after = list(perf.supported_chipsets)
     perf.apply_similar_devices(mapping)
     assert chips_after == list(perf.supported_chipsets)
+
+
+def test_apply_similar_devices_chipset_matches_device_insertion() -> None:
+    """A similar device inserted into ``supported_devices`` must also add its
+    chipset to ``supported_chipsets``, even without a matching entry in
+    ``performance_metrics``. Regression test for the AIHM filter mismatch.
+    """
+    mapping = load_similar_devices()
+
+    perf = QAIHMModelPerf.from_model("inception_v3")
+    similar_names = set(mapping)
+    real_chipsets = {real for real, _ in mapping.values()}
+    perf.supported_devices = [
+        d for d in perf.supported_devices if str(d) not in similar_names
+    ]
+    perf.supported_chipsets = [
+        c for c in perf.supported_chipsets if c not in real_chipsets
+    ]
+
+    supported_names = {str(d) for d in perf.supported_devices}
+    metric_names: set[str] = set()
+    for prec in perf.precisions.values():
+        for comp in prec.components.values():
+            metric_names.update(str(d) for d in comp.performance_metrics)
+
+    target_similar: str | None = None
+    for similar_name, (_, reference_names) in mapping.items():
+        if any(r in supported_names for r in reference_names) and not any(
+            r in metric_names for r in reference_names
+        ):
+            target_similar = similar_name
+            break
+
+    assert target_similar is not None, "test setup: no matching similar device"
+    target_chipset = mapping[target_similar][0]
+
+    perf.apply_similar_devices(mapping)
+
+    assert target_similar in {str(d) for d in perf.supported_devices}
+    assert target_chipset in perf.supported_chipsets

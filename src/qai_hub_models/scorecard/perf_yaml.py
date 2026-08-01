@@ -162,19 +162,14 @@ class QAIHMModelPerf(BaseQAIHMConfig):
         ----------
         mapping
             Dict of unsupported_device_name -> (real_chipset, list of reference device names).
-            The first reference device with results is used as the perf source. The
-            real_chipset is added to ``supported_chipsets`` when perf data is placed.
+            The first reference device with results is used as the perf source.
+            real_chipset is added to ``supported_chipsets`` whenever the similar
+            device lands in ``supported_devices``, so device and chipset filters agree.
         """
         similar_device_objs = {
             name: ScorecardDevice(name=name, reference_device_name=name, register=False)
             for name in mapping
         }
-
-        # Names this call actually copied perf data onto. Only these drive the
-        # chipset-insertion below; pre-existing entries keep whatever
-        # supported_chipsets already had (avoids "fix-up" surprises and keeps
-        # the function purely additive on its own outputs).
-        newly_placed: set[str] = set()
 
         for precision_details in self.precisions.values():
             for component in precision_details.components.values():
@@ -188,10 +183,8 @@ class QAIHMModelPerf(BaseQAIHMConfig):
                             ] = copy.copy(
                                 component.performance_metrics[existing_devices[name]]
                             )
-                            newly_placed.add(unsupported_name)
                             break
 
-        # Build reverse lookup: reference_device_name -> [unsupported_names]
         reference_to_similar: dict[str, list[str]] = {}
         for unsupported_name, (_, reference_names) in mapping.items():
             for name in reference_names:
@@ -211,11 +204,12 @@ class QAIHMModelPerf(BaseQAIHMConfig):
                     inserted.add(unsupported_name)
         self.supported_devices = new_devices
 
-        # Add the real chipset for each newly-placed similar device.
+        # Every similar device in supported_devices contributes its chipset.
+        present_similar = {str(d) for d in self.supported_devices} & set(mapping)
         existing_chipsets = set(self.supported_chipsets)
         new_chipsets = {
             mapping[name][0]
-            for name in newly_placed
+            for name in present_similar
             if mapping[name][0] not in existing_chipsets
         }
         if new_chipsets:
