@@ -18,7 +18,7 @@ from qai_hub_models.utils.base_dataset import (
 )
 from qai_hub_models.utils.private_asset_loaders import CachedPrivateDatasetAsset
 
-SEMANTIC_KITTI_VERSION = 2
+SEMANTIC_KITTI_VERSION = 3
 SEMANTIC_KITTI_ID = "semantic_kitti"
 
 SEMANTIC_KITTI_INSTALLATION_STEPS = [
