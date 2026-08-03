@@ -38,19 +38,16 @@ from qai_hub_models.models._shared.hf_whisper_quantized.model import (
     WhisperDecoderQuantizableBase,
     WhisperEncoderQuantizableBase,
 )
-from qai_hub_models.models.whisper_small.model import WhisperSmall
+from qai_hub_models.models.whisper_large_v3_turbo.model import WhisperLargeV3Turbo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 
-MODEL_ASSET_VERSION = 2
-WHISPER_VERSION = "openai/whisper-small"
+MODEL_ASSET_VERSION = 3
+WHISPER_VERSION = "openai/whisper-large-v3-turbo"
 ENCODER_AIMET = "encoder.aimet"
 DECODER_AIMET = "decoder.aimet"
 
-# Explicit capability profile for whisper-small-quantized.
-# Declared here (not as class-level defaults) so that each model variant
-# owns its own capability declaration.
-WHISPER_SMALL_QUANTIZED_CAPABILITIES = WhisperCapabilities(
+WHISPER_LARGE_V3_TURBO_QUANTIZED_CAPABILITIES = WhisperCapabilities(
     streaming=False,
     file_based=True,
     language_detection=True,
@@ -58,18 +55,25 @@ WHISPER_SMALL_QUANTIZED_CAPABILITIES = WhisperCapabilities(
 )
 
 
-class WhisperSmallEncoderQuantizable(WhisperEncoderQuantizableBase):
+class WhisperLargeV3TurboEncoderQuantizable(WhisperEncoderQuantizableBase):
     @classmethod
     def make_torch_model(cls) -> HfWhisperEncoder:
-        return WhisperSmall.from_pretrained().encoder
+        return WhisperLargeV3Turbo.from_pretrained().encoder
 
     @classmethod
     def get_calibrated_aimet_model(cls) -> tuple[Path, Path]:  # type: ignore[override]
-        # Returns .onnx and .encodings paths
         onnx_file = CachedWebModelAsset.from_asset_store(
             MODEL_ID,
             MODEL_ASSET_VERSION,
             os.path.join(ENCODER_AIMET, "model.onnx"),
+        ).fetch()
+        # Encoder weights exceed ONNX 2GB protobuf limit and are stored as
+        # external data. Both files must be in the same directory for
+        # onnx.load_model to resolve the weights automatically.
+        CachedWebModelAsset.from_asset_store(
+            MODEL_ID,
+            MODEL_ASSET_VERSION,
+            os.path.join(ENCODER_AIMET, "model.onnx.data"),
         ).fetch()
         aimet_encodings = CachedWebModelAsset.from_asset_store(
             MODEL_ID,
@@ -79,14 +83,13 @@ class WhisperSmallEncoderQuantizable(WhisperEncoderQuantizableBase):
         return onnx_file, aimet_encodings
 
 
-class WhisperSmallDecoderQuantizable(WhisperDecoderQuantizableBase):
+class WhisperLargeV3TurboDecoderQuantizable(WhisperDecoderQuantizableBase):
     @classmethod
     def make_torch_model(cls) -> HfWhisperDecoder:
-        return WhisperSmall.from_pretrained().decoder
+        return WhisperLargeV3Turbo.from_pretrained().decoder
 
     @classmethod
     def get_calibrated_aimet_model(cls) -> tuple[Path, Path]:  # type: ignore[override]
-        # Returns .onnx and .encodings paths
         onnx_file = CachedWebModelAsset.from_asset_store(
             MODEL_ID,
             MODEL_ASSET_VERSION,
@@ -100,7 +103,7 @@ class WhisperSmallDecoderQuantizable(WhisperDecoderQuantizableBase):
         return onnx_file, aimet_encodings
 
 
-class WhisperSmallQuantized(WorkbenchModelCollection):
+class WhisperLargeV3TurboQuantized(WorkbenchModelCollection):
     def __init__(
         self,
         encoder: WhisperEncoderQuantizableBase,
@@ -120,8 +123,8 @@ class WhisperSmallQuantized(WorkbenchModelCollection):
 
     @classmethod
     def from_pretrained(cls) -> Self:
-        encoder = WhisperSmallEncoderQuantizable.from_pretrained()
-        decoder = WhisperSmallDecoderQuantizable.from_pretrained()
+        encoder = WhisperLargeV3TurboEncoderQuantizable.from_pretrained()
+        decoder = WhisperLargeV3TurboDecoderQuantizable.from_pretrained()
         return cls(encoder, decoder, encoder.config, WHISPER_VERSION)
 
     def write_supplementary_files(
@@ -130,8 +133,8 @@ class WhisperSmallQuantized(WorkbenchModelCollection):
         write_whisper_supplementary_files(
             output_dir,
             metadata,
-            "whisper-small-quantized",
-            WHISPER_SMALL_QUANTIZED_CAPABILITIES,
+            "whisper-large-v3-turbo-quantized",
+            WHISPER_LARGE_V3_TURBO_QUANTIZED_CAPABILITIES,
             TIKTOKEN_URL,
-            display_name="Whisper Small (Quantized)",
+            display_name="Whisper Large V3 Turbo (Quantized)",
         )
