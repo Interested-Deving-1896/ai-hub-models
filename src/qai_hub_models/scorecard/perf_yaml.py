@@ -164,7 +164,7 @@ class QAIHMModelPerf(BaseQAIHMConfig):
             Dict of unsupported_device_name -> (real_chipset, list of reference device names).
             The first reference device with results is used as the perf source.
             real_chipset is added to ``supported_chipsets`` whenever the similar
-            device lands in ``supported_devices``, so device and chipset filters agree.
+            device lands in ``supported_devices``.
         """
         similar_device_objs = {
             name: ScorecardDevice(name=name, reference_device_name=name, register=False)
@@ -276,6 +276,33 @@ class QAIHMModelPerf(BaseQAIHMConfig):
                         if res is False:
                             # If res is explicitly false, stop and return
                             return
+
+    def drop_entries_in_scope(
+        self,
+        scope: set[tuple[Precision, ScorecardProfilePath, ScorecardDevice]],
+    ) -> None:
+        """Delete every entry whose (precision, path, device) key is in scope."""
+        for precision, path, device in scope:
+            precision_details = self.precisions.get(precision)
+            if precision_details is None:
+                continue
+            empty_components: list[str] = []
+            for (
+                component_name,
+                component_details,
+            ) in precision_details.components.items():
+                device_metrics = component_details.performance_metrics.get(device)
+                if device_metrics is None:
+                    continue
+                device_metrics.pop(path, None)
+                if not device_metrics:
+                    component_details.performance_metrics.pop(device, None)
+                if not component_details.performance_metrics:
+                    empty_components.append(component_name)
+            for name in empty_components:
+                precision_details.components.pop(name, None)
+            if not precision_details.components:
+                self.precisions.pop(precision, None)
 
     @classmethod
     def from_model(

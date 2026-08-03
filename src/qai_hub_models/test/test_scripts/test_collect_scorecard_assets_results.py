@@ -7,9 +7,6 @@ from __future__ import annotations
 from qai_hub_models import Precision
 from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
-from qai_hub_models.scripts.collect_scorecard_assets_results import (
-    _preserve_llamacpp_gguf_assets,
-)
 
 
 def _asset(
@@ -31,21 +28,10 @@ def _make_assets(entries: dict) -> QAIHMModelReleaseAssets:
     return out
 
 
-def test_preserves_committed_llamacpp_gguf() -> None:
-    """A genie/geniex_qairt-only scorecard must not drop the committed
-    q4_0/geniex_llamacpp GGUF entry (download_url, no s3_key).
+def test_scoped_merge_preserves_out_of_scope_committed_entry() -> None:
+    """A run scoped to (w4a16, snapdragon-8-elite, GENIE) must not touch a
+    committed q4_0/GENIEX_LLAMACPP entry that was outside its scope.
     """
-    scorecard = _make_assets(
-        {
-            Precision.w4a16: {
-                "chipset": {
-                    "qualcomm-snapdragon-8-elite": {
-                        ScorecardProfilePath.GENIE: _asset(s3_key="s3/genie.zip"),
-                    }
-                }
-            }
-        }
-    )
     committed = _make_assets(
         {
             Precision.q4_0: {
@@ -57,17 +43,36 @@ def test_preserves_committed_llamacpp_gguf() -> None:
             },
         }
     )
+    scorecard = _make_assets(
+        {
+            Precision.w4a16: {
+                "chipset": {
+                    "qualcomm-snapdragon-8-elite": {
+                        ScorecardProfilePath.GENIE: _asset(s3_key="s3/genie.zip"),
+                    }
+                }
+            }
+        }
+    )
+    scope: set[tuple[Precision, str | None, ScorecardProfilePath]] = {
+        (
+            Precision.w4a16,
+            "qualcomm-snapdragon-8-elite",
+            ScorecardProfilePath.GENIE,
+        )
+    }
 
-    merged = _preserve_llamacpp_gguf_assets(scorecard, committed)
+    committed.drop_entries_in_scope(scope)
+    committed.merge_from(scorecard)
 
-    kept = merged.get_asset(
+    kept = committed.get_asset(
         Precision.q4_0, chipset=None, path=ScorecardProfilePath.GENIEX_LLAMACPP
     )
     assert kept is not None
     assert kept.download_url == "https://hf/model.gguf"
     assert kept.s3_key is None
 
-    fresh = merged.get_asset(
+    fresh = committed.get_asset(
         Precision.w4a16,
         chipset="qualcomm-snapdragon-8-elite",
         path=ScorecardProfilePath.GENIE,
@@ -75,21 +80,10 @@ def test_preserves_committed_llamacpp_gguf() -> None:
     assert fresh is not None and fresh.s3_key == "s3/genie.zip"
 
 
-def test_scorecard_llamacpp_wins_over_committed() -> None:
-    """If the scorecard did produce a llamacpp entry (unlikely today but a
-    fresh entry should still win), it is preserved over the committed one.
+def test_scoped_merge_scorecard_wins_in_scope() -> None:
+    """When the scorecard produces a fresh entry for a tuple in scope, it
+    replaces the committed one after the drop+merge.
     """
-    scorecard = _make_assets(
-        {
-            Precision.q4_0: {
-                "universal": {
-                    ScorecardProfilePath.GENIEX_LLAMACPP: _asset(
-                        download_url="https://hf/new.gguf"
-                    ),
-                },
-            },
-        }
-    )
     committed = _make_assets(
         {
             Precision.q4_0: {
@@ -101,35 +95,51 @@ def test_scorecard_llamacpp_wins_over_committed() -> None:
             },
         }
     )
+    scorecard = _make_assets(
+        {
+            Precision.q4_0: {
+                "universal": {
+                    ScorecardProfilePath.GENIEX_LLAMACPP: _asset(
+                        download_url="https://hf/new.gguf"
+                    ),
+                },
+            },
+        }
+    )
+    scope: set[tuple[Precision, str | None, ScorecardProfilePath]] = {
+        (Precision.q4_0, None, ScorecardProfilePath.GENIEX_LLAMACPP)
+    }
 
-    merged = _preserve_llamacpp_gguf_assets(scorecard, committed)
+    committed.drop_entries_in_scope(scope)
+    committed.merge_from(scorecard)
 
-    kept = merged.get_asset(
+    kept = committed.get_asset(
         Precision.q4_0, chipset=None, path=ScorecardProfilePath.GENIEX_LLAMACPP
     )
     assert kept is not None
     assert kept.download_url == "https://hf/new.gguf"
 
 
-def test_does_not_preserve_non_llamacpp_download_url() -> None:
-    """Only geniex_llamacpp entries are preserved. A stray download_url on
-    another runtime is dropped (scorecard is authoritative for those).
+def test_scoped_merge_drops_in_scope_when_run_produced_nothing() -> None:
+    """An in-scope tuple with no replacement in the scorecard is removed --
+    matches the prior overwrite semantics inside scope.
     """
-    scorecard = _make_assets({})
     committed = _make_assets(
         {
             Precision.w4a16: {
                 "chipset": {
                     "cs": {
-                        ScorecardProfilePath.GENIE: _asset(
-                            download_url="https://stray/genie.zip"
-                        ),
+                        ScorecardProfilePath.GENIE: _asset(s3_key="s3/old.zip"),
                     }
                 }
             }
         }
     )
+    scope: set[tuple[Precision, str | None, ScorecardProfilePath]] = {
+        (Precision.w4a16, "cs", ScorecardProfilePath.GENIE)
+    }
 
-    merged = _preserve_llamacpp_gguf_assets(scorecard, committed)
+    committed.drop_entries_in_scope(scope)
+    committed.merge_from(QAIHMModelReleaseAssets())
 
-    assert merged.empty
+    assert committed.empty

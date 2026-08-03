@@ -100,6 +100,36 @@ class QAIHMModelNumerics(BaseQAIHMConfig):
     def is_empty(self) -> bool:
         return len(self.metrics) == 0
 
+    def drop_entries_in_scope(
+        self,
+        scope: set[tuple[Precision, ScorecardProfilePath, ScorecardDevice]],
+    ) -> None:
+        """Delete every entry whose (precision, path, device) key is in scope."""
+        by_device: dict[
+            ScorecardDevice, set[tuple[Precision, ScorecardProfilePath]]
+        ] = {}
+        for precision, path, device in scope:
+            by_device.setdefault(device, set()).add((precision, path))
+        surviving_metrics: list[QAIHMModelNumerics.MetricDetails] = []
+        for metric in self.metrics:
+            for device, in_scope in by_device.items():
+                prec_dict = metric.device_metric.get(device)
+                if prec_dict is None:
+                    continue
+                empty_precisions: list[Precision] = []
+                for precision, path_dict in prec_dict.items():
+                    for path in [p for p in path_dict if (precision, p) in in_scope]:
+                        path_dict.pop(path, None)
+                    if not path_dict:
+                        empty_precisions.append(precision)
+                for precision in empty_precisions:
+                    prec_dict.pop(precision, None)
+                if not prec_dict:
+                    metric.device_metric.pop(device, None)
+            if metric.device_metric:
+                surviving_metrics.append(metric)
+        self.metrics = surviving_metrics
+
     def to_proto(
         self,
         aihm_version: str,

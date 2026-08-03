@@ -93,6 +93,47 @@ class QAIHMModelReleaseAssets(BaseQAIHMConfig):
         else:
             self.precisions[precision].universal_assets[path] = details
 
+    def drop_entries_in_scope(
+        self,
+        scope: set[tuple[Precision, str | None, ScorecardProfilePath]],
+    ) -> None:
+        """Delete every asset whose (precision, chipset, path) key is in scope."""
+        empty_precisions: list[Precision] = []
+        for precision, prec_details in self.precisions.items():
+            in_scope = {
+                (chipset, path) for (p, chipset, path) in scope if p == precision
+            }
+            if not in_scope:
+                continue
+            for path in [
+                p for p in prec_details.universal_assets if (None, p) in in_scope
+            ]:
+                prec_details.universal_assets.pop(path, None)
+            empty_chipsets: list[str] = []
+            for chipset, path_dict in prec_details.chipset_assets.items():
+                for path in [p for p in path_dict if (chipset, p) in in_scope]:
+                    path_dict.pop(path, None)
+                if not path_dict:
+                    empty_chipsets.append(chipset)
+            for chipset in empty_chipsets:
+                prec_details.chipset_assets.pop(chipset, None)
+            if not prec_details.universal_assets and not prec_details.chipset_assets:
+                empty_precisions.append(precision)
+        for precision in empty_precisions:
+            self.precisions.pop(precision, None)
+
+    def merge_from(self, other: QAIHMModelReleaseAssets) -> None:
+        """Fold *other* into self, with other's entries taking precedence on collision."""
+        for precision, prec_details in other.precisions.items():
+            if precision not in self.precisions:
+                self.precisions[precision] = QAIHMModelReleaseAssets.PrecisionDetails()
+            self_prec = self.precisions[precision]
+            self_prec.universal_assets.update(prec_details.universal_assets)
+            for chipset, path_dict in prec_details.chipset_assets.items():
+                if chipset not in self_prec.chipset_assets:
+                    self_prec.chipset_assets[chipset] = {}
+                self_prec.chipset_assets[chipset].update(path_dict)
+
     def get_asset(
         self,
         precision: Precision,

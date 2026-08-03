@@ -33,6 +33,7 @@ from qai_hub_models.utils.onnx.torch_wrapper import extract_onnx_zip
 
 __all__ = [
     "CompileJobsAreIdenticalCache",
+    "accuracy_row_key",
     "append_line_to_file",
     "cache_dataset",
     "callable_side_effect",
@@ -111,6 +112,16 @@ def get_accuracy_columns() -> list[str]:
     return cols
 
 
+def accuracy_row_key(
+    model_id: str,
+    chipset: str,
+    precision: Precision,
+    path: ScorecardProfilePath,
+) -> tuple[str, str, str, str]:
+    """The (model_id, chipset, precision, runtime) tuple keying a row in accuracy.csv."""
+    return model_id, chipset, str(precision), path.value
+
+
 def cache_dataset(model_id: str, dataset_name: str, dataset: hub.Dataset) -> None:
     append_line_to_file(
         ScorecardArtifact.DATASET_IDS.touch(),
@@ -161,10 +172,11 @@ def write_accuracy(
 ) -> None:
     # Use csv.writer so fields containing commas (e.g. metric_description)
     # get quoted; manual comma interpolation broke pandas.read_csv downstream.
+    key = accuracy_row_key(model_name, chipset, precision, path)
     row: list[str] = [
-        model_name,
-        str(precision),
-        path.value,
+        key[0],  # model_id
+        key[2],  # precision
+        key[3],  # runtime
         f"{torch_accuracy:.3g}" if torch_accuracy is not None else "",
         f"{sim_accuracy:.3g}" if sim_accuracy is not None else "",
         f"{device_accuracy:.3g}" if device_accuracy is not None else "",
@@ -174,7 +186,7 @@ def write_accuracy(
     psnr_fields += [""] * (MAX_PSNR_VALUES - len(psnr_fields))
     row.extend(psnr_fields)
 
-    row.extend([get_job_date(), "main", chipset])
+    row.extend([get_job_date(), "main", key[1]])  # date, branch, chipset
     row.append(dataset_name if dataset_name is not None else "")
 
     if dataset_metadata is not None:

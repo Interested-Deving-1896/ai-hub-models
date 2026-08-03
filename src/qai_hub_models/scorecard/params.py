@@ -382,3 +382,29 @@ class ScExportTestParams(Generic[ScorecardPathT]):
         if job_type in (JobType.PROFILE, JobType.INFERENCE):
             return self.all_device_job_params
         raise NotImplementedError()
+
+    def applies_to_job_type(self, job_type: JobType) -> bool:
+        """Whether these params identify any jobs of *job_type*."""
+        if job_type == JobType.QUANTIZE:
+            return (
+                self.precision is not None
+                and self.precision != Precision.float
+                and not self.graph_names
+                and not self.component_graph_names
+            )
+        if job_type == JobType.COMPILE:
+            return self.path is not None and self.precision is not None
+        if job_type == JobType.LINK:
+            return (
+                self.path is not None
+                and self.precision is not None
+                and self.path.runtime.uses_hub_link
+                and self.device is not None
+            )
+        if job_type in (JobType.PROFILE, JobType.INFERENCE):
+            return (
+                isinstance(self.path, ScorecardProfilePath)
+                and self.device is not None
+                and self.precision is not None
+            )
+        raise NotImplementedError()

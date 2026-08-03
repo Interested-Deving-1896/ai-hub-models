@@ -29,6 +29,13 @@ ALL_GENIEX_DEVICES = (
     "cs_8_elite_gen_5_qrd",
 )
 
+# The LLM default device (DEFAULT_QDC_DEVICE in scorecard/device.py). The
+# scorecard-wide is_default=True flag lives on cs_8_elite (Samsung Galaxy
+# S25 Family), which is *not* the LLM default -- so if the token "default"
+# reaches run_geniex_bench_benchmarks.py it would dispatch to the wrong
+# device. Expand it here instead.
+DEFAULT_LLM_DEVICE = "cs_8_elite_qrd"
+
 
 def split(device_input: str) -> tuple[str, str]:
     device_input = (device_input or "all").strip()
@@ -42,6 +49,8 @@ def split(device_input: str) -> tuple[str, str]:
         d = raw.strip()
         if not d:
             continue
+        if d.lower() == "default":
+            d = DEFAULT_LLM_DEVICE
         (dedicated if d in DEDICATED_DEVICES else shared).append(d)
     return ",".join(shared), ",".join(dedicated)
 

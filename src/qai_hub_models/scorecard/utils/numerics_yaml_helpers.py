@@ -174,4 +174,8 @@ def create_numerics_yaml(
 
 
 def get_chipset_registry() -> dict[str, ScorecardDevice]:
-    return {device.chipset: device for device in ScorecardDevice.all_devices()}
+    # cs_universal shares cs_8_elite's chipset; exclude so cs_8_elite wins.
+    return {
+        device.chipset: device
+        for device in ScorecardDevice.all_devices(include_universal=False)
+    }

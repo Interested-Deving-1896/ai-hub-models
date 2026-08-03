@@ -180,6 +180,18 @@ class ScorecardJobYaml(ScorecardYamlFile[str], Generic[ScorecardJobTypeVar]):
             )
         self.mapping.update(other.mapping)
 
+    def drop_in_scope(self, params: list[ScExportTestParams]) -> None:
+        """Delete only the job keys the given export-test params would write."""
+        for p in params:
+            if not self._params_apply(p):
+                continue
+            for job_params in self._get_all_job_params(p):
+                self.mapping.pop(self.get_job_key(job_params), None)
+
+    def _params_apply(self, params: ScExportTestParams) -> bool:
+        """Whether *params* identifies any jobs stored in this yaml."""
+        return params.applies_to_job_type(self.SCORECARD_JOB_TYPE.job_type)
+
     def get_job(
         self,
         params: ScJobParams,
@@ -416,6 +428,10 @@ class PreQDQCompileScorecardJobYaml(ScorecardJobYaml[CompileScorecardJob]):
 
     def _get_all_job_params(self, params: ScExportTestParams) -> list[ScJobParams]:
         return params.all_pre_qdq_compile_job_params
+
+    def _params_apply(self, params: ScExportTestParams) -> bool:
+        # Pre-QDQ compile jobs only exist along the quantization path.
+        return params.precision is None or params.precision != Precision.float
 
 
 class QuantizeScorecardJobYaml(ScorecardJobYaml[QuantizeScorecardJob]):

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime
 import logging
 import multiprocessing
@@ -20,7 +21,9 @@ from pathlib import Path
 import pandas as pd
 import ruamel.yaml
 
+from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
+from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.device import ScorecardDevice
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import load_similar_devices
@@ -71,6 +74,7 @@ from qai_hub_models.scorecard.utils.numerics_yaml_helpers import (
     create_numerics_yaml,
     get_chipset_registry,
 )
+from qai_hub_models.scorecard.utils.testing_async_utils import accuracy_row_key
 from qai_hub_models.scripts.download_scorecard_results import (
     download_single_artifact,
     find_latest_run,
@@ -89,6 +93,92 @@ from qai_hub_models.utils.path_helpers import MODEL_IDS
 SPECIAL_PRECISIONS = ["bench", "default_quantized"]
 
 
+def _resolve_test_params(
+    manifest: QAIHMModelManifest,
+    component_names_yaml: ComponentNamesYaml,
+    graph_names_yaml: GraphNamesYaml,
+) -> ModelTestConfig:
+    """Build the ModelTestConfig for a recipe model."""
+    if manifest.id is None:
+        raise ValueError("Cannot resolve test params for a manifest with no id.")
+    component_names, graph_names, component_graph_names = (
+        get_model_component_and_graph_names(
+            manifest.id, component_names_yaml, graph_names_yaml
+        )
+    )
+    return ModelTestConfig.from_recipe_model(
+        manifest, component_names, graph_names, component_graph_names
+    )
+
+
+def _scope_from_test_config(
+    test_params: ModelTestConfig,
+) -> set[tuple[Precision, ScorecardProfilePath, ScorecardDevice]]:
+    """The (precision, path, device) tuples this run was configured to measure."""
+    return {(prec, path, device) for prec, path, device in test_params.profile_tests}
+
+
+def _accuracy_scope_from_test_config(
+    model_id: str, test_params: ModelTestConfig
+) -> set[tuple[str, str, str, str]]:
+    """accuracy.csv row keys for the tuples this run was configured to measure."""
+    return {
+        accuracy_row_key(model_id, device.chipset, precision, path)
+        for precision, path, device in test_params.profile_tests
+    }
+
+
+def _drop_accuracy_rows_in_scope(
+    df: pd.DataFrame, in_scope_keys: set[tuple[str, str, str, str]]
+) -> pd.DataFrame:
+    """Drop rows whose (model_id, chipset, precision, runtime) key is in scope."""
+    if not in_scope_keys:
+        return df
+    key_index = pd.MultiIndex.from_tuples(
+        in_scope_keys, names=["model_id", "chipset", "precision", "runtime"]
+    )
+    old_index = pd.MultiIndex.from_frame(
+        df[["model_id", "chipset", "precision", "runtime"]]
+    )
+    return df[~old_index.isin(key_index)]
+
+
+def _merge_numerics(
+    committed: QAIHMModelNumerics, fresh: QAIHMModelNumerics
+) -> QAIHMModelNumerics:
+    """Merge fresh (this run's) numerics into the committed (pre-scope-drop) struct.
+
+    Metrics are keyed by (dataset_name, metric_name, metric_unit). Fresh wins
+    at the (device, precision, path) grain; committed entries the fresh metric
+    doesn't cover are folded in; committed-only metrics are preserved.
+    """
+
+    def key(m: QAIHMModelNumerics.MetricDetails) -> tuple[str, str, str]:
+        return (m.dataset_name, m.metric_name, m.metric_unit)
+
+    committed_by_key = {key(m): m for m in committed.metrics}
+    merged: list[QAIHMModelNumerics.MetricDetails] = []
+    seen: set[tuple[str, str, str]] = set()
+    for fresh_metric in fresh.metrics:
+        k = key(fresh_metric)
+        seen.add(k)
+        prev = committed_by_key.get(k)
+        if prev is not None:
+            # Fold at (device, precision, path) so a fresh float/onnx on a
+            # device doesn't shadow the committed float/qnn_dlc, float/tflite.
+            for device, prev_prec_dict in prev.device_metric.items():
+                fresh_prec_dict = fresh_metric.device_metric.setdefault(device, {})
+                for precision, prev_path_dict in prev_prec_dict.items():
+                    fresh_path_dict = fresh_prec_dict.setdefault(precision, {})
+                    for path, details in prev_path_dict.items():
+                        fresh_path_dict.setdefault(path, details)
+        merged.append(fresh_metric)
+    for k, prev in committed_by_key.items():
+        if k not in seen:
+            merged.append(prev)
+    return QAIHMModelNumerics(metrics=merged)
+
+
 def read_jobs_config(config_path: str) -> dict:
     """Read yaml files."""
     yaml = ruamel.yaml.YAML()
@@ -104,10 +194,16 @@ def write_jobs_config(config: dict, path: str) -> None:
 
 
 def _merge_existing_accuracy_data(
-    new_df: pd.DataFrame, models: set[str]
+    new_df: pd.DataFrame,
+    in_scope_keys: set[tuple[str, str, str, str]],
 ) -> pd.DataFrame:
-    old_df = pd.read_csv(ScorecardArtifact.ACCURACY_CSV.intermediates_path)
-    old_df = old_df[~old_df.model_id.isin(models)]
+    """Merge this run's accuracy rows on top of the committed CSV, dropping in-scope keys."""
+    intermediates_path = ScorecardArtifact.ACCURACY_CSV.intermediates_path
+    if not os.path.exists(intermediates_path):
+        return new_df
+    old_df = _drop_accuracy_rows_in_scope(
+        pd.read_csv(intermediates_path), in_scope_keys
+    )
     return pd.concat([old_df, new_df])
 
 
@@ -410,14 +506,7 @@ def process_e2e_recipe_model(
         return ResultsSpreadsheet(), None, None
 
     # Get enabled test paths for this model
-    component_names, graph_names, component_graph_names = (
-        get_model_component_and_graph_names(
-            model_id, component_names_yaml, graph_names_yaml
-        )
-    )
-    test_params = ModelTestConfig.from_recipe_model(
-        manifest, component_names, graph_names, component_graph_names
-    )
+    test_params = _resolve_test_params(manifest, component_names_yaml, graph_names_yaml)
 
     # Get summaries for this model and its components.
     print_with_id("Loading summary")
@@ -471,13 +560,18 @@ def process_e2e_recipe_model(
             if model_card_without_failures and summary.params.path.is_published:
                 summary.add_to_perf(model_card_without_failures, include_failures=False)
 
-        if model_card_without_failures:
-            model_card_without_failures.apply_similar_devices(load_similar_devices())
-
         # Load old model card and write new model card
         prev_model_card = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
         if not sc.freeze_perf_yaml and not sc.is_llm and model_card_without_failures:
-            card_path = model_card_without_failures.to_model_yaml(model_id)
+            # Scoped merge: drop in-scope (precision, path, device) tuples
+            # from the committed card, then upsert this run's results.
+            merged = copy.deepcopy(prev_model_card)
+            merged.drop_entries_in_scope(_scope_from_test_config(test_params))
+            for summary in summaries:
+                if summary.params.path.is_published:
+                    summary.add_to_perf(merged, include_failures=False)
+            merged.apply_similar_devices(load_similar_devices())
+            card_path = merged.to_model_yaml(model_id)
             print_with_id(f"Wrote {card_path}")
 
     return entries, prev_model_card, model_card
@@ -584,15 +678,33 @@ if __name__ == "__main__":
                 profile_job_yamls.clear()
                 inference_job_yamls.clear()
             else:
+                # Fresh names needed to build the scoped export-params list.
+                fresh_component_names = ComponentNamesYaml.from_test_artifacts()
+                fresh_graph_names = GraphNamesYaml.from_test_artifacts()
                 for model in model_list:
                     component_names_yaml.clear(model)
                     graph_names_yaml.clear(model)
-                    pre_qdq_job_yamls.clear(model)
-                    quantize_job_yamls.clear(model)
-                    compile_job_yamls.clear(model)
-                    link_job_yamls.clear(model)
-                    profile_job_yamls.clear(model)
-                    inference_job_yamls.clear(model)
+                    # Job yamls: scoped drop preserves out-of-scope committed IDs.
+                    try:
+                        manifest = QAIHMModelManifest.from_model(model)
+                        scope_params = _resolve_test_params(
+                            manifest, fresh_component_names, fresh_graph_names
+                        ).get_all_export_params()
+                    except Exception:
+                        # Non-recipe models fall back to model-wide clear.
+                        pre_qdq_job_yamls.clear(model)
+                        quantize_job_yamls.clear(model)
+                        compile_job_yamls.clear(model)
+                        link_job_yamls.clear(model)
+                        profile_job_yamls.clear(model)
+                        inference_job_yamls.clear(model)
+                        continue
+                    pre_qdq_job_yamls.drop_in_scope(scope_params)
+                    quantize_job_yamls.drop_in_scope(scope_params)
+                    compile_job_yamls.drop_in_scope(scope_params)
+                    link_job_yamls.drop_in_scope(scope_params)
+                    profile_job_yamls.drop_in_scope(scope_params)
+                    inference_job_yamls.drop_in_scope(scope_params)
     else:
         # Previous scorecard state is applicable only on prod
         component_names_yaml = ComponentNamesYaml()
@@ -710,6 +822,8 @@ if __name__ == "__main__":
     )
 
     failed_model_ids: list[str] = []
+    # Row keys this run measured; scopes the CSV drop below.
+    accuracy_scope_keys: set[tuple[str, str, str, str]] = set()
     for model_id, model_summary in zip(model_list, model_summaries, strict=False):
         if model_summary is None:
             failed_model_ids.append(model_id)
@@ -759,9 +873,29 @@ if __name__ == "__main__":
                 threshold_override=sc.numerics_threshold_override,
             )
             global_numerics_diff.merge_from(model_diff)
+
+            # Scoped merge into the committed numerics.yaml.
+            test_params = _resolve_test_params(
+                manifest, component_names_yaml, graph_names_yaml
+            )
+            numerics_scope = _scope_from_test_config(test_params)
+            accuracy_scope_keys |= _accuracy_scope_from_test_config(
+                model_id, test_params
+            )
+            committed_numerics = QAIHMModelNumerics.from_model(
+                model_id, not_exists_ok=True
+            )
+            if committed_numerics is not None:
+                committed_numerics.drop_entries_in_scope(numerics_scope)
+
             if numerics is None:
-                QAIHMModelNumerics().to_model_yaml(model_id)  # deletes existing file
+                # Nothing measured; write the committed remainder (may be empty).
+                out = committed_numerics or QAIHMModelNumerics()
+                out.to_model_yaml(model_id)
                 continue
+
+            if committed_numerics is not None and not committed_numerics.is_empty():
+                numerics = _merge_numerics(committed_numerics, numerics)
 
             if numerics.metrics:
                 # Update failure reasons according to what NumericsDiff says is
@@ -839,14 +973,12 @@ if __name__ == "__main__":
         )
         global_numerics_diff.dump_regressions_json(numerics_regressions_path)
 
-        # Write accuracy to intermediates folder
+        # Write accuracy to intermediates folder, scoped-merged onto the committed CSV.
         if args.sync_code_gen and using_prod_hub:
             assert accuracy_df is not None
-            if args.models not in (
-                {SpecialModelSetting.PYTORCH},
-                {SpecialModelSetting.ALL},
-            ):
-                accuracy_df = _merge_existing_accuracy_data(accuracy_df, pytorch_models)
+            accuracy_df = _merge_existing_accuracy_data(
+                accuracy_df, accuracy_scope_keys
+            )
             accuracy_df.to_csv(
                 ScorecardArtifact.ACCURACY_CSV.intermediates_path, index=False
             )
