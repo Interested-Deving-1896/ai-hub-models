@@ -24,6 +24,7 @@ runs on an interleave of self-generated text + Wikitext/train (via
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 # LLMIOType is re-exported from this module so the CLI input-spec parser can
 # resolve the inherited get_input_spec's "llm_io_type" annotation, which it
@@ -51,6 +52,9 @@ from qai_hub_models.models._shared.qwen3.model import (
 from qai_hub_models.models.qwen3_0_6b.dataset import InterleavedGeneratedWikitext
 from qai_hub_models.utils.input_spec import InputSpec
 
+if TYPE_CHECKING:
+    from aimet_onnx.quantsim import QuantizationSimModel
+
 logger = logging.getLogger(__name__)
 
 # The shared 5-CL family default overflows HTP memory on IQ9 (qcs9075), so pin a
@@ -60,7 +64,8 @@ DEFAULT_EXPORT_SEQUENCE_LENGTHS = GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS
 
 # Model identification
 MODEL_ID = __name__.split(".")[-2]
-MODEL_ASSET_VERSION = 1
+# v2 promotes INT8_PARAM_NAMES to int8 in the published model.encodings.
+MODEL_ASSET_VERSION = 2
 
 # Model architecture constants (from Qwen3-0.6B)
 NUM_LAYERS = 28
@@ -93,6 +98,14 @@ SPINQUANT_CONFIG = {"enable_r1": False, "enable_r2": True, "enable_r3": True}
 
 # Name used for split ONNX file basenames (e.g. Qwen3_0_6B_1_of_2.onnx)
 SPLIT_MODEL_NAME = "Qwen3_0_6B"
+
+# Weights held at int8 instead of the default int4 param bitwidth. Leaving
+# layer 2's MLP down_proj at int4 costs ~13% absolute on the on-device
+# 100-prompt grader score. The cause is an HTP accumulator register width limit
+# (HEXNNVVV-9471), so on-target output diverges from QuantSim; QAIRT 2.49's
+# "precision_compensation" should let us drop this workaround.
+# See https://github.com/qcom-ai-hub/tetracode/issues/20616.
+INT8_PARAM_NAMES = ("model.model.layers.2.mlp.down_proj.weight",)
 
 
 class Qwen3_0_6B_PreSplit(Qwen3PreSplitBase):
@@ -139,6 +152,38 @@ class Qwen3_0_6B_QuantizablePreSplit(Qwen3QuantizablePreSplitBase[Qwen3_0_6B_Pre
     # SpinQuant (R2+R3) is applied in-place before calibration inside quantize().
     spinquant_config = SPINQUANT_CONFIG
     supports_thinking = True
+
+    @classmethod
+    def _configure_quant_sim(
+        cls,
+        quant_sim: QuantizationSimModel,
+        precision: Precision,
+    ) -> QuantizationSimModel:
+        """Apply the shared LLM config, then hold INT8_PARAM_NAMES at int8.
+
+        Only affects re-quantization from scratch (``quantize.py``); loads of
+        the published checkpoint get the same bitwidths from the asset's
+        model.encodings. Setting the bitwidth here rather than rescaling the
+        encodings afterwards lets calibration compute a true int8 range for
+        these weights instead of reusing the int4-calibrated one.
+        """
+        quant_sim = super()._configure_quant_sim(quant_sim, precision)
+
+        for name in INT8_PARAM_NAMES:
+            quantizer = quant_sim.qc_quantize_op_dict.get(name)
+            if quantizer is None:
+                # A stale name would silently reintroduce the accuracy
+                # regression this override exists to fix.
+                raise KeyError(
+                    f"No quantizer for {name}; INT8_PARAM_NAMES is out of date "
+                    "with the exported graph."
+                )
+            quantizer.set_bitwidth(8)
+            quantizer.use_symmetric_encodings = True
+            quantizer.enable_per_channel_quantization()
+            logger.info("Holding %s at int8 (per-channel, symmetric).", name)
+
+        return quant_sim
 
     def get_calibration_data(  # type: ignore[override]
         self,

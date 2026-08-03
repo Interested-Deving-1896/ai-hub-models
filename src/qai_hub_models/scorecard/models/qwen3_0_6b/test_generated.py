@@ -66,7 +66,12 @@ ENABLED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
 # NOTE:
 #   Certain supported pairs may be excluded from this list if they are not enabled for testing.
 #   For example, models that allow JIT (on-device) compile will not test AOT runtimes; we assume that if it works on JIT it will work on AOT.
-PASSING_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {}
+PASSING_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
+    Precision.w4a16: [
+        TargetRuntime.GENIE,
+        TargetRuntime.GENIEX_QAIRT,
+    ],
+}
 
 
 EVAL_DEVICE = ScorecardDevice.get("Samsung Galaxy S25 (Family)")
