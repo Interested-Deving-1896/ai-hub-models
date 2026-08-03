@@ -4,26 +4,26 @@
 # ---------------------------------------------------------------------
 
 import pytest
+import torch
 
+from qai_hub_models.models._shared.imagenet_classifier.app import ImagenetClassifierApp
 from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
-    run_imagenet_classifier_test,
+    TEST_IMAGENET_CLASS,
+    TEST_IMAGENET_IMAGE,
     run_imagenet_classifier_trace_test,
 )
 from qai_hub_models.models.efficientvit_l2_cls.demo import main as demo_main
-from qai_hub_models.models.efficientvit_l2_cls.model import (
-    MODEL_ASSET_VERSION,
-    MODEL_ID,
-    EfficientViT,
-)
+from qai_hub_models.models.efficientvit_l2_cls.model import EfficientViT
+from qai_hub_models.utils.asset_loaders import load_image
+from qai_hub_models.utils.image_processing import IMAGENET_TRANSFORM
 
 
 def test_task() -> None:
-    run_imagenet_classifier_test(
-        EfficientViT.from_pretrained(),
-        MODEL_ID,
-        asset_version=MODEL_ASSET_VERSION,
-        probability_threshold=0.39,
-    )
+    model = EfficientViT.from_pretrained()
+    app = ImagenetClassifierApp(model, transform=IMAGENET_TRANSFORM)
+    probabilities = app.predict(load_image(TEST_IMAGENET_IMAGE))
+    assert torch.argmax(probabilities, dim=0) == TEST_IMAGENET_CLASS
+    assert probabilities[TEST_IMAGENET_CLASS].item() > 0.39
 
 
 @pytest.mark.trace

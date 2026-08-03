@@ -14,6 +14,9 @@ from qai_hub_models.datasets.imagenet import ImagenetDataset, ImagenetteDataset
 from qai_hub_models.models._shared.efficientvit.external_repos.efficientvit.efficientvit.cls_model_zoo import (
     create_cls_model,
 )
+from qai_hub_models.models._shared.efficientvit.litemla_patch import (
+    apply_attention_denominator_floor,
+)
 from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetSplit
@@ -59,12 +62,27 @@ class ImagenetteEfficientViTL2Dataset(ImagenetteDataset):
         return "imagenette_efficientvit_l2"
 
 
+ATTENTION_EPS = 90
+
+
 class EfficientViT(ImagenetClassifier):
     """Exportable EfficientViT Image classifier, end-to-end."""
 
     @classmethod
-    def from_pretrained(cls, weights: str | None = None) -> Self:
-        """Load EfficientViT from a weightfile created by the source repository."""
+    def from_pretrained(
+        cls, weights: str | None = None, precision: Precision = Precision.float
+    ) -> Self:
+        """Load EfficientViT from a weightfile created by the source repository.
+
+        The LiteMLA attention-normalization denominator is floored (see
+        ATTENTION_EPS) so it cannot quantize to integer 0 and trigger a
+        divide-by-zero on the HTP fixed-point reciprocal. The floor is applied
+        unconditionally rather than only for quantized precisions: the scorecard
+        quantize path traces the model at float precision and then quantizes that
+        ONNX graph, so the Clip must already be present in the float-traced graph
+        for the downstream quantized model to inherit it. The float accuracy cost
+        is small (~0.8% top-1).
+        """
         if not weights:
             weights = CachedWebModelAsset.from_asset_store(
                 MODEL_ID, MODEL_ASSET_VERSION, DEFAULT_WEIGHTS
@@ -73,6 +91,7 @@ class EfficientViT(ImagenetClassifier):
         efficientvit_model = create_cls_model(name="l2", weight_url=weights)
         efficientvit_model.to(torch.device("cpu"))
         efficientvit_model.eval()
+        apply_attention_denominator_floor(efficientvit_model, ATTENTION_EPS)
         return cls(efficientvit_model)
 
     def get_input_spec(self, batch_size: int = 1) -> InputSpec:
