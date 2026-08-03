@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from qai_hub_models_cli.common import sample_command
+
 from qai_hub_models.utils.asset_loaders import (
     ASSET_CONFIG,
     CachedWebAsset,
@@ -25,7 +27,7 @@ class CachedPrivateAsset(CachedWebAsset):
     Cached asset that is only available via the private S3 bucket.
 
     The asset is downloaded when the user has a ``qaihm`` AWS profile
-    configured (via ``scripts/aws/validate_credentials.py``).
+    configured (via ``qai-hub-models validate_aws_credentials``).
 
     Internal users (detected via git remote URL) without the profile
     are prompted to set up credentials. External users get the
@@ -80,7 +82,7 @@ class CachedPrivateAsset(CachedWebAsset):
                 raise ValueError(
                     "You appear to be using the internal repository but have not "
                     "set up AWS credentials for private asset downloads.\n"
-                    "Run `python scripts/aws/validate_credentials.py` to configure them."
+                    f"Run `{sample_command('validate_aws_credentials')}` to configure them."
                 )
             raise self.access_denied_error or ValueError(
                 f"This is a private asset ({self.url}) and cannot be accessed "

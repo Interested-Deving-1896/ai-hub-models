@@ -185,7 +185,7 @@ class TestCachedPrivateAssetFetch:
                 Path(tmpdir) / "key.zip",
                 cfg,
             )
-            with pytest.raises(ValueError, match="validate_credentials"):
+            with pytest.raises(ValueError, match="validate_aws_credentials"):
                 asset.fetch()
 
     def test_fetch_downloads_with_profile(
