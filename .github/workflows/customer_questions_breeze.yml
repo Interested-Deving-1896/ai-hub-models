@@ -289,7 +289,8 @@ jobs:
             --jq '.jobs[] | select(.name | contains("customer-questions-remind")) | .id' \
             | head -n1)
           echo "Agent job id: $AGENT_JOB_ID"
-          gh api "repos/${{ github.repository }}/actions/jobs/$AGENT_JOB_ID/logs" \
+          gh api --allow-escape-sequences \
+            "repos/${{ github.repository }}/actions/jobs/$AGENT_JOB_ID/logs" \
             > /tmp/cqa/agent.log
           python3 scripts/breeze_customer_questions/extract_drafts_from_log.py \
             /tmp/cqa/agent.log /tmp/cqa/drafts.json
