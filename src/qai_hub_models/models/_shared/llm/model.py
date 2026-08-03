@@ -34,7 +34,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
 from enum import Enum, unique
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, NoReturn, TypeVar, cast
 
 import numpy as np
 import onnx
@@ -524,17 +524,31 @@ FPModelT = TypeVar("FPModelT", bound="LLMBase")
 
 
 class SingleSlotCacheMixin:
-    """Mixin that maintains a single class-level cached instance keyed by a string key.
+    """Mixin that maintains a single per-class cached instance keyed by a string key.
 
     On cache hit (same key), returns the existing instance.
     On cache miss (different key), evicts and frees the old instance
     before the caller creates a new one.
 
+    The slot is keyed by the exact class, never inherited through the MRO.
+    That matters because sibling/derived model classes share a checkpoint
+    (and therefore a cache key): e.g. ``FPSplitModelWrapper`` derives from
+    ``<Model>_PreSplit``, and both use the HF repo name as their key. With
+    a plain class attribute, the write from whichever class is constructed
+    first lands in that class's ``__dict__`` while lookups on the other
+    resolve to it through inheritance -- so ``FPSplitModelWrapper.from_pretrained()``
+    would silently hand back a ``PreSplit`` instance (making
+    ``isinstance(model, SplitForwardMixin)`` False and running the monolithic
+    forward under the "split" label), and ``FPSplitModelWrapper.release()``
+    would free the ``PreSplit``'s weights while leaving the ``PreSplit`` slot
+    pointing at a ``model=None`` husk.
+
     Subclasses must provide a ``free_memory()`` method on instances.
     """
 
-    _cached_instance: Any = None
-    _cached_key: str | None = None
+    # class -> (instance, cache_key). Keyed by the exact class object so a
+    # subclass never sees (or evicts) an ancestor's cached instance.
+    _cache_slots: ClassVar[dict[type, tuple[Any, str]]] = {}
 
     @classmethod
     def cache_lookup(cls, cache_key: str) -> Any:
@@ -542,38 +556,40 @@ class SingleSlotCacheMixin:
 
         On miss with an existing cached instance, the old one is evicted.
         """
-        if cls._cached_instance is not None and cls._cached_key == cache_key:
-            return cls._cached_instance
+        slot = SingleSlotCacheMixin._cache_slots.get(cls)
+        if slot is None:
+            return None
+        instance, key = slot
+        if key == cache_key:
+            return instance
 
         # Different key -- evict old instance
-        if cls._cached_instance is not None:
-            cls._cached_instance.free_memory()
-            cls._cached_instance = None
-            cls._cached_key = None
-
+        del SingleSlotCacheMixin._cache_slots[cls]
+        instance.free_memory()
         return None
 
     @classmethod
     def cache_store(cls, instance: Any, cache_key: str) -> None:
         """Evict any existing cached instance, then store the new one."""
-        if cls._cached_instance is not None and cls._cached_instance is not instance:
+        slot = SingleSlotCacheMixin._cache_slots.get(cls)
+        if slot is not None and slot[0] is not instance:
             cls.release()
-        cls._cached_instance = instance
-        cls._cached_key = cache_key
+        SingleSlotCacheMixin._cache_slots[cls] = (instance, cache_key)
 
     @classmethod
     def release(cls) -> None:
-        """Evict the cached instance, free its memory, and run global cleanup.
+        """Evict this class's cached instance, free it, and run global cleanup.
 
         Doubles as the instance ``release()`` for cached models: Python
         binds this classmethod to ``type(self)`` when called as
-        ``instance.release()``, so the most-derived class's cache slot is
-        evicted.
+        ``instance.release()``, so the instance's own cache slot is evicted.
+
+        Releasing a class that holds no cached instance only runs the global
+        cleanup; it never touches a base or derived class's slot.
         """
-        if cls._cached_instance is not None:
-            cls._cached_instance.free_memory()
-            cls._cached_instance = None
-            cls._cached_key = None
+        slot = SingleSlotCacheMixin._cache_slots.pop(cls, None)
+        if slot is not None:
+            slot[0].free_memory()
         cleanup()
 
 
