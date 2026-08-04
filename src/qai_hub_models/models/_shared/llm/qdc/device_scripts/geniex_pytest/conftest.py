@@ -25,6 +25,7 @@ def _make_options() -> AppiumOptions:
     options.set_capability("automationName", "UiAutomator2")
     options.set_capability("platformName", "Android")
     options.set_capability("deviceName", os.getenv("ANDROID_DEVICE_VERSION"))
+    options.set_capability("appium:androidInstallTimeout", 300000)  # 5 minutes
     return options
 
 
