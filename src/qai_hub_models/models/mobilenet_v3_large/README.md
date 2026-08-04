@@ -50,7 +50,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m qai_hub_models.models.mobilenet_v3_large.demo { --quantize w8a16 }
+python -m qai_hub_models.models.mobilenet_v3_large.demo { --quantize w8a16, w8a8 }
 ```
 More details on the CLI tool can be found with the `--help` option. See
 [demo.py](demo.py) for sample usage of the model including pre/post processing
