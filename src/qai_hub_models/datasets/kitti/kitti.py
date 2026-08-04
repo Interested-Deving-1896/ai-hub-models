@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 import torch
+import torchvision.transforms.functional as TF
+from PIL import Image as PILImage
 
 from qai_hub_models.utils.asset_loaders import (
     CachedWebDatasetAsset,
@@ -82,19 +84,15 @@ class KittiDataset(BaseDataset):
         input_calibs_zip: str | None = None,
         split: DatasetSplit = DatasetSplit.TRAIN,
         input_spec: InputSpec | None = None,
+        no_warp: bool = False,
     ) -> None:
         self.input_images_zip = input_images_zip
         self.input_labels_zip = input_labels_zip
         self.input_calibs_zip = input_calibs_zip
-        self.calib_data_path = (
-            KITTI_CALIBS_ASSET.extracted_path
-            / ("training" if split == DatasetSplit.TRAIN else "testing")
-            / "calib"
-        )
+        partition = self._partition_for_split(split)
+        self.calib_data_path = KITTI_CALIBS_ASSET.extracted_path / partition / "calib"
         self.image2_data_path = (
-            KITTI_IMAGES_ASSET.extracted_path
-            / ("training" if split == DatasetSplit.TRAIN else "testing")
-            / "image_2"
+            KITTI_IMAGES_ASSET.extracted_path / partition / "image_2"
         )
         BaseDataset.__init__(
             self, KITTI_CALIBS_ASSET.extracted_path.parent, split=split
@@ -103,6 +101,7 @@ class KittiDataset(BaseDataset):
         input_spec = input_spec or {"image": TensorSpec(shape=(1, 3, 384, 1280))}
         self.input_width = input_spec["image"][0][3]
         self.input_height = input_spec["image"][0][2]
+        self.no_warp = no_warp
         with open(
             VAL_TXT.fetch() if split == DatasetSplit.VAL else TRAIN_TXT.fetch()
         ) as image_set_f:
@@ -123,9 +122,24 @@ class KittiDataset(BaseDataset):
                 }
             )
 
+    @staticmethod
+    def _partition_for_split(split: DatasetSplit) -> str:
+        """Physical KITTI data partition (`training/` or `testing/`) for a split.
+
+        KITTI object detection ships two physical partitions: `training/`
+        (7481 labeled images, indexed by both train.txt and val.txt) and
+        `testing/` (unlabeled). VAL is a held-out subset of the training
+        partition, so only the true TEST split reads from `testing/`.
+        """
+        return "testing" if split == DatasetSplit.TEST else "training"
+
+    @classmethod
+    def dataset_name(cls) -> str:
+        return "kitti"
+
     def __getitem__(
         self, index: int
-    ) -> tuple[torch.Tensor, tuple[int, np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> tuple[torch.Tensor, tuple[int, np.ndarray, np.ndarray, np.ndarray, str]]:
         """
         Parameters
         ----------
@@ -135,9 +149,11 @@ class KittiDataset(BaseDataset):
         Returns
         -------
         image_tensor : torch.Tensor
-             Normalized image tensor [C, H, W], RGB [0-1]
+            Normalized image tensor [C, H, W], RGB [0-1]. If no_warp=True,
+            the image is returned at its original resolution without any
+            affine transform; otherwise it is warped to (input_height, input_width).
 
-        gt_data : tuple[int, np.ndarray, np.ndarray, np.ndarray]
+        gt_data : tuple[int, np.ndarray, np.ndarray, np.ndarray, str]
             img_id
                 image id
             center
@@ -146,6 +162,8 @@ class KittiDataset(BaseDataset):
                 scale of the image with shape (2,)
             calib
                 camera calibration matrix with shape (3, 4)
+            img_path
+                path to the original image file
         """
         image_path: str = self.sample[index]["img_path"]
         img_id: int = self.sample[index]["img_id"]
@@ -161,11 +179,14 @@ class KittiDataset(BaseDataset):
         c = np.array([width / 2, height / 2])
         s = np.array([width, height])
 
-        image_tensor = pre_process_with_affine(
-            image, c, s, 0, (self.input_height, self.input_width)
-        ).squeeze(0)
+        if self.no_warp:
+            image_tensor = TF.to_tensor(PILImage.fromarray(image))
+        else:
+            image_tensor = pre_process_with_affine(
+                image, c, s, 0, (self.input_height, self.input_width)
+            ).squeeze(0)
 
-        return image_tensor, (img_id, c, s, calib)
+        return image_tensor, (img_id, c, s, calib, str(image_path))
 
     def __len__(self) -> int:
         return len(self.sample)
@@ -191,3 +212,19 @@ class KittiDataset(BaseDataset):
     def default_samples_per_job() -> int:
         """The default value for how many samples to run in each inference job."""
         return 100
+
+
+class KittiNoWarpDataset(KittiDataset):
+    """KittiDataset with no_warp=True pre-set.
+
+    Returns images at their original resolution without affine preprocessing.
+    Use when the model handles its own resizing internally.
+    """
+
+    def __init__(self, **kwargs: object) -> None:
+        kwargs.setdefault("no_warp", True)
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def dataset_name(cls) -> str:
+        return "kitti_no_warp"

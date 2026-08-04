@@ -21,15 +21,18 @@ form_factors:
 - XR
 has_static_banner: true
 has_animated_banner: true
-dataset: []
+dataset:
+- kitti
 technical_details:
-  Model checkpoint: YOLOv3-tiny
-  Input resolution(YOLO): 224x640
+  Model checkpoint: YOLOv3
+  Input resolution(YOLO): 416x416
   Input resolution(VGG): 224x224
-  Number of parameters (yolo_2d_detection): 9.78M
-  Model size (yolo_2d_detection) (float): 37.3 MB
+  Number of parameters (yolo_2d_detection): 61.9M
+  Model size (yolo_2d_detection) (float): 236 MB
   Number of parameters (vgg_3d_detection): 46.1M
   Model size (vgg_3d_detection) (float): 176 MB
+  2D detector: COCO-pretrained YOLOv3 (paper uses KITTI-trained MS-CNN)
+  Accuracy (2D AP E/M/H): ~73/59/45 (COCO YOLOv3) vs 92.98/89.04/77.17 (paper MS-CNN). Gap is due to the 2D detector only; VGG 3D head weights are identical to the paper.
 license_type: apache-2.0
 research_paper: https://arxiv.org/abs/1612.00496
 research_paper_title: 3D Bounding Box Estimation Using Deep Learning and Geometry

@@ -99,7 +99,7 @@ class KittiEvaluator(BaseEvaluator):
                 Calibration matrix with the shape of [B, 3, 4].
         """
         hm, dep, rot, dim, wh, reg = output
-        img_id, c, s, calib = gt
+        img_id, c, s, calib, *_ = gt
         dets_arr = self.decode(hm, rot, dep, dim, wh, reg, self.max_dets).numpy()
         dets = ddd_post_process(
             dets_arr,

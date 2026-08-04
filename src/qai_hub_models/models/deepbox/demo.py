@@ -39,13 +39,14 @@ def deepbox_demo(
     args = parser.parse_args([] if is_test else None)
     validate_on_device_demo_args(args, MODEL_ID)
 
-    _, (yolo_2d_det, vgg_3d_det) = demo_model_components_from_cli_args(
+    torch_model, (yolo_2d_det, vgg_3d_det) = demo_model_components_from_cli_args(
         model_type, MODEL_ID, args
     )
 
     app = DeepBoxApp(
         yolo_2d_det,  # type: ignore[arg-type]
         vgg_3d_det,  # type: ignore[arg-type]
+        torch_model.yolo_2d_det.get_input_spec(),
     )
     print("Model Loaded")
 

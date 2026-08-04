@@ -6,12 +6,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import torch
 from torchvision.models import vgg
 from typing_extensions import Self
 
 from qai_hub_models import SampleInputsType
 from qai_hub_models.datasets.kitti import KittiDataset
+from qai_hub_models.models.deepbox.evaluator import Kitti3DDetectionEvaluator
 from qai_hub_models.models.deepbox.external_repos.boundingbox_3d.torch_lib import (
     Model as TorchLibModel,
 )
@@ -19,6 +22,7 @@ from qai_hub_models.models.yolov3.model import YoloV3
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_torch
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
+from qai_hub_models.utils.base_evaluator import BaseEvaluator
 from qai_hub_models.utils.base_model import (
     BaseModel,
     SerializationSettings,
@@ -40,22 +44,23 @@ MODEL_ASSET_VERSION = 3
 VGG_WEIGHTS_ASSET = CachedWebModelAsset.from_asset_store(
     MODEL_ID, MODEL_ASSET_VERSION, "epoch_10.pkl"
 )
-DEFAULT_YOLO_WEIGHTS = "yolov3-tinyu.pt"
+DEFAULT_YOLO_WEIGHTS = "yolov3u.pt"
 
 
 class Yolo2DDetection(YoloV3):
     """
-    Exportable YoloV3 bounding box detector, end-to-end.
+    Exportable YoloV3 2D bounding box detector for DeepBox.
 
-    Hand detection model. Input is an image, output is
-    [bounding boxes & keypoints, box & keypoint scores]
+    Detects objects (cars, pedestrians, etc.) in a driving scene image.
+    Input is an RGB image [0, 1]; output is
+    [bounding boxes, confidence scores, class indices].
     """
 
     def get_input_spec(
         self,
         batch_size: int = 1,
-        height: int = 224,
-        width: int = 640,
+        height: int = 416,
+        width: int = 416,
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type). This can be
@@ -82,8 +87,10 @@ class Yolo2DDetection(YoloV3):
 
 class VGG3DDetection(BaseModel):
     """
-    Hand landmark detector model. Input is an image cropped to the hand. The hand must be upright
-    and un-tilted in the frame. Returns [landmark_scores, prob_is_right_hand, landmarks]
+    VGG19-BN based 3D bounding box estimator for DeepBox.
+
+    Takes a 224x224 crop of a detected object and predicts its 3D orientation,
+    dimensions, and location. Returns [orient, conf, dim].
     """
 
     def __init__(self, model: torch.nn.Module) -> None:
@@ -176,7 +183,7 @@ class DeepBox(WorkbenchModelCollection):
         return KittiDataset
 
     def get_input_spec(
-        self, batch_size: int = 1, height: int = 224, width: int = 640
+        self, batch_size: int = 1, height: int = 416, width: int = 416
     ) -> ComponentGroup[InputSpec]:
         return ComponentGroup(
             {
@@ -195,6 +202,12 @@ class DeepBox(WorkbenchModelCollection):
         yolo_ckpt: str = DEFAULT_YOLO_WEIGHTS,
         vgg_ckpt_path: str = "DEFAULT",
     ) -> Self:
-        yolo = Yolo2DDetection.from_pretrained(yolo_ckpt)
         vgg_net = VGG3DDetection.from_pretrained(vgg_ckpt_path)
-        return cls(yolo, vgg_net)
+        return cls(Yolo2DDetection.from_pretrained(yolo_ckpt), vgg_net)
+
+    def get_evaluator(self) -> BaseEvaluator:
+        return Kitti3DDetectionEvaluator()
+
+    @classmethod
+    def get_eval_dataset_classes(cls) -> Sequence[type[BaseDataset]]:
+        return [KittiDataset]

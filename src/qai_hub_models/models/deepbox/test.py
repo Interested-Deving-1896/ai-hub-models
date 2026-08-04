@@ -12,7 +12,7 @@ from qai_hub_models.models.deepbox.model import MODEL_ASSET_VERSION, MODEL_ID, D
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 
 OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
-    MODEL_ID, MODEL_ASSET_VERSION, "output_image_yolo_s.png"
+    MODEL_ID, MODEL_ASSET_VERSION, "output_image_yolov3u.png"
 )
 
 
@@ -24,7 +24,7 @@ def test_task() -> None:
         OUTPUT_IMAGE_ADDRESS,
     )
     wrapper = DeepBox.from_pretrained()
-    app = DeepBoxApp(wrapper.yolo_2d_det, wrapper.vgg_3d_det)
+    app = DeepBoxApp.from_pretrained(wrapper)
     assert np.allclose(np.asarray(app.detect_image(image)), np.asarray(expected_output))
 
 
