@@ -116,6 +116,46 @@ class GradeSummary:
         return 100.0 * self.total_points / self.max_points
 
 
+def resolve_device(device: str | None = None, allow_cpu: bool = False) -> str:
+    """Resolve the grader device, refusing a silent CPU fallback.
+
+    A GPU host whose torch build doesn't match the CUDA driver reports no CUDA,
+    so the grader quietly runs a 35B model on CPU: ~13 minutes per file instead
+    of seconds, exiting 0 the whole time. CI then reports success while having
+    burned a GPU reservation on a CPU run.
+
+    Parameters
+    ----------
+    device
+        Explicit device, or None to auto-detect.
+    allow_cpu
+        Permit CPU. Only set this when CPU is genuinely intended.
+
+    Returns
+    -------
+    str
+        The resolved device string.
+
+    Raises
+    ------
+    RuntimeError
+        If CPU was resolved by fallback rather than requested.
+    """
+    resolved = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    if resolved == "cpu" and not allow_cpu:
+        raise RuntimeError(
+            f"Refusing to grade on CPU (torch {torch.__version__}, "
+            f"torch.version.cuda={torch.version.cuda}, "
+            f"torch.cuda.is_available()={torch.cuda.is_available()}).\n"
+            "On a GPU host this usually means the installed torch wheel's CUDA "
+            "version doesn't match the driver, so torch silently disables CUDA. "
+            "Check that the grader venv installed a driver-compatible build "
+            "(see InstallLLMGraderRequirementsTask). Pass --allow-cpu to grade "
+            "on CPU anyway."
+        )
+    return resolved
+
+
 class ResponseGrader:
     """Loads a grader model once and grades batches of (question, response) items."""
 
@@ -125,14 +165,14 @@ class ResponseGrader:
         device: str | None = None,
         dtype: torch.dtype = torch.bfloat16,
         prompt_template: str = DEFAULT_PROMPT_TEMPLATE,
+        allow_cpu: bool = False,
     ) -> None:
         ensure_supported_version("transformers", min_version=MIN_TRANSFORMERS_VERSION)
         if "{response}" not in prompt_template:
             raise ValueError(
                 "Prompt template must contain the '{response}' placeholder."
             )
-        if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = resolve_device(device, allow_cpu=allow_cpu)
         self.model_id = model_id
         self.device = device
         self.dtype = dtype

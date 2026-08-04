@@ -799,6 +799,14 @@ class GradeLLMResponsesTask(CompositeTask):
     ``qai_hub_models.scripts.llm.grade_responses``. The grader needs
     ``transformers>=5.2``, which conflicts with the LLM source-repo pins in the
     main qaihm-build venv, so callers should pass a dedicated grader ``--venv``.
+
+    Per-file grading uses ``raise_on_failure=False`` so one bad response file
+    doesn't abandon the rest. A device misconfiguration is not per-file though,
+    so it's checked once up front and, if that check fails, the per-file tasks
+    are skipped -- otherwise the grader would fall back to CPU for every file
+    (~13 minutes each) and still exit 0. That ordering needs the check and the
+    grading to sit in a composite that does *not* continue after a failure,
+    with the continue-on-failure behavior scoped to the per-file tasks alone.
     """
 
     def __init__(
@@ -810,18 +818,24 @@ class GradeLLMResponsesTask(CompositeTask):
         search_dir = search_dir or os.getcwd()
         eval_jsons = sorted(glob.glob(os.path.join(search_dir, "*_eval.json")))
 
-        tasks: list[Task] = []
         if not eval_jsons:
-            tasks.append(
-                RunCommandsTask(
-                    "Grade LLM Responses",
-                    f'echo "No *_eval.json files found in {search_dir}; nothing to grade."',
-                )
+            super().__init__(
+                "Grade LLM Responses",
+                [
+                    RunCommandsTask(
+                        "Grade LLM Responses",
+                        f'echo "No *_eval.json files found in {search_dir}; nothing to grade."',
+                    )
+                ],
+                raise_on_failure=raise_on_failure,
             )
+            return
+
+        per_file_tasks: list[Task] = []
         for eval_json in eval_jsons:
             base = os.path.splitext(os.path.basename(eval_json))[0]
             out_json = os.path.join(search_dir, f"{base}_grade.json")
-            tasks.append(
+            per_file_tasks.append(
                 RunCommandsWithVenvTask(
                     group_name=f"Grade {os.path.basename(eval_json)}",
                     venv=venv,
@@ -834,8 +848,23 @@ class GradeLLMResponsesTask(CompositeTask):
 
         super().__init__(
             "Grade LLM Responses",
-            tasks,
-            continue_after_single_task_failure=True,
+            [
+                RunCommandsWithVenvTask(
+                    group_name="Check Grader Device",
+                    venv=venv,
+                    commands=[
+                        "python -m qai_hub_models.scripts.llm.grade_responses --check-device-only",
+                    ],
+                    raise_on_failure=False,
+                ),
+                CompositeTask(
+                    None,
+                    per_file_tasks,
+                    continue_after_single_task_failure=True,
+                    raise_on_failure=False,
+                ),
+            ],
+            continue_after_single_task_failure=False,
             raise_on_failure=raise_on_failure,
         )
 

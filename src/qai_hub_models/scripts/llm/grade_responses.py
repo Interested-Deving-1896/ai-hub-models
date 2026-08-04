@@ -37,6 +37,7 @@ from qai_hub_models.models._shared.llm.grader import (
     LETTERS,
     MAX_POINTS,
     ResponseGrader,
+    resolve_device,
 )
 
 
@@ -47,6 +48,7 @@ def main() -> None:
     parser.add_argument(
         "responses_json",
         type=str,
+        nargs="?",
         help="Path to a JSON file: list of {idx, prompt, output} objects.",
     )
     parser.add_argument(
@@ -69,6 +71,18 @@ def main() -> None:
         help="Device for the grader model (default: cuda if available, else cpu).",
     )
     parser.add_argument(
+        "--allow-cpu",
+        action="store_true",
+        help="Permit grading on CPU. Without this, an unusable CUDA install is a "
+        "hard error rather than a ~13-minute-per-file CPU fallback.",
+    )
+    parser.add_argument(
+        "--check-device-only",
+        action="store_true",
+        help="Resolve and print the grader device, then exit. Lets CI fail fast on "
+        "a misconfigured venv without loading a model or reading responses.",
+    )
+    parser.add_argument(
         "--dtype",
         type=str,
         default="bfloat16",
@@ -88,6 +102,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Resolved up front so a misconfigured venv fails before a model download.
+    try:
+        device = resolve_device(args.device, allow_cpu=args.allow_cpu)
+    except RuntimeError as e:
+        raise SystemExit(str(e)) from None
+    if args.check_device_only:
+        print(f"grader device: {device}")
+        return
+    if args.responses_json is None:
+        parser.error("responses_json is required unless --check-device-only is set.")
+
     if args.prompt_file:
         prompt_template = Path(args.prompt_file).read_text()
     else:
@@ -105,9 +130,10 @@ def main() -> None:
     }
     grader = ResponseGrader(
         model_id=args.model,
-        device=args.device,
+        device=device,
         dtype=dtype_map[args.dtype],
         prompt_template=prompt_template,
+        allow_cpu=args.allow_cpu,
     )
     print(
         f"Letter token ids: {dict(zip(LETTERS, grader.letter_token_ids, strict=True))}"
