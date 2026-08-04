@@ -17,7 +17,8 @@ form_factors:
 - Tablet
 has_static_banner: true
 has_animated_banner: true
-dataset: []
+dataset:
+- cococaptions
 technical_details:
   Model checkpoint: ViT-B/16
   Image input resolution: 224x224
@@ -29,5 +30,17 @@ research_paper: https://arxiv.org/abs/2103.00020
 research_paper_title: Learning Transferable Visual Models From Natural Language Supervision
 source_repo: https://github.com/openai/CLIP/
 license: https://github.com/openai/CLIP/blob/main/LICENSE
+datasets:
+- cococaptions
 post_pip_install_commands:
 - pip install git+https://github.com/openai/CLIP.git@ded190a --use-pep517
+numerics_benchmark:
+  dataset_name: coco
+  metric_name: Recall@1
+  value: 58.4
+  unit: '%'
+  source: https://arxiv.org/abs/2103.00020
+supported_precisions:
+- float
+- w8a16
+has_on_target_demo: true

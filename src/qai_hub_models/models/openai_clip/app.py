@@ -6,14 +6,29 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from pathlib import Path
 from typing import Any
 
 import torch
 from PIL.Image import Image
+from torchvision.transforms import (
+    CenterCrop,
+    Compose,
+    InterpolationMode,
+    Resize,
+    ToTensor,
+)
 
-from qai_hub_models.protocols import ExecutableModelProtocol
-from qai_hub_models.utils.asset_loaders import load_image
+from qai_hub_models.models.openai_clip.model import DEFAULT_IMAGE_SIZE
+from qai_hub_models.utils.input_spec import InputSpec
+
+_DEFAULT_IMAGE_PREPROCESSOR = Compose(
+    [
+        Resize(DEFAULT_IMAGE_SIZE, interpolation=InterpolationMode.BICUBIC),
+        CenterCrop(DEFAULT_IMAGE_SIZE),
+        lambda img: img.convert("RGB"),
+        ToTensor(),
+    ]
+)
 
 
 class ClipApp:
@@ -31,55 +46,62 @@ class ClipApp:
 
     def __init__(
         self,
-        # Model has two inputs:
-        #  - image (N, 3, H, W), RGB, float[0:1]
-        #  - tokenized text (N, 77)
-        model: ExecutableModelProtocol[torch.Tensor],
+        model: Callable[
+            [torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]
+        ],
         text_tokenizer: Callable[[str], torch.Tensor],
-        image_preprocessor: Callable[[Image], torch.Tensor],
+        input_spec: InputSpec,
+        logit_scale: float = 100.0,
     ) -> None:
         self.model = model
         self.text_tokenizer = text_tokenizer
-        self.image_preprocessor = image_preprocessor
+        self.image_preprocessor = _DEFAULT_IMAGE_PREPROCESSOR
+        self._captions_per_image: int = input_spec["text"][0][1]
+
+        # logit_scale: Temperature scale applied to cosine similarities. Hardcoded to 100.0
+        # because CLIP training clamps the learnable scale to this maximum, so
+        # released weights always saturate the cap.
+        # Reference: https://github.com/openai/CLIP/blob/d05afc436d78f1c48dc0dbf8e5980a9d471f35f6/clip/model.py#L367
+
+        self._logit_scale = logit_scale
 
     def predict(self, *args: Any, **kwargs: Any) -> torch.Tensor:
-        # See predict_similarity.
-        return self.predict_similarity(*args, **kwargs)
+        # See predict_best_caption.
+        return self.predict_best_caption(*args, **kwargs)
 
-    def predict_similarity(
-        self, images_or_image_paths: Sequence[Image | str | Path], texts: Sequence[str]
+    def predict_best_caption(
+        self,
+        image: Image,
+        texts: Sequence[str],
     ) -> torch.Tensor:
         """
-        Compute cosine similarity between images and text prompts.
+        Given one image and a list of text prompts, return similarity scores.
+
+        Passes image [1, 3, H, W] and text [1, len(texts), 77] to the model —
+        matching the on-device compiled input spec (B=1, captions_per_image=5).
 
         Parameters
         ----------
-        images_or_image_paths
-            PIL Image or path to an image file / URL.
+        image
+            PIL Image
         texts
-            String texts to search for similarity.
+            Text prompt candidates.
 
         Returns
         -------
-        cosine_similarities_per_image : torch.Tensor
-            Tensor of shape [num_images, num_text_prompts]. Given a batch of images
-            and a batch of text tokens, returns a tensor containing the cosine
-            similarity scores corresponding to each image per text input. The values
-            are cosine similarities between the corresponding image and text features,
-            times 100. The cosine similarities of text per image can be computed by
-            doing a transpose.
+        similarities : torch.Tensor
+            Shape [1, len(texts)]. Cosine similarity x logit_scale for each prompt.
         """
-        preprocessed_images: list[torch.Tensor] = []
+        img = self.image_preprocessor(image).unsqueeze(0)
 
-        # Process each image to be a tensor  of shape [NImages, 3, 224, 224] with layout RGB and range [0 - 1 ]
-        for image_or_path in images_or_image_paths:
-            if isinstance(image_or_path, (str, Path)):
-                image_or_path = load_image(image_or_path)
-            preprocessed_images.append(self.image_preprocessor(image_or_path))
-        preprocessed_stacked_images = torch.stack(preprocessed_images)
+        if len(texts) != self._captions_per_image:
+            raise ValueError(
+                f"Expected {self._captions_per_image} text prompts (from input spec), "
+                f"got {len(texts)}."
+            )
 
-        # Tokenize string text to shape [NTexts, 77]
-        preprocessed_texts: list[torch.Tensor] = [self.text_tokenizer(x) for x in texts]
-        preprocessed_stacked_texts = torch.cat(preprocessed_texts)
+        tokenized = torch.cat([self.text_tokenizer(t) for t in texts])
+        text = tokenized.unsqueeze(0)
 
-        return self.model(preprocessed_stacked_images, preprocessed_stacked_texts)
+        image_features, text_features = self.model(img, text)
+        return (self._logit_scale * image_features) @ text_features.t()

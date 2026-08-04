@@ -4,8 +4,11 @@
 # ---------------------------------------------------------------------
 
 import numpy as np
+import pytest
+import torch
 
-from qai_hub_models.models.openai_clip.app import ClipApp
+from qai_hub_models.models.openai_clip.app import _DEFAULT_IMAGE_PREPROCESSOR, ClipApp
+from qai_hub_models.models.openai_clip.demo import DEFAULT_TEXTS
 from qai_hub_models.models.openai_clip.demo import main as demo_main
 from qai_hub_models.models.openai_clip.model import (
     MODEL_ASSET_VERSION,
@@ -17,31 +20,66 @@ from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
     MODEL_ID, MODEL_ASSET_VERSION, "image1.jpg"
 )
-TEXT = "pyramid in desert"
 
 
 def test_task() -> None:
-    """Verify that raw (numeric) outputs of both networks are the same."""
+    """Verify that app output matches direct model inference."""
     source_clip_model = OpenAIClip.from_pretrained()
 
-    # This is copied from the OpenAI Clip repository example.
-    processed_sample_text = source_clip_model.text_tokenizer(TEXT)
-    processed_sample_image = source_clip_model.image_preprocessor(
-        load_image(IMAGE_ADDRESS)
-    ).unsqueeze(0)
-    source_logits_per_image, _ = source_clip_model.clip(
-        processed_sample_image, processed_sample_text
-    )
-
-    # Verify our app vs the example.
     clip_app = ClipApp(
         source_clip_model,
         source_clip_model.text_tokenizer,
-        source_clip_model.image_preprocessor,
+        source_clip_model.get_input_spec(),
     )
-    qaihm_out = clip_app.predict_similarity([load_image(IMAGE_ADDRESS)], [TEXT])
+
+    image = load_image(IMAGE_ADDRESS)
+    texts = DEFAULT_TEXTS[:5]
+
+    # App output
+    app_out = clip_app.predict_best_caption(image, texts)
+    assert app_out.shape == (1, 5)
+
+    # Direct model inference using the same preprocessing
+    img = _DEFAULT_IMAGE_PREPROCESSOR(image).unsqueeze(0)
+    tokenized = torch.cat([source_clip_model.text_tokenizer(t) for t in texts])
+    text = tokenized.unsqueeze(0)
+    image_features, text_features = source_clip_model(img, text)
+    direct_out = (100.0 * image_features) @ text_features.t()
+
     np.testing.assert_allclose(
-        source_logits_per_image.detach().numpy(), qaihm_out.detach().numpy()
+        app_out.detach().numpy(), direct_out.detach().numpy(), rtol=1e-4
+    )
+
+
+@pytest.mark.trace
+def test_trace() -> None:
+    """Verify that the traced model app output matches the source model app output."""
+    source_clip_model = OpenAIClip.from_pretrained()
+    input_spec = source_clip_model.get_input_spec()
+    traced_model = source_clip_model.convert_to_torchscript(input_spec)
+
+    trace_clip_app = ClipApp(
+        traced_model,
+        source_clip_model.text_tokenizer,
+        input_spec,
+    )
+
+    image = load_image(IMAGE_ADDRESS)
+    texts = DEFAULT_TEXTS[:5]
+
+    # App output
+    app_out = trace_clip_app.predict_best_caption(image, texts)
+    assert app_out.shape == (1, 5)
+
+    # Direct model inference using the same preprocessing
+    img = _DEFAULT_IMAGE_PREPROCESSOR(image).unsqueeze(0)
+    tokenized = torch.cat([source_clip_model.text_tokenizer(t) for t in texts])
+    text = tokenized.unsqueeze(0)
+    image_features, text_features = traced_model(img, text)
+    direct_out = (100.0 * image_features) @ text_features.t()
+
+    np.testing.assert_allclose(
+        app_out.detach().numpy(), direct_out.detach().numpy(), rtol=1e-4
     )
 
 

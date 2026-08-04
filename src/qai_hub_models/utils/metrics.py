@@ -265,4 +265,15 @@ LLM_RESPONSE_GRADE = _register_metric(
     )
 )
 
+RECALL_AT_1 = _register_metric(
+    MetricMetadata(
+        name="Recall@1",
+        unit="%",
+        description="Fraction of queries where the correct result is ranked first (text-to-image direction).",
+        range=(0.0, 100.0),
+        float_vs_device_threshold=10.0,
+    )
+)
+
+# Freeze the valid pairs set now that all metrics are registered.
 VALID_METRIC_PAIRS: frozenset[tuple[str, str]] = frozenset(_VALID_METRIC_PAIRS)

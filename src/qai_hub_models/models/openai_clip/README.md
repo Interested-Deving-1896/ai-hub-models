@@ -32,7 +32,7 @@ for the full list of commands and filters.
 Install the package via pip:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install qai-hub-models
+pip install "qai-hub-models[openai-clip]"
 pip install git+https://github.com/openai/CLIP.git@ded190a --use-pep517
 ```
 
@@ -51,12 +51,14 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m qai_hub_models.models.openai_clip.demo
+python -m qai_hub_models.models.openai_clip.demo { --quantize w8a16 }
 ```
 More details on the CLI tool can be found with the `--help` option. See
 [demo.py](demo.py) for sample usage of the model including pre/post processing
 scripts. Please refer to our [general instructions on using
 models](../../../#getting-started) for more usage instructions.
+
+By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` to the demo script to run the model on a cloud-hosted target device.
 
 ## Export for on-device deployment
 To run the model on Qualcomm® devices, you must export the model for use with an edge runtime such as
