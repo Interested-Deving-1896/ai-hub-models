@@ -105,7 +105,7 @@ class RetinaFaceDetector(BaseModel):
             Shape (1, num_anchors, 10) — raw landmark regression deltas.
         """
         # Convert RGB [0,1] float → BGR [0,255] float, matching batch_detect() preprocessing.
-        img_bgr = image[:, [2, 1, 0], :, :] * 255.0
+        img_bgr = torch.flip(image, dims=[1]) * 255.0
         mean = _RETINA_BGR_MEAN.to(img_bgr.device, dtype=img_bgr.dtype)
         img_bgr = img_bgr - mean
         bbox_regressions, classifications, landmark_regressions = self.detector_model(
