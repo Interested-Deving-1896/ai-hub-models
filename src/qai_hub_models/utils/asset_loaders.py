@@ -19,7 +19,7 @@ import threading
 import time
 import zipfile
 from collections.abc import Callable, Generator, Iterable
-from contextlib import contextmanager, suppress
+from contextlib import ExitStack, contextmanager, suppress
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -143,6 +143,41 @@ def repo_in_sys_path(repo_dir: str) -> Generator[None, None, None]:
             sys.path.remove(repo_dir)
 
 
+@contextmanager
+def _stdio_via_tty_if_captured() -> Generator[None, None, None]:
+    """Route ``sys.stdin``/``sys.stdout`` through ``/dev/tty`` when captured.
+
+    pytest replaces ``sys.stdin`` with a ``DontReadFromInput`` object that
+    has no file descriptor, so anything trying to ``select`` on it (e.g.
+    ``inputimeout``) crashes with ``ValueError: Invalid file object``. It
+    also captures stdout, which would hide the prompt entirely. Opening
+    ``/dev/tty`` lets us still show the question and read the answer.
+    If ``/dev/tty`` can't be opened (headless / Windows), we leave stdio
+    alone and let the caller's read fail naturally.
+    """
+    try:
+        sys.stdin.fileno()
+        yield
+        return
+    except (OSError, ValueError, AttributeError):
+        pass
+
+    with ExitStack() as stack:
+        try:
+            tty_in = stack.enter_context(open("/dev/tty"))
+            tty_out = stack.enter_context(open("/dev/tty", "w"))
+        except OSError:
+            yield
+            return
+
+        original_stdin, original_stdout = sys.stdin, sys.stdout
+        sys.stdin, sys.stdout = tty_in, tty_out
+        try:
+            yield
+        finally:
+            sys.stdin, sys.stdout = original_stdin, original_stdout
+
+
 def query_yes_no(
     question: str, default: str = "yes", timeout: int | None = None
 ) -> bool:
@@ -170,20 +205,21 @@ def query_yes_no(
     else:
         raise ValueError(f"invalid default answer: {default}")
 
-    while True:
-        print(question + prompt, end="")
-        if timeout is not None:
-            try:
-                choice = inputimeout(prompt="", timeout=timeout).lower()
-            except TimeoutOccurred:
-                choice = "no"
-        else:
-            choice = input().lower()
-        if choice == "":
-            return valid[default]
-        if choice in valid:
-            return valid[choice]
-        print("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
+    with _stdio_via_tty_if_captured():
+        while True:
+            print(question + prompt, end="", flush=True)
+            if timeout is not None:
+                try:
+                    choice = inputimeout(prompt="", timeout=timeout).lower()
+                except TimeoutOccurred:
+                    choice = "no"
+            else:
+                choice = input().lower()
+            if choice == "":
+                return valid[default]
+            if choice in valid:
+                return valid[choice]
+            print("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
 
 
 def maybe_clone_git_repo(

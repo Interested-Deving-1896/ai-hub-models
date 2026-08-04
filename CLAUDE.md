@@ -99,6 +99,14 @@ or class definition. No exceptions except circular import avoidance. "It's only 
 one function" is not a reason to put it inside the function. "It's a heavy import" is not
 a reason. Put it at the top. Every time. Check your code before submitting.
 
+**INLINE COMMENTS: keep them short or skip them.** Default to no comment. If the code is
+self-documenting — clear names, obvious control flow — do not add a comment restating what
+it does. Only comment when the *why* is non-obvious (hidden constraint, subtle invariant,
+workaround for a specific bug, surprising behavior). When you do comment, cap it at **2
+lines**. Longer comments are only acceptable when ABSOLUTELY NECESSARY to explain
+genuinely complicated logic that cannot be simplified further. Never write multi-paragraph
+comment blocks or docstrings that narrate the code line-by-line.
+
 Throughout the session, stay within the boundaries defined by the permissions above:
 
 - **File operations**: Only read/edit/write within this repo, `/tmp/claude/`, and the QAIHM cache. Never write to other locations without asking the user.
