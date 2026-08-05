@@ -146,12 +146,12 @@ def patched_ultralytics_obb_head_inference(
         tuple(a.view(shape[0], angles[0].shape[1], -1) for a in angles), 2
     )
 
-    # 2. Generate Anchors
-    if self.dynamic or self.shape != shape:
-        self.anchors, self.strides = (
-            x.transpose(0, 1) for x in make_anchors(boxes, self.stride, 0.5)
-        )
-        self.shape = shape  # type: ignore[assignment]
+    # 2. Generate Anchors.
+    # See detect_patches.patched_ultryaltics_det_head_inference for rationale.
+    anchors, strides = (
+        x.transpose(0, 1) for x in make_anchors(boxes, self.stride, 0.5)
+    )
+    self.anchors, self.strides = anchors, strides
 
     # 3. Decode Angles
     # Standard YOLOv8 OBB angle decoding: range [-pi/4, 3pi/4]
@@ -159,9 +159,6 @@ def patched_ultralytics_obb_head_inference(
 
     # 4. Decode Boxes
     pred_dist = self.dfl(box)
-    dbox = (
-        dist2rbox(pred_dist, angle_decoded, self.anchors.unsqueeze(0), dim=1)
-        * self.strides
-    )
+    dbox = dist2rbox(pred_dist, angle_decoded, anchors.unsqueeze(0), dim=1) * strides
 
     return dbox, angle_decoded, cls.sigmoid()

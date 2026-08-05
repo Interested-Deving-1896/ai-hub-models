@@ -133,12 +133,15 @@ def patched_ultryaltics_det_head_inference(
         tuple(score.view(shape[0], scores[0].shape[1], -1) for score in scores), 2
     )
 
-    if self.dynamic or self.shape != shape:
-        self.anchors, self.strides = (
-            bb.transpose(0, 1)
-            for bb in make_anchors(feats if feats else boxes, self.stride, 0.5)
-        )
-        self.shape = shape  # type: ignore[assignment]
+    # Recompute every call. torch.export resets self.anchors/self.strides after
+    # tracing but leaves self.shape mutated, so the previous cache-and-reuse
+    # pattern broke on the second pt2 forward. Skip touching self.shape here.
+    anchors, strides = (
+        bb.transpose(0, 1)
+        for bb in make_anchors(feats if feats else boxes, self.stride, 0.5)
+    )
+    # Populate for downstream consumers (e.g. Pose::kpts_decode reads these).
+    self.anchors, self.strides = anchors, strides
 
-    dbox = self.decode_bboxes(self.dfl(box), self.anchors.unsqueeze(0)) * self.strides
+    dbox = self.decode_bboxes(self.dfl(box), anchors.unsqueeze(0)) * strides
     return dbox, cls.sigmoid()

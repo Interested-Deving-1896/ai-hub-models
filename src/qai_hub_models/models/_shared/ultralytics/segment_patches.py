@@ -10,6 +10,7 @@ from typing import cast
 import torch
 from ultralytics.nn.modules.head import Segment, Segment26, YOLOESegment
 from ultralytics.nn.tasks import SegmentationModel
+from ultralytics.utils.tal import make_anchors
 
 from qai_hub_models.models._shared.ultralytics.detect_patches import (
     patched_ultryaltics_det_head_forward,
@@ -241,13 +242,11 @@ def patched_yoloe_seg_head_inference(
         tuple(score.view(shape[0], scores[0].shape[1], -1) for score in scores), 2
     )
 
-    if self.dynamic or self.shape != shape:
-        from ultralytics.utils.tal import make_anchors
+    # See detect_patches.patched_ultryaltics_det_head_inference for rationale.
+    anchors, strides = (
+        bb.transpose(0, 1) for bb in make_anchors(feats, self.stride, 0.5)
+    )
+    self.anchors, self.strides = anchors, strides
 
-        self.anchors, self.strides = (
-            bb.transpose(0, 1) for bb in make_anchors(feats, self.stride, 0.5)
-        )
-        self.shape = shape  # type: ignore[assignment]
-
-    dbox = self.decode_bboxes(self.dfl(box), self.anchors.unsqueeze(0)) * self.strides
+    dbox = self.decode_bboxes(self.dfl(box), anchors.unsqueeze(0)) * strides
     return dbox, cls.sigmoid()
