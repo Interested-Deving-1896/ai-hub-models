@@ -8,10 +8,6 @@ import warnings
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.{{ model_name }} import MODEL_ID, Model
-{%- if separate_quantize_script %}
-from qai_hub_models.models.{{ model_name }} import DEFAULT_PRECISION
-from qai_hub_models.utils.checkpoint import CheckpointType
-{%- endif %}
 {%- if model_status != "published" %}
 from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 {%- endif %}
@@ -54,17 +50,6 @@ def main(args: argparse.Namespace | None = None) -> None:
             stacklevel=2,
         )
         args = build_parser().parse_args()
-{%- if separate_quantize_script %}
-    # export_parser is called with omit_precision=True, so args.precision is
-    # never set by CLI parsing — resolve it from the checkpoint instead.
-    checkpoint = getattr(args, "checkpoint", None)
-    if checkpoint is not None:
-        args.precision = CheckpointType.from_checkpoint(checkpoint).precision(
-            DEFAULT_PRECISION, checkpoint=checkpoint
-        )
-    else:
-        args.precision = DEFAULT_PRECISION
-{%- endif %}
     export_model(MODEL_ID, **vars(args))
 
 if __name__ == "__main__":

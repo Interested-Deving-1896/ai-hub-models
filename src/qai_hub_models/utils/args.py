@@ -37,6 +37,7 @@ from qai_hub_models.utils.base_model import (
     PrecompiledWorkbenchModel,
     WorkbenchModel,
 )
+from qai_hub_models.utils.checkpoint import CheckpointType
 from qai_hub_models.utils.device import resolve_hub_device
 from qai_hub_models.utils.envvars import DevModeEnvvar
 from qai_hub_models.utils.evaluate.helpers import EvalMode
@@ -208,6 +209,21 @@ class QAIHMArgumentParser(argparse.ArgumentParser):
 
         if getattr(parsed, "quantize", None):
             parsed.precision = parsed.quantize
+
+        # Models with a separate quantize script omit --precision, so resolve it
+        # from --checkpoint (falling back to the first supported precision).
+        if (
+            getattr(parsed, "precision", None) is None
+            and self.supported_precision_runtimes
+        ):
+            default_precision = next(iter(self.supported_precision_runtimes))
+            checkpoint = getattr(parsed, "checkpoint", None)
+            if checkpoint is not None:
+                parsed.precision = CheckpointType.from_checkpoint(checkpoint).precision(
+                    default_precision, checkpoint=checkpoint
+                )
+            else:
+                parsed.precision = default_precision
 
         # Resolve default target_runtime based on the chosen precision.
         if getattr(parsed, "target_runtime", None) is None:

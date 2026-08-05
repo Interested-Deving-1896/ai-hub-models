@@ -11,13 +11,8 @@ import argparse
 import warnings
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models.qwen3_vl_8b_instruct import (
-    DEFAULT_PRECISION,
-    MODEL_ID,
-    Model,
-)
+from qai_hub_models.models.qwen3_vl_8b_instruct import MODEL_ID, Model
 from qai_hub_models.utils.args import export_parser
-from qai_hub_models.utils.checkpoint import CheckpointType
 from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
@@ -58,15 +53,6 @@ def main(args: argparse.Namespace | None = None) -> None:
             stacklevel=2,
         )
         args = build_parser().parse_args()
-    # export_parser is called with omit_precision=True, so args.precision is
-    # never set by CLI parsing — resolve it from the checkpoint instead.
-    checkpoint = getattr(args, "checkpoint", None)
-    if checkpoint is not None:
-        args.precision = CheckpointType.from_checkpoint(checkpoint).precision(
-            DEFAULT_PRECISION, checkpoint=checkpoint
-        )
-    else:
-        args.precision = DEFAULT_PRECISION
     export_model(MODEL_ID, **vars(args))
 
 

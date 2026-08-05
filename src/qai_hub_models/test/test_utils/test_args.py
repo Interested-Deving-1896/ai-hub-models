@@ -347,6 +347,38 @@ def test_parse_qwen2_7b_export() -> None:
     assert set(vars(args).keys()) == gt_set
 
 
+def test_omit_precision_resolves_from_checkpoint() -> None:
+    """separate_quantize_script models omit --precision; the CLI dispatch path
+    (unlike the deprecated export.py main) relies on parse_args to resolve it
+    from --checkpoint so the export pipeline gets a precision.
+    """
+    with (
+        patch(
+            "qai_hub_models.utils.quantization_aimet_onnx.ensure_min_aimet_onnx_version",
+            return_value=True,
+        ),
+        patch(
+            "qai_hub_models.utils.version_helpers.ensure_supported_version",
+            return_value=True,
+        ),
+    ):
+        parser = export_parser(
+            model_cls=LlamaModel,
+            export_fn=select_pipeline(resolve_model("llama_v3_1_8b_instruct")),
+            supported_precision_runtimes={
+                Precision.w4a16: [TargetRuntime.GENIEX_QAIRT],
+            },
+            omit_precision=True,
+        )
+
+    args = parser.parse_args(["--checkpoint", "DEFAULT_W4A16"])
+    assert args.precision == Precision.w4a16
+
+    # No checkpoint given -> fall back to the first supported precision.
+    args = parser.parse_args([])
+    assert args.precision == Precision.w4a16
+
+
 def test_parse_resnet18_evaluate() -> None:
     parser = evaluate_parser(
         model_cls=ResnetModel,
