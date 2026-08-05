@@ -269,13 +269,28 @@ jobs:
           name: test-results-scorecard-models
           path: build/all-test-results/model-tests
 
-      # Accuracy results only exist when accuracy was requested (test_scope
-      # accuracy / perf_and_accuracy) -- collect_results_split runs for exports
-      # regardless, so its result can't gate the accuracy artifact. Mirrors the
-      # run_accuracy expression used to drive collect_results_split.
+      # Probe first: the accuracy artifact only exists when at least one
+      # non-LLM model actually ran on-device accuracy this run. An LLM-only
+      # perf_and_accuracy dispatch satisfies the scope gate but produces no
+      # non-LLM accuracy work, so the merged artifact never appears --
+      # download-artifact would then emit a red ##[error] that flips the run
+      # conclusion to failure even with continue-on-error.
+      - name: Check Accuracy Test Results Artifact Exists
+        id: check_accuracy_results
+        if: ${{ needs.collect_results_split.result != 'skipped' && (inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTS=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --paginate -q '.artifacts[] | select(.name == "test-results-accuracy") | .id' | head -n1)
+          if [ -n "$EXISTS" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download Accuracy Test Results
         id: download_accuracy_results
-        if: ${{ needs.collect_results_split.result != 'skipped' && (inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy') }}
+        if: ${{ needs.collect_results_split.result != 'skipped' && (inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy') && steps.check_accuracy_results.outputs.exists == 'true' }}
         uses: actions/download-artifact@v8
         continue-on-error: true
         with:
@@ -311,7 +326,7 @@ jobs:
         if: ${{ format('{0}', inputs.generate_test_summary) != 'false' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          ACCURACY_SKIPPED: ${{ needs.collect_results_split.result == 'skipped' || !(inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy') }}
+          ACCURACY_SKIPPED: ${{ needs.collect_results_split.result == 'skipped' || !(inputs.test_scope == 'accuracy' || inputs.test_scope == 'perf_and_accuracy') || steps.check_accuracy_results.outputs.exists != 'true' }}
           EXPORT_SKIPPED: ${{ needs.collect_results_split.result == 'skipped' || steps.check_export_results.outputs.exists != 'true' }}
         run: |
           source "${{ env.VENV_PATH }}/bin/activate"
