@@ -52,6 +52,10 @@ on:
         default: false
         type: boolean
 
+      enable_wheel_test:
+        default: false
+        type: boolean
+
       generate_test_summary:
         description: Generate a combined test summary
         default: true
@@ -398,6 +402,95 @@ jobs:
           echo "The following jobs failed:"
           gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs --paginate -q '.jobs[] | select(.conclusion == "failure") | "  - \(.name): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/\(.id)"'
           exit 1
+
+  wheel_smoke_test:
+    name: Wheel Smoke Test
+    if: ${{ inputs.enable_wheel_test }}
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+    timeout-minutes: 60
+    env:
+      PYTHON_VERSION: ${{ inputs.python_version }}
+      QAIHM_TEST_DEPLOYMENT: ${{ inputs.deployment }}
+      SMOKE_MODEL: sinet
+      COMPILE_MARKER: "Optimizing model"
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: CI Setup
+        id: ci_setup
+        uses: ./.github/actions/ci-setup
+        with:
+          sudo-password: ${{ secrets.TETRASERVICE_PASSWORD }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          venv-path: ${{ env.VENV_PATH }}
+          hub-deployments: ${{ env.QAIHM_TEST_DEPLOYMENT }}
+          hub-user-token-prod: ${{ secrets.HUB_USER_TOKEN_PROD }}
+          hub-user-token-staging: ${{ secrets.HUB_USER_TOKEN_STAGING }}
+          hub-user-token-dev: ${{ secrets.HUB_USER_TOKEN_DEV }}
+          hub-user-token-sandbox: ${{ secrets.HUB_USER_TOKEN_SANDBOX }}
+
+      - name: Build release + CLI wheels
+        run: |
+          python3 scripts/build_and_test.py \
+            --venv="${{ env.VENV_PATH }}" \
+            --python="${{ steps.ci_setup.outputs.python-path }}" \
+            build_release_wheel build_cli_wheel
+
+      - name: Isolate QAIHM store and clear external-repo cache
+        run: |
+          echo "QAIHM_STORE_ROOT=${RUNNER_TEMP}/wheel_store" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/wheel_store"
+          rm -rf "${RUNNER_TEMP}/wheel_store/.qaihm/external_repos"
+
+      - name: Create fresh venv and install wheels
+        run: |
+          "${{ steps.ci_setup.outputs.python-path }}" -m venv "${RUNNER_TEMP}/wheel_venv"
+          # shellcheck disable=SC1091
+          source "${RUNNER_TEMP}/wheel_venv/bin/activate"
+          pip install --upgrade pip
+          pip install src/build/release/wheel/*.whl cli/build/wheel/*.whl
+          echo "${RUNNER_TEMP}/wheel_venv/bin" >> "$GITHUB_PATH"
+
+      - name: Copy hub credentials into wheel venv
+        run: |
+          # shellcheck disable=SC1091
+          source "${RUNNER_TEMP}/wheel_venv/bin/activate"
+          bash scripts/ci/setup-workbench-creds.sh \
+            "${{ env.QAIHM_TEST_DEPLOYMENT }}" \
+            "${{ secrets.HUB_USER_TOKEN_PROD }}" \
+            "${{ secrets.HUB_USER_TOKEN_STAGING }}" \
+            "${{ secrets.HUB_USER_TOKEN_DEV }}" \
+            "${{ secrets.HUB_USER_TOKEN_SANDBOX }}" \
+            DEFAULT \
+            "${RUNNER_TEMP}/wheel_venv"
+
+      - name: Smoke - qai-hub-models --help
+        run: qai-hub-models --help
+
+      - name: Smoke - qai-hub-models info ${{ env.SMOKE_MODEL }}
+        run: qai-hub-models info "${SMOKE_MODEL}"
+
+      - name: Smoke - qai-hub-models export ${{ env.SMOKE_MODEL }} (external-repo clone + compile submit)
+        env:
+          QAIHM_CLI_VERBOSE_EXCEPTIONS: 1
+        run: |
+          set -o pipefail
+          out=$(qai-hub-models export "${SMOKE_MODEL}" \
+            --chipset qualcomm-snapdragon-8gen3 \
+            --precision float \
+            --target-runtime tflite \
+            --skip-profiling \
+            --skip-inferencing \
+            --skip-downloading \
+            --skip-summary \
+            2>&1 | tee /dev/stderr)
+          if ! grep -qF "${COMPILE_MARKER}" <<< "$out"; then
+            echo "::error::'${COMPILE_MARKER}' not found in export stdout"
+            exit 1
+          fi
 
   combine_test_results:
     name: Combine Test Results
