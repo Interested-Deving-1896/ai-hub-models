@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, fields
 from functools import partial
@@ -53,14 +54,17 @@ class ResolvedModel:
     supports_quant_cpu: bool = False
 
 
-def resolve_model(model_id_or_module: str) -> ResolvedModel:
+def resolve_model(model_id_or_module: str | Path) -> ResolvedModel:
     """Import the model's module and gather its metadata.
 
     Parameters
     ----------
     model_id_or_module
         A known model id (e.g. ``"mobilenet_v2"``, resolved under
-        ``qai_hub_models.models``) or any importable dotted module path.
+        ``qai_hub_models.models``), any importable dotted module path, or
+        a filesystem ``Path`` to a standalone model folder. When a folder
+        path is passed, its parent is prepended to ``sys.path`` and the
+        folder's basename is imported as a top-level module.
 
     Returns
     -------
@@ -69,11 +73,16 @@ def resolve_model(model_id_or_module: str) -> ResolvedModel:
         derived from the module's ``__file__``, and ``manifest.yaml`` read
         from that directory.
     """
-    module_path = (
-        f"qai_hub_models.models.{model_id_or_module}"
-        if model_id_or_module in MODEL_IDS
-        else model_id_or_module
-    )
+    if isinstance(model_id_or_module, Path):
+        folder = model_id_or_module
+        if not folder.is_dir():
+            raise FileNotFoundError(f"Model folder does not exist: {folder}")
+        sys.path.insert(0, str(folder.parent))
+        module_path = folder.name
+    elif model_id_or_module in MODEL_IDS:
+        module_path = f"qai_hub_models.models.{model_id_or_module}"
+    else:
+        module_path = model_id_or_module
     module = importlib.import_module(module_path)
     if module.__file__ is None:
         raise ValueError(

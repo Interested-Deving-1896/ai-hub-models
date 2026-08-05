@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 import requests
 from pydantic import Field, ValidationInfo, model_serializer, model_validator
+from qai_hub_models_cli.common import LOCAL_STORE_DEFAULT_PATH
 from qai_hub_models_cli.proto import info_pb2, numerics_pb2
 from urllib3.util.retry import Retry
 
@@ -43,7 +44,6 @@ from qai_hub_models.configs.proto_helpers import (
 from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.utils.asset_loaders import (
     ASSET_CONFIG,
-    LOCAL_STORE_DEFAULT_PATH,
     QAIHM_WEB_ASSET,
 )
 from qai_hub_models.utils.base_config import BaseQAIHMConfig

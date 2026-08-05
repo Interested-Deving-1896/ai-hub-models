@@ -140,3 +140,28 @@ def test_dispatch_model_not_in_installed_package_exits() -> None:
     mock_get_entry.assert_called_once_with("future_model", "9.9.9")
     assert "future_model" in str(exc_info.value)
     assert "installed qai_hub_models package" in str(exc_info.value)
+
+
+def test_dispatch_builtin_id_wins_over_alias() -> None:
+    """A registered alias must not shadow a built-in model id.
+
+    ``register_alias``'s collision check only fires when heavy is installed,
+    so someone could register e.g. ``mobilenet_v2`` from a lean CLI and later
+    install heavy — dispatch has to prefer the built-in either way.
+    """
+    mock_run = MagicMock()
+    mock_resolve_alias = MagicMock(return_value=None)
+    with (
+        patch("qai_hub_models_cli.cli._check_version_match"),
+        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch("qai_hub_models_cli.cli.resolve_alias", mock_resolve_alias),
+        patch.dict(
+            sys.modules,
+            _stub_heavy_modules({"mobilenet_v2"}, run_model_script=mock_run),
+        ),
+    ):
+        main(["export", "mobilenet_v2"])
+    mock_resolve_alias.assert_not_called()
+    mock_run.assert_called_once_with(
+        model_id="mobilenet_v2", script="export", forwarded=[]
+    )

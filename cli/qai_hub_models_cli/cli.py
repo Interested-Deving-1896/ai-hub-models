@@ -8,6 +8,7 @@ import sys
 from collections.abc import Callable, Iterable
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 from typing import Any
 
 from packaging.version import Version
@@ -95,6 +96,12 @@ from qai_hub_models_cli.proto_helpers.release_assets import (
     get_model_release_assets,
 )
 from qai_hub_models_cli.proto_helpers.tool_versions import format_tool_versions
+from qai_hub_models_cli.registry import (
+    load_registry,
+    register_alias,
+    resolve_alias,
+    unregister_alias,
+)
 from qai_hub_models_cli.utils import build_table, wrap_table_column
 from qai_hub_models_cli.versions import (
     CURRENT_VERSION,
@@ -524,22 +531,34 @@ def _dispatch_export_or_evaluate(script: str, raw_args: list[str]) -> None:
 
     from qai_hub_models.utils.path_helpers import MODEL_IDS
 
-    model_id = model_arg
-    if model_id not in MODEL_IDS:
-        # get_manifest_entry will rebuild the manifest for internal dev versions (which takes a long time).
-        # We only call it if model_args does not exactly map to a model ID.
-        model_id = get_manifest_entry(model_arg, CURRENT_VERSION).id
-        if model_id not in MODEL_IDS:
+    # Built-in ids win over aliases; register_alias's collision check only
+    # runs when heavy is installed, so alias-shadowing is possible otherwise.
+    model_ref: str | Path
+    aliased_folder = None if model_arg in MODEL_IDS else resolve_alias(model_arg)
+    if aliased_folder is not None:
+        if script == "install":
             sys.exit(
-                f"Model {model_id!r} is in the v{CURRENT_VERSION} manifest but not "
-                f"in the installed qai_hub_models package. Upgrade with "
-                f"`pip install -U qai_hub_models`."
+                f"`{CLI_NAME} install` does not support registered folders; "
+                "pass a built-in model id instead."
             )
+        model_ref = aliased_folder
+    else:
+        model_ref = model_arg
+        if model_ref not in MODEL_IDS:
+            # get_manifest_entry will rebuild the manifest for internal dev versions (which takes a long time).
+            # We only call it if model_args does not exactly map to a model ID.
+            model_ref = get_manifest_entry(model_arg, CURRENT_VERSION).id
+            if model_ref not in MODEL_IDS:
+                sys.exit(
+                    f"Model {model_ref!r} is in the v{CURRENT_VERSION} manifest but not "
+                    f"in the installed qai_hub_models package. Upgrade with "
+                    f"`pip install -U qai_hub_models`."
+                )
 
     from qai_hub_models.cli.dispatch import run_model_script
 
     try:
-        run_model_script(model_id=model_id, script=script, forwarded=forwarded)
+        run_model_script(model_id=model_ref, script=script, forwarded=forwarded)
     except Exception as e:
         raise RuntimeError(
             f"\nSomething went wrong (an exception was thrown). Email us at ai-hub-support@qti.qualcomm.com for assistance.\n\n"
@@ -646,6 +665,87 @@ def add_install_parser(
         ),
         args=[("model", str)],
     )
+
+
+def _run_register(args: argparse.Namespace) -> None:
+    try:
+        stored = register_alias(args.name, args.folder, force=args.force)
+    except (ValueError, FileNotFoundError) as e:
+        sys.exit(str(e))
+    print(f"Registered {args.name!r} -> {stored}")
+
+
+def add_register_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        "register",
+        help="Register a name for a local model folder.",
+        description="Register a short name for a standalone model folder so it "
+        "can be used with `export` / `evaluate` in place of the full folder path.",
+    )
+    parser.add_argument("name", type=str, help="Alias to register (e.g. my_yolo).")
+    parser.add_argument("folder", type=str, help="Path to the model folder.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing registration for this name.",
+    )
+    parser.set_defaults(func=_run_register)
+    return parser
+
+
+def _run_unregister(args: argparse.Namespace) -> None:
+    path = unregister_alias(args.name)
+    if path is None:
+        print(f"{args.name!r} is not registered.")
+        return
+    print(f"Unregistered {args.name!r} (was {path})")
+
+
+def add_unregister_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        "unregister",
+        help="Remove a registered model folder name.",
+        description="Remove an alias previously created with `register`.",
+    )
+    parser.add_argument("name", type=str, help="Alias to remove.")
+    parser.set_defaults(func=_run_unregister)
+    return parser
+
+
+def _run_list_registered(args: argparse.Namespace) -> None:
+    entries = load_registry()
+    if not entries:
+        print("No registered model folders.")
+        return
+    if args.quiet:
+        for name in sorted(entries):
+            print(name)
+        return
+    print(
+        build_table(
+            ["Name", "Folder"],
+            [[name, entries[name]] for name in sorted(entries)],
+            wrap_column="Folder",
+            title="Registered Model Folders",
+        )
+    )
+
+
+def add_list_registered_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        "list-registered",
+        help="List registered model folder names.",
+        description="List every alias registered with `register`.",
+    )
+    add_quiet_arg(parser, "Print alias names only, one per line.")
+    parser.set_defaults(func=_run_list_registered)
+    return parser
 
 
 def _run_list_models(args: argparse.Namespace) -> None:
@@ -1437,6 +1537,9 @@ def _build_parser() -> argparse.ArgumentParser:
     add_export_parser(subparsers)
     add_evaluate_parser(subparsers)
     add_install_parser(subparsers)
+    add_register_parser(subparsers)
+    add_unregister_parser(subparsers)
+    add_list_registered_parser(subparsers)
     if use_internal_releases() or is_internal_repo():
         add_validate_aws_parser(subparsers)
 
@@ -1452,6 +1555,9 @@ def _build_parser() -> argparse.ArgumentParser:
             "install",
             "export",
             "evaluate",
+            "register",
+            "unregister",
+            "list-registered",
         ],
         "Catalog": [
             "models",

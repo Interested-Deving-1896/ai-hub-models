@@ -132,6 +132,33 @@ def test_resolve_model_passes_unknown_id_through_verbatim() -> None:
     mock_import.assert_called_once_with("my_project.models.foo")
 
 
+def test_resolve_model_folder_path_inserts_parent_and_imports_basename(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Path arg prepends its parent to sys.path and imports by basename."""
+    monkeypatch.setattr(sys, "path", sys.path[:])
+    folder = tmp_path / "standalone_model"
+    folder.mkdir()
+
+    with (
+        patch(
+            "qai_hub_models.utils.export.dispatch.importlib.import_module",
+            side_effect=RuntimeError("stop-after-import"),
+        ) as mock_import,
+        pytest.raises(RuntimeError, match="stop-after-import"),
+    ):
+        resolve_model(folder)
+
+    mock_import.assert_called_once_with("standalone_model")
+    assert sys.path[0] == str(folder.parent)
+
+
+def test_resolve_model_missing_folder_raises(tmp_path: Path) -> None:
+    """A Path arg to a non-existent folder raises FileNotFoundError."""
+    with pytest.raises(FileNotFoundError, match="Model folder does not exist"):
+        resolve_model(tmp_path / "not_there")
+
+
 def test_select_pipeline_excludes_model_id_from_bindings() -> None:
     """select_pipeline leaves model_id unbound so positional callers don't collide."""
 

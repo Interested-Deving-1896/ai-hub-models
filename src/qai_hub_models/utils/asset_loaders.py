@@ -38,6 +38,7 @@ from inputimeout import TimeoutOccurred, inputimeout
 from packaging.version import Version
 from PIL import Image
 from qai_hub.util.dataset_entries_converters import h5_to_dataset_entries
+from qai_hub_models_cli.common import LOCAL_STORE_DEFAULT_PATH
 from schema import And, Schema, SchemaError
 from tqdm import tqdm
 
@@ -51,9 +52,6 @@ from qai_hub_models.utils.version_helpers import QAIHMVersion
 ASSET_BASES_DEFAULT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "asset_bases.yaml"
 )
-
-QAIHM_STORE_ROOT = os.environ.get("QAIHM_STORE_ROOT", os.path.expanduser("~"))
-LOCAL_STORE_DEFAULT_PATH = os.path.join(QAIHM_STORE_ROOT, ".qaihm")
 EXECUTING_IN_CI_ENVIRONMENT = IsOnCIEnvvar.get()
 SOURCE_AS_ROOT_LOCK = threading.Lock()
 

@@ -22,10 +22,11 @@ except ImportError as e:
         "and then run: pip install gitpython"
     ) from e
 
+from qai_hub_models_cli.common import LOCAL_STORE_DEFAULT_PATH
+
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.asset_loaders import (
     EXECUTING_IN_CI_ENVIRONMENT,
-    LOCAL_STORE_DEFAULT_PATH,
     query_yes_no,
 )
 from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT

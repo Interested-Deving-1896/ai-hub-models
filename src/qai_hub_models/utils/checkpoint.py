@@ -15,10 +15,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 
 import torch
+from qai_hub_models_cli.common import LOCAL_STORE_DEFAULT_PATH
 from typing_extensions import Self
 
 from qai_hub_models import Precision
-from qai_hub_models.utils.asset_loaders import LOCAL_STORE_DEFAULT_PATH
 from qai_hub_models.utils.input_spec import make_torch_inputs
 from qai_hub_models.utils.onnx.helpers import (
     ONNXBundle,

@@ -15,6 +15,7 @@ checking the model exists in the installed package before calling in.
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import cast
 
 from qai_hub_models.cli.install import main as install_main
@@ -188,38 +189,40 @@ def run_evaluate(model_id_or_module: str, args: argparse.Namespace) -> None:
     select_evaluate_pipeline(resolved)(resolved.model_id, **vars(args))
 
 
-def run_model_script(model_id: str, script: str, forwarded: list[str]) -> None:
+def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) -> None:
     """Run the given script for the model.
 
     Parameters
     ----------
     model_id
-        Model directory name (e.g. ``"mobilenet_v2"``). Must already be
-        validated against ``MODEL_IDS`` by the caller.
+        Model directory name (e.g. ``"mobilenet_v2"``, validated against
+        ``MODEL_IDS`` by the caller) or a filesystem ``Path`` to a
+        standalone model folder. The CLI is responsible for rejecting
+        combinations the underlying script does not support.
     script
         Script name (``"export"``, ``"evaluate"``, or ``"install"``).
     forwarded
         Argv tail handed to the model's parser.
     """
     if script == "install":
-        install_main([model_id, *forwarded])
+        install_main([str(model_id), *forwarded])
         return
 
     resolved = resolve_model(model_id)
     if script == "export":
         parser = build_export_parser_for(resolved)
-        parser.prog = f"qai_hub_models export {model_id}"
+        parser.prog = f"qai_hub_models export {resolved.model_id}"
         args = parser.parse_args(forwarded)
-        if not _confirm_run_ok(model_id):
+        if not _confirm_run_ok(resolved.model_id):
             return
         select_pipeline(resolved)(resolved.model_id, **vars(args))
         return
 
     if script == "evaluate":
         parser = build_evaluate_parser_for(resolved)
-        parser.prog = f"qai_hub_models evaluate {model_id}"
+        parser.prog = f"qai_hub_models evaluate {resolved.model_id}"
         args = parser.parse_args(forwarded)
-        if not _confirm_run_ok(model_id):
+        if not _confirm_run_ok(resolved.model_id):
             return
         select_evaluate_pipeline(resolved)(resolved.model_id, **vars(args))
         return

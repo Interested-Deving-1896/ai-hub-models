@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import functools
 import importlib.util
+import os
+import os.path
 from pathlib import Path
 
 import platformdirs
@@ -17,6 +19,11 @@ ASSET_FOLDER = "qai-hub-models/models/{model_id}/releases/v{version}"
 
 GITHUB_REPO_URL = "https://github.com/qualcomm/ai-hub-models"
 AIHUB_MODELS_URL = "https://aihub.qualcomm.com/models"
+
+# Shared store root for both the CLI and the heavy ``qai_hub_models`` package,
+# so registry files and asset caches always land in the same place.
+QAIHM_STORE_ROOT: str = os.environ.get("QAIHM_STORE_ROOT", os.path.expanduser("~"))
+LOCAL_STORE_DEFAULT_PATH: str = os.path.join(QAIHM_STORE_ROOT, ".qaihm")
 
 
 @functools.cache
