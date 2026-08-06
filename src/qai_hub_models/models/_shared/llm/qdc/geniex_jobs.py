@@ -880,4 +880,19 @@ def collect_geniex_bench_result(
         if eval_prompts
         else []
     )
+    # A job can report result='Successful' and return log files while carrying
+    # no eval output at all: if the device drops off adb mid-run, QDC_logs is
+    # never harvested and only the infrastructure logs come back. Treating that
+    # as SUCCESS makes it non-retryable, so the run ends as
+    # eval_incomplete (0/N) with an attempt still unspent. Classify it as
+    # retryable-empty-logs instead, matching the no-log-files case above.
+    if eval_prompts and not eval_results:
+        reason = (
+            f"QDC job {job_id} on device '{hub_device_name}' reported result="
+            f"'{job_result}' but returned no eval output for "
+            f"{len(eval_prompts)} prompt(s); the device logs were likely never "
+            f"harvested"
+        )
+        print(f"[no eval output] {reason}")
+        return metrics, [], JobOutcome.RETRYABLE_EMPTY_LOGS, reason
     return metrics, eval_results, JobOutcome.SUCCESS, None

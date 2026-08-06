@@ -175,12 +175,39 @@ def _cleanup_device() -> None:
     adb("rm -f /data/local/tmp/matrix-*.tsv", check=False)
 
 
-def _run_eval(env: str, model_ref: str, device_alias: str, chipset: str) -> int:
+def _count_eval_markers() -> int:
+    """Count the ===EVAL_IDX=== markers currently in the on-device eval output.
+
+    Returns
+    -------
+    int
+        The marker count, or 0 if the file is absent or adb is unreachable.
+    """
+    n = adb(f"grep -c '===EVAL_IDX_' {DEVICE_EVAL_OUT}", check=False)
+    try:
+        return int(n.stdout.strip())
+    except ValueError:
+        # grep found nothing, or adb itself is gone and returned no count.
+        return 0
+
+
+def _run_eval(
+    env: str, model_ref: str, device_alias: str, chipset: str
+) -> tuple[int, int, int]:
     """Run `geniex-bench --accuracy` once per staged prompt, collecting stdout.
 
     Output for each prompt is marked with ===EVAL_IDX_NNN=== so the host can
-    split and grade it. Returns the number of prompts that produced output; a
-    context-length overflow keeps its partial [gen] output and counts as run.
+    split and grade it.
+
+    Returns ``(ran, collected, expected)``. The first two diverge when the
+    device drops off adb mid-run:
+
+    - ``ran`` counts prompts whose geniex-bench invocation exited 0. A
+      context-length overflow keeps its partial [gen] output and counts as run.
+    - ``collected`` counts the ===EVAL_IDX=== markers actually readable back
+      from the device, i.e. what the host will be able to retrieve.
+    - ``expected`` is the staged prompt count, returned so the caller compares
+      against the set this loop iterated rather than re-globbing.
     """
     assert os.path.isdir(HOST_PROMPTS), f"eval requested but {HOST_PROMPTS} missing"
     prompt_files = sorted(
@@ -188,7 +215,16 @@ def _run_eval(env: str, model_ref: str, device_alias: str, chipset: str) -> int:
     )
     adb(f"mkdir -p {DEVICE_PROMPTS}")
     subprocess.run(["adb", "push", f"{HOST_PROMPTS}/.", DEVICE_PROMPTS], check=True)
-    adb(f"rm -f {DEVICE_EVAL_OUT} {DEVICE_EVAL_ERR}")
+    # check=False so an unreachable device is reported by the eval loop below
+    # rather than by an assert on cleanup. Verify the post-state instead: on a
+    # reused cell (_cleanup_device spares QDC_logs) a surviving marker would
+    # inflate the completeness count and mask an incomplete harvest.
+    adb(f"rm -f {DEVICE_EVAL_OUT} {DEVICE_EVAL_ERR}", check=False)
+    stale = _count_eval_markers()
+    assert stale == 0, (
+        f"{DEVICE_EVAL_OUT} still holds {stale} ===EVAL_IDX=== marker(s) after "
+        "cleanup; a previous job's output would be mixed into this run's results."
+    )
     eval_ran = 0
     for fn in prompt_files:
         idx = fn[len("prompt_") : -len(".txt")]
@@ -227,9 +263,12 @@ def _run_eval(env: str, model_ref: str, device_alias: str, chipset: str) -> int:
         adb(f"cat {perr} >> {DEVICE_EVAL_ERR} 2>/dev/null", check=False)
         adb(f"rm -f {pout} {perr}", check=False)
         adb(f"sleep {EVAL_SLEEP_S}", check=False)
-    n = adb(f"grep -c '===EVAL_IDX_' {DEVICE_EVAL_OUT}", check=False)
-    print(f"eval done ({n.stdout.strip()} prompts, {eval_ran} ran)")
-    return eval_ran
+    collected = _count_eval_markers()
+    print(
+        f"eval done ({collected} prompts collected, {eval_ran} ran, "
+        f"{len(prompt_files)} expected)"
+    )
+    return eval_ran, collected, len(prompt_files)
 
 
 def test_scorecard() -> None:
@@ -301,6 +340,8 @@ def test_scorecard() -> None:
             print("perf sweep disabled (RUN_PERF=False); eval only")
 
         eval_ran = 0
+        eval_collected = 0
+        eval_expected = 0
         if RUN_EVAL:
             # Single model per job: derive the -m ref from the first row.
             _first_name, _, _first_devs, first_model = rows[0].split("|")[:4]
@@ -310,7 +351,9 @@ def test_scorecard() -> None:
                 else first_model
             )
             # Accuracy eval always runs on the NPU (the on-device target).
-            eval_ran = _run_eval(env, eval_model, "npu", chipset)
+            eval_ran, eval_collected, eval_expected = _run_eval(
+                env, eval_model, "npu", chipset
+            )
 
         if RUN_PERF and (failures or cell_json_count == 0):
             pytest.fail(
@@ -322,6 +365,18 @@ def test_scorecard() -> None:
         # instead of adb silently hiding the device drop.
         if RUN_EVAL and eval_ran == 0:
             pytest.fail("accuracy eval produced no output (all prompts failed)")
+        # Prompts can all run and still leave nothing to fetch: a late adb drop
+        # means QDC_logs is never harvested, yet the job reports "Successful", so
+        # the host burns the run on eval_incomplete (0/N) with no retry. Fail so
+        # poll_and_retry resubmits.
+        if RUN_EVAL and eval_collected < eval_expected:
+            pytest.fail(
+                f"accuracy eval output incomplete on device: "
+                f"{eval_collected}/{eval_expected} ===EVAL_IDX=== markers "
+                f"readable back ({eval_ran} prompts ran). The device likely "
+                f"dropped off adb mid-run, so these results would not be "
+                f"retrievable by the host."
+            )
     finally:
         _cleanup_device()
 
