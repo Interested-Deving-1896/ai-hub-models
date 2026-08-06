@@ -17,6 +17,7 @@ from qai_hub_models_cli.proto.manifest_pb2 import (
     ReleaseManifest,
 )
 from qai_hub_models_cli.proto_helpers._common import fetch_release_proto
+from qai_hub_models_cli.proto_helpers.platform_enums import normalize_label
 from qai_hub_models_cli.versions import CURRENT_VERSION
 
 
@@ -24,9 +25,12 @@ def get_manifest_entry(
     model: str, version: Version = CURRENT_VERSION
 ) -> ManifestModelEntry:
     manifest = get_manifest(version)
-    model_lower = model.lower()
+    model_key = normalize_label(model)
     for entry in manifest.models:
-        if model_lower in (entry.id.lower(), entry.display_name.lower()):
+        if model_key in (
+            normalize_label(entry.id),
+            normalize_label(entry.display_name),
+        ):
             return entry
     raise KeyError(
         f"No model exists with the name or ID: {model!r}. "

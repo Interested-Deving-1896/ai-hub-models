@@ -344,6 +344,22 @@ class TestGetManifestEntry:
         ):
             get_manifest_entry("nonexistent_model", _RELEASE_VERSION)
 
+    @pytest.mark.parametrize(
+        "user_input",
+        ["MobileNet V2", "mobilenet-v2", "MOBILENET_V2", "mobilenet v2"],
+    )
+    def test_lookup_normalizes_separators_and_case(self, user_input: str) -> None:
+        # Users copy the display name from aihub.qualcomm.com/models — that
+        # rendering may separate words with spaces, hyphens, or underscores.
+        from qai_hub_models_cli.proto_helpers.manifest import get_manifest_entry
+
+        with patch(
+            "qai_hub_models_cli.proto_helpers.manifest.get_manifest",
+            return_value=_manifest(),
+        ):
+            entry = get_manifest_entry(user_input, _RELEASE_VERSION)
+        assert entry.id == "mobilenet_v2"
+
 
 # ── info.py ───────────────────────────────────────────────────────────
 

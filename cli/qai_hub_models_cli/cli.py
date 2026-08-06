@@ -248,7 +248,9 @@ def add_fetch_parser(subparsers: argparse._SubParsersAction) -> argparse.Argumen
         "fetch",
         help="Download a pre-compiled model asset.",
     )
-    parser.add_argument("model", type=str.lower, help="Model ID (e.g. mobilenet_v2).")
+    parser.add_argument(
+        "model", type=str.lower, help="Model ID or display name (e.g. mobilenet_v2)."
+    )
     add_asset_filter_args(parser)
     add_version_arg(parser)
     parser.add_argument(
@@ -352,7 +354,9 @@ def add_find_parser(subparsers: argparse._SubParsersAction) -> argparse.Argument
         "that have one. Useful when the current release dropped an asset you need. "
         "By default only the newest matching release is reported.",
     )
-    parser.add_argument("model", type=str.lower, help="Model ID (e.g. mobilenet_v2).")
+    parser.add_argument(
+        "model", type=str.lower, help="Model ID or display name (e.g. mobilenet_v2)."
+    )
     add_asset_filter_args(parser)
     parser.add_argument(
         "--min-version",
