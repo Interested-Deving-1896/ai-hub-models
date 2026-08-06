@@ -44,6 +44,8 @@ Use alongside `error-patterns.md` and `runtime-guide.md` for triage.
 | All models on one device show ~same factor increase | HIGH | Cloud Services (throttled device) |
 | All entries on one device report `-inf` / no valid measurement + null Job IDs for subset | HIGH | Cloud Services / Scorecard infra (device pool unavailable or pipeline skipped submissions) |
 | Samsung Galaxy S25 `-inf` across all runtimes, sustained across multiple consecutive runs (2026-06-05: 203, 2026-06-08: 57, 2026-06-12: 15 entries) | HIGH | Cloud Services / Tungsten — S25 device pool or firmware. Improving trend but not fully resolved. (low confidence — verify with next scorecard run) |
+| ONNX runtime `-inf` concentrated on Snapdragon 7 Gen 4 QRD + Dragonwing Q-6690 MTP (100+ models, w8a8/w8a16 only, float ONNX fine) | HIGH | Cloud Services (device pool) / Tungsten (firmware). First observed prod scorecard 2026-07-27 (#20562, 269 entries). Check device pool health for these two chipsets specifically. |
+| Single model regresses >5x across ALL devices and ALL runtimes (qnn_dlc + tflite + onnx), same run | HIGH | AI Hub Models (model code / graph shape change). Cross-runtime + cross-device rules out infra/firmware. Check recent PRs touching that model directory or shared backbone. See #20562 pspnet cluster (confirmed model change by human). |
 
 ---
 

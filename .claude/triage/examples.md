@@ -224,3 +224,12 @@ The czar rotates weekly. Assign to the `ai-hub-models` label and let the current
 - **Score:** VERIFIED-INCORRECT (`triage-wrong` label applied by human)
 - **Key signal:** Scorecard submit-jobs failures on multiple Python versions with the same error pattern, distinct from the mediapipe test failures and the disk-full infrastructure issue.
 - **Lesson:** When scorecard submission/workflow jobs fail separately from unit/model test failures, always check `.github/workflows/scorecard.yml` for input parameter mismatches. Don't conflate scorecard workflow failures with other concurrent test failures (mediapipe, disk-full) — they may have independent root causes requiring separate RCA.
+
+## Example 25: Scorecard — Model Code Change Detected via Cross-Device Cross-Runtime Pattern
+**Issue:** tetracode#20562 "[Scorecard - Prod] 2x+ Regressions Detected - 2026-07-27"
+- **Error:** `pspnet` regressed 5-11x on 8 devices across all 3 runtimes (qnn_dlc, tflite, onnx) and multiple precisions (float, w8a8). 33 finite-factor slowdowns + 1 `-inf`.
+- **Agent triage:** Identified `pspnet` cluster as "model-code / graph-shape change" because all runtime backends slowed together. Routed to `ai-hub-models`.
+- **Human confirmation:** `baarts_QCOM` confirmed "the two major model regressions are model changes" and noted "pspnet: tail of network has changed, introducing many more layers."
+- **Score:** VERIFIED-CORRECT (via human confirmation)
+- **Key signal:** When a single model regresses on ALL devices and ALL runtimes simultaneously, it cannot be a device pool, firmware, or runtime issue. It must be a model-code change.
+- **Lesson:** Cross-runtime + cross-device pattern is the strongest signal that the root cause is in model code (graph shape, architecture, or export path), not in infrastructure or runtime. Route to `ai-hub-models` with high confidence.
