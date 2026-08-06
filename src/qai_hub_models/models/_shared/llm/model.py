@@ -152,6 +152,8 @@ if TYPE_CHECKING:
     from qai_hub_models.models._shared.lm_driver.generator import Generator
     from qai_hub_models.utils.base_evaluator import BaseEvaluator
 
+logger = logging.getLogger(__name__)
+
 MIN_TRANSFORMER_VERSION = "4.45.0"
 MIN_AIMET_ONNX_VERSION = "2.8.0"
 # isort: off
@@ -2253,6 +2255,14 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
 
     supported_precisions: list[Precision]
 
+    # Param tensors held at int8 instead of the precision's default weight
+    # bitwidth: their int4 matmul saturates the HTP accumulator (HEXNNVVV-9471),
+    # so on-target output diverges from QuantSim. Re-quantization only -- a
+    # published asset must also ship these at bw 8 in its model.encodings.
+    # QAIRT 2.49's "precision_compensation" should remove the need for these
+    # lists; see https://github.com/qcom-ai-hub/tetracode/issues/20616.
+    int8_param_names: tuple[str, ...] = ()
+
     @classmethod
     def get_chat_template(cls) -> dict[str, str]:
         """Delegate to FPModel's get_chat_template."""
@@ -2781,7 +2791,28 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             _set_lm_head_to_8b(quant_sim)
             cls._apply_precision_activations(quant_sim, precision)
 
+        cls._hold_params_at_int8(quant_sim)
+
         return quant_sim
+
+    @classmethod
+    def _hold_params_at_int8(cls, quant_sim: QuantizationSimModel) -> None:
+        """Widen ``int8_param_names`` quantizers to 8-bit symmetric per-channel.
+
+        Done before calibration so the range is computed for the int8 grid
+        rather than reusing an int4-calibrated one.
+        """
+        for name in cls.int8_param_names:
+            quantizer = quant_sim.qc_quantize_op_dict.get(name)
+            if quantizer is None:
+                raise KeyError(
+                    f"No quantizer for {name}; {cls.__name__}.int8_param_names "
+                    "is out of date with the exported graph."
+                )
+            quantizer.set_bitwidth(8)
+            quantizer.use_symmetric_encodings = True
+            quantizer.enable_per_channel_quantization()
+            logger.info("Holding %s at int8 (per-channel, symmetric).", name)
 
     def save_calibrated_checkpoint(  # type: ignore[override]
         self,

@@ -49,7 +49,8 @@ DEFAULT_EXPORT_SEQUENCE_LENGTHS = GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS
 
 # Model identification
 MODEL_ID = __name__.split(".")[-2]
-MODEL_ASSET_VERSION = 1
+# v2 promotes INT8_PARAM_NAMES to int8 in the published model.encodings.
+MODEL_ASSET_VERSION = 2
 
 # Model architecture constants (from Qwen3-1.7B)
 NUM_LAYERS = 28
@@ -82,6 +83,11 @@ DEFAULT_CHECKPOINT = {
 
 # Name used for split ONNX file basenames (e.g. Qwen3_1_7B_1_of_4.onnx)
 SPLIT_MODEL_NAME = "Qwen3_1_7B"
+
+# See ``LLM_AIMETOnnx.int8_param_names``. Found with scripts/llm/sim_vs_device:
+# 14.9 dB SQNR at this tap vs 41-52 dB for every other layer's down_proj.
+# Leaving it at int4 costs 15.2% absolute on the 100-prompt grader score.
+INT8_PARAM_NAMES = ("model.model.layers.2.mlp.down_proj.weight",)
 
 
 class Qwen3_1_7B_PreSplit(Qwen3PreSplitBase):
@@ -127,6 +133,7 @@ class Qwen3_1_7B_QuantizablePreSplit(Qwen3QuantizablePreSplitBase[Qwen3_1_7B_Pre
     ada_scale_num_rmsnorm_per_blk = NUM_ATTN_HEADS + NUM_KEY_VALUE_HEADS + 1
     # SpinQuant (R1+R3) is applied via `--use-spin-quant r1,r3` on the quantize CLI.
     supports_thinking = True
+    int8_param_names = INT8_PARAM_NAMES
 
 
 class Qwen3_1_7B_PartBase(Qwen3PartBase):
