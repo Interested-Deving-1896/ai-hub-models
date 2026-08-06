@@ -31,8 +31,8 @@ on:
           type: string
           default: default
 
-        qairt_version:
-          description: Qualcomm AI Runtime Version
+        runtime_versions:
+          description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). See scripts/ci/parse_runtime_version.py for grammar.'
           required: false
           type: string
           default: qaihm_default
@@ -91,7 +91,8 @@ on:
           default: default
           type: string
 
-        qairt_version:
+        runtime_versions:
+          description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7").'
           type: string
           default: qaihm_default
 
@@ -170,7 +171,7 @@ jobs:
   submit_split_jobs:
     name: Submit Workbench Jobs
     needs: [wait_workbench_deployment, sync_assets]
-    if: ${{ !cancelled() && (needs.sync_assets.result == 'success' || needs.sync_assets.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.wait_workbench_deployment.result == 'success' && (needs.sync_assets.result == 'success' || needs.sync_assets.result == 'skipped') }}
     secrets: inherit
     uses: ./.github/workflows/test_models_split.yml
     with:
@@ -179,7 +180,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      qairt_version: ${{ inputs.qairt_version }}
+      runtime_versions: ${{ inputs.runtime_versions }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       sync_assets_branch: ${{ needs.sync_assets.outputs.branch_name }}
@@ -201,7 +202,7 @@ jobs:
 
   scorecard_llm_device_run:
     name: LLM On-Device Run (asset upload, perf, accuracy)
-    needs: submit_split_jobs
+    needs: [wait_workbench_deployment, submit_split_jobs]
     if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && inputs.test_scope != 'compile_only' }}
     secrets: inherit
     uses: ./.github/workflows/scorecard_llm_device_run.yml
@@ -215,6 +216,7 @@ jobs:
       test_precisions: ${{ inputs.test_precisions }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_scope: ${{ inputs.test_scope }}
+      runtime_versions: ${{ inputs.runtime_versions }}
 
   collect_results_split:
     name: Test Export Scripts, Upload Zip Files & Compute Accuracy

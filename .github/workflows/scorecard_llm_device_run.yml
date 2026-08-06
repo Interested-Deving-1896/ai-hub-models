@@ -49,6 +49,11 @@ on:
           type: string
           default: perf_and_accuracy
 
+        runtime_versions:
+          description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). Only geniex_version is consumed here; see scripts/ci/parse_runtime_version.py.'
+          type: string
+          default: qaihm_default
+
 env:
   PYTHONUNBUFFERED: 1
   VENV_PATH: build/ci-envs/qaihm-build
@@ -62,8 +67,15 @@ jobs:
       models: ${{ steps.find.outputs.models }}
       llm_split_matrix: ${{ steps.find.outputs.llm_split_matrix }}
       has_models: ${{ steps.find.outputs.has_models }}
+      geniex_version: ${{ steps.parse_versions.outputs.geniex_version }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Parse runtime_versions
+        id: parse_versions
+        env:
+          RAW: ${{ inputs.runtime_versions }}
+        run: python3 scripts/ci/parse_runtime_version.py
 
       - name: CI Setup
         uses: ./.github/actions/ci-setup
@@ -176,6 +188,7 @@ jobs:
       # Map default and default variants to 'all' (see scorecard/envvars.py).
       precision: ${{ contains(fromJSON('["default", "default_minus_float", "default_quantized", "bench"]'), inputs.test_precisions) && 'all' || inputs.test_precisions }}
       geniex_bench_plugin: qairt
+      geniex_version: ${{ needs.determine_llm_models.outputs.geniex_version }}
       release_assets_action_id: ${{ inputs.action_id }}
       create_pr: false
       scope: ${{ inputs.test_scope }}

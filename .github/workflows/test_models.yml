@@ -19,7 +19,8 @@ on:
         default: default
         type: string
 
-      qairt_version:
+      runtime_versions:
+        description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). Only qairt_version is consumed here; see scripts/ci/parse_runtime_version.py.'
         type: string
         default: qaihm_default
 
@@ -102,7 +103,6 @@ jobs:
       QAIHM_TEST_PATHS: ${{ inputs.test_runtimes }}
       QAIHM_TEST_MODELS: ${{ inputs.models }}
       QAIHM_TEST_PRECISIONS: ${{ inputs.test_precisions }}
-      QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version }}
       QAIHM_TEST_IGNORE_DEVICE_JOB_CACHE: ${{ inputs.ignore_job_cache }}
       HUGGING_FACE_HUB_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       COMPILE_JOBS_URL: NONE
@@ -163,6 +163,11 @@ jobs:
         run: |
           git fetch origin ${{ inputs.sync_assets_branch }}
           git checkout origin/${{ inputs.sync_assets_branch }} -- src/qai_hub_models/scorecard/static/models
+
+      - name: Parse runtime_versions
+        env:
+          RAW: ${{ inputs.runtime_versions }}
+        run: python3 scripts/ci/parse_runtime_version.py --emit-env
 
       - name: CI Setup
         id: ci_setup

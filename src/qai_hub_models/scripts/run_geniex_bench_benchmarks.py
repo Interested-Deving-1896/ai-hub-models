@@ -1047,16 +1047,6 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return _write_final_outputs(rows, perf_updates, args.csv, args.perf_updates_json)
 
 
-def _warn_geniex_version(version: str | None) -> None:
-    if version and not version.startswith("v"):
-        print(
-            f"WARNING: --geniex-version={version!r} does not start "
-            f'with "v"; release tags are SemVer-prefixed (e.g. "v0.3.1"). The '
-            f"S3 download will likely 404.",
-            file=sys.stderr,
-        )
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run geniex-bench benchmarks on QDC.")
     sub = ap.add_subparsers(dest="cmd")
@@ -1093,8 +1083,6 @@ def main() -> int:
     if argv and argv[0] not in {"submit", "collect", "run", "-h", "--help"}:
         argv = ["run", *argv]
     args = ap.parse_args(argv)
-
-    _warn_geniex_version(getattr(args, "geniex_version", None))
 
     if not args.run_perf and not args.run_eval:
         print(

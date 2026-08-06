@@ -28,8 +28,8 @@ on:
         default: default
         type: string
 
-      qairt_version:
-        description: Qualcomm AI Runtime Version
+      runtime_versions:
+        description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). See scripts/ci/parse_runtime_version.py.'
         type: string
         default: qaihm_default
 
@@ -147,7 +147,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      qairt_version: ${{ inputs.qairt_version }}
+      runtime_versions: ${{ inputs.runtime_versions }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       ignore_known_failures: ${{ inputs.ignore_known_failures }}
@@ -184,7 +184,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      qairt_version: ${{ inputs.qairt_version }}
+      runtime_versions: ${{ inputs.runtime_versions }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       ignore_known_failures: ${{ inputs.ignore_known_failures }}

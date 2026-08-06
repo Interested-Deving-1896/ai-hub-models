@@ -54,7 +54,8 @@ def _safe_extract_zip(zip_path: str, dest_dir: str) -> None:
 
 
 def _bench_url(platform_stem: str, ext: str, version: str | None) -> str:
-    suffix = f"-{version}" if version else ""
+    # Callers pass bare SemVer ("0.3.7"); S3 filenames are v-prefixed.
+    suffix = f"-v{version}" if version else ""
     return f"{_S3_BASE}/geniex-bench-{platform_stem}{suffix}.{ext}"
 
 
