@@ -33,9 +33,14 @@ def get_rope_theta(llm_config: PretrainedConfig) -> float:
     rope_parameters = getattr(llm_config, "rope_parameters", None) or {}
     if "rope_theta" in rope_parameters:
         return rope_parameters["rope_theta"]
+    # Nested rope_parameters (e.g. Gemma4): prefer the local RoPE.
+    for key in ("sliding_attention", "full_attention"):
+        sub = rope_parameters.get(key)
+        if isinstance(sub, dict) and "rope_theta" in sub:
+            return sub["rope_theta"]
     raise AttributeError(
-        "Could not find rope_theta on llm_config (checked top-level attribute "
-        "and rope_parameters)."
+        "Could not find rope_theta on llm_config (checked top-level attribute, "
+        "rope_parameters, and nested sliding_attention/full_attention sub-dicts)."
     )
 
 

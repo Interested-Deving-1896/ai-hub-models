@@ -22,6 +22,7 @@ import contextlib
 import functools
 import gc
 import glob
+import inspect
 import itertools
 import json
 import logging
@@ -300,6 +301,16 @@ def get_onnx_model(
     quiet: bool = False,
     extra_dynamic_shapes: dict[str, dict[int, Any]] | None = None,
 ) -> onnx.ModelProto | None:
+    """Export an LLM to ONNX.
+
+    extra_dynamic_shapes: dynamic dims keyed by `get_input_spec` name, each
+        overriding what the builder below would infer, so a model with extra or
+        differently-named inputs (Qwen3-VL's deepstack embeds, Gemma4's
+        per_layer_inputs / swa_attention_mask / dual RoPE) declares only the
+        difference. Use a named `Dim` where a dim must be shared or derived --
+        Gemma4's SWA mask width is `seq + sliding_window`, and `Dim.DYNAMIC`
+        cannot do arithmetic.
+    """
     ensure_supported_version(
         "torch",
         min_version=TORCH_DYNAMIC_SHAPE_MIN_VERSION,
@@ -362,39 +373,57 @@ def get_onnx_model(
     kv_seq_len = Dim.DYNAMIC  # type: ignore[attr-defined, unused-ignore]
     ctx_len = Dim.DYNAMIC  # type: ignore[attr-defined, unused-ignore]
 
-    # The model's forward signature is: forward(self, input_tokens, attention_mask, *args)
-    # So torch.export sees the input structure as: (input_tokens, attention_mask, args_tuple)
-    # We need dynamic_shapes to match this 3-element structure
     input_names = list(input_specs.keys())
 
-    # Build dynamic shapes for the *args portion (everything after input_tokens and attention_mask)
+    # Per-input dims, in get_input_spec order. extra_dynamic_shapes wins for
+    # every name including the leading two, so a model that breaks the
+    # (input_tokens, attention_mask) convention (Gemma4 has per_layer_inputs
+    # second and two masks) declares just those names.
     _extra = extra_dynamic_shapes or {}
-    args_dynamic_shapes: list[dict[int, Any] | None] = []
-    for name in input_names[2:]:  # Skip input_ids/input_embeds and attention_mask
+    per_input_dynamic_shapes: list[dict[int, Any] | None] = []
+    for i, name in enumerate(input_names):
         if name in _extra:
-            args_dynamic_shapes.append(_extra[name])
+            per_input_dynamic_shapes.append(_extra[name])
+        elif i == 0:
+            # input_tokens (input_ids or input_embeds): (1, seq_len, ...)
+            per_input_dynamic_shapes.append({1: seq_len})
+        elif i == 1:
+            # attention_mask: (1, 1, seq_len, context_length)
+            per_input_dynamic_shapes.append({2: seq_len, 3: ctx_len})
         elif name == "position_ids":
             # Shape: (1, seq_len)
-            args_dynamic_shapes.append({1: seq_len})
+            per_input_dynamic_shapes.append({1: seq_len})
         elif name in ("position_ids_cos", "position_ids_sin"):
             # Shape: (1, 1, seq_len, embed_dim)
-            args_dynamic_shapes.append({2: seq_len})
+            per_input_dynamic_shapes.append({2: seq_len})
         elif name.startswith("past_key_"):
             # past_key shape: (num_kv_heads, 1, embed_dim*2, kv_seq_len)
-            args_dynamic_shapes.append({3: kv_seq_len})
+            per_input_dynamic_shapes.append({3: kv_seq_len})
         elif name.startswith("past_value_"):
             # past_value shape: (num_kv_heads, 1, kv_seq_len, embed_dim*2)
-            args_dynamic_shapes.append({2: kv_seq_len})
+            per_input_dynamic_shapes.append({2: kv_seq_len})
         else:
             # No dynamic dims for other inputs
-            args_dynamic_shapes.append(None)
+            per_input_dynamic_shapes.append(None)
 
-    # Structure: (input_tokens_shape, attention_mask_shape, args_shapes_tuple)
-    dynamic_shapes = (
-        {1: seq_len},  # input_tokens (input_ids or input_embeds): (1, seq_len, ...)
-        {2: seq_len, 3: ctx_len},  # attention_mask: (1, 1, seq_len, context_length)
-        tuple(args_dynamic_shapes),  # *args
+    # Nest to match the forward signature: forward(self, *inputs) (Gemma4) takes
+    # one tuple wrapping every input, while the conventional
+    # forward(self, input_tokens, attention_mask, *args) takes the 3-element form.
+    forward_params = list(
+        inspect.signature(type(fp_model).forward).parameters.values()
+    )[1:]  # drop self
+    only_varargs = len(forward_params) == 1 and (
+        forward_params[0].kind is inspect.Parameter.VAR_POSITIONAL
     )
+    dynamic_shapes: tuple[Any, ...]
+    if only_varargs:
+        dynamic_shapes = (tuple(per_input_dynamic_shapes),)
+    else:
+        dynamic_shapes = (
+            per_input_dynamic_shapes[0],
+            per_input_dynamic_shapes[1],
+            tuple(per_input_dynamic_shapes[2:]),
+        )
 
     try:
         extra = {
@@ -607,6 +636,8 @@ class DynamicPreSplitOnnxMixin:
         num_splits: int        -- number of ONNX splits
         num_layers_per_split: int -- layers per split
         split_lm_head: bool    -- separate LM head into its own part
+        reuse_emitted_graph_outputs: bool -- later splits may read an earlier
+            split's graph outputs as inputs
     """
 
     split_model_name: str = ""
@@ -615,6 +646,10 @@ class DynamicPreSplitOnnxMixin:
     # VLM models feed inputs_embeds directly and have no embedding split.
     split_embedding: bool = True
     split_lm_head: bool = False
+    # KV-shared models (Gemma4) have a later split consume the earlier split's
+    # KV-cache graph outputs. Off by default: it changes partition boundaries,
+    # and the no-op claim is unverified on the other split LLMs.
+    reuse_emitted_graph_outputs: bool = False
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -661,6 +696,8 @@ class DynamicPreSplitOnnxMixin:
             output_dir=str(split_output_dir),
             split_embedding=self.split_embedding,
             split_lm_head=self.split_lm_head,
+            splitting_points=getattr(self, "splitting_points", None),
+            reuse_emitted_graph_outputs=self.reuse_emitted_graph_outputs,
         )
 
         for i, bundle in enumerate(split_bundles):
@@ -964,6 +1001,7 @@ class SplitForwardMixin:
 
     _parts: list | None
     _input_names_for_parts: list[list] | None
+    _output_names_for_parts: list[list[str]] | None
     _exporting_onnx: bool
     # Optional GPU pin for eval: when the torch weights live on CPU (see
     # evaluate.py) the generator reads this to place KV/compute on the GPU.
@@ -972,6 +1010,7 @@ class SplitForwardMixin:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._parts = None
         self._input_names_for_parts = None
+        self._output_names_for_parts = None
         self._exporting_onnx = False
         super().__init__(*args, **kwargs)
 
@@ -994,26 +1033,49 @@ class SplitForwardMixin:
     @staticmethod
     def _build_input_name_for_parts(
         parts: list, full_input_names: list[str]
-    ) -> list[list]:
+    ) -> tuple[list[list], list[list[str]]]:
         """Build input mapping table for split parts.
 
         For each Part, maps its ONNX input names to positional indices in the
         full model's args.  Names not found in the full model (intermediate
         hidden states) are tagged ``"prev"`` and sourced from the previous
         Part's first output.
+
+        A Part input may instead name a graph output *emitted by an earlier
+        Part* -- Gemma4's KV-shared layers take the earlier split's KV ``_out``
+        tensors as leaf inputs (see ``reuse_emitted_graph_outputs``). Those are
+        tagged ``("emitted", name)``; falling through to ``"prev"`` would hand
+        them the incoming hidden state, whose rank differs (ORT: "Invalid rank
+        for input: swa_value_22_h1_out Got: 3 Expected: 4").
+
+        Also returns each Part's ONNX output names, so ``_split_forward`` can
+        index emitted tensors by name without re-parsing the graphs per token.
         """
         name_to_idx = {n: i for i, n in enumerate(full_input_names)}
         input_names_for_parts: list[list] = []
+        output_names_for_parts: list[list[str]] = []
+        emitted: set[str] = set()
         for part in parts:
-            onnx_names = part._get_onnx_input_names()
-            input_names_for_parts.append(
-                [name_to_idx.get(n, "prev") for n in onnx_names]
-            )
-        return input_names_for_parts
+            sources: list = []
+            for n in part._get_onnx_input_names():
+                if n in name_to_idx:
+                    sources.append(name_to_idx[n])
+                elif n in emitted:
+                    sources.append(("emitted", n))
+                else:
+                    sources.append("prev")
+            input_names_for_parts.append(sources)
+            part_outputs = part._get_onnx_output_names()
+            output_names_for_parts.append(part_outputs)
+            emitted.update(part_outputs)
+        return input_names_for_parts, output_names_for_parts
 
     @staticmethod
     def _split_forward(
-        parts: list, input_names_for_parts: list[list], *args: torch.Tensor
+        parts: list,
+        input_names_for_parts: list[list],
+        *args: torch.Tensor,
+        output_names_for_parts: list[list[str]] | None = None,
     ) -> list[torch.Tensor]:
         """Chain Part1 -> Part2 -> ... with input mapping.
 
@@ -1022,11 +1084,31 @@ class SplitForwardMixin:
         """
         prev_output: torch.Tensor | None = None
         kv_outputs: list[torch.Tensor] = []
+        # Graph outputs emitted so far, for Parts that take an earlier Part's
+        # output as a leaf input (Gemma4 KV-shared layers).
+        emitted: dict[str, torch.Tensor] = {}
 
-        for part, input_names in zip(parts, input_names_for_parts, strict=False):
-            part_args = [args[s] if s != "prev" else prev_output for s in input_names]
+        for i, (part, input_names) in enumerate(
+            zip(parts, input_names_for_parts, strict=False)
+        ):
+            part_args: list[torch.Tensor] = []
+            for s in input_names:
+                if isinstance(s, tuple) and s[0] == "emitted":
+                    part_args.append(emitted[s[1]])
+                elif s == "prev":
+                    # Part1's inputs all come from the full model's input spec,
+                    # so "prev" should never appear in its mapping.
+                    assert prev_output is not None, (
+                        f"Part {i} consumes the previous Part's output, but it is the first Part."
+                    )
+                    part_args.append(prev_output)
+                else:
+                    part_args.append(args[s])
             outputs = part(*part_args)
             outputs = [outputs] if isinstance(outputs, torch.Tensor) else list(outputs)
+
+            if output_names_for_parts is not None:
+                emitted.update(zip(output_names_for_parts[i], outputs, strict=False))
 
             prev_output = outputs[0]  # hidden state or logits
             kv_outputs.extend(outputs[1:])  # KV cache updates (empty for Part1)
@@ -1049,9 +1131,10 @@ class SplitForwardMixin:
                 context_length=self.context_length,  # type: ignore[attr-defined]
             ).keys()
         )
-        self._input_names_for_parts = self._build_input_name_for_parts(
-            self._parts, full_names
-        )
+        (
+            self._input_names_for_parts,
+            self._output_names_for_parts,
+        ) = self._build_input_name_for_parts(self._parts, full_names)
 
     def convert_to_onnx_and_split(self, part_id: int = 1) -> Any:
         """Wrap ONNX export so forward() falls back to LLMBase.forward.
@@ -1080,6 +1163,7 @@ class SplitForwardMixin:
                 part.release()
             self._parts = None
             self._input_names_for_parts = None
+            self._output_names_for_parts = None
         base_free = getattr(super(), "free_memory", None)
         if base_free is not None:
             base_free()
@@ -1101,6 +1185,7 @@ class SplitForwardMixin:
             input_tokens,
             attention_mask,
             *args,
+            output_names_for_parts=self._output_names_for_parts,
         )
 
 
@@ -1688,12 +1773,30 @@ class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
         metadata: ModelMetadata,
     ) -> None:
         output_path = Path(output_dir)
-        # Write sample_prompt.txt for on-device tests
-        tokenizer = (
-            AutoTokenizer.from_pretrained(self.hf_repo_name)
-            if not (output_path / "tokenizer.json").exists()
-            else AutoTokenizer.from_pretrained(str(output_path))
+
+        # Tokenizer/config source, in preference order: output_path (idempotent
+        # re-run), then the first Part's local checkpoint, then hf_repo_name.
+        # The checkpoint comes second because Gemma4's QAT checkpoint ships
+        # tokenizer.json / config.json but its hf_repo_name is a private repo
+        # that may be inaccessible at export time.
+        first_part = next(iter(self.components.values()))
+        _presplit = getattr(first_part, "_presplit", None)
+        _ckpt_dir = str(getattr(_presplit, "checkpoint", None) or "")
+        _ckpt_has_tokenizer = bool(
+            _ckpt_dir and (Path(_ckpt_dir) / "tokenizer.json").exists()
         )
+        _ckpt_has_config = bool(
+            _ckpt_dir and (Path(_ckpt_dir) / "config.json").exists()
+        )
+
+        # Write sample_prompt.txt for on-device tests
+        if (output_path / "tokenizer.json").exists():
+            _tok_src = str(output_path)
+        elif _ckpt_has_tokenizer:
+            _tok_src = _ckpt_dir
+        else:
+            _tok_src = self.hf_repo_name
+        tokenizer = AutoTokenizer.from_pretrained(_tok_src)
         sample_prompt = self.fp_presplit_cls.get_input_prompt_with_tags(
             tokenizer=tokenizer
         )
@@ -1703,10 +1806,20 @@ class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
             # save_jinja_files=False keeps it embedded instead of writing a separate chat_template.jinja file.
             tokenizer.save_pretrained(output_path, save_jinja_files=False)
         if not (output_path / "config.json").exists():
-            llm_config = AutoConfig.from_pretrained(self.hf_repo_name)
+            # Prefer the Part's already-loaded config when the checkpoint dir
+            # ships config.json, for the private-repo reason above.
+            llm_config = (
+                getattr(_presplit, "llm_config", None) if _ckpt_has_config else None
+            ) or AutoConfig.from_pretrained(self.hf_repo_name)
             llm_config.save_pretrained(output_path)
         else:
             llm_config = AutoConfig.from_pretrained(str(output_path))
+
+        # Multimodal configs (Gemma4Config, Qwen3VLConfig) nest the text
+        # hyperparameters under `.text_config`, but create_genie_config reads
+        # hidden_size / num_attention_heads / vocab_size / rope off the top
+        # level. No-op for text-only LLMs.
+        llm_config = getattr(llm_config, "text_config", llm_config)
 
         # Derive context_lengths from the first part
         first_part = next(iter(self.components.values()))

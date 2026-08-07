@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 from qai_hub_models.datasets.wikitext.wikitext import WikiText
+from qai_hub_models.datasets.wikitext.wikitext_chat import WikiTextChat
 from qai_hub_models.datasets.wikitext.wikitext_ja import WikiTextJapanese
 from qai_hub_models.datasets.wikitext.wikitext_masked import (
     ElectraWikiTextMasked,
@@ -12,6 +13,7 @@ from qai_hub_models.datasets.wikitext.wikitext_masked import (
 __all__ = [
     "ElectraWikiTextMasked",
     "WikiText",
+    "WikiTextChat",
     "WikiTextJapanese",
     "WikiTextMasked",
 ]

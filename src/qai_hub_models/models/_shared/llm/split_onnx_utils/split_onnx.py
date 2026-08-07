@@ -16,9 +16,30 @@ from onnx.external_data_helper import uses_external_data
 
 
 class OnnxSplitter:
-    def __init__(self, onnxmodel: onnx.ModelProto, verbose: bool = False) -> None:
+    def __init__(
+        self,
+        onnxmodel: onnx.ModelProto,
+        verbose: bool = False,
+        reuse_emitted_graph_outputs: bool = False,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        onnxmodel
+            The ONNX model to split.
+        verbose
+            If True, print each subgraph's tensors as it is partitioned.
+        reuse_emitted_graph_outputs
+            If True, a graph output emitted by one subgraph becomes an input
+            (leaf) tensor for later subgraphs instead of having its producers
+            re-derived. Only needed by models where a later split consumes an
+            earlier split's graph output -- see :meth:`partition_subgraph`.
+            Off by default so partitioning is unchanged for every other split
+            LLM.
+        """
         self.model = onnxmodel
         self.verbose = verbose
+        self.reuse_emitted_graph_outputs = reuse_emitted_graph_outputs
         self.graph_inputs = {i.name for i in self.model.graph.input}
         self.graph_outputs = {i.name for i in self.model.graph.output}
         # nodeid:Onnx Node
@@ -112,6 +133,19 @@ class OnnxSplitter:
             for i in self.model.graph.output
             if i.name in visited_output_tensors and i.name not in output_tensors
         ]
+
+        # Untrack the graph outputs this subgraph emits, so split() adds them to
+        # additional_input_tensors and later subgraphs treat them as leaves.
+        # Gemma4's KV-shared layers 15-34 read layer 0-14's KV outputs; left in
+        # graph_outputs they never become leaves, and the backtracking partition
+        # drags the whole 0-14 compute chain into the later part -- duplicating
+        # KV outputs and tripping Genie's "Non-identical quantization
+        # parameters". Opt-in because the no-op claim is unverified on the other
+        # split LLMs' partitions.
+        if self.reuse_emitted_graph_outputs:
+            self.graph_outputs.difference_update(
+                {o.name for o in new_outputs if o.name in self.graph_outputs}
+            )
 
         io_names = {i.name for i in new_inputs + new_outputs}
 

@@ -120,9 +120,48 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             return self.runtime.inference_engine.value
         return self.value
 
+    @staticmethod
+    def _validate_requested_paths(
+        valid_test_runtimes: set[str | SpecialPathSetting],
+    ) -> None:
+        """
+        Raise if a requested path name matches no path, prefix, or special setting.
+
+        An unrecognized name would otherwise silently match nothing, leaving
+        every path disabled and yielding an empty test parameterization -- a
+        scorecard run that passes collection while running zero jobs.
+
+        Parameters
+        ----------
+        valid_test_runtimes
+            The parsed contents of EnabledPathsEnvvar.
+
+        Raises
+        ------
+        ValueError
+            If any requested name is not a path value, an inference engine
+            prefix, or a SpecialPathSetting.
+        """
+        recognized = {p.value for p in ScorecardProfilePath} | {
+            p.runtime.inference_engine.value for p in ScorecardProfilePath
+        }
+        if unknown := sorted(
+            x for x in valid_test_runtimes if isinstance(x, str) and x not in recognized
+        ):
+            raise ValueError(
+                f"Unrecognized {EnabledPathsEnvvar.VARNAME} value(s): "
+                f"{', '.join(unknown)}. "
+                f"Valid path names: {', '.join(sorted(p.value for p in ScorecardProfilePath))}. "
+                f"Valid engine prefixes: "
+                f"{', '.join(sorted({p.runtime.inference_engine.value for p in ScorecardProfilePath}))}. "
+                f"Valid special settings: "
+                f"{', '.join(sorted(s.value for s in SpecialPathSetting))}."
+            )
+
     @property
     def enabled(self) -> bool:
         valid_test_runtimes = EnabledPathsEnvvar.get()
+        self._validate_requested_paths(valid_test_runtimes)
 
         # The "default" keyword enables only the default sweep set
         # (default_paths minus GENIE); users can still opt into non-sweep
@@ -182,6 +221,7 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             return False
 
         valid_test_runtimes = EnabledPathsEnvvar.get()
+        self._validate_requested_paths(valid_test_runtimes)
 
         # 1. "default": exact runtime match against supported runtimes.
         # Uses default_sweep_paths() (default_paths minus GENIE) so that

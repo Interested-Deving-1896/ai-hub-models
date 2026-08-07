@@ -22,7 +22,7 @@ qai-hub-models perf Gemma-4-E2B-it
 qai-hub-models numerics Gemma-4-E2B-it
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Gemma-4-E2B-it --runtime geniex_llamacpp --precision q4_0
+qai-hub-models fetch Gemma-4-E2B-it --runtime qnn_context_binary --precision w4a16
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

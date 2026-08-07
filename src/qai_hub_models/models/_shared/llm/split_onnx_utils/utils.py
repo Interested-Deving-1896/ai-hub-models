@@ -225,9 +225,14 @@ def split_onnx_by_names(
     *list_of_output_tensors: str,
     output_dir: PathLike = ".",
     onnxmodel: onnx.ModelProto | None = None,
+    reuse_emitted_graph_outputs: bool = False,
 ) -> list[onnx_ret_t]:
     """
     Split ONNX by the given output tensor names.
+
+    reuse_emitted_graph_outputs: let a later split take an earlier split's
+        graph output as a leaf input. See ``OnnxSplitter``; needed only by
+        KV-shared models such as Gemma4.
 
     Returns list[
         Path to an ONNX bundle or an ONNX Graph file for each split.
@@ -269,7 +274,11 @@ def split_onnx_by_names(
         if onnxmodel is None
         else onnxmodel
     )
-    splitter = OnnxSplitter(onnxmodel, verbose=False)
+    splitter = OnnxSplitter(
+        onnxmodel,
+        verbose=False,
+        reuse_emitted_graph_outputs=reuse_emitted_graph_outputs,
+    )
     using_external_data = OnnxSplitter.is_using_external_data(onnxmodel)
 
     list_of_output_tensors = tuple([i.split(",") for i in list_of_output_tensors])  # type: ignore[misc]
@@ -442,6 +451,15 @@ def fill_input_encodings_of_split(
         backup = f"{encodingfile}.bak"
         if not os.path.exists(backup):
             shutil.move(encodingfile, backup)
+        if Version(encodings["version"]) >= Version("1.0.0"):
+            if isinstance(encodings["activation_encodings"], dict):
+                encodings["activation_encodings"] = list(
+                    encodings["activation_encodings"].values()
+                )
+            if isinstance(encodings["param_encodings"], dict):
+                encodings["param_encodings"] = list(
+                    encodings["param_encodings"].values()
+                )
         _save_encoding(encodings, encodingfile)
 
 
@@ -454,6 +472,8 @@ def split_onnx(
     split_embedding: bool = False,
     split_lm_head: bool = False,
     using_qairt_workflow: bool = False,
+    splitting_points: list[int] | None = None,
+    reuse_emitted_graph_outputs: bool = False,
 ) -> list[onnx_ret_t]:
     """
     Split ONNX by the given number of splits.
@@ -462,13 +482,24 @@ def split_onnx(
     final part. This reduces the compute packed into the last CL part.
     The total number of output parts increases by one (the extra LM head part).
 
+    splitting_points: explicit transformer-block boundaries (end-layer indices,
+        exclusive) instead of uniform num_layers_per_split; [15] gives
+        layers[0:15] and layers[15:N]. Lets a cut land on a KV boundary that
+        uniform splitting would miss (Gemma4 shares KV after layer 15). The
+        split_lm_head part is still appended after the last block.
+
+    reuse_emitted_graph_outputs: let a later split take an earlier split's
+        graph output as a leaf input instead of re-deriving its producers.
+        See ``OnnxSplitter``; needed only by KV-shared models such as Gemma4.
+
     Returns list[
         Path to an ONNX bundle or an ONNX Graph file for each split.
     ]
     """
 
     def _is_cache(layer: int, name: str) -> bool:
-        return re.search(f"past_(key|value)_{layer}_", name) is not None
+        # Match both past_ (full attention) and swa_ (sliding window) KV names.
+        return re.search(f"(?:past|swa)_(key|value)_{layer}_", name) is not None
 
     num_splits = int(num_splits)
 
@@ -547,34 +578,58 @@ def split_onnx(
         num_splits - int(split_embedding) - int(split_lm_head)
     )
 
-    computed_num_layers_per_split = math.ceil(num_layers / num_transformer_block_splits)
-
-    if num_layers_per_split is None:
-        num_layers_per_split = computed_num_layers_per_split
-
-    if num_transformer_block_splits != math.ceil(num_layers / num_layers_per_split):
-        print(
-            f"Warning: specified num_layers_per_split ({num_layers_per_split}) is not compatible with model. Overwriting with {computed_num_layers_per_split}"
-        )
-        num_layers_per_split = computed_num_layers_per_split
-
     past_key_values = {
         layer: [output for output in output_names if _is_cache(layer, output)]
         for layer in range(num_layers)
     }
 
-    for layer_end in range(num_layers_per_split, num_layers, num_layers_per_split):
-        outputs = [output_tensor_list[layer_end - 1]]
-        for layer in range(layer_end - num_layers_per_split, layer_end):
-            outputs += past_key_values[layer]
-        names_to_split.append(",".join(outputs))
+    if splitting_points is not None:
+        # An unsorted, duplicate or 0 boundary would make
+        # output_tensor_list[layer_end - 1] index the wrong layer (or -1).
+        assert all(isinstance(p, int) for p in splitting_points), (
+            f"splitting_points must be ints, got {splitting_points}"
+        )
+        assert splitting_points == sorted(set(splitting_points)), (
+            f"splitting_points must be strictly increasing and unique, "
+            f"got {splitting_points}"
+        )
+        assert splitting_points[0] > 0, (
+            f"splitting_points must be > 0 (0 is not a valid block boundary), "
+            f"got {splitting_points}"
+        )
+        block_ends = [p for p in splitting_points if p < num_layers]
+        layer_start = 0
+        for layer_end in block_ends:
+            outputs = [output_tensor_list[layer_end - 1]]
+            for layer in range(layer_start, layer_end):
+                outputs += past_key_values[layer]
+            names_to_split.append(",".join(outputs))
+            layer_start = layer_end
+        last_block_start = block_ends[-1] if block_ends else 0
+    else:
+        computed_num_layers_per_split = math.ceil(
+            num_layers / num_transformer_block_splits
+        )
+
+        if num_layers_per_split is None:
+            num_layers_per_split = computed_num_layers_per_split
+
+        if num_transformer_block_splits != math.ceil(num_layers / num_layers_per_split):
+            print(
+                f"Warning: specified num_layers_per_split ({num_layers_per_split}) is not compatible with model. Overwriting with {computed_num_layers_per_split}"
+            )
+            num_layers_per_split = computed_num_layers_per_split
+
+        for layer_end in range(num_layers_per_split, num_layers, num_layers_per_split):
+            outputs = [output_tensor_list[layer_end - 1]]
+            for layer in range(layer_end - num_layers_per_split, layer_end):
+                outputs += past_key_values[layer]
+            names_to_split.append(",".join(outputs))
+        last_block_start = (num_transformer_block_splits - 1) * num_layers_per_split
 
     if split_lm_head:
         last_cl_outputs = [output_tensor_list[-1]]
-        last_split_layer_start = (
-            num_transformer_block_splits - 1
-        ) * num_layers_per_split
-        for layer in range(last_split_layer_start, num_layers):
+        for layer in range(last_block_start, num_layers):
             last_cl_outputs += past_key_values[layer]
         names_to_split.append(",".join(last_cl_outputs))
 
@@ -591,4 +646,5 @@ def split_onnx(
         *names_to_split,
         output_dir=output_dir,
         onnxmodel=onnxmodel,
+        reuse_emitted_graph_outputs=reuse_emitted_graph_outputs,
     )

@@ -8,14 +8,18 @@ from __future__ import annotations
 from collections.abc import Generator
 
 import onnx
-from aimet_onnx.common.defs import (
-    QuantizationDataType,
-)
-from aimet_onnx.qc_quantize_op import (
-    GroupedBlockQuantizeDequantize,
-    QcQuantizeOp,
-)
-from aimet_onnx.quantsim import QuantizationSimModel as QuantSimOnnx
+
+try:
+    from aimet_onnx.common.defs import QuantizationDataType
+    from aimet_onnx.qc_quantize_op import (
+        GroupedBlockQuantizeDequantize,
+        QcQuantizeOp,
+    )
+    from aimet_onnx.quantsim import QuantizationSimModel as QuantSimOnnx
+except (ImportError, ModuleNotFoundError):
+    QuantizationDataType = GroupedBlockQuantizeDequantize = QcQuantizeOp = (
+        QuantSimOnnx
+    ) = None
 
 
 def _tie_quantizers_for_kv_cache(

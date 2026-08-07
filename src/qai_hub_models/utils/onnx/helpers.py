@@ -367,9 +367,14 @@ def _resolve_output_shapes(
     input_shapes = {name: tuple(t.shape) for name, t in inputs.items()}
     sym_table: dict[str, int] = {}
     for meta in session.get_inputs():
+        # Unfed, or fed at a lower rank than the graph declares: the symbolic
+        # dims are unresolvable, so bail instead of indexing out of range.
+        fed_shape = input_shapes.get(meta.name)
+        if fed_shape is None or len(fed_shape) != len(meta.shape):
+            return None
         for i, dim in enumerate(meta.shape):
             if isinstance(dim, str):
-                sym_table[dim] = input_shapes[meta.name][i]
+                sym_table[dim] = fed_shape[i]
 
     if "input_ids" in input_shapes:
         batch_size: int | None = input_shapes["input_ids"][0]

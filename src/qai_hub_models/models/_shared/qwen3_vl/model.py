@@ -1953,6 +1953,7 @@ class Qwen3VLSplitForwardMixin(SplitForwardMixin):
             input_tokens,
             attention_mask,
             *args,
+            output_names_for_parts=self._output_names_for_parts,
         )
 
 

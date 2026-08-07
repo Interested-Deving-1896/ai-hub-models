@@ -65,12 +65,15 @@ LLM_GROUPS: list[list[str]] = [
         "qwen2_5_vl_7b_instruct",
         "qwen3_vl_4b_instruct",
     ],
+    [
+        "gemma_4_e2b_it",  # smallest, primary representative
+        "gemma_4_e4b_it",
+    ],
 ]
 
-# _shared/llm/, _shared/llama3/ route to llama; _shared/qwen3/, _shared/qwen2/
-# route to qwen (text); _shared/qwen2_vl/, _shared/qwen3_vl/, _shared/vlm/ route
-# to qwen (VL); _shared/lm_driver/ is used by both llama models and
-# _shared/qwen3_vl/, so it routes to llama + qwen VL reps.
+# Shared dirs route to their representative export file:
+# llm/llama3→llama, qwen3/qwen2→qwen, qwen2_vl/qwen3_vl/vlm→qwen_vl,
+# gemma4→gemma4, lm_driver→all three reps.
 LLAMA_REPRESENTATIVE_EXPORT_FILE = (
     "src/qai_hub_models/models/llama_v3_2_1b_instruct/export.py"
 )
@@ -78,6 +81,7 @@ QWEN_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/qwen3_0_6b/export.p
 QWEN_VL_REPRESENTATIVE_EXPORT_FILE = (
     "src/qai_hub_models/models/qwen3_vl_4b_instruct/export.py"
 )
+GEMMA4_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/gemma_4_e2b_it/export.py"
 PI05_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/pi05/export.py"
 PRECOMPILED_REPRESENTATIVE_EXPORT_FILE = (
     "src/qai_hub_models/models/qwen2_7b_instruct/export.py"
@@ -97,6 +101,9 @@ _QWEN_VL_REP_FILES = sorted(
     p.relative_to(REPO_ROOT).as_posix()
     for sub in ("qwen2_vl", "qwen3_vl", "vlm")
     for p in (_SHARED_DIR / sub).rglob("*.py")
+)
+_GEMMA4_REP_FILES = sorted(
+    p.relative_to(REPO_ROOT).as_posix() for p in (_SHARED_DIR / "gemma4").rglob("*.py")
 )
 _LM_DRIVER_REP_FILES = sorted(
     p.relative_to(REPO_ROOT).as_posix()
@@ -146,8 +153,13 @@ MANUAL_EDGES = {
     **{f: [LLAMA_REPRESENTATIVE_EXPORT_FILE] for f in _LLAMA_REP_FILES},
     **{f: [QWEN_REPRESENTATIVE_EXPORT_FILE] for f in _QWEN_REP_FILES},
     **{f: [QWEN_VL_REPRESENTATIVE_EXPORT_FILE] for f in _QWEN_VL_REP_FILES},
+    **{f: [GEMMA4_REPRESENTATIVE_EXPORT_FILE] for f in _GEMMA4_REP_FILES},
     **{
-        f: [LLAMA_REPRESENTATIVE_EXPORT_FILE, QWEN_VL_REPRESENTATIVE_EXPORT_FILE]
+        f: [
+            LLAMA_REPRESENTATIVE_EXPORT_FILE,
+            QWEN_VL_REPRESENTATIVE_EXPORT_FILE,
+            GEMMA4_REPRESENTATIVE_EXPORT_FILE,
+        ]
         for f in _LM_DRIVER_REP_FILES
     },
     **{

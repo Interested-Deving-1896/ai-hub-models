@@ -22,7 +22,7 @@ qai-hub-models perf Gemma-4-E4B-it
 qai-hub-models numerics Gemma-4-E4B-it
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Gemma-4-E4B-it --runtime geniex_llamacpp --precision q4_0
+qai-hub-models fetch Gemma-4-E4B-it --runtime geniex_qairt --precision w4a16
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
@@ -30,6 +30,8 @@ for the full list of commands and filters.
 ## Deploying Gemma-4-E4B-it on-device
 
 Follow the [GenieX quickstart](https://geniex.aihub.qualcomm.com/en/get-started/quickstart) to install GenieX and deploy the model on a target device.
+
+See the [LLM-on-Genie](https://github.com/qualcomm/ai-hub-apps/tree/main/tutorials/llm_on_genie) tutorial to run with the Genie runtime. Note: Genie support will be deprecated soon.
 
 
 ## License
