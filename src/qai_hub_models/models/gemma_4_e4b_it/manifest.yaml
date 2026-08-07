@@ -14,12 +14,11 @@ research_paper_title: 'Gemma 4'
 license: https://ai.google.dev/gemma/apache_2
 source_repo: https://huggingface.co/google/gemma-4-E4B-it
 technical_details:
-  Model architecture: Mixture-of-Experts (MoE) Transformer with Per-Layer Expert Selection and selective routing.
+  Model architecture: Transformer with SigLIP-style ViT Vision Encoder, Per-Layer Embeddings (PLE), interleaved sliding-window/global attention with Grouped Query Attention (GQA), and shared KV layers.
   Input sequence length for Prompt Processor: '128'
-  Context lengths: '512, 1024, 2048, 3072, 4096'
   Use: Initiate conversation with prompt-processor and then token generator for subsequent iterations.
   Number of parameters: 4B (effective)
-  Precision: w4a16 (attention 4-bit, MLP 2/4-bit, embeddings 2-bit; QAT)
+  Precision: w4a16
   Minimum QNN SDK version required: 2.45.0
   Supported languages: Multilingual (trained on 140+ languages)
   TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt.
@@ -48,7 +47,7 @@ runtime_technical_details:
   geniex_qairt:
     model_infer_id: ai-hub-models/Gemma-4-E4B-it
     Input sequence length for Prompt Processor: '128'
-    Context lengths: '512, 1024, 2048, 3072, 4096'
+    Context lengths: '4096'
     Minimum QNN SDK version required: 2.45.0
   geniex_llamacpp:
     model_infer_id: google/gemma-4-E4B-it-qat-q4_0-gguf
