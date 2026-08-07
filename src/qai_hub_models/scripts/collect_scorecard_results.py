@@ -853,10 +853,13 @@ if __name__ == "__main__":
         try:
             manifest = QAIHMModelManifest.from_model(model_id)
             sc = manifest.scorecard_config
+            # Re-enable for LLMs when ready to publish metrics.
+            # Remove sc.is_llm when resolving issue #20760.
             if (
                 sc.skip_hub_tests_and_scorecard
                 or sc.skip_scorecard
                 or sc.freeze_perf_yaml
+                or sc.is_llm
             ):
                 continue
 
