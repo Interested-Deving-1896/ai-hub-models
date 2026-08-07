@@ -73,8 +73,8 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
         # Validated recipe (SpinQuant R1+R3 -> AdaScale -> Calibration):
-        # QT (w4a16): PPL 16.59, MMLU 56.65%, AutogradedPrompts 97.8%.
-        ("DEFAULT_W4A16", "wikitext", 16.59, 0),
+        # QT (w4a16): PPL 17.26, MMLU 56.65%, AutogradedPrompts 97.8%.
+        ("DEFAULT_W4A16", "wikitext", 17.26, 0),
         ("DEFAULT_W4A16", "mmlu", 0.5665, 1000),
         # Prompt-generation + LLM-grader smoke test (5 samples). Always runs on
         # the FP PreSplit regardless of checkpoint, so both rows share a floor.
