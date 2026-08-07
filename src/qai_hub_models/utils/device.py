@@ -402,6 +402,7 @@ cs_auto_lemans_8775 = RegisteredDevice(device_name="SA8775P ADP", npu_count=2)
 cs_6490 = RegisteredDevice(device_name="Dragonwing RB3 Gen 2 Vision Kit")
 cs_6690 = RegisteredDevice(device_name="Dragonwing Q-6690 MTP")
 cs_8550 = RegisteredDevice(device_name="QCS8550 (Proxy)")
+cs_ventuno_q = RegisteredDevice(device_name="Arduino VENTUNO Q")
 cs_9075 = RegisteredDevice(device_name="Dragonwing IQ-9075 EVK", npu_count=2)
 
 

@@ -112,6 +112,7 @@ def _get_devices_for_precision(
     compile_devices: list[ScorecardDevice] = list(LLM_COMPILE_DEVICES)
     if precision == Precision.w4:
         compile_devices += LLM_W4FP16_COMPILE_DEVICES
+    compile_devices = [d for d in compile_devices if d.qdc_enabled]
 
     if override_devices is None:
         return compile_devices

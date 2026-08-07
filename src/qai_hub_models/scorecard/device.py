@@ -228,6 +228,7 @@ class ScorecardDevice(HubDeviceAttributes):
         profile_paths: list[ScorecardProfilePath] | None = None,
         register: bool = True,
         include_in_all: bool = True,
+        qdc_enabled: bool = True,
     ) -> None:
         """
         Parameters
@@ -260,6 +261,11 @@ class ScorecardDevice(HubDeviceAttributes):
             Whether this device is enabled when ``SpecialDeviceSetting.ALL``
             is selected. If False, the device only runs when its name is
             explicitly listed in ``EnabledDevicesEnvvar``.
+        qdc_enabled
+            Whether LLM perf tests are allowed to submit QDC jobs against
+            this device. When False, the device still participates in LLM
+            compile parametrization but is filtered out of
+            ``get_llm_perf_parametrization``.
         """
         if register and name in ScorecardDevice._registry:
             raise ValueError(f"Device {name} already registered.")
@@ -273,6 +279,7 @@ class ScorecardDevice(HubDeviceAttributes):
         self._compile_paths = compile_paths
         self._profile_paths = profile_paths
         self.include_in_all = include_in_all
+        self.qdc_enabled = qdc_enabled
 
         if register:
             ScorecardDevice._registry[name] = self
@@ -288,6 +295,7 @@ class ScorecardDevice(HubDeviceAttributes):
         profile_paths: list[ScorecardProfilePath] | None = None,
         register: bool = True,
         include_in_all: bool = True,
+        qdc_enabled: bool = True,
     ) -> ScorecardDevice:
         """
         Build a ScorecardDevice from an existing ``RegisteredDevice``.
@@ -314,6 +322,7 @@ class ScorecardDevice(HubDeviceAttributes):
             profile_paths=profile_paths,
             register=register,
             include_in_all=include_in_all,
+            qdc_enabled=qdc_enabled,
         )
 
     def __str__(self) -> str:
@@ -695,6 +704,12 @@ cs_8550 = ScorecardDevice.from_registered(
     name="cs_8550",
 )
 
+cs_ventuno_q = ScorecardDevice.from_registered(
+    registered_device.cs_ventuno_q,
+    name="cs_ventuno_q",
+    qdc_enabled=False,
+)
+
 cs_9075 = ScorecardDevice.from_registered(
     registered_device.cs_9075,
     name="cs_9075",
@@ -718,6 +733,7 @@ DEFAULT_SCORECARD_DEVICE = ScorecardDevice.get_default()
 LLM_COMPILE_DEVICES = [
     cs_8_elite_qrd,
     cs_9075,
+    cs_ventuno_q,
     cs_auto_lemans_8775,
     cs_8_elite_gen_5_qrd,
     cs_x_elite,

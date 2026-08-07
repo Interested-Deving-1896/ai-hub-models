@@ -412,7 +412,11 @@ class DevicesAndChipsetsYaml(BaseQAIHMConfig):
             )
 
         # Use the scorecard device for the reference device, if one exists.
+        # Skip devices whose chipset was filtered above (early-access or
+        # non-qualcomm) so their similar_devices.yaml entry stays authoritative.
         for device in ScorecardDevice.all_devices():
+            if device.chipset not in out.chipsets:
+                continue
             out.chipsets[device.chipset].reference_device = device.reference_device.name
 
         # Add similar (unsupported) devices with their own explicit metadata.

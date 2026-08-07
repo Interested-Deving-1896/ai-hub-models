@@ -602,6 +602,7 @@ def _iter_work(
         devices = list(ALL_GENIEX_DEVICES)
     else:
         devices = [d.strip() for d in devices_setting.split(",") if d.strip()]
+    devices = [d for d in devices if _scorecard_device(d).qdc_enabled]
 
     for plugin in plugins:
         if plugin == "qairt":
