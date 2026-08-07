@@ -101,6 +101,7 @@ jobs:
   start_export_jobs:
     name: Test Exports (${{ matrix.split.split_name }})
     needs: split_models
+    if: ${{ needs.split_models.outputs.export_matrix != '[]' }}
     secrets: inherit
     strategy:
       matrix:
@@ -116,7 +117,7 @@ jobs:
   start_accuracy_jobs:
     name: Compute Accuracy (${{ matrix.split.split_name }})
     needs: split_models
-    if: ${{ inputs.run_accuracy }}
+    if: ${{ inputs.run_accuracy && needs.split_models.outputs.accuracy_matrix != '[]' }}
     secrets: inherit
     strategy:
       matrix:
