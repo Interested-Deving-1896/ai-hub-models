@@ -85,13 +85,13 @@ def parse_arguments() -> argparse.Namespace:
         "--tasks",
         dest="legacy_task",
         type=str,
-        help="[deprecated] Comma-separated list of tasks to run; use --task=list_tasks to list all tasks.",
+        help="[deprecated] Comma-separated list of tasks to run; pass tasks as positional arguments instead.",
     )
     parser.add_argument(
         "task",
         type=str,
         nargs="*",
-        help='Task(s) to run. Specify "list" to show all tasks.',
+        help='Task(s) to run. Specify "list_tasks" to show commonly used tasks, or "list_all" for every task.',
     )
 
     parser.add_argument(
@@ -103,7 +103,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--print-task-graph",
         action="store_true",
-        help="Print the task library in DOT format and exit. Combine with --task to highlight what would run.",
+        help="Print the task library in DOT format and exit. Combine with task arguments to highlight what would run.",
     )
 
     parser.add_argument(
@@ -203,7 +203,7 @@ class TaskLibrary:
         elements_str = "\n".join([f"  {element};" for element in elements])
         return f"digraph {{\n{elements_str}\n}}"
 
-    @public_task("Print a list of commonly used tasks; see also --task=list_all.")
+    @public_task("Print a list of commonly used tasks; see also the list_all task.")
     @depends(["list_public"])
     def list_tasks(self, plan: Plan) -> str:
         return plan.add_step("list_tasks", NoOpTask())
