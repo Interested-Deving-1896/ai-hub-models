@@ -518,6 +518,11 @@ class Qwen3PreSplitBase(
     default_checkpoint: dict[Precision, str] = {}
     default_precision: Precision = Precision.w4a16
 
+    # True if the checkpoint ties lm_head to the input embeddings and so ships no
+    # lm_head.weight (0.6B, 1.7B, 4B, 4B-Instruct-2507); False if it ships its own
+    # trained one (8B). Set by edit_llm_config; None means that never ran.
+    _checkpoint_ties_embeddings: bool | None = None
+
     def __init__(
         self,
         checkpoint: str | os.PathLike | Path | None = None,
@@ -525,13 +530,17 @@ class Qwen3PreSplitBase(
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, checkpoint=checkpoint or self.hf_repo_name, **kwargs)
-        # tie_word_embeddings=False makes HF allocate a distinct but randomly-
-        # initialized lm_head.weight; copy the embedding values in so the math is
-        # unchanged and the ONNX exports two separate weights (the untie).
-        if not self.llm_config.tie_word_embeddings:
-            # self.model is a dynamically-patched HF causal-LM; its exact type
-            # (and which attributes mypy sees) varies by transformers version,
-            # so treat it as Any to keep the access version-independent.
+        # Guards against an override of edit_llm_config that skips super(): the flag
+        # would stay None and silently leave a tied lm_head randomly initialized.
+        assert self._checkpoint_ties_embeddings is not None, (
+            f"{type(self).__name__}.edit_llm_config did not record "
+            "_checkpoint_ties_embeddings; does an override skip super()?"
+        )
+        # Untying leaves HF's new lm_head.weight random, so restore it. Skipped for
+        # untied checkpoints: overwriting their trained lm_head destroys the model.
+        if self._checkpoint_ties_embeddings:
+            # self.model is a dynamically-patched HF causal-LM whose type varies
+            # by transformers version; Any keeps the access version-independent.
             model: Any = self.model
             with torch.no_grad():
                 model.lm_head.weight.copy_(model.get_input_embeddings().weight)
@@ -539,7 +548,9 @@ class Qwen3PreSplitBase(
     def edit_llm_config(self, llm_config: PretrainedConfig) -> PretrainedConfig:
         llm_config = super().edit_llm_config(llm_config)
         # Untie embedding/lm_head so they export as two ONNX initializers; the
-        # post-load copy in __init__ restores lm_head's (tied) values.
+        # post-load copy in __init__ restores lm_head's values when (and only
+        # when) the checkpoint had them tied.
+        self._checkpoint_ties_embeddings = bool(llm_config.tie_word_embeddings)
         llm_config.tie_word_embeddings = False
         return llm_config
 

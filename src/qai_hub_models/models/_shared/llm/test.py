@@ -821,12 +821,18 @@ def run_llm_evaluate_test(
 
     Quantized forward-only metrics (wikitext, mmlu, ...) run through the
     split-Parts wrapper so the reported degradation reflects the production
-    on-device graph. The FP baseline runs on the monolithic PreSplit
-    (deterministic torch forward): the split-Parts ORT-CUDA path has produced
-    garbage logits on some FP checkpoints (e.g. qwen3_8b WikiText PPL ~8e10)
-    and shifts the metric on others. Prompt-generation tasks likewise always
-    run on the FP PreSplit regardless of checkpoint, because greedy decoding
-    is nondeterministic on the split-Parts path.
+    on-device graph. The FP baseline runs on the monolithic PreSplit: it is a
+    deterministic torch forward and skips building per-Part ORT sessions, and
+    the two paths agree closely where both have been measured (gemma_4_e4b_it
+    wikitext_chat: 55.66 PreSplit vs 55.60 split, 0.1%). Prompt-generation
+    tasks likewise always run on the FP PreSplit regardless of checkpoint,
+    because greedy decoding is nondeterministic on the split-Parts path.
+
+    Note: this default was originally introduced (#4185) on the belief that the
+    split-Parts ORT-CUDA path returned garbage logits for qwen3_8b FP (WikiText
+    PPL ~8e10). That was really a weight bug -- Qwen3PreSplitBase overwrote
+    Qwen3-8B's trained lm_head with the embeddings -- which corrupted both paths
+    equally. The default is kept for the determinism/cost reasons above.
 
     Returns the measured metric and asserts it against ``expected_metric`` (a
     floor for prompt tasks, a two-sided tolerance otherwise).

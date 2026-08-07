@@ -56,8 +56,11 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     [
         ("DEFAULT_W4A16", "wikitext", 9.46, 0),
         ("DEFAULT_W4A16", "mmlu", 0.6725, 1000),
-        ("DEFAULT_UNQUANTIZED", "wikitext", 9.61, 0),
-        ("DEFAULT_UNQUANTIZED", "tiny_mmlu", 0.74, 0),
+        # Re-measured after the lm_head untie fix; the old 9.61/0.74 were taken
+        # while Qwen3-8B's trained lm_head was being overwritten. FP now scores
+        # better than w4a16 (8.99 < 9.46 PPL), which is the expected ordering.
+        ("DEFAULT_UNQUANTIZED", "wikitext", 8.99, 0),
+        ("DEFAULT_UNQUANTIZED", "tiny_mmlu", 0.78, 0),
     ],
 )
 def test_evaluate(
