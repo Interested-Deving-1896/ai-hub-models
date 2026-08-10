@@ -103,7 +103,9 @@ from qai_hub_models.utils.printing import print_with_box
 from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
 # Chat generation stop tokens (in addition to the tokenizer's eos_token_id).
-END_TOKENS = {"<end_of_turn>", "<eos>"}
+# An -it model ends a turn with <turn|>, not the bare <eos>; _fix_gemma4_genie_config
+# writes the same pair into genie_config.json's eos-token.
+END_TOKENS = {"<turn|>", "<eos>"}
 DEFAULT_USER_PROMPT = "What is gravity?"
 
 
@@ -954,12 +956,16 @@ class Gemma4DynamicBase(LLMDynamicBase, Gemma4Base):
 
     def get_full_onnx_bundle(self, temp_path: Path) -> ONNXBundle:
         """Export full ONNX from PyTorch with dynamic shapes."""
-        precision_dir = self.default_checkpoint.get(self.default_precision)
+        # Own directory, not default_checkpoint's: that is where
+        # fetch_default_checkpoint() extracts the published w4a16 zip, which the
+        # probe below would then load as if it were this FP export.
+        # Concrete models always set model_id; the guard is for the bases, which
+        # default it to "" (an empty id would cache into the store root).
         cache_dir = (
             ASSET_CONFIG.get_local_store_model_path(
-                self.model_id, self.model_asset_version, precision_dir
+                self.model_id, self.model_asset_version, "fp_dynamic_onnx"
             )
-            if precision_dir
+            if self.model_id
             else None
         )
 
@@ -1171,6 +1177,39 @@ class Gemma4Generator(HubCompatibleGenerator):
     # variant's FP embeddings back for the other (silently wrong numbers).
     _fp_text_model_cache: dict[str, Any] = {}
 
+    @staticmethod
+    def _output_names_from_descriptors(
+        layer_cache_descriptors: list,
+    ) -> list[str]:
+        """Name one KV pair per (layer, head), matching Gemma4's forward outputs.
+
+        The base emits one pair per layer, assuming heads are stacked into a
+        single tensor. Gemma4 emits them per head (Genie's ring buffer needs
+        batch=1 per head), so on E4B (num_kv_heads=2) the forward returns twice
+        the tensors the base names and ``parse_model_outputs`` zips them away --
+        dropping half the cache and shifting the rest into wrong layer slots.
+
+        Names stay ``past_``-prefixed and sequentially numbered so
+        TransposedKVGeneratorMixin un-permutes all of them back to HF layout.
+
+        Parameters
+        ----------
+        layer_cache_descriptors
+            per-layer cache descriptors for the layers that own KV.
+
+        Returns
+        -------
+        list[str]
+            output names aligned 1:1 with the forward's returned tensors.
+        """
+        names = ["logits"]
+        slot = 0
+        for desc in layer_cache_descriptors:
+            for _ in range(desc.num_kv_heads):
+                names += [f"past_key_{slot}_out", f"past_value_{slot}_out"]
+                slot += 1
+        return names
+
     @classmethod
     def _resolve_gemma4_text_model(cls, gemma: Any) -> Any:
         """Return an FP text model exposing embed_tokens / get_per_layer_inputs."""
@@ -1186,12 +1225,17 @@ class Gemma4Generator(HubCompatibleGenerator):
             fp_cls, "hf_repo_name", None
         )
         key = str(checkpoint)
-        if key not in cls._fp_text_model_cache:
-            cls._fp_text_model_cache[key] = fp_cls.from_pretrained(
+        # Cache the text model, not the wrapper: release() nulls the wrapper's
+        # .model, which this class-level cache outlives -- so caching the wrapper
+        # hands back a gutted object after anything releases the FP model.
+        cached = cls._fp_text_model_cache.get(key)
+        if cached is None:
+            cached = fp_cls.from_pretrained(
                 checkpoint=checkpoint,
                 host_device=torch.device("cpu"),
-            )
-        return cls._fp_text_model_cache[key].model.model
+            ).model.model
+            cls._fp_text_model_cache[key] = cached
+        return cached
 
     @classmethod
     def prepare_inputs(  # type: ignore[override]
@@ -1630,10 +1674,12 @@ class Gemma4QuantizablePreSplitBase(  # type: ignore[misc]
 
     def get_calibration_data(  # type: ignore[override]
         self,
-        fp_model: LLMBase,
         num_samples: int = 0,
+        input_spec: InputSpec | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
+        image_size: tuple[int, int] | None = None,
+        fp_model: LLMBase | None = None,
         use_chat_template: bool = True,
     ) -> DatasetEntries | None:
         """Build AIMET-ONNX activation-calibration data for Gemma4.
@@ -1646,17 +1692,26 @@ class Gemma4QuantizablePreSplitBase(  # type: ignore[misc]
         in-graph project_per_layer_inputs is not applied here); the KV cache
         starts as zeros, since one prefill pass captures representative ranges.
 
+        The leading parameters mirror the base signature so the shared
+        ``_shared/llm/quantize.py`` flow can call this by keyword.
+
         Parameters
         ----------
-        fp_model
-            dequantized FP PreSplit model (provides embed_tokens /
-            get_per_layer_inputs / tokenizer).
         num_samples
             number of WikiText samples (0 -> auto from ctx length).
+        input_spec
+            unused; the spec is always derived from *sequence_length* /
+            *context_length* so it matches the assembled samples.
         sequence_length
             calibration sequence length.
         context_length
             calibration context length.
+        image_size
+            unused; this is the text graph, whose inputs carry no image.
+        fp_model
+            dequantized FP PreSplit model (provides embed_tokens /
+            get_per_layer_inputs / tokenizer). Defaults to the cached
+            ``self.FPModel.from_pretrained()`` instance.
         use_chat_template
             calibrate on chat-templated WikiText (``WikiTextChat``) instead of
             raw prose. Gemma4 ``-it`` models only ever see chat-formatted input
@@ -1669,6 +1724,8 @@ class Gemma4QuantizablePreSplitBase(  # type: ignore[misc]
             AIMET-ONNX calibration inputs keyed by input-spec name, or None
             when no calibration data is produced.
         """
+        if fp_model is None:
+            fp_model = self.FPModel.from_pretrained()
         if num_samples == 0:
             num_samples = math.ceil(80000 / context_length)
 

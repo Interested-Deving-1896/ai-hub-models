@@ -35,8 +35,8 @@ DEFAULT_EVAL_SEQLEN = [DEFAULT_SEQUENCE_LENGTH, 1]
 #
 # Both values measured on the full test split (37 blocks, context_length=4096),
 # w4a16 calibrated Seq-MSE + chat. The FP row runs on the monolithic PreSplit
-# (run_llm_evaluate_test's fp_baseline_uses_presplit default), which is why it is
-# the presplit 55.66 and not the split-Parts 55.60; the two agree to 0.1%.
+# (run_llm_evaluate_test's fp_baseline_uses_presplit default). It is cross-checked
+# against stock HF AutoModelForCausalLM on the same corpus, which scores 41.0973.
 # Calibration used --num-samples 20, so these may shift once a full-size
 # calibration lands.
 @pytest.mark.nightly
@@ -47,8 +47,8 @@ DEFAULT_EVAL_SEQLEN = [DEFAULT_SEQUENCE_LENGTH, 1]
 @pytest.mark.parametrize(
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
-        ("DEFAULT_W4A16", "wikitext_chat", 58.63, 0),
-        ("DEFAULT_UNQUANTIZED", "wikitext_chat", 55.66, 0),
+        ("DEFAULT_W4A16", "wikitext_chat", 57.62, 0),
+        ("DEFAULT_UNQUANTIZED", "wikitext_chat", 41.10, 0),
     ],
 )
 def test_evaluate(
