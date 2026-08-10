@@ -1,62 +1,58 @@
-name: DDRNet23-Slim
-id: ddrnet23_slim
-status: published
-headline: Segment images or video by class in real-time on device.
-domain: Computer Vision
-description: DDRNet23Slim is a machine learning model that segments an image into
-  semantic classes, specifically designed for road-based scenes. It is designed for
-  the application of self-driving cars.
-use_case: Semantic Segmentation
-tags:
-- real-time
 applicable_scenarios:
 - Self-driving cars
-related_models:
-- unet_segmentation
-- fcn_resnet50
+dataset:
+- cityscapes
+description: DDRNet23Slim is a machine learning model that segments an image into semantic classes, specifically designed for road-based scenes. It is designed for the application of self-driving cars.
+disabled_paths:
+  w8a8:
+    tflite:
+      scorecard_accuracy_failure: 'Device accuracy (41.1 mIOU) deviates from benchmark (77.4 mIOU) by -36.300 mIOU, threshold: 10.0 mIOU'
+domain: Computer Vision
+external_repos:
+  ddrnet_pytorch:
+    commit_sha: bc0e193e87ead839dbc715c48e6bfb059cf21b27
+    patches_filename: ddrnet_pytorch_patches.diff
+    repo_url: https://github.com/chenjun2hao/DDRNet.pytorch.git
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- cityscapes
-technical_details:
-  Model checkpoint: DDRNet23s_imagenet.pth
-  Inference latency: RealTime
-  Input resolution: 2048x1024
-  Number of output classes: '19'
-  Number of parameters: 6.13M
-  Model size (float): 21.7 MB
-  Model size (w8a8): 6.11 MB
-license_type: mit
-research_paper: https://arxiv.org/abs/2101.06085
-research_paper_title: Deep Dual-resolution Networks for Real-time and Accurate Semantic
-  Segmentation of Road Scenes
-source_repo: https://github.com/chenjun2hao/DDRNet.pytorch
-license: https://github.com/chenjun2hao/DDRNet.pytorch/blob/main/LICENSE
+has_on_target_demo: true
+has_static_banner: true
+headline: Segment images or video by class in real-time on device.
+id: ddrnet23_slim
 imsdk_supported: true
+license: https://github.com/chenjun2hao/DDRNet.pytorch/blob/main/LICENSE
+license_type: mit
+name: DDRNet23-Slim
 numerics_benchmark:
   dataset_name: cityscapes
   metric_name: Mean Intersection Over Union
-  value: 77.4
-  unit: mIOU
   source: https://github.com/ydhongHIT/DDRNet
-external_repos:
-  ddrnet_pytorch:
-    repo_url: https://github.com/chenjun2hao/DDRNet.pytorch.git
-    commit_sha: bc0e193e87ead839dbc715c48e6bfb059cf21b27
-    patches_filename: ddrnet_pytorch_patches.diff
+  unit: mIOU
+  value: 77.4
+related_models:
+- unet_segmentation
+- fcn_resnet50
+research_paper: https://arxiv.org/abs/2101.06085
+research_paper_title: Deep Dual-resolution Networks for Real-time and Accurate Semantic Segmentation of Road Scenes
+source_repo: https://github.com/chenjun2hao/DDRNet.pytorch
+status: published
 supported_precisions:
 - float
 - w8a8
-has_on_target_demo: true
-disabled_paths:
-  w8a8:
-    tflite:
-      scorecard_accuracy_failure: 'Device accuracy (41.1 mIOU) deviates from benchmark
-        (77.4 mIOU) by -36.300 mIOU, threshold: 10.0 mIOU'
+tags:
+- real-time
+technical_details:
+  Inference latency: RealTime
+  Input resolution: 2048x1024
+  Model checkpoint: DDRNet23s_imagenet.pth
+  Model size (float): 21.7 MB
+  Model size (w8a8): 6.11 MB
+  Number of output classes: '19'
+  Number of parameters: 6.13M
 templates:
 - cityscapes_segmentation
 - segmentation
+use_case: Semantic Segmentation

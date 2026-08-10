@@ -1,53 +1,43 @@
-name: ResNet-Mixed-Convolution
-id: resnet_mixed
-status: published
-headline: Sports and human action recognition in videos.
-domain: Computer Vision
-description: ResNet Mixed Convolutions is a network with a mixture of 2D and 3D convolutions
-  used for video understanding.
-use_case: Video Classification
-tags:
-- backbone
 applicable_scenarios:
 - Camera
 - Action Recognition
-related_models:
-- resnet_3d
-- resnet_2plus1d
+description: ResNet Mixed Convolutions is a network with a mixture of 2D and 3D convolutions used for video understanding.
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: Kinetics-400
-  Input resolution: 112x112
-  Number of parameters: 11.7M
-  Model size (float): 44.6 MB
-  Model size (w8a16): 11.5 MB
-license_type: bsd-3-clause
-research_paper: https://arxiv.org/abs/1711.11248
-research_paper_title: A Closer Look at Spatiotemporal Convolutions for Action Recognition
-source_repo: https://github.com/pytorch/vision/blob/main/torchvision/models/video/resnet.py
+has_static_banner: true
+headline: Sports and human action recognition in videos.
+id: resnet_mixed
 license: https://github.com/pytorch/vision/blob/main/LICENSE
+license_type: bsd-3-clause
+name: ResNet-Mixed-Convolution
 numerics_benchmark:
   dataset_name: kinetics400
   metric_name: Top-1 Accuracy
-  value: 64.0
-  unit: '%'
   source: https://github.com/pytorch/vision/tree/main/references/video_classification
+  unit: '%'
+  value: 64.0
+related_models:
+- resnet_3d
+- resnet_2plus1d
+research_paper: https://arxiv.org/abs/1711.11248
+research_paper_title: A Closer Look at Spatiotemporal Convolutions for Action Recognition
+source_repo: https://github.com/pytorch/vision/blob/main/torchvision/models/video/resnet.py
+status: published
 supported_precisions:
 - float
 - w8a16
 - w8a8
-disabled_paths:
-  w8a8:
-    qnn_dlc:
-      scorecard_failure: Some expected profile jobs were missing.
-    onnx:
-      scorecard_failure: Some expected profile jobs were missing.
-    tflite:
-      scorecard_failure: Some expected profile jobs were missing.
+tags:
+- backbone
+technical_details:
+  Input resolution: 112x112
+  Model checkpoint: Kinetics-400
+  Model size (float): 44.6 MB
+  Model size (w8a16): 11.5 MB
+  Number of parameters: 11.7M
 templates:
 - video_classifier
+use_case: Video Classification

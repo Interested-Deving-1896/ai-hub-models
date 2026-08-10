@@ -1,48 +1,45 @@
-name: Simple-Bev
-id: simple_bev_cam
-status: pending
-status_reason: No successful runtimes in scorecard (this field was auto-populated
-  by the scorecard run)
-headline: Construct a bird's eye view from sensors mounted on a vehicle.
-domain: Computer Vision
-description: Simple-Bev is a machine learning model for generating a bird's eye view
-  representation from the sensors (cameras) mounted on a vehicle. It uses ResNet-101
-  as the backbone and segnet as a segmentation model for specific use cases.
-use_case: Image Generation
-tags:
-- bu-auto
 applicable_scenarios:
 - Scenario detection
-related_models:
-- unet_segmentation
+dataset:
+- nuscene
+description: Simple-Bev is a machine learning model for generating a bird's eye view representation from the sensors (cameras) mounted on a vehicle. It uses ResNet-101 as the backbone and segnet as a segmentation model for specific use cases.
+disabled_paths:
+  float:
+    onnx:
+      scorecard_failure: 'Failing jobs: jgd2667l5'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jgd266vk5'
+    tflite:
+      scorecard_failure: 'Failing jobs: jp06ool2p'
+domain: Computer Vision
+external_repos:
+  simple_bev:
+    commit_sha: be46f0ef71960c233341852f3d9bc3677558ab6d
+    patches_filename: simple_bev_patches.diff
+    repo_url: https://github.com/aharley/simple_bev
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- nuscene
-technical_details:
-  Model checkpoint: model-000025000.pth
-  Input resolution: 448 x 800
-  Number of parameters: 49.7M
-  Model size (float): 190 MB
+has_static_banner: true
+headline: Construct a bird's eye view from sensors mounted on a vehicle.
+id: simple_bev_cam
+license: https://github.com/aharley/simple_bev/blob/main/LICENSE
 license_type: bsd-3-clause
+name: Simple-Bev
+related_models:
+- unet_segmentation
 research_paper: https://arxiv.org/abs/2206.07959
 research_paper_title: 'Simple-BEV: What Really Matters for Multi-Sensor BEV Perception?'
 source_repo: https://github.com/aharley/simple_bev/blob/main/nets/segnet.py
-license: https://github.com/aharley/simple_bev/blob/main/LICENSE
-external_repos:
-  simple_bev:
-    repo_url: https://github.com/aharley/simple_bev
-    commit_sha: be46f0ef71960c233341852f3d9bc3677558ab6d
-    patches_filename: simple_bev_patches.diff
-disabled_paths:
-  float:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jgkdjrewp'
-    onnx:
-      scorecard_failure: 'Failing jobs: jgl7je4j5'
-    tflite:
-      scorecard_failure: 'Failing jobs: jpe2j4m1p'
+status: pending
+status_reason: No successful runtimes in scorecard (this field was auto-populated by the scorecard run)
+tags:
+- bu-auto
+technical_details:
+  Input resolution: 448 x 800
+  Model checkpoint: model-000025000.pth
+  Model size (float): 190 MB
+  Number of parameters: 49.7M
+use_case: Image Generation

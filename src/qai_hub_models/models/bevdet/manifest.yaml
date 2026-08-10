@@ -1,49 +1,53 @@
-name: BEVDet
-id: bevdet
-status: published
-headline: Construct a bird’s eye view from sensors mounted on a vehicle.
-domain: Computer Vision
-use_case: Driver Assistance
-tags:
-- bu-auto
-description: BEVDet is a machine learning model for generating a birds eye view represenation from the sensors(cameras) mounted on a vehicle.
-research_paper: https://arxiv.org/abs/2112.11790
-research_paper_title: 'BEVDet: High-Performance Multi-Camera 3D Object Detection in Bird-Eye-View'
-license: https://github.com/HuangJunJie2017/BEVDet/blob/dev3.0/LICENSE
-source_repo: https://github.com/HuangJunJie2017/BEVDet/
-technical_details:
-  Model checkpoint: bevdet-r50.pth
-  Input resolution: 1 x 6 x 3 x 256 x 704
-  Number of parameters: 44M
-  Model size: 171 MB
 applicable_scenarios:
 - Object Detection
-related_models:
-- simple_bev_cam
+dataset:
+- nuscene
+datasets:
+- nuscenes
+description: BEVDet is a machine learning model for generating a birds eye view represenation from the sensors(cameras) mounted on a vehicle.
+disabled_paths:
+  mixed_with_float:
+    onnx:
+      scorecard_failure: 'Failing jobs: jpym8394p'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jp36o07xp'
+    tflite:
+      scorecard_failure: 'Failing jobs: jp16nqwl5 jprwl1ee5'
+domain: Computer Vision
+external_repos:
+  bevdet:
+    commit_sha: 26144be7c11c2972a8930d6ddd6471b8ea900d13
+    patches_filename: bevdet_patches.diff
+    repo_url: https://github.com/HuangJunJie2017/BEVDet.git
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
+has_on_target_demo: true
+has_static_banner: true
+headline: Construct a bird’s eye view from sensors mounted on a vehicle.
+id: bevdet
+is_collection_model: true
+license: https://github.com/HuangJunJie2017/BEVDet/blob/dev3.0/LICENSE
 license_type: apache-2.0
-dataset:
-- nuscene
-external_repos:
-  bevdet:
-    repo_url: https://github.com/HuangJunJie2017/BEVDet.git
-    commit_sha: 26144be7c11c2972a8930d6ddd6471b8ea900d13
-    patches_filename: bevdet_patches.diff
+name: BEVDet
+pre_pip_install_commands:
+- pip install nuscenes-devkit==1.2.0 --no-deps
+related_models:
+- simple_bev_cam
+research_paper: https://arxiv.org/abs/2112.11790
+research_paper_title: 'BEVDet: High-Performance Multi-Camera 3D Object Detection in Bird-Eye-View'
+source_repo: https://github.com/HuangJunJie2017/BEVDet/
+status: published
 supported_precisions:
 - float
 - mixed_with_float
-disabled_paths:
-  mixed_with_float:
-    tflite:
-      scorecard_failure: 'w8a16 is not supported on TFLite.'
-has_on_target_demo: true
-is_collection_model: true
-datasets:
-- nuscenes
-pre_pip_install_commands:
-- pip install nuscenes-devkit==1.2.0 --no-deps
+tags:
+- bu-auto
+technical_details:
+  Input resolution: 1 x 6 x 3 x 256 x 704
+  Model checkpoint: bevdet-r50.pth
+  Model size: 171 MB
+  Number of parameters: 44M
+use_case: Driver Assistance

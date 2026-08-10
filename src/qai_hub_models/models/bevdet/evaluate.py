@@ -24,12 +24,6 @@ SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
         TargetRuntime.ONNX,
         TargetRuntime.PRECOMPILED_QNN_ONNX,
     ],
-    Precision.mixed_with_float: [
-        TargetRuntime.QNN_DLC,
-        TargetRuntime.QNN_CONTEXT_BINARY,
-        TargetRuntime.ONNX,
-        TargetRuntime.PRECOMPILED_QNN_ONNX,
-    ],
 }
 
 

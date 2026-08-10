@@ -1,47 +1,45 @@
-name: RTMPose-Body2d
-id: rtmpose_body2d
-status: published
-headline: Human pose estimation.
-domain: Computer Vision
-description: RTMPose is a machine learning model that detects human pose and returns a location and confidence for each of 133 joints.
-use_case: Pose Estimation
-tags: []
 applicable_scenarios:
 - Injury prevention training
 - Sports performance analysis
 - Posture recognition
-related_models:
-- hrnet_pose
+datasets:
+- cocowholebody
+description: RTMPose is a machine learning model that detects human pose and returns a location and confidence for each of 133 joints.
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Input resolution: 256x192
-  Number of parameters: 17.9M
-  Model size (float): 68.5 MB
-  Model size (w8a16): 18.2 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/2303.07399
-research_paper_title: 'RTMPose: Real-Time Multi-Person Pose Estimation based on MMPose'
-source_repo: https://github.com/open-mmlab/mmpose/tree/main/projects/rtmpose
+has_on_target_demo: true
+has_static_banner: true
+headline: Human pose estimation.
+id: rtmpose_body2d
 license: https://github.com/open-mmlab/mmpose/blob/main/LICENSE
+license_type: apache-2.0
+name: RTMPose-Body2d
 numerics_benchmark:
   dataset_name: cocowholebody
   metric_name: Mean Average Precision
-  value: 51.7
-  unit: mAP
   source: AI Hub Models Reference Eval
+  unit: mAP
+  value: 51.7
+pre_pip_install_commands:
+- pip install mmpose==1.2.0 --no-deps
+related_models:
+- hrnet_pose
+research_paper: https://arxiv.org/abs/2303.07399
+research_paper_title: 'RTMPose: Real-Time Multi-Person Pose Estimation based on MMPose'
+source_repo: https://github.com/open-mmlab/mmpose/tree/main/projects/rtmpose
+status: published
 supported_precisions:
 - float
 - w8a16
-has_on_target_demo: true
-datasets:
-- cocowholebody
+technical_details:
+  Input resolution: 256x192
+  Model size (float): 68.5 MB
+  Model size (w8a16): 18.2 MB
+  Number of parameters: 17.9M
 templates:
 - mmpose
-pre_pip_install_commands:
-- pip install mmpose==1.2.0 --no-deps
+use_case: Pose Estimation

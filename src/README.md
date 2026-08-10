@@ -280,6 +280,7 @@ and many more.
 | [MediaPipe-Face-Detection](https://aihub.qualcomm.com/models/mediapipe_face) | `qai_hub_models.models.mediapipe_face` |
 | [MediaPipe-Hand-Detection](https://aihub.qualcomm.com/models/mediapipe_hand) | `qai_hub_models.models.mediapipe_hand` |
 | [MediaPipe-Hand-Gesture-Recognition](https://aihub.qualcomm.com/models/mediapipe_hand_gesture) | `qai_hub_models.models.mediapipe_hand_gesture` |
+| [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit) | `qai_hub_models.models.owl_vit` |
 | [PPE-Detection](https://aihub.qualcomm.com/models/gear_guard_net) | `qai_hub_models.models.gear_guard_net` |
 | [Person-Foot-Detection](https://aihub.qualcomm.com/models/foot_track_net) | `qai_hub_models.models.foot_track_net` |
 | [RF-DETR](https://aihub.qualcomm.com/models/rf_detr) | `qai_hub_models.models.rf_detr` |
@@ -305,6 +306,7 @@ and many more.
 | [HRNetPose](https://aihub.qualcomm.com/models/hrnet_pose) | `qai_hub_models.models.hrnet_pose` |
 | [LiteHRNet](https://aihub.qualcomm.com/models/litehrnet) | `qai_hub_models.models.litehrnet` |
 | [MediaPipe-Pose-Estimation](https://aihub.qualcomm.com/models/mediapipe_pose) | `qai_hub_models.models.mediapipe_pose` |
+| [Movenet](https://aihub.qualcomm.com/models/movenet) | `qai_hub_models.models.movenet` |
 | [Posenet-Mobilenet](https://aihub.qualcomm.com/models/posenet_mobilenet) | `qai_hub_models.models.posenet_mobilenet` |
 | [RTMPose-Body2d](https://aihub.qualcomm.com/models/rtmpose_body2d) | `qai_hub_models.models.rtmpose_body2d` |
 | [SixDRepNet](https://aihub.qualcomm.com/models/sixd_repnet) | `qai_hub_models.models.sixd_repnet` |
@@ -358,9 +360,11 @@ and many more.
 | -- | -- |
 | | |
 | **Speech Recognition**
+| [DeepSpeech2](https://aihub.qualcomm.com/models/deepspeech2) | `qai_hub_models.models.deepspeech2` |
 | [Distil-Whisper](https://aihub.qualcomm.com/models/distil_whisper) | `qai_hub_models.models.distil_whisper` |
 | [Whisper-Base](https://aihub.qualcomm.com/models/whisper_base) | `qai_hub_models.models.whisper_base` |
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | `qai_hub_models.models.whisper_large_v3_turbo` |
+| [Whisper-Large-V3-Turbo-Quantized](https://aihub.qualcomm.com/models/whisper_large_v3_turbo_quantized) | `qai_hub_models.models.whisper_large_v3_turbo_quantized` |
 | [Whisper-Medium](https://aihub.qualcomm.com/models/whisper_medium) | `qai_hub_models.models.whisper_medium` |
 | [Whisper-Small](https://aihub.qualcomm.com/models/whisper_small) | `qai_hub_models.models.whisper_small` |
 | [Whisper-Small-Quantized](https://aihub.qualcomm.com/models/whisper_small_quantized) | `qai_hub_models.models.whisper_small_quantized` |

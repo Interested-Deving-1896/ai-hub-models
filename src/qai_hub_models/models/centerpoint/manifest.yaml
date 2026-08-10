@@ -1,38 +1,31 @@
-name: CenterPoint
-id: centerpoint
-status: published
-private_perf_form_factors:
-- Auto
-headline: 3D object detection model optimized for LiDAR-based autonomous driving scenarios.
-domain: Computer Vision
-description: CenterPoint is a LiDAR-based 3D object detection model that detects objects
-  by predicting their centers and regressing other attributes. It is designed for
-  high accuracy and real-time performance in autonomous driving applications.
-use_case: Driver Assistance
-tags: []
 applicable_scenarios:
 - Self driving cars
-related_models: []
-form_factors:
-- Auto
-has_static_banner: true
-has_animated_banner: true
 dataset:
 - nuScenes
-technical_details:
-  Model checkpoint: PointPillars
-  Input resolution: 5x20x5, 5x4, 5
-  Number of parameters: 21.8M
-  Model size: 83.3 MB
-license_type: mit
-license: https://github.com/tianweiy/CenterPoint/blob/master/LICENSE
+description: CenterPoint is a LiDAR-based 3D object detection model that detects objects by predicting their centers and regressing other attributes. It is designed for high accuracy and real-time performance in autonomous driving applications.
+disabled_paths: {}
+domain: Computer Vision
 external_repos:
   centerpoint:
-    repo_url: https://github.com/tianweiy/CenterPoint
     commit_sha: d3a248fa56db2601860d576d5934d00fee9916eb
     patches_filename: centerpoint_patches.diff
+    repo_url: https://github.com/tianweiy/CenterPoint
+form_factors:
+- Auto
+has_animated_banner: true
 has_on_target_demo: true
-disabled_paths:
-  float:
-    onnx:
-      scorecard_failure: 'Failing jobs: jgj19r91g'
+has_static_banner: true
+headline: 3D object detection model optimized for LiDAR-based autonomous driving scenarios.
+id: centerpoint
+license: https://github.com/tianweiy/CenterPoint/blob/master/LICENSE
+license_type: mit
+name: CenterPoint
+private_perf_form_factors:
+- Auto
+status: published
+technical_details:
+  Input resolution: 5x20x5, 5x4, 5
+  Model checkpoint: PointPillars
+  Model size: 83.3 MB
+  Number of parameters: 21.8M
+use_case: Driver Assistance

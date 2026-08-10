@@ -1,50 +1,39 @@
-name: GR00TN1.5
-id: grootn15
-status: published
-headline: State-of-the-art vision-language-action model for dexterous robot manipulation,
-  enabling zero-shot generalization across diverse embodiments via diffusion-based
-  action generation.
-domain: Multimodal
-description: 'GR00T N1.5 is a vision-language-action (VLA) model for generalist robot
-  control. The model supports multiple robot embodiments and is designed for dexterous,
-  long-horizon manipulation tasks.
-
-  '
-use_case: Robotics
-tags:
-- generative-ai
-- robotics
 applicable_scenarios:
 - Robotics
-related_models:
-- pi05
+dataset:
+- PickNPlace
+default_device: Dragonwing IQ-9075 EVK
+description: |
+  GR00T N1.5 is a vision-language-action (VLA) model for generalist robot control. The model supports multiple robot embodiments and is designed for dexterous, long-horizon manipulation tasks.
+disabled_paths: {}
+domain: Multimodal
+external_repos:
+  gr00t:
+    commit_sha: 4af2b622892f7dcb5aae5a3fb70bcb02dc217b96
+    patches_filename: gr00t_patches.diff
+    repo_url: https://github.com/NVIDIA/Isaac-GR00T
 form_factors:
 - Auto
 has_static_banner: true
-has_animated_banner: false
-dataset:
-- PickNPlace
-technical_details:
-  Input: 'RGB camera frames (one or more views), a natural language task instruction
-    and robot proprioceptive state (joint positions/velocities).
-
-    '
-  Output: 'Action chunk representing predicted joint commands over the next N timesteps,
-    generated via diffusion denoising.
-
-    '
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/2503.14734
-research_paper_title: 'GR00T N1: An Open Foundation Model for Generalist Humanoid
-  Robots'
-source_repo: https://github.com/NVIDIA/Isaac-GR00T/tree/n1.5-release
-license: https://github.com/NVIDIA/Isaac-GR00T/blob/n1.5-release/LICENSE
-external_repos:
-  gr00t:
-    repo_url: https://github.com/NVIDIA/Isaac-GR00T
-    commit_sha: 4af2b622892f7dcb5aae5a3fb70bcb02dc217b96
-    patches_filename: gr00t_patches.diff
-disabled_paths: {}
-default_device: Dragonwing IQ-9075 EVK
+headline: State-of-the-art vision-language-action model for dexterous robot manipulation, enabling zero-shot generalization across diverse embodiments via diffusion-based action generation.
+id: grootn15
 is_collection_model: true
+license: https://github.com/NVIDIA/Isaac-GR00T/blob/n1.5-release/LICENSE
+license_type: apache-2.0
+name: GR00TN1.5
+related_models:
+- pi05
 requires_aot_prepare: true
+research_paper: https://arxiv.org/abs/2503.14734
+research_paper_title: 'GR00T N1: An Open Foundation Model for Generalist Humanoid Robots'
+source_repo: https://github.com/NVIDIA/Isaac-GR00T/tree/n1.5-release
+status: published
+tags:
+- generative-ai
+- robotics
+technical_details:
+  Input: |
+    RGB camera frames (one or more views), a natural language task instruction and robot proprioceptive state (joint positions/velocities).
+  Output: |
+    Action chunk representing predicted joint commands over the next N timesteps, generated via diffusion denoising.
+use_case: Robotics

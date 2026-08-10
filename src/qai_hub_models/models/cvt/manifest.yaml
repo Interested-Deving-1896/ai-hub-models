@@ -1,46 +1,51 @@
-name: CVT
-id: cvt
-status: published
-headline: Construct a map view from sensors mounted on a vehicle.
-description: Cross-View Transformer generates real-time bird's-eye view maps from multiple vehicle cameras for autonomous driving.
-domain: Computer Vision
-use_case: Driver Assistance
-tags: []
 applicable_scenarios:
 - Object Detection
-related_models:
-- simple_bev_cam
+dataset:
+- nuscene
+datasets:
+- nuscenes
+description: Cross-View Transformer generates real-time bird's-eye view maps from multiple vehicle cameras for autonomous driving.
+disabled_paths:
+  w8a16_mixed_int16:
+    onnx:
+      scorecard_failure: 'Failing jobs: jp2erq06p'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jg9dz7l85'
+domain: Computer Vision
+external_repos:
+  cross_view_transformers:
+    commit_sha: 4de6e641397ef1ffde996d7549f7f988e49156f7
+    patches_filename: cvt_patches.diff
+    repo_url: https://github.com/bradyz/cross_view_transformers
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- nuscene
-technical_details:
-  Model checkpoint: vehicles_50k.pt
-  Inference latency: RealTime
-  Input resolution: 1x6x3x224x480
-  Number of parameters: 1.33M
-  Model size (float): 5.18 MB
-license_type: mit
+has_on_target_demo: true
+has_static_banner: true
+headline: Construct a map view from sensors mounted on a vehicle.
+id: cvt
 license: https://github.com/bradyz/cross_view_transformers/blob/master/LICENSE
+license_type: mit
+name: CVT
+pre_pip_install_commands:
+- pip install nuscenes-devkit==1.2.0 --no-deps
+related_models:
+- simple_bev_cam
 research_paper: https://arxiv.org/abs/2205.02833
 research_paper_title: Cross-view Transformers for real-time Map-view Semantic Segmentation
 source_repo: https://github.com/bradyz/cross_view_transformers
-external_repos:
-  cross_view_transformers:
-    repo_url: https://github.com/bradyz/cross_view_transformers
-    commit_sha: 4de6e641397ef1ffde996d7549f7f988e49156f7
-    patches_filename: cvt_patches.diff
+status: published
 supported_precisions:
 - float
 - w8a16_mixed_int16
-has_on_target_demo: true
-datasets:
-- nuscenes
+technical_details:
+  Inference latency: RealTime
+  Input resolution: 1x6x3x224x480
+  Model checkpoint: vehicles_50k.pt
+  Model size (float): 5.18 MB
+  Number of parameters: 1.33M
 templates:
 - cvt_gkt
-pre_pip_install_commands:
-- pip install nuscenes-devkit==1.2.0 --no-deps
+use_case: Driver Assistance

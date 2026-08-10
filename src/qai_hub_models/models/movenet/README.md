@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Movenet: Perform accurate human pose estimation](https://aihub.qualcomm.com/models/movenet)
 
 Movenet performs pose estimation on human images.
@@ -25,7 +22,7 @@ qai-hub-models perf Movenet
 qai-hub-models numerics Movenet
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Movenet --runtime qnn_context_binary --precision float
+qai-hub-models fetch Movenet --runtime tflite --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
@@ -67,7 +64,7 @@ To run the model on Qualcomm® devices, you must export the model for use with a
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 Use the following command to export the model:
 ```bash
-qai-hub-models export movenet --target-runtime qnn_context_binary --precision float
+qai-hub-models export movenet --target-runtime tflite --precision float
 ```
 Additional options are documented with the `--help` option.
 

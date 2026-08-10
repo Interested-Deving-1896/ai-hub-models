@@ -1,47 +1,44 @@
-name: Depth-Anything-V3
-id: depth_anything_v3
-status: published
-headline: Deep Convolutional Neural Network model for depth estimation.
-domain: Computer Vision
-description: Depth Anything 3 (DA3), a model that predicts spatially consistent geometry
-  from arbitrary visual inputs, with or without known camera poses.
-use_case: Depth Estimation
-tags: []
 applicable_scenarios:
 - Anomaly Detection
 - Inventory Management
-related_models:
-- midas
-- depth_anything
-- depth_anything_v2
+description: Depth Anything 3 (DA3), a model that predicts spatially consistent geometry from arbitrary visual inputs, with or without known camera poses.
+domain: Computer Vision
+external_repos:
+  depth_anything_3:
+    commit_sha: a7927ef76f99be61925d3a0f8a671cba8bc44f05
+    patches_filename: depth_anything_3_patches.diff
+    repo_url: https://github.com/ByteDance-Seed/Depth-Anything-3.git
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: da3-small
-  Input resolution: 518x518
-  Number of parameters: 24.7M
-  Model size (float): 94.3 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/2511.10647
-research_paper_title: 'Depth Anything 3: Recovering the visual space from any views'
-source_repo: https://github.com/ByteDance-Seed/Depth-Anything-3
+has_on_target_demo: true
+has_static_banner: true
+headline: Deep Convolutional Neural Network model for depth estimation.
+id: depth_anything_v3
 license: https://github.com/ByteDance-Seed/Depth-Anything-3/blob/main/LICENSE
+license_type: apache-2.0
+name: Depth-Anything-V3
 numerics_benchmark:
   dataset_name: nyuv2
   metric_name: Delta Threshold Accuracy
-  value: 85.4
-  unit: δ1
   source: AI Hub Models Reference Eval
-external_repos:
-  depth_anything_3:
-    repo_url: https://github.com/ByteDance-Seed/Depth-Anything-3.git
-    commit_sha: a7927ef76f99be61925d3a0f8a671cba8bc44f05
-    patches_filename: depth_anything_3_patches.diff
-has_on_target_demo: true
+  unit: δ1
+  value: 85.4
+related_models:
+- midas
+- depth_anything
+- depth_anything_v2
+research_paper: https://arxiv.org/abs/2511.10647
+research_paper_title: 'Depth Anything 3: Recovering the visual space from any views'
+source_repo: https://github.com/ByteDance-Seed/Depth-Anything-3
+status: published
+technical_details:
+  Input resolution: 518x518
+  Model checkpoint: da3-small
+  Model size (float): 94.3 MB
+  Number of parameters: 24.7M
 templates:
 - depth_estimation
+use_case: Depth Estimation

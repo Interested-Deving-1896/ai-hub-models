@@ -1,54 +1,45 @@
-name: D-FINE
-id: dfine
-status: unpublished
-status_reason: Newly onboarded.
-headline: Real-time transformer based object detector.
-domain: Computer Vision
-description: D-FINE is a state-of-the-art real-time object detection model that redefines
-  the regression task in DETRs as fine-grained distribution refinement. The default
-  variant is trained on the COCO dataset.
-use_case: Object Detection
-tags: []
 applicable_scenarios:
 - Factory Automation
 - Robotic Navigation
 - Camera
-related_models:
-- detr_resnet50
-- detr_resnet101
-- deformable_detr
+dataset:
+- detection-datasets/coco
+datasets:
+- coco
+description: D-FINE is a state-of-the-art real-time object detection model that redefines the regression task in DETRs as fine-grained distribution refinement. The default variant is trained on the COCO dataset.
+disabled_paths:
+  float:
+    tflite:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-36.620 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: false
-has_animated_banner: false
-dataset:
-- detection-datasets/coco
-technical_details:
-  Model checkpoint: dfine-nano-coco
-  Input resolution: 640x640
-  Number of parameters: 3.79M
-  Model size (float): 14.6 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/2410.13842
-research_paper_title: 'D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution
-  Refinement'
-source_repo: https://github.com/Peterande/D-FINE
+has_on_target_demo: true
+headline: Real-time transformer based object detector.
+id: dfine
 license: https://github.com/Peterande/D-FINE/blob/master/LICENSE
+license_type: apache-2.0
+name: D-FINE
 numerics_benchmark:
   dataset_name: coco
   metric_name: Mean Average Precision
-  value: 42.8
-  unit: mAP
   source: https://github.com/Peterande/D-FINE/blob/master/README.md
-supported_precisions:
-- float
-has_on_target_demo: true
-disabled_paths:
-  float:
-    tflite:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-36.679 mAP@0.5:0.95)
-        above threshold (10.0 mAP@0.5:0.95)
-datasets:
-- coco
+  unit: mAP
+  value: 42.8
+related_models:
+- detr_resnet50
+- detr_resnet101
+- deformable_detr
+research_paper: https://arxiv.org/abs/2410.13842
+research_paper_title: 'D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement'
+source_repo: https://github.com/Peterande/D-FINE
+status: unpublished
+status_reason: Newly onboarded.
+technical_details:
+  Input resolution: 640x640
+  Model checkpoint: dfine-nano-coco
+  Model size (float): 14.6 MB
+  Number of parameters: 3.79M
+use_case: Object Detection

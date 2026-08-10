@@ -1,45 +1,43 @@
-name: Segment-Anything-Model
-id: sam
-status: pending
-status_reason: No successful runtimes in scorecard (this field was auto-populated by the scorecard run)
-headline: High-quality segmentation mask generation around any object in an image with simple input prompt.
-domain: Computer Vision
-description: Transformer based encoder-decoder where prompts specify what to segment in an image thereby allowing segmentation without the need for additional training. The image encoder generates embeddings and the lightweight decoder operates on the embeddings for point and mask based image segmentation.
-use_case: Semantic Segmentation
-tags:
-- foundation
 applicable_scenarios:
 - Factory Automation
 - Robotic Navigation
 - Camera
-related_models: []
+description: Transformer based encoder-decoder where prompts specify what to segment in an image thereby allowing segmentation without the need for additional training. The image encoder generates embeddings and the lightweight decoder operates on the embeddings for point and mask based image segmentation.
+disabled_paths:
+  float:
+    onnx:
+      scorecard_failure: 'Failing jobs: jgk8627yg'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jp43eyr25'
+    tflite:
+      scorecard_failure: 'Failing jobs: jpxx04j8p'
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: vit_l
-  Input resolution: 720p (720x1280)
-  Number of parameters (sam_decoder): 5.11M
-  Model size (sam_decoder): 19.6 MB
+has_on_target_demo: true
+has_static_banner: true
+headline: High-quality segmentation mask generation around any object in an image with simple input prompt.
+id: sam
+is_collection_model: true
+license: https://github.com/facebookresearch/segment-anything/blob/main/LICENSE
 license_type: apache-2.0
+name: Segment-Anything-Model
+post_pip_install_commands:
+- pip install git+https://github.com/facebookresearch/segment-anything.git@dca509f --use-pep517
 research_paper: https://arxiv.org/abs/2304.02643
 research_paper_title: Segment Anything
 source_repo: https://github.com/facebookresearch/segment-anything
-license: https://github.com/facebookresearch/segment-anything/blob/main/LICENSE
-has_on_target_demo: true
-disabled_paths:
-  float:
-    qnn_dlc:
-      scorecard_failure: Some expected profile jobs were missing.
-    onnx:
-      scorecard_failure: Some expected profile jobs were missing.
-    tflite:
-      scorecard_failure: Some expected profile jobs were missing.
-is_collection_model: true
+status: pending
+status_reason: No successful runtimes in scorecard (this field was auto-populated by the scorecard run)
+tags:
+- foundation
+technical_details:
+  Input resolution: 720p (720x1280)
+  Model checkpoint: vit_l
+  Model size (sam_decoder): 19.6 MB
+  Number of parameters (sam_decoder): 5.11M
 templates:
 - sam
-post_pip_install_commands:
-- pip install git+https://github.com/facebookresearch/segment-anything.git@dca509f --use-pep517
+use_case: Semantic Segmentation

@@ -1,64 +1,59 @@
-name: EfficientNet-Lite4
-id: efficientnet_lite4
-status: published
-headline: Imagenet classifier and general purpose backbone.
-domain: Computer Vision
-description: EfficientNet-Lite4 is a machine learning model that can classify images
-  from the Imagenet dataset. It can also be used as a backbone in building more complex
-  models for specific use cases.
-use_case: Image Classification
-tags:
-- backbone
-- bu-auto
 applicable_scenarios:
 - Medical Imaging
 - Anomaly Detection
 - Inventory Management
+dataset:
+- imagenet-1k
+datasets:
+- imagenet
+description: EfficientNet-Lite4 is a machine learning model that can classify images from the Imagenet dataset. It can also be used as a backbone in building more complex models for specific use cases.
+domain: Computer Vision
+external_repos:
+  efficientnet_lite4:
+    commit_sha: 0379e1d1fa2d7fd70318ac5f59b054fbb707fa58
+    repo_url: https://github.com/RangiLyu/EfficientNet-Lite.git
+form_factors:
+- Phone
+- Tablet
+- IoT
+has_animated_banner: true
+has_on_target_demo: true
+has_static_banner: true
+headline: Imagenet classifier and general purpose backbone.
+id: efficientnet_lite4
+imsdk_supported: true
+license: https://github.com/RangiLyu/EfficientNet-Lite/blob/main/LICENSE
+license_type: apache-2.0
+name: EfficientNet-Lite4
+numerics_benchmark:
+  dataset_name: imagenet
+  metric_name: Top-1 Accuracy
+  source: https://github.com/RangiLyu/EfficientNet-Lite/tree/main#efficientnet-lite-pytorch
+  unit: '%'
+  value: 80.34
+private_perf_form_factors:
+- Auto
 related_models:
 - efficientnet_b0
 - efficientnet_b4
 - mobilenet_v2
 - densenet121
 - googlenet
-form_factors:
-- Phone
-- Tablet
-- IoT
-has_static_banner: true
-has_animated_banner: true
-dataset:
-- imagenet-1k
-technical_details:
-  Model checkpoint: Imagenet
-  Input resolution: 300x300
-  Number of parameters: 13.01M
-  Model size (float): 51.9 MB
-license_type: apache-2.0
-private_perf_form_factors:
-- Auto
 research_paper: https://arxiv.org/abs/1905.11946
-research_paper_title: 'EfficientNet: Rethinking Model Scaling for Convolutional Neural
-  Networks'
+research_paper_title: 'EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks'
 source_repo: https://github.com/RangiLyu/EfficientNet-Lite
-license: https://github.com/RangiLyu/EfficientNet-Lite/blob/main/LICENSE
-imsdk_supported: true
-numerics_benchmark:
-  dataset_name: imagenet
-  metric_name: Top-1 Accuracy
-  value: 80.34
-  unit: '%'
-  source:
-    https://github.com/RangiLyu/EfficientNet-Lite/tree/main#efficientnet-lite-pytorch
-external_repos:
-  efficientnet_lite4:
-    repo_url: https://github.com/RangiLyu/EfficientNet-Lite.git
-    commit_sha: 0379e1d1fa2d7fd70318ac5f59b054fbb707fa58
+status: published
 supported_precisions:
 - float
 - w8a8
-has_on_target_demo: true
-disabled_paths: {}
-datasets:
-- imagenet
+tags:
+- backbone
+- bu-auto
+technical_details:
+  Input resolution: 300x300
+  Model checkpoint: Imagenet
+  Model size (float): 51.9 MB
+  Number of parameters: 13.01M
 templates:
 - imagenet_classifier
+use_case: Image Classification

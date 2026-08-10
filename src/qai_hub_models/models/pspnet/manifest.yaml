@@ -1,50 +1,52 @@
-name: PSPNet
-id: pspnet
-status: published
-headline: Deep learning model for pixel-level semantic segmentation using pyramid
-  pooling.
-domain: Computer Vision
-description: PSPNet (Pyramid Scene Parsing Network) is a semantic segmentation model
-  that captures global context information by applying pyramid pooling modules. It
-  is designed to improve scene understanding by aggregating contextual features at
-  multiple scales.
-use_case: Semantic Segmentation
-tags:
-- bu-auto
-applicable_scenarios: []
-related_models: []
-form_factors:
-- Auto
-has_static_banner: true
-has_animated_banner: true
 dataset:
 - ADE20K
 - Cityscapes
-technical_details:
-  Model checkpoint: pspnet101_ade20k.pth
-  Input resolution: 1x3x473x473
-  Number of parameters: 65.7M
-  Model size (float): 251 MB
-license_type: mit
-private_perf_form_factors:
+datasets:
+- ade20k
+description: PSPNet (Pyramid Scene Parsing Network) is a semantic segmentation model that captures global context information by applying pyramid pooling modules. It is designed to improve scene understanding by aggregating contextual features at multiple scales.
+disabled_paths:
+  w8a8:
+    onnx:
+      scorecard_accuracy_failure: 'Device accuracy (27.8 mIOU) deviates from benchmark (17.5 mIOU) by 10.300 mIOU, threshold: 10.0 mIOU'
+    qnn_dlc:
+      scorecard_accuracy_failure: 'Device accuracy (28.7 mIOU) deviates from benchmark (17.5 mIOU) by 11.200 mIOU, threshold: 10.0 mIOU'
+    tflite:
+      scorecard_accuracy_failure: 'Device accuracy (28.7 mIOU) deviates from benchmark (17.5 mIOU) by 11.200 mIOU, threshold: 10.0 mIOU'
+domain: Computer Vision
+external_repos:
+  semseg:
+    commit_sha: 4f274c3f276778228bc14a4565822d46359f0cc8
+    repo_url: https://github.com/hszhao/semseg.git
+form_factors:
 - Auto
+has_animated_banner: true
+has_on_target_demo: true
+has_static_banner: true
+headline: Deep learning model for pixel-level semantic segmentation using pyramid pooling.
+id: pspnet
 license: https://github.com/hszhao/semseg/blob/master/LICENSE
+license_type: mit
+name: PSPNet
 numerics_benchmark:
   dataset_name: ade20k_10
   metric_name: Mean Intersection Over Union
-  value: 17.5
-  unit: mIOU
   source: AI Hub Models Reference Eval
-external_repos:
-  semseg:
-    repo_url: https://github.com/hszhao/semseg.git
-    commit_sha: 4f274c3f276778228bc14a4565822d46359f0cc8
+  unit: mIOU
+  value: 17.5
+private_perf_form_factors:
+- Auto
+status: published
 supported_precisions:
 - float
 - w8a8
-has_on_target_demo: true
-datasets:
-- ade20k
+tags:
+- bu-auto
+technical_details:
+  Input resolution: 1x3x473x473
+  Model checkpoint: pspnet101_ade20k.pth
+  Model size (float): 251 MB
+  Number of parameters: 65.7M
 templates:
 - cityscapes_segmentation
 - segmentation
+use_case: Semantic Segmentation

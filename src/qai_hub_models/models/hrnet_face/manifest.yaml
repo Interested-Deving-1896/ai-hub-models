@@ -1,46 +1,44 @@
-name: HRNetFace
-id: hrnet_face
-status: published
-headline: Comprehensive facial analysis by extracting face features.
-domain: Computer Vision
-description: Detects attributes (liveness, eye closeness, mask presence, glasses presence,
-  sunglasses presence) that apply to a given face.
-use_case: Object Detection
-tags:
-- real-time
 applicable_scenarios:
 - Incabinet driver monitoring, phone unlocking, and building access control.
-related_models: []
+dataset:
+- cofw
+description: Detects attributes (liveness, eye closeness, mask presence, glasses presence, sunglasses presence) that apply to a given face.
+domain: Computer Vision
+external_repos:
+  hrnet_facial_landmark_detection:
+    commit_sha: f776dbe8eb6fec831774a47209dae5547ae2cda5
+    repo_url: https://github.com/HRNet/HRNet-Facial-Landmark-Detection.git
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- cofw
-technical_details:
-  Model checkpoint: HR18-COFW.pth
-  Input resolution: 256x256
-  Number of parameters: 9.68M
-  Model size (float): 36.87MB
-  Model size (w8a8): 17.7 MB
-license_type: mit
-research_paper: https://arxiv.org/abs/1908.07919
-research_paper_title: Deep High-Resolution Representation Learning for Visual Recognition
-source_repo: https://github.com/HRNet/HRNet-Facial-Landmark-Detection
+has_on_target_demo: true
+has_static_banner: true
+headline: Comprehensive facial analysis by extracting face features.
+id: hrnet_face
 license: https://github.com/HRNet/HRNet-Facial-Landmark-Detection/blob/master/LICENCE
+license_type: mit
+name: HRNetFace
 numerics_benchmark:
   dataset_name: cofw
   metric_name: Normalized Mean Error
-  value: 0.0345
-  unit: NME
   source: https://github.com/HRNet/HRNet-Facial-Landmark-Detection
-external_repos:
-  hrnet_facial_landmark_detection:
-    repo_url: https://github.com/HRNet/HRNet-Facial-Landmark-Detection.git
-    commit_sha: f776dbe8eb6fec831774a47209dae5547ae2cda5
+  unit: NME
+  value: 0.0345
+research_paper: https://arxiv.org/abs/1908.07919
+research_paper_title: Deep High-Resolution Representation Learning for Visual Recognition
+source_repo: https://github.com/HRNet/HRNet-Facial-Landmark-Detection
+status: published
 supported_precisions:
 - float
 - w8a8
-has_on_target_demo: true
+tags:
+- real-time
+technical_details:
+  Input resolution: 256x256
+  Model checkpoint: HR18-COFW.pth
+  Model size (float): 36.87MB
+  Model size (w8a8): 17.7 MB
+  Number of parameters: 9.68M
+use_case: Object Detection

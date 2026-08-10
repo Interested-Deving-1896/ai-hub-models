@@ -280,6 +280,7 @@ and many more.
 | [MediaPipe-Face-Detection](https://aihub.qualcomm.com/models/mediapipe_face) | [qai_hub_models.models.mediapipe_face](src/qai_hub_models/models/mediapipe_face/README.md) |
 | [MediaPipe-Hand-Detection](https://aihub.qualcomm.com/models/mediapipe_hand) | [qai_hub_models.models.mediapipe_hand](src/qai_hub_models/models/mediapipe_hand/README.md) |
 | [MediaPipe-Hand-Gesture-Recognition](https://aihub.qualcomm.com/models/mediapipe_hand_gesture) | [qai_hub_models.models.mediapipe_hand_gesture](src/qai_hub_models/models/mediapipe_hand_gesture/README.md) |
+| [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit) | [qai_hub_models.models.owl_vit](src/qai_hub_models/models/owl_vit/README.md) |
 | [PPE-Detection](https://aihub.qualcomm.com/models/gear_guard_net) | [qai_hub_models.models.gear_guard_net](src/qai_hub_models/models/gear_guard_net/README.md) |
 | [Person-Foot-Detection](https://aihub.qualcomm.com/models/foot_track_net) | [qai_hub_models.models.foot_track_net](src/qai_hub_models/models/foot_track_net/README.md) |
 | [RF-DETR](https://aihub.qualcomm.com/models/rf_detr) | [qai_hub_models.models.rf_detr](src/qai_hub_models/models/rf_detr/README.md) |
@@ -305,6 +306,7 @@ and many more.
 | [HRNetPose](https://aihub.qualcomm.com/models/hrnet_pose) | [qai_hub_models.models.hrnet_pose](src/qai_hub_models/models/hrnet_pose/README.md) |
 | [LiteHRNet](https://aihub.qualcomm.com/models/litehrnet) | [qai_hub_models.models.litehrnet](src/qai_hub_models/models/litehrnet/README.md) |
 | [MediaPipe-Pose-Estimation](https://aihub.qualcomm.com/models/mediapipe_pose) | [qai_hub_models.models.mediapipe_pose](src/qai_hub_models/models/mediapipe_pose/README.md) |
+| [Movenet](https://aihub.qualcomm.com/models/movenet) | [qai_hub_models.models.movenet](src/qai_hub_models/models/movenet/README.md) |
 | [Posenet-Mobilenet](https://aihub.qualcomm.com/models/posenet_mobilenet) | [qai_hub_models.models.posenet_mobilenet](src/qai_hub_models/models/posenet_mobilenet/README.md) |
 | [RTMPose-Body2d](https://aihub.qualcomm.com/models/rtmpose_body2d) | [qai_hub_models.models.rtmpose_body2d](src/qai_hub_models/models/rtmpose_body2d/README.md) |
 | [SixDRepNet](https://aihub.qualcomm.com/models/sixd_repnet) | [qai_hub_models.models.sixd_repnet](src/qai_hub_models/models/sixd_repnet/README.md) |
@@ -358,9 +360,11 @@ and many more.
 | -- | -- |
 | | |
 | **Speech Recognition**
+| [DeepSpeech2](https://aihub.qualcomm.com/models/deepspeech2) | [qai_hub_models.models.deepspeech2](src/qai_hub_models/models/deepspeech2/README.md) |
 | [Distil-Whisper](https://aihub.qualcomm.com/models/distil_whisper) | [qai_hub_models.models.distil_whisper](src/qai_hub_models/models/distil_whisper/README.md) |
 | [Whisper-Base](https://aihub.qualcomm.com/models/whisper_base) | [qai_hub_models.models.whisper_base](src/qai_hub_models/models/whisper_base/README.md) |
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | [qai_hub_models.models.whisper_large_v3_turbo](src/qai_hub_models/models/whisper_large_v3_turbo/README.md) |
+| [Whisper-Large-V3-Turbo-Quantized](https://aihub.qualcomm.com/models/whisper_large_v3_turbo_quantized) | [qai_hub_models.models.whisper_large_v3_turbo_quantized](src/qai_hub_models/models/whisper_large_v3_turbo_quantized/README.md) |
 | [Whisper-Medium](https://aihub.qualcomm.com/models/whisper_medium) | [qai_hub_models.models.whisper_medium](src/qai_hub_models/models/whisper_medium/README.md) |
 | [Whisper-Small](https://aihub.qualcomm.com/models/whisper_small) | [qai_hub_models.models.whisper_small](src/qai_hub_models/models/whisper_small/README.md) |
 | [Whisper-Small-Quantized](https://aihub.qualcomm.com/models/whisper_small_quantized) | [qai_hub_models.models.whisper_small_quantized](src/qai_hub_models/models/whisper_small_quantized/README.md) |

@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [DeepSpeech2: End-to-end speech recognition model using CNN and bidirectional RNN layers with CTC loss](https://aihub.qualcomm.com/models/deepspeech2)
 
 DeepSpeech2 is an end-to-end automatic speech recognition (ASR) model. It uses convolutional layers for feature extraction followed by bidirectional recurrent layers and CTC for sequence-to-sequence learning.

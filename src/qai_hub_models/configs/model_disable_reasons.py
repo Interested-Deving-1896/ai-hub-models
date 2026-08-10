@@ -112,6 +112,12 @@ class ModelDisableReasonsMapping(BaseQAIHMConfig):
             precision_mapping[runtime] = ModelDisableReasons()
         return precision_mapping[runtime]
 
+    def peek_disable_reasons(
+        self, precision: Precision, runtime: TargetRuntime
+    ) -> ModelDisableReasons | None:
+        """Read-only lookup — returns None if no entry exists (does not mutate)."""
+        return self.data.get(precision, {}).get(runtime)
+
     @model_serializer(mode="wrap")
     def serialize_model(
         self, handler: Callable[[ModelDisableReasonsMapping], dict]

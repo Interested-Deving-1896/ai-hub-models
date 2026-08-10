@@ -22,7 +22,7 @@ qai-hub-models perf Segment-Anything-Model-2
 qai-hub-models numerics Segment-Anything-Model-2
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Segment-Anything-Model-2 --runtime qnn_dlc --precision float
+qai-hub-models fetch Segment-Anything-Model-2 --runtime onnx --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
@@ -65,7 +65,7 @@ To run the model on Qualcomm® devices, you must export the model for use with a
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 Use the following command to export the model:
 ```bash
-qai-hub-models export sam2 --target-runtime qnn_dlc --precision float
+qai-hub-models export sam2 --target-runtime onnx --precision float
 ```
 Additional options are documented with the `--help` option.
 

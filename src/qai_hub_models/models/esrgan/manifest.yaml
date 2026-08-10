@@ -1,49 +1,46 @@
-name: ESRGAN
-id: esrgan
-status: published
-headline: Upscale images and remove image noise.
-domain: Computer Vision
-description: ESRGAN is a machine learning model that upscales an image with minimal
-  loss in quality.
-use_case: Super Resolution
-tags: []
 applicable_scenarios:
 - Virtual Real Estate Tours
 - Gaming
 - ARVR
-related_models:
-- real_esrgan_general_x4v3
-- real_esrgan_x4plus
+description: ESRGAN is a machine learning model that upscales an image with minimal loss in quality.
+domain: Computer Vision
+external_repos:
+  esrgan:
+    commit_sha: 73e9b634cf987f5996ac2dd33f4050922398a921
+    repo_url: https://github.com/xinntao/ESRGAN.git
 form_factors:
 - Phone
 - Tablet
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: ESRGAN_x4
-  Input resolution: 128x128
-  Number of parameters: 16.7M
-  Model size (float): 63.9 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/1809.00219
-research_paper_title: 'ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks'
-source_repo: https://github.com/xinntao/ESRGAN/
-license: https://github.com/xinntao/ESRGAN/blob/master/LICENSE
+has_on_target_demo: true
+has_static_banner: true
+headline: Upscale images and remove image noise.
+id: esrgan
 imsdk_supported: true
+license: https://github.com/xinntao/ESRGAN/blob/master/LICENSE
+license_type: apache-2.0
+name: ESRGAN
 numerics_benchmark:
   dataset_name: bsd100
   metric_name: Peak Signal-to-Noise Ratio (PSNR)
-  value: 27.85
-  unit: dB
   source: ESRGAN source repo
-external_repos:
-  esrgan:
-    repo_url: https://github.com/xinntao/ESRGAN.git
-    commit_sha: 73e9b634cf987f5996ac2dd33f4050922398a921
+  unit: dB
+  value: 27.85
+related_models:
+- real_esrgan_general_x4v3
+- real_esrgan_x4plus
+research_paper: https://arxiv.org/abs/1809.00219
+research_paper_title: 'ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks'
+source_repo: https://github.com/xinntao/ESRGAN/
+status: published
 supported_precisions:
 - float
 - w8a16
-has_on_target_demo: true
+technical_details:
+  Input resolution: 128x128
+  Model checkpoint: ESRGAN_x4
+  Model size (float): 63.9 MB
+  Number of parameters: 16.7M
 templates:
 - super_resolution
+use_case: Super Resolution

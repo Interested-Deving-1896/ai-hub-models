@@ -1,66 +1,44 @@
-name: Movenet
-id: movenet
-status: pending
-status_reason: No successful runtimes in scorecard (this field was auto-populated
-  by the scorecard run)
-headline: Perform accurate human pose estimation.
-domain: Computer Vision
-description: Movenet performs pose estimation on human images.
-use_case: Pose Estimation
-tags: []
 applicable_scenarios:
 - Injury prevention training
 - Sports performance analysis
 - Posture recognition
-related_models:
-- litehrnet
-- hrnet_pose
+dataset:
+- coco
+datasets:
+- coco
+description: Movenet performs pose estimation on human images.
+disabled_paths: {}
+domain: Computer Vision
+external_repos:
+  movenet_pytorch:
+    commit_sha: d7262410af2776afe66d3f7a2282b64becb82601
+    patches_filename: movenet_pytorch_patches.diff
+    repo_url: https://github.com/lee-man/movenet-pytorch/
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- coco
-technical_details:
-  Model checkpoint: None
-  Input resolution: 192x192
-  Number of parameters: 2.33M
-  Model size (float): 8.91 MB
+has_on_target_demo: true
+has_static_banner: true
+headline: Perform accurate human pose estimation.
+id: movenet
+license: http://www.apache.org/licenses/LICENSE-2.0
 license_type: apache-2.0
-research_paper:
-  https://blog.tensorflow.org/2021/05/next-generation-pose-detection-with-movenet-and-tensorflowjs.html
+name: Movenet
+related_models:
+- litehrnet
+- hrnet_pose
+research_paper: https://blog.tensorflow.org/2021/05/next-generation-pose-detection-with-movenet-and-tensorflowjs.html
 research_paper_title: 'MoveNet: Ultra fast and accurate pose detection model'
 source_repo: https://github.com/lee-man/movenet-pytorch
-license: http://www.apache.org/licenses/LICENSE-2.0
-external_repos:
-  movenet_pytorch:
-    repo_url: https://github.com/lee-man/movenet-pytorch/
-    commit_sha: d7262410af2776afe66d3f7a2282b64becb82601
-    patches_filename: movenet_pytorch_patches.diff
+status: published
 supported_precisions:
 - float
 - w8a16_mixed_int16
-has_on_target_demo: true
-disabled_paths:
-  w8a16_mixed_int16:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jp0kwyqn5'
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-56.400 mAP)
-        above threshold (10.0 mAP)
-    onnx:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-56.400 mAP)
-        above threshold (10.0 mAP)
-  float:
-    onnx:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-56.400 mAP)
-        above threshold (10.0 mAP)
-    tflite:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-56.400 mAP)
-        above threshold (10.0 mAP)
-    qnn_dlc:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-56.400 mAP)
-        above threshold (10.0 mAP)
-datasets:
-- coco
+technical_details:
+  Input resolution: 192x192
+  Model checkpoint: None
+  Model size (float): 8.91 MB
+  Number of parameters: 2.33M
+use_case: Pose Estimation

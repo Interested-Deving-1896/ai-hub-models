@@ -1,59 +1,51 @@
-name: Albert-Base-V2-Hf
-id: albert_base_v2_hf
-status: published
-headline: Language model for masked language modeling and general-purpose NLP tasks.
-domain: Generative AI
-description: ALBERT is a lightweight BERT model designed for efficient self-supervised
-  learning of language representations. It can be used for masked language modeling
-  and as a backbone for various NLP tasks.
-use_case: Text Generation
-tags:
-- backbone
 applicable_scenarios:
 - Text Classification
 - Sentiment Analysis
 - Named Entity Recognition
-related_models: []
+description: ALBERT is a lightweight BERT model designed for efficient self-supervised learning of language representations. It can be used for masked language modeling and as a backbone for various NLP tasks.
+disabled_paths:
+  float:
+    onnx:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-54.800 %) above threshold (10.0 %)
+  w8a16:
+    onnx:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-58.000 %) above threshold (10.0 %)
+    qnn_dlc:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-58.000 %) above threshold (10.0 %)
+domain: Generative AI
 form_factors:
 - Phone
 - Tablet
 - IoT
 - XR
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: albert/albert-base-v2
-  Input resolution: 1x384
-  Number of parameters: 11.8M
-  Model size (float): 43.9 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/1909.11942
-research_paper_title: 'ALBERT: A Lite BERT for Self-supervised Learning of Language
-  Representations'
-source_repo: https://github.com/google-research/albert
+has_on_target_demo: true
+has_static_banner: true
+headline: Language model for masked language modeling and general-purpose NLP tasks.
+id: albert_base_v2_hf
 license: https://github.com/google-research/albert/blob/master/LICENSE
+license_type: apache-2.0
+name: Albert-Base-V2-Hf
 numerics_benchmark:
   dataset_name: bert_wikitext_masked
   metric_name: Top-1 Accuracy
-  value: 58.0
-  unit: '%'
   source: AI Hub Models Reference Eval
+  unit: '%'
+  value: 58.0
+research_paper: https://arxiv.org/abs/1909.11942
+research_paper_title: 'ALBERT: A Lite BERT for Self-supervised Learning of Language Representations'
+source_repo: https://github.com/google-research/albert
+status: published
 supported_precisions:
 - float
 - w8a16
-has_on_target_demo: true
-disabled_paths:
-  float:
-    onnx:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-54.800 %) above
-        threshold (10.0 %)
-  w8a16:
-    onnx:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-58.000 %) above
-        threshold (10.0 %)
-    qnn_dlc:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-58.000 %) above
-        threshold (10.0 %)
+tags:
+- backbone
+technical_details:
+  Input resolution: 1x384
+  Model checkpoint: albert/albert-base-v2
+  Model size (float): 43.9 MB
+  Number of parameters: 11.8M
 templates:
 - bert_hf
+use_case: Text Generation

@@ -1,39 +1,47 @@
-name: YamNet
-id: yamnet
-status: published
-headline: Audio Event classification Model.
-domain: Audio
-description: An audio event classifier trained on the AudioSet dataset to predict audio events from the AudioSet ontology employing the Mobilenet_v1 depthwise-separable convolution architecture.
-use_case: Audio Classification
-tags:
-- real-time
 applicable_scenarios:
 - Audio Recognition
-related_models: []
+dataset:
+- AudioSet-YouTube corpus
+description: An audio event classifier trained on the AudioSet dataset to predict audio events from the AudioSet ontology employing the Mobilenet_v1 depthwise-separable convolution architecture.
+disabled_paths: {}
+domain: Audio
 form_factors:
 - Phone
 - Tablet
 - IoT
+has_on_target_demo: true
 has_static_banner: true
-has_animated_banner: false
-dataset:
-- AudioSet-YouTube corpus
-technical_details:
-  Model checkpoint: yamnet.pth
-  Input resolution: 1x1x96x64
-  Number of parameters: 3.73M
-  Model size (float): 14.2 MB
+headline: Audio Event classification Model.
+id: yamnet
+imsdk_supported: true
+license: https://github.com/w-hc/torch_audioset/blob/master/LICENSE
 license_type: mit
+name: YamNet
+post_pip_install_commands:
+- pip install git+https://github.com/w-hc/torch_audioset.git
+readme_install_system_deps: |
+  #### Linux
+  ```bash
+  sudo apt install ffmpeg
+  ```
+
+   #### Windows
+  ```
+  winget install ffmpeg
+  ```
 research_paper: https://arxiv.org/abs/1704.04861
 research_paper_title: MobileNets Efficient Convolutional Neural Networks for Mobile Vision Applications
 source_repo: https://github.com/w-hc/torch_audioset
-license: https://github.com/w-hc/torch_audioset/blob/master/LICENSE
-imsdk_supported: true
+status: published
 supported_precisions:
 - float
 - w8a16
 - w8a8
-has_on_target_demo: true
-readme_install_system_deps: "#### Linux\n```bash\nsudo apt install ffmpeg\n```\n\n #### Windows\n```\nwinget install ffmpeg\n```\n"
-post_pip_install_commands:
-- pip install git+https://github.com/w-hc/torch_audioset.git
+tags:
+- real-time
+technical_details:
+  Input resolution: 1x1x96x64
+  Model checkpoint: yamnet.pth
+  Model size (float): 14.2 MB
+  Number of parameters: 3.73M
+use_case: Audio Classification

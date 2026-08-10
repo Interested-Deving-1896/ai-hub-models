@@ -1,59 +1,63 @@
-name: PiperTTS-IT
-id: pipertts_it
-status: published
-headline: High-quality text-to-speech for Italian.
-domain: Audio
-description: PiperTTS is a high-quality multi-lingual text-to-speech library.
-use_case: Audio Generation
-tags:
-- real-time
 applicable_scenarios:
 - Smart Home
 - Accessibility
-related_models:
-- melotts_en
-- pipertts_en
-- pipertts_de
+datasets:
+- common_voice
+description: PiperTTS is a high-quality multi-lingual text-to-speech library.
+disabled_paths: {}
+domain: Audio
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: rhasspy/piper-voices
-  Max decoded sequence length: 64 tokens
-  Number of parameters (encoder): 7.51M
-  Model size (encoder) (float): 28.7 MB
-  Number of parameters (sdp): 1.04K
-  Model size (sdp) (float): 6.61 KB
-  Number of parameters (flow): 7.39M
-  Model size (flow) (float): 28.2 MB
-  Number of parameters (decoder): 1.66M
-  Model size (decoder) (float): 6.37 MB
-  Number of parameters (t5_encoder): 15.1M
-  Model size (t5_encoder) (float): 57.5 MB
-  Number of parameters (t5_decoder): 5.72M
-  Model size (t5_decoder) (float): 21.8 MB
+has_static_banner: true
+headline: High-quality text-to-speech for Italian.
+id: pipertts_it
+is_collection_model: true
+license: https://github.com/rhasspy/piper/blob/master/LICENSE.md
 license_type: mit
+models:
+- whisper_large_v3_turbo
+name: PiperTTS-IT
+only_allow_orchestrator_runtimes: true
+orchestrator_runtimes:
+- voice_ai
+pre_pip_install_commands:
+- pip install git+https://github.com/rhasspy/piper.git#subdirectory=src/python --no-deps
+python_version_less_than: '3.12'
+python_version_less_than_reason: piper-phonemize is prebuilt on 3.11 and 3.10 only
+readme_install_system_deps: |
+  #### Linux
+  ```bash
+  sudo apt install libportaudio2
+  ```
+related_models:
+- melotts_en
+- pipertts_en
+- pipertts_de
+requires_aot_prepare: true
 research_paper: https://github.com/rhasspy/piper
 research_paper_title: PiperTTS High-quality Multi-lingual Multi-accent Text-to-Speech
 source_repo: https://github.com/rhasspy/piper
-license: https://github.com/rhasspy/piper/blob/master/LICENSE.md
-is_collection_model: true
-requires_aot_prepare: true
-orchestrator_runtimes:
-- voice_ai
-only_allow_orchestrator_runtimes: true
-python_version_less_than: '3.12'
-python_version_less_than_reason: piper-phonemize is prebuilt on 3.11 and 3.10 only
-readme_install_system_deps: "#### Linux\n```bash\nsudo apt install libportaudio2\n```\n"
-datasets:
-- common_voice
+status: published
+tags:
+- real-time
+technical_details:
+  Max decoded sequence length: 64 tokens
+  Model checkpoint: rhasspy/piper-voices
+  Model size (decoder) (float): 6.37 MB
+  Model size (encoder) (float): 28.7 MB
+  Model size (flow) (float): 28.2 MB
+  Model size (sdp) (float): 6.61 KB
+  Model size (t5_decoder) (float): 21.8 MB
+  Model size (t5_encoder) (float): 57.5 MB
+  Number of parameters (decoder): 1.66M
+  Number of parameters (encoder): 7.51M
+  Number of parameters (flow): 7.39M
+  Number of parameters (sdp): 1.04K
+  Number of parameters (t5_decoder): 5.72M
+  Number of parameters (t5_encoder): 15.1M
 templates:
 - pipertts
-models:
-- whisper_large_v3_turbo
-pre_pip_install_commands:
-- pip install git+https://github.com/rhasspy/piper.git#subdirectory=src/python --no-deps
+use_case: Audio Generation

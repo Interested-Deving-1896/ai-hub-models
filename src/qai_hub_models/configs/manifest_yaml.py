@@ -974,7 +974,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
             runtime = TargetRuntime.GENIEX_QAIRT
 
         if (
-            reason := self.disabled_paths.get_disable_reasons(precision, runtime)
+            reason := self.disabled_paths.peek_disable_reasons(precision, runtime)
         ) and reason.has_failure:
             if include_scorecard_failures and (
                 scorecard_failure := reason.scorecard_failure

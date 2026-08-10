@@ -1,42 +1,45 @@
-name: First-Order-Motion-Model
-id: fomm
-status: published
-headline: Animation of Still Image from Source Video.
-domain: Computer Vision
-description: FOMM is a machine learning model that animates a still image to mirror
-  the movements from a target video.
-use_case: Video Generation
-tags: []
 applicable_scenarios:
 - Cartoon Animation
-related_models: []
+description: FOMM is a machine learning model that animates a still image to mirror the movements from a target video.
+disabled_paths:
+  float:
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jp81e9zo5'
+    tflite:
+      scorecard_failure: 'Failing jobs: jp43yok15'
+domain: Computer Vision
+external_repos:
+  first_order_model:
+    commit_sha: f4ff6da1ef5c0e6bcf6ec80324fab37c92193e84
+    patches_filename: fomm_patches.diff
+    repo_url: https://github.com/AliaksandrSiarohin/first-order-model.git
 form_factors:
 - Phone
 - Tablet
 has_static_banner: true
-has_animated_banner: false
-dataset: []
-technical_details:
-  Model checkpoint: vox-256
-  Input resolution: 256x256
-  Model size (detector) (float): 54.2 MB
-  Model size (generator) (float): 174 MB
+headline: Animation of Still Image from Source Video.
+id: fomm
+is_collection_model: true
+license: https://github.com/AliaksandrSiarohin/first-order-model/blob/master/LICENSE.md
 license_type: mit
+name: First-Order-Motion-Model
+readme_install_system_deps: |
+  #### Linux
+  ```bash
+  sudo apt install ffmpeg
+  ```
+
+   #### Windows
+  ```
+  winget install ffmpeg
+  ```
 research_paper: https://arxiv.org/abs/2003.00196
 research_paper_title: First Order Motion Model for Image Animation
 source_repo: https://github.com/AliaksandrSiarohin/first-order-model/tree/master
-license: https://github.com/AliaksandrSiarohin/first-order-model/blob/master/LICENSE.md
-external_repos:
-  first_order_model:
-    repo_url: https://github.com/AliaksandrSiarohin/first-order-model.git
-    commit_sha: f4ff6da1ef5c0e6bcf6ec80324fab37c92193e84
-    patches_filename: fomm_patches.diff
-disabled_paths:
-  float:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: j56vkn3np'
-    tflite:
-      scorecard_failure: 'Failing jobs: jpv4jvrrp'
-is_collection_model: true
-readme_install_system_deps: "#### Linux\n```bash\nsudo apt install ffmpeg\n```\n\n
-  #### Windows\n```\nwinget install ffmpeg\n```\n"
+status: published
+technical_details:
+  Input resolution: 256x256
+  Model checkpoint: vox-256
+  Model size (detector) (float): 54.2 MB
+  Model size (generator) (float): 174 MB
+use_case: Video Generation

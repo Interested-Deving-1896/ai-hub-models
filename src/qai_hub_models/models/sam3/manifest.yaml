@@ -1,45 +1,44 @@
-name: Segment-Anything-Model-3
-id: sam3
-status: published
-headline: Open-vocabulary segmentation with text and visual prompts for any concept.
-domain: Computer Vision
-description: SAM3 (Segment Anything with Concepts) extends SAM2 with open-vocabulary segmentation, producing bounding boxes and masks for objects matching a natural-language prompt.
-use_case: Semantic Segmentation
-tags:
-- foundation
 applicable_scenarios:
 - Factory Automation
 - Robotic Navigation
 - Camera
-related_models:
-- sam2
+dataset:
+- SA-CO (Segment Anything with Concepts dataset)
+description: SAM3 (Segment Anything with Concepts) extends SAM2 with open-vocabulary segmentation, producing bounding boxes and masks for objects matching a natural-language prompt.
+disabled_paths: {}
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
-has_static_banner: true
-has_animated_banner: false
-dataset:
-- SA-CO (Segment Anything with Concepts dataset)
-technical_details:
-  Model checkpoint: sam3
-  Input resolution: 1008x1008
-  Number of parameters (SAM3Backbone): 33.5M
-  Model size (SAM3Backbone) (float): 128 MB
-  Number of parameters (SAM3Transformer): 6.22M
-  Model size (SAM3Transformer) (float): 23.7 MB
-license_type: sam3
-research_paper: https://arxiv.org/abs/2511.16719
-research_paper_title: 'SAM 3: Segment Anything with Concepts'
-source_repo: https://github.com/facebookresearch/sam3
-license: https://github.com/facebookresearch/sam3/blob/main/LICENSE
-restrict_model_sharing: true
 has_on_target_demo: true
-disabled_paths: {}
+has_static_banner: true
+headline: Open-vocabulary segmentation with text and visual prompts for any concept.
+id: sam3
 is_collection_model: true
-requires_aot_prepare: true
-python_version_less_than: '3.13'
-python_version_less_than_reason: SAM3 hardcodes numpy 1.x as a requirement
-templates:
-- sam
+license: https://github.com/facebookresearch/sam3/blob/main/LICENSE
+license_type: sam3
+name: Segment-Anything-Model-3
 post_pip_install_commands:
 - pip install git+https://github.com/facebookresearch/sam3.git@f66a2514dff3c032534fe236640c1e7c0f5c7677
+python_version_less_than: '3.13'
+python_version_less_than_reason: SAM3 hardcodes numpy 1.x as a requirement
+related_models:
+- sam2
+requires_aot_prepare: true
+research_paper: https://arxiv.org/abs/2511.16719
+research_paper_title: 'SAM 3: Segment Anything with Concepts'
+restrict_model_sharing: true
+source_repo: https://github.com/facebookresearch/sam3
+status: published
+tags:
+- foundation
+technical_details:
+  Input resolution: 1008x1008
+  Model checkpoint: sam3
+  Model size (SAM3Backbone) (float): 128 MB
+  Model size (SAM3Transformer) (float): 23.7 MB
+  Number of parameters (SAM3Backbone): 33.5M
+  Number of parameters (SAM3Transformer): 6.22M
+templates:
+- sam
+use_case: Semantic Segmentation

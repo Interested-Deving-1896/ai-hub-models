@@ -1,45 +1,45 @@
-name: SixDRepNet
-id: sixd_repnet
-status: published
-headline: Head pose estimation using 6D rotation representation and RepVGG backbone.
-domain: Computer Vision
-description: 6DRepNet predicts head pose (pitch, yaw, roll) from a face image using a RepVGG-B1g2 backbone and a continuous 6D rotation representation, achieving robust and accurate head pose estimation.
-use_case: Pose Estimation
-tags:
-- real-time
 applicable_scenarios:
 - Driver Monitoring
 - Augmented Reality
 - Attention Tracking
-related_models:
-- rankpose
-- eyegaze
-- mediapipe_face
+dataset:
+- 300w-lp
+- aflw2000
+description: 6DRepNet predicts head pose (pitch, yaw, roll) from a face image using a RepVGG-B1g2 backbone and a continuous 6D rotation representation, achieving robust and accurate head pose estimation.
+disabled_paths: {}
+domain: Computer Vision
+external_repos:
+  sixdrepnet:
+    commit_sha: 464b2ba55c3d9b3d3b707c6271cf329a983ded20
+    repo_url: https://github.com/thohemp/6DRepNet
 form_factors:
 - Phone
 - Tablet
 - IoT
+has_on_target_demo: true
 has_static_banner: true
-has_animated_banner: false
-dataset:
-- 300w-lp
-- aflw2000
-technical_details:
-  Input resolution: 224x224
-  Number of parameters: 15.3M
-  Model size (float): 58.4 MB
+headline: Head pose estimation using 6D rotation representation and RepVGG backbone.
+id: sixd_repnet
+is_collection_model: true
+license: https://github.com/thohemp/6DRepNet/blob/master/LICENSE
 license_type: mit
+name: SixDRepNet
+post_pip_install_commands:
+- pip install git+https://github.com/elliottzheng/face-detection.git@786fbab
+related_models:
+- rankpose
+- eyegaze
+- mediapipe_face
 research_paper: https://arxiv.org/abs/2109.10948
 research_paper_title: 6D Rotation Representation for Unconstrained Head Pose Estimation
 source_repo: https://github.com/thohemp/6DRepNet
-license: https://github.com/thohemp/6DRepNet/blob/master/LICENSE
-external_repos:
-  sixdrepnet:
-    repo_url: https://github.com/thohemp/6DRepNet
-    commit_sha: 464b2ba55c3d9b3d3b707c6271cf329a983ded20
-has_on_target_demo: true
-is_collection_model: true
+status: published
+tags:
+- real-time
+technical_details:
+  Input resolution: 224x224
+  Model size (float): 58.4 MB
+  Number of parameters: 15.3M
 templates:
 - imagenet_classifier
-post_pip_install_commands:
-- pip install git+https://github.com/elliottzheng/face-detection.git@786fbab
+use_case: Pose Estimation

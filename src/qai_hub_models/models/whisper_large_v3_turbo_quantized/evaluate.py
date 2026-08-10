@@ -13,7 +13,6 @@ import warnings
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.whisper_large_v3_turbo_quantized import MODEL_ID, Model
 from qai_hub_models.utils.args import evaluate_parser
-from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
 from qai_hub_models.utils.export.dispatch import resolve_model
 
@@ -47,8 +46,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace | None = None) -> None:
-    if not check_unpublished_model_warning():
-        return
     if args is None:
         warnings.warn(
             "Running `python -m qai_hub_models.models.whisper_large_v3_turbo_quantized.evaluate` is "

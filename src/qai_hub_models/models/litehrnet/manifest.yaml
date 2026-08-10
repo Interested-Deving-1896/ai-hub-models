@@ -1,43 +1,41 @@
-name: LiteHRNet
-id: litehrnet
-status: published
-headline: Human pose estimation.
-domain: Computer Vision
-description: LiteHRNet is a machine learning model that detects human pose and returns a location and confidence for each of 17 joints.
-use_case: Pose Estimation
-tags: []
 applicable_scenarios:
 - Injury prevention training
 - Sports performance analysis
 - Posture recognition
-related_models:
-- hrnet_pose
+datasets:
+- cocowholebody
+description: LiteHRNet is a machine learning model that detects human pose and returns a location and confidence for each of 17 joints.
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Input resolution: 256x192
-  Number of parameters: 1.11M
-  Model size (float): 4.49 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/2104.06403
-research_paper_title: 'Lite-HRNet: A Lightweight High-Resolution Network'
-source_repo: https://github.com/HRNet/Lite-HRNet
+has_on_target_demo: true
+has_static_banner: true
+headline: Human pose estimation.
+id: litehrnet
 license: https://github.com/HRNet/Lite-HRNet/blob/hrnet/LICENSE
+license_type: apache-2.0
+name: LiteHRNet
 numerics_benchmark:
   dataset_name: cocowholebody
   metric_name: Mean Average Precision
-  value: 58.0
-  unit: mAP
   source: AI Hub Models Reference Eval
-has_on_target_demo: true
-datasets:
-- cocowholebody
-templates:
-- mmpose
+  unit: mAP
+  value: 58.0
 pre_pip_install_commands:
 - pip install mmpose==1.2.0 --no-deps
+related_models:
+- hrnet_pose
+research_paper: https://arxiv.org/abs/2104.06403
+research_paper_title: 'Lite-HRNet: A Lightweight High-Resolution Network'
+source_repo: https://github.com/HRNet/Lite-HRNet
+status: published
+technical_details:
+  Input resolution: 256x192
+  Model size (float): 4.49 MB
+  Number of parameters: 1.11M
+templates:
+- mmpose
+use_case: Pose Estimation

@@ -1,68 +1,68 @@
-name: Yolo-X
-id: yolox
-status: published
-headline: Real-time object detection optimized for mobile and edge.
-domain: Computer Vision
-description: YoloX is a machine learning model that predicts bounding boxes and classes of objects in an image.
-use_case: Object Detection
-tags:
-- real-time
 applicable_scenarios:
 - Factory Automation
 - Robotic Navigation
 - Camera
-related_models:
-- yolov6
-- yolov7
-- yolov8_det
+dataset:
+- COCO
+description: YoloX is a machine learning model that predicts bounding boxes and classes of objects in an image.
+disabled_paths:
+  float:
+    qnn_dlc:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-38.400 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
+    tflite:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-38.400 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
+  w8a8_mixed_int16:
+    qnn_dlc:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-38.400 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
 - IoT
 - XR
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- COCO
-technical_details:
-  Model checkpoint: YoloX Small
-  Input resolution: 640x640
-  Number of parameters: 8.98M
-  Model size (float): 34.3 MB
-  Model size (w8a16): 9.53 MB
-  Model size (w8a8): 8.96 MB
-license_type: apache-2.0
-research_paper: https://github.com/Megvii-BaseDetection/YOLOX/blob/main/README.md
-research_paper_title: 'YOLOX: Exceeding YOLO Series in 2021'
-source_repo: https://github.com/Megvii-BaseDetection/YOLOX/
-license: https://github.com/Megvii-BaseDetection/YOLOX/blob/main/LICENSE
+has_on_target_demo: true
+has_static_banner: true
+headline: Real-time object detection optimized for mobile and edge.
+id: yolox
 imsdk_supported: true
+license: https://github.com/Megvii-BaseDetection/YOLOX/blob/main/LICENSE
+license_type: apache-2.0
+name: Yolo-X
 numerics_benchmark:
   dataset_name: coco
   metric_name: Mean Average Precision
-  value: 40.5
-  unit: mAP
   source: https://arxiv.org/abs/2107.08430
+  unit: mAP
+  value: 40.5
+post_pip_install_commands:
+- pip install git+https://github.com/Megvii-BaseDetection/YOLOX.git@6ddff48 --no-build-isolation --use-pep517
+pre_pip_install_commands:
+- pip install "torch>=2.1,<2.12.0" "setuptools>=80"
+python_version_less_than: '3.11'
+python_version_less_than_reason: YOLOX has a dependency on onnx-simplifier. onnx-simplifier is available pre-built only with python 3.10.
+related_models:
+- yolov6
+- yolov7
+- yolov8_det
+research_paper: https://github.com/Megvii-BaseDetection/YOLOX/blob/main/README.md
+research_paper_title: 'YOLOX: Exceeding YOLO Series in 2021'
+source_repo: https://github.com/Megvii-BaseDetection/YOLOX/
+status: published
 supported_precisions:
 - float
 - w8a8_mixed_int16
 - w8a16
 - w8a8
-has_on_target_demo: true
-disabled_paths:
-  float:
-    tflite:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-38.400 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
-    qnn_dlc:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-38.400 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
-  w8a8_mixed_int16:
-    qnn_dlc:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-38.345 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
-python_version_less_than: '3.11'
-python_version_less_than_reason: YOLOX has a dependency on onnx-simplifier. onnx-simplifier is available pre-built only with python 3.10.
+tags:
+- real-time
+technical_details:
+  Input resolution: 640x640
+  Model checkpoint: YoloX Small
+  Model size (float): 34.3 MB
+  Model size (w8a16): 9.53 MB
+  Model size (w8a8): 8.96 MB
+  Number of parameters: 8.98M
 templates:
 - yolo
-pre_pip_install_commands:
-- pip install "torch>=2.1,<2.12.0" "setuptools>=80"
-post_pip_install_commands:
-- pip install git+https://github.com/Megvii-BaseDetection/YOLOX.git@6ddff48 --no-build-isolation --use-pep517
+use_case: Object Detection

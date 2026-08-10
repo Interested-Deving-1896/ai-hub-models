@@ -1,17 +1,32 @@
-name: YOLOE-Segmentation
-id: yoloe_seg
-status: published
-headline: Real-time object segmentation optimized for mobile and edge by Ultralytics.
-domain: Computer Vision
-description: Ultralytics YOLOE is a machine learning model that predicts bounding
-  boxes, segmentation masks and classes of objects in an image.
-use_case: Semantic Segmentation
-tags:
-- real-time
 applicable_scenarios:
 - Factory Automation
 - Robotic Navigation
 - Camera
+dataset:
+- coco_seg
+description: Ultralytics YOLOE is a machine learning model that predicts bounding boxes, segmentation masks and classes of objects in an image.
+disabled_paths:
+  w8a16:
+    onnx:
+      scorecard_failure: 'Failing jobs: j579o1xng'
+  w8a8:
+    onnx:
+      scorecard_failure: 'Failing jobs: jpxx08ejp'
+domain: Computer Vision
+form_factors:
+- Phone
+- Tablet
+- IoT
+- XR
+has_on_target_demo: true
+has_static_banner: true
+headline: Real-time object segmentation optimized for mobile and edge by Ultralytics.
+id: yoloe_seg
+license: https://github.com/THU-MIG/yoloe/blob/main/LICENSE
+license_type: agpl-3.0
+name: YOLOE-Segmentation
+outputs_to_skip_validation:
+  '3': Boxes with low confidence disagree on class index between torch and on-device
 related_models:
 - unet_segmentation
 - fastsam_x
@@ -19,42 +34,23 @@ related_models:
 - yolov8_seg
 - yolov11_seg
 - ddrnet23_slim
-form_factors:
-- Phone
-- Tablet
-- IoT
-- XR
-has_static_banner: true
-has_animated_banner: false
-dataset:
-- coco_seg
-technical_details:
-  Model checkpoint: YOLOE-v8L-SEG
-  Input resolution: 640x640
-  Number of parameters: 53.47M
-  Model size (float): 103 MB
-license_type: agpl-3.0
 research_paper: https://arxiv.org/abs/2503.07465
 research_paper_title: 'YOLOE: Real-Time Seeing Anything'
-source_repo: https://github.com/THU-MIG/yoloe
-license: https://github.com/THU-MIG/yoloe/blob/main/LICENSE
 restrict_model_sharing: true
+source_repo: https://github.com/THU-MIG/yoloe
+status: published
 supported_precisions:
 - float
 - w8a8
 - w8a16
-has_on_target_demo: true
-disabled_paths:
-  w8a16:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jpe2j82vp'
-    onnx:
-      scorecard_failure: 'Failing jobs: jgd0j80zp'
-  w8a8:
-    onnx:
-      scorecard_failure: 'Failing jobs: jgomjo4k5'
-outputs_to_skip_validation:
-  '3': Boxes with low confidence disagree on class index between torch and on-device
+tags:
+- real-time
+technical_details:
+  Input resolution: 640x640
+  Model checkpoint: YOLOE-v8L-SEG
+  Model size (float): 103 MB
+  Number of parameters: 53.47M
 templates:
 - ultralytics
 - yolo
+use_case: Semantic Segmentation

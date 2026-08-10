@@ -1,58 +1,55 @@
-name: Video-MAE
-id: video_mae
-status: published
-headline: Sports and human action recognition in videos.
-domain: Computer Vision
-description: Video MAE (Masked Auto Encoder) is a network for doing video classification
-  that uses the ViT (Vision Transformer) backbone.
-use_case: Video Classification
-tags:
-- backbone
 applicable_scenarios:
 - Camera
 - Action Recognition
+datasets:
+- kinetics400
+description: Video MAE (Masked Auto Encoder) is a network for doing video classification that uses the ViT (Vision Transformer) backbone.
+disabled_paths:
+  w8a16:
+    onnx:
+      scorecard_failure: 'Failing jobs: jgnk1qwkg'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: j579onnlg'
+domain: Computer Vision
+external_repos:
+  videomae:
+    commit_sha: 14ef8d856287c94ef1f985fe30f958eb4ec2c55d
+    repo_url: https://github.com/MCG-NJU/VideoMAE.git
+form_factors:
+- Phone
+- Tablet
+has_animated_banner: true
+has_static_banner: true
+headline: Sports and human action recognition in videos.
+id: video_mae
+imsdk_supported: true
+license: https://github.com/MCG-NJU/VideoMAE/blob/main/LICENSE
+license_type: cc-by-4.0
+name: Video-MAE
+numerics_benchmark:
+  dataset_name: kinetics400
+  metric_name: Top-1 Accuracy
+  source: https://github.com/MCG-NJU/VideoMAE/blob/main/MODEL_ZOO.md
+  unit: '%'
+  value: 81.5
 related_models:
 - resnet_3d
 - resnet_2plus1d
 - resnet_mixed
-form_factors:
-- Phone
-- Tablet
-has_static_banner: true
-has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: Kinectics-400
-  Input resolution: 224x224
-  Number of parameters: 87.7M
-  Model size (float): 335 MB
-license_type: cc-by-4.0
 research_paper: https://arxiv.org/abs/2203.12602
-research_paper_title: Masked Autoencoders are Data-Efficient Learners for Self-Supervised
-  Video Pre-Training
+research_paper_title: Masked Autoencoders are Data-Efficient Learners for Self-Supervised Video Pre-Training
 source_repo: https://github.com/MCG-NJU/VideoMAE
-license: https://github.com/MCG-NJU/VideoMAE/blob/main/LICENSE
-imsdk_supported: true
-numerics_benchmark:
-  dataset_name: kinetics400
-  metric_name: Top-1 Accuracy
-  value: 81.5
-  unit: '%'
-  source: https://github.com/MCG-NJU/VideoMAE/blob/main/MODEL_ZOO.md
-external_repos:
-  videomae:
-    repo_url: https://github.com/MCG-NJU/VideoMAE.git
-    commit_sha: 14ef8d856287c94ef1f985fe30f958eb4ec2c55d
+status: published
 supported_precisions:
 - float
 - w8a16
-disabled_paths:
-  w8a16:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jpr9z3z0p'
-    onnx:
-      scorecard_failure: 'Failing jobs: jgzw1d9og'
-datasets:
-- kinetics400
+tags:
+- backbone
+technical_details:
+  Input resolution: 224x224
+  Model checkpoint: Kinectics-400
+  Model size (float): 335 MB
+  Number of parameters: 87.7M
 templates:
 - video_classifier
+use_case: Video Classification

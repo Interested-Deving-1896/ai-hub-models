@@ -13,10 +13,23 @@ import warnings
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.movenet import MODEL_ID, Model
 from qai_hub_models.utils.args import export_parser
-from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
 
-SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {}
+SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
+    Precision.float: [
+        TargetRuntime.TFLITE,
+        TargetRuntime.QNN_DLC,
+        TargetRuntime.QNN_CONTEXT_BINARY,
+        TargetRuntime.ONNX,
+        TargetRuntime.PRECOMPILED_QNN_ONNX,
+    ],
+    Precision.w8a16_mixed_int16: [
+        TargetRuntime.QNN_DLC,
+        TargetRuntime.QNN_CONTEXT_BINARY,
+        TargetRuntime.ONNX,
+        TargetRuntime.PRECOMPILED_QNN_ONNX,
+    ],
+}
 
 
 DEFAULT_EXPORT_DEVICE = "Samsung Galaxy S25 (Family)"
@@ -39,8 +52,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace | None = None) -> None:
-    if not check_unpublished_model_warning():
-        return
     if args is None:
         warnings.warn(
             "Running `python -m qai_hub_models.models.movenet.export` is "

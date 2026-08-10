@@ -1,56 +1,50 @@
-name: Mobile-Bert-Uncased-Google
-id: mobile_bert_uncased_google
-status: published
-headline: Language model for masked language modeling and general-purpose NLP tasks.
-domain: Generative AI
-description: MOBILEBERT is a lightweight BERT model designed for efficient self-supervised
-  learning of language representations. It can be used for masked language modeling
-  and as a backbone for various NLP tasks.
-use_case: Text Generation
-tags:
-- backbone
 applicable_scenarios:
 - Text Classification
 - Sentiment Analysis
 - Named Entity Recognition
-related_models:
-- albert_base_v2_hf
+description: MOBILEBERT is a lightweight BERT model designed for efficient self-supervised learning of language representations. It can be used for masked language modeling and as a backbone for various NLP tasks.
+disabled_paths:
+  w8a16:
+    onnx:
+      scorecard_failure: 'Failing jobs: j5w4y67zg'
+    qnn_dlc:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-69.200 %) above threshold (10.0 %)
+domain: Generative AI
 form_factors:
 - Phone
 - Tablet
 - IoT
 - XR
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: mobile_bert_uncased_google
-  Input resolution: 1x384
-  Number of parameters: 25.3M
-  Model size (float): 130 MB
-license_type: apache-2.0
-research_paper: https://arxiv.org/abs/2004.02984
-research_paper_title: 'MobileBERT: a Compact Task-Agnostic BERT for Resource-Limited
-  Devices'
-source_repo: https://github.com/google-research/google-research/tree/master/mobilebert
+has_on_target_demo: true
+has_static_banner: true
+headline: Language model for masked language modeling and general-purpose NLP tasks.
+id: mobile_bert_uncased_google
 license: https://github.com/google-research/google-research/blob/master/LICENSE
+license_type: apache-2.0
+name: Mobile-Bert-Uncased-Google
 numerics_benchmark:
   dataset_name: bert_wikitext_masked
   metric_name: Top-1 Accuracy
-  value: 74.4
-  unit: '%'
   source: AI Hub Models Reference Eval
+  unit: '%'
+  value: 74.4
+related_models:
+- albert_base_v2_hf
+research_paper: https://arxiv.org/abs/2004.02984
+research_paper_title: 'MobileBERT: a Compact Task-Agnostic BERT for Resource-Limited Devices'
+source_repo: https://github.com/google-research/google-research/tree/master/mobilebert
+status: published
 supported_precisions:
 - float
 - w8a16
-has_on_target_demo: true
-disabled_paths:
-  w8a16:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: jgj1jevvg'
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-69.200 %) above
-        threshold (10.0 %)
-    onnx:
-      scorecard_failure: 'Failing jobs: jgkdj3ewp'
+tags:
+- backbone
+technical_details:
+  Input resolution: 1x384
+  Model checkpoint: mobile_bert_uncased_google
+  Model size (float): 130 MB
+  Number of parameters: 25.3M
 templates:
 - bert_hf
+use_case: Text Generation

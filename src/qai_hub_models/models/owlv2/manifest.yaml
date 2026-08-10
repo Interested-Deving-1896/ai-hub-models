@@ -1,49 +1,49 @@
-name: OWL-V2
-id: owlv2
-status: pending
-status_reason: animated and static banner are not available
-headline: Open-Vocabulary Object Detection with Vision Transformers.
-domain: Computer Vision
-description: OWL-V2 (Open-World Localization with Vision Transformers) is an open-vocabulary
-  object detector that uses a CLIP-based ViT-B/16 backbone. Given an image and one
-  or more free-form text queries, the model predicts bounding boxes and confidence
-  scores for each query.
-use_case: Object Detection
-tags:
-- foundation
 applicable_scenarios:
 - Open-Vocabulary Detection
 - Zero-Shot Object Detection
 - Factory Automation
+description: OWL-V2 (Open-World Localization with Vision Transformers) is an open-vocabulary object detector that uses a CLIP-based ViT-B/16 backbone. Given an image and one or more free-form text queries, the model predicts bounding boxes and confidence scores for each query.
+disabled_paths:
+  mixed:
+    precompiled_qnn_onnx:
+      scorecard_failure: Some expected profile jobs were missing.
+    qnn_context_binary:
+      scorecard_failure: Some expected profile jobs were missing.
+domain: Computer Vision
+form_factors:
+- Phone
+- Tablet
+has_on_target_demo: true
+headline: Open-Vocabulary Object Detection with Vision Transformers.
+id: owlv2
+is_collection_model: true
+license: https://github.com/google-research/scenic/blob/main/LICENSE
+license_type: apache-2.0
+name: OWL-V2
+numerics_benchmark:
+  dataset_name: coco
+  metric_name: Mean Average Precision
+  source: https://arxiv.org/abs/2306.09683
+  unit: mAP
+  value: 54.3
 related_models:
 - yolov8_det
 - yolov11_det
 - owl_vit
-form_factors:
-- Phone
-- Tablet
-has_static_banner: false
-has_animated_banner: false
-dataset: []
-technical_details:
-  Model checkpoint: google/owlv2-base-patch16-ensemble
-  Input image resolution: 960x960
-  Number of parameters: 155M
-  Model size (float): 620 MB
-license_type: apache-2.0
+requires_aot_prepare: true
 research_paper: https://arxiv.org/abs/2306.09683
 research_paper_title: Scaling Open-Vocabulary Object Detection
 source_repo: https://github.com/google-research/scenic/tree/main/scenic/projects/owl_vit
-license: https://github.com/google-research/scenic/blob/main/LICENSE
-numerics_benchmark:
-  dataset_name: coco
-  metric_name: Mean Average Precision
-  value: 54.3
-  unit: mAP
-  source: https://arxiv.org/abs/2306.09683
+status: pending
+status_reason: animated and static banner are not available
 supported_precisions:
 - float
 - mixed
-has_on_target_demo: true
-requires_aot_prepare: true
-is_collection_model: true
+tags:
+- foundation
+technical_details:
+  Input image resolution: 960x960
+  Model checkpoint: google/owlv2-base-patch16-ensemble
+  Model size (float): 620 MB
+  Number of parameters: 155M
+use_case: Object Detection

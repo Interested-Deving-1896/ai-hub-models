@@ -1,48 +1,45 @@
-name: RF-DETR
-id: rf_detr
-status: published
-headline: Transformer based object detection model architecture developed by Roboflow.
-domain: Computer Vision
-description: DETR is a machine learning model that can detect objects (trained on
-  COCO dataset).
-use_case: Object Detection
-tags: []
 applicable_scenarios:
 - Robotic Navigation
 - Camera
-related_models:
-- detr_resnet50_dc5
-- detr_resnet101_dc5
-- detr_resnet101
+dataset:
+- detection-datasets/coco
+description: DETR is a machine learning model that can detect objects (trained on COCO dataset).
+disabled_paths:
+  float:
+    tflite:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-10.400 mAP@0.5:0.95) above threshold (10.0 mAP@0.5:0.95)
+domain: Computer Vision
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- detection-datasets/coco
-technical_details:
-  Model checkpoint: RF-DETR-small
-  Input resolution: 512x512
-  Supported variants: nano (384x384), small (512x512), medium (576x576), base (560x560)
-  Number of parameters: 28.5M
-  Model size (float): 109 MB
+has_on_target_demo: true
+has_static_banner: true
+headline: Transformer based object detection model architecture developed by Roboflow.
+id: rf_detr
+imsdk_supported: true
+license: https://github.com/roboflow/rf-detr/blob/develop/LICENSE
 license_type: apache-2.0
 model_maker_id: roboflow
-research_paper: https://blog.roboflow.com/rf-detr/
-research_paper_title: RF-DETR A SOTA Real-Time Object Detection Model
-source_repo: https://github.com/roboflow/rf-detr
-license: https://github.com/roboflow/rf-detr/blob/develop/LICENSE
-imsdk_supported: true
-has_on_target_demo: true
-disabled_paths:
-  float:
-    tflite:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-10.400 mAP@0.5:0.95)
-        above threshold (10.0 mAP@0.5:0.95)
+name: RF-DETR
 outputs_to_skip_validation:
   '0': PSNR is not a meaningful metric for pixel-space bounding box coordinates
   '2': Boxes with low confidence disagree on class index between torch and on-device
+related_models:
+- detr_resnet50_dc5
+- detr_resnet101_dc5
+- detr_resnet101
+research_paper: https://blog.roboflow.com/rf-detr/
+research_paper_title: RF-DETR A SOTA Real-Time Object Detection Model
+source_repo: https://github.com/roboflow/rf-detr
+status: published
+technical_details:
+  Input resolution: 512x512
+  Model checkpoint: RF-DETR-small
+  Model size (float): 109 MB
+  Number of parameters: 28.5M
+  Supported variants: nano (384x384), small (512x512), medium (576x576), base (560x560)
 templates:
 - detr
+use_case: Object Detection

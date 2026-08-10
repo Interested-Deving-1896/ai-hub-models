@@ -1,52 +1,46 @@
-name: EyeGaze
-id: eyegaze
-status: published
-headline: Eye gaze estimation from cropped eye images.
-domain: Computer Vision
-description: Predicts gaze direction (pitch, yaw) from 96x160 grayscale eye images
-  using the EyeNet model.
-use_case: Gaze Estimation
-tags:
-- bu-auto
-- real-time
 applicable_scenarios:
 - Incabinet driver monitoring
 - Phone unlocking
 - Building access control
-related_models: []
+dataset:
+- mpiigaze
+description: Predicts gaze direction (pitch, yaw) from 96x160 grayscale eye images using the EyeNet model.
+domain: Computer Vision
+external_repos:
+  gaze_estimation:
+    commit_sha: 249691893a37944a03e4ad4a3448083b6f63af10
+    patches_filename: gaze_estimation_patches.diff
+    repo_url: https://github.com/david-wb/gaze-estimation
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- mpiigaze
-technical_details:
-  Model checkpoint: checkpoint.pt
-  Input resolution: 96x160
-  Number of parameters: 2.58M
-  Model size (float): 9.6MB
-  Model size (w8a16): 3.3 MB
-license_type: bsd-3-clause
-source_repo: https://github.com/david-wb/gaze-estimation
+has_on_target_demo: true
+has_static_banner: true
+headline: Eye gaze estimation from cropped eye images.
+id: eyegaze
 license: https://github.com/qualcomm/ai-hub-models/blob/main/LICENSE
+license_type: bsd-3-clause
+name: EyeGaze
 numerics_benchmark:
   dataset_name: mpiigaze
   metric_name: Mean Angular Error
-  value: 16.8
-  unit: MAE (Degrees)
   source: AI Hub Models Reference Eval
-external_repos:
-  gaze_estimation:
-    repo_url: https://github.com/david-wb/gaze-estimation
-    commit_sha: 249691893a37944a03e4ad4a3448083b6f63af10
-    patches_filename: gaze_estimation_patches.diff
+  unit: MAE (Degrees)
+  value: 16.8
+source_repo: https://github.com/david-wb/gaze-estimation
+status: published
 supported_precisions:
 - float
 - w8a16
-has_on_target_demo: true
-disabled_paths:
-  w8a16:
-    qnn_dlc:
-      scorecard_failure: 'Failing jobs: j5m47jzq5'
+tags:
+- bu-auto
+- real-time
+technical_details:
+  Input resolution: 96x160
+  Model checkpoint: checkpoint.pt
+  Model size (float): 9.6MB
+  Model size (w8a16): 3.3 MB
+  Number of parameters: 2.58M
+use_case: Gaze Estimation

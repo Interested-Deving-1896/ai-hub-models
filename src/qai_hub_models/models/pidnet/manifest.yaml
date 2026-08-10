@@ -1,56 +1,54 @@
-name: PidNet
-id: pidnet
-status: published
-headline: Segment images or video by class in real-time on device.
-domain: Computer Vision
-description: PIDNet (Proportional-Integral-Derivative Network) is a real-time semantic
-  segmentation model based on  PID controllers
-use_case: Semantic Segmentation
-tags:
-- real-time
 applicable_scenarios:
 - autonomous driving,medical imaging
-related_models:
-- ffnet_40s
-- ffnet_78s
-- fcn_resnet50
+dataset:
+- cityscapes
+description: PIDNet (Proportional-Integral-Derivative Network) is a real-time semantic segmentation model based on  PID controllers
+domain: Computer Vision
+external_repos:
+  pidnet:
+    commit_sha: fefa51716bddc13a4321af2c70a074367100645a
+    repo_url: https://github.com/XuJiacong/PIDNet.git
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset:
-- cityscapes
-technical_details:
-  Model checkpoint: PIDNet_S_Cityscapes_val.pt
-  Inference latency: RealTime
-  Input resolution: 1024x2048
-  Number of output classes: '19'
-  Number of parameters: 8.06M
-  Model size (float): 29.1 MB
-  Model size (w8a8): 8.02 MB
-license_type: mit
-research_paper: https://arxiv.org/abs/2206.02066
-research_paper_title: PIDNet A Real-time Semantic Segmentation Network Inspired from
-  PID Controller Segmentation of Road Scenes
-source_repo: https://github.com/XuJiacong/PIDNet
-license: https://github.com/XuJiacong/PIDNet/blob/main/LICENSE
+has_on_target_demo: true
+has_static_banner: true
+headline: Segment images or video by class in real-time on device.
+id: pidnet
 imsdk_supported: true
+license: https://github.com/XuJiacong/PIDNet/blob/main/LICENSE
+license_type: mit
+name: PidNet
 numerics_benchmark:
   dataset_name: cityscapes
   metric_name: Mean Intersection Over Union
-  value: 78.6
-  unit: mIOU
   source: https://github.com/XuJiacong/PIDNet
-external_repos:
-  pidnet:
-    repo_url: https://github.com/XuJiacong/PIDNet.git
-    commit_sha: fefa51716bddc13a4321af2c70a074367100645a
+  unit: mIOU
+  value: 78.6
+related_models:
+- ffnet_40s
+- ffnet_78s
+- fcn_resnet50
+research_paper: https://arxiv.org/abs/2206.02066
+research_paper_title: PIDNet A Real-time Semantic Segmentation Network Inspired from PID Controller Segmentation of Road Scenes
+source_repo: https://github.com/XuJiacong/PIDNet
+status: published
 supported_precisions:
 - float
 - w8a8
-has_on_target_demo: true
+tags:
+- real-time
+technical_details:
+  Inference latency: RealTime
+  Input resolution: 1024x2048
+  Model checkpoint: PIDNet_S_Cityscapes_val.pt
+  Model size (float): 29.1 MB
+  Model size (w8a8): 8.02 MB
+  Number of output classes: '19'
+  Number of parameters: 8.06M
 templates:
 - cityscapes_segmentation
 - segmentation
+use_case: Semantic Segmentation

@@ -282,11 +282,6 @@ ALLOWED_SIMILAR_DEVICES = frozenset(
 )
 
 
-# These devices are not generally available in AIHW (similar devices are still
-# allowed)
-EARLY_ACCESS_HUB_DEVICES: frozenset[str] = frozenset({"Arduino VENTUNO Q"})
-
-
 @cache
 def _load_similar_devices_raw() -> DevicesAndChipsetsYaml:
     """Load the similar devices YAML as typed DeviceDetailsYaml entries."""
@@ -387,10 +382,6 @@ class DevicesAndChipsetsYaml(BaseQAIHMConfig):
             if "(Family)" in hub_device.name:
                 # Exclude "Family" devices
                 continue
-            if hub_device.name in EARLY_ACCESS_HUB_DEVICES:
-                # Skip early-access devices so similar_devices.yaml can still
-                # represent them for public users.
-                continue
             if hub_device.name in out.devices:
                 # Exclude multiple devices with the same name
                 # (eg different OS)
@@ -412,8 +403,8 @@ class DevicesAndChipsetsYaml(BaseQAIHMConfig):
             )
 
         # Use the scorecard device for the reference device, if one exists.
-        # Skip devices whose chipset was filtered above (early-access or
-        # non-qualcomm) so their similar_devices.yaml entry stays authoritative.
+        # Skip devices whose chipset was filtered above (non-qualcomm) so their
+        # similar_devices.yaml entry stays authoritative.
         for device in ScorecardDevice.all_devices():
             if device.chipset not in out.chipsets:
                 continue

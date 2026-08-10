@@ -1,45 +1,40 @@
-name: AOT-GAN
-id: aotgan
-status: published
-headline: High resolution image in-painting on-device.
-domain: Computer Vision
-description: AOT-GAN is a machine learning model that allows to erase and in-paint
-  part of given input image.
-use_case: Image Editing
-tags: []
 applicable_scenarios:
 - Image editing
-related_models: []
+datasets:
+- celebahq
+description: AOT-GAN is a machine learning model that allows to erase and in-paint part of given input image.
+domain: Computer Vision
+external_repos:
+  aotgan:
+    commit_sha: 418034627392289bdfc118d62bc49e6abd3bb185
+    patches_filename: aotgan_patches.diff
+    repo_url: https://github.com/researchmm/AOT-GAN-for-Inpainting.git
 form_factors:
 - Phone
 - Tablet
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Model checkpoint: CelebAHQ
-  Input resolution: 512x512
-  Number of parameters: 15.2M
-  Model size (float): 58.0 MB
-license_type: mit
-research_paper: https://arxiv.org/abs/2104.01431
-research_paper_title: Aggregated Contextual Transformations for High-Resolution Image
-  Inpainting
-source_repo: https://github.com/researchmm/AOT-GAN-for-Inpainting
+has_on_target_demo: true
+has_static_banner: true
+headline: High resolution image in-painting on-device.
+id: aotgan
 license: https://github.com/taki0112/AttnGAN-Tensorflow/blob/master/LICENSE
+license_type: mit
+name: AOT-GAN
 numerics_benchmark:
   dataset_name: celebahq
   metric_name: Structural Similarity
-  value: 0.951
-  unit: SSIM
   source: AI Hub Models Reference Eval
-external_repos:
-  aotgan:
-    repo_url: https://github.com/researchmm/AOT-GAN-for-Inpainting.git
-    commit_sha: 418034627392289bdfc118d62bc49e6abd3bb185
-    patches_filename: aotgan_patches.diff
-has_on_target_demo: true
-datasets:
-- celebahq
+  unit: SSIM
+  value: 0.951
+research_paper: https://arxiv.org/abs/2104.01431
+research_paper_title: Aggregated Contextual Transformations for High-Resolution Image Inpainting
+source_repo: https://github.com/researchmm/AOT-GAN-for-Inpainting
+status: published
+technical_details:
+  Input resolution: 512x512
+  Model checkpoint: CelebAHQ
+  Model size (float): 58.0 MB
+  Number of parameters: 15.2M
 templates:
 - repaint
+use_case: Image Editing
