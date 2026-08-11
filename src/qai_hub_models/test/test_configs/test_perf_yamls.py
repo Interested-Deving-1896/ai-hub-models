@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
+from pathlib import Path
+
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard.device import ScorecardDevice
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import (
@@ -254,6 +256,29 @@ def test_apply_similar_devices_refreshes_stale_entry() -> None:
                         f"stale similar-device entry for {seeded_similar} was "
                         f"not overwritten by apply_similar_devices"
                     )
+
+
+def test_empty_perf_to_yaml_deletes_existing_file(tmp_path: Path) -> None:
+    """QAIHMModelPerf.to_yaml deletes the on-disk file when the perf serializes
+    empty (all defaults). collect_scorecard_results relies on the caller
+    checking .empty before writing so a shard that has no data for a model
+    (e.g. its perf jobs ran in a different test split) doesn't silently blow
+    away the committed perf.yaml -- which then fails QAIHMModelInfo validation
+    ("All published models must have a perf.yaml") for every published model.
+
+    This test pins the delete-on-empty behavior so the check in
+    process_e2e_recipe_model is not accidentally dropped.
+    """
+    path = tmp_path / "perf.yaml"
+    path.write_text("supported_devices:\n- Samsung Galaxy S25\n")
+    assert path.exists()
+
+    empty_perf = QAIHMModelPerf()
+    assert empty_perf.empty
+    written = empty_perf.to_yaml(path)
+
+    assert not written
+    assert not path.exists()
 
 
 def test_apply_similar_devices_adds_real_chipset() -> None:
