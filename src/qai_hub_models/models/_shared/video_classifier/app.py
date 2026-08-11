@@ -50,9 +50,9 @@ class KineticsClassifierApp:
     perform end to end inference with an KineticsClassifier.
 
     For a given video input, the app will:
-        * Pre-process the video (multi-clip sampling + spatial crops)
-        * Run Video Classification across all views
-        * Return the top 5 predicted class names.
+        * Pre-process the video into multiple views (temporal clips x crops)
+        * Run single-clip Video Classification on each view
+        * Sum the per-view softmax scores and return the top 5 class names.
     """
 
     def __init__(
@@ -61,12 +61,14 @@ class KineticsClassifierApp:
         num_frames: int = 16,
         num_clips: int = DEFAULT_NUM_CLIPS,
         num_crops: int = DEFAULT_NUM_CROPS,
+        frame_sample_rate: int = 1,
     ) -> None:
         self.model = model
         self.num_frames = num_frames
+        self.video_dim: int = model.get_input_spec()["video"][0][-1]
         self.num_clips = num_clips
         self.num_crops = num_crops
-        self.video_dim: int = model.get_input_spec()["video"][0][-1]
+        self.frame_sample_rate = frame_sample_rate
 
     def preprocess_clip(self, clip: torch.Tensor) -> torch.Tensor:
         """Apply model-specific normalisation / resize to a single clip."""
@@ -74,8 +76,9 @@ class KineticsClassifierApp:
 
     def predict(self, path: str | Path) -> list[str]:
         """
-        From the provided path of the video, predict probability distribution
-        over the 400 Kinetics classes and return the top 5 class names.
+        Run each view (temporal clip x spatial crop) as an independent
+        single-clip inference, sum the per-view softmax scores, and return
+        the top 5 Kinetics class names.
 
         Parameters
         ----------
@@ -92,6 +95,10 @@ class KineticsClassifierApp:
         else:
             raw_video = read_video_per_second(str(path))
 
+        # VideoMAE strides the video before windowing; torchvision uses stride 1.
+        if self.frame_sample_rate > 1:
+            raw_video = raw_video[:: self.frame_sample_rate]
+
         if self.num_clips > 1:
             all_clips = sample_clips(raw_video, self.num_frames, self.num_clips)
         else:
@@ -105,9 +112,9 @@ class KineticsClassifierApp:
             else:
                 views.append(preprocessed)
 
-        # [1, V*3, T, H, W] — V packed along channel dim.
-        stacked = torch.stack(views, dim=0)
-        V, C, T, H, W = stacked.shape
-        video_input = stacked.view(1, V * C, T, H, W)
-        raw_prediction = self.model(video_input)
-        return recognize_action_kinetics_400(raw_prediction)
+        # Sum per-view softmax probabilities (the model applies softmax).
+        score_sum = self.model(views[0].unsqueeze(0))
+        for view in views[1:]:
+            score_sum = score_sum + self.model(view.unsqueeze(0))
+
+        return recognize_action_kinetics_400(score_sum)

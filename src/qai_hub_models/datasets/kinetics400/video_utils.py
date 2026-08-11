@@ -7,9 +7,17 @@
 import torch
 from torchvision.transforms import functional as TF
 
+# 5 clips x 1 center crop: the torchvision R3D/R2+1D/MC3 reference eval protocol
+# (https://github.com/pytorch/vision/tree/main/references/video_classification).
 DEFAULT_NUM_CLIPS = 5
 DEFAULT_NUM_CROPS = 1
-DEFAULT_NUM_VIEWS = DEFAULT_NUM_CLIPS * DEFAULT_NUM_CROPS
+
+# VideoMAE's published protocol is 10 clips x 3 crops (30 views/video), but at
+# 224x224 that overruns AI Hub's 2 GB per-job input limit, so on-device eval is
+# reduced to 5 clips x 1 crop (~79.9% vs ~80.5% top-1 on the full val set).
+VIDEOMAE_NUM_CLIPS = 5
+VIDEOMAE_NUM_CROPS = 1
+VIDEOMAE_FRAME_SAMPLE_RATE = 2
 
 
 def normalize(video: torch.Tensor) -> torch.Tensor:

@@ -9,26 +9,20 @@ from __future__ import annotations
 import torch
 
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.metrics import (
-    ACCURACY_TOP1,
-    MetricMetadata,
-)
+from qai_hub_models.utils.metrics import ACCURACY_TOP1, MetricMetadata
 
 
 class VideoClassificationEvaluator(BaseEvaluator):
     """
     Evaluator for video classification with multi-view (clip x crop) aggregation.
 
-    Each call to ``add_batch`` receives:
+    The model returns per-view softmax probabilities; this evaluator sums them
+    per ``video_id`` and reports top-1 / top-5 on the aggregated score, matching
+    the standard multi-view protocol used for the published Kinetics-400 numbers.
 
-    * ``output``  - per-view class scores of shape ``[B, num_classes]`` (the
-                    model forward returns summed softmax probabilities).
-    * ``gt``      - a tuple ``(label_tensor, video_id_tensor)`` where
-                    ``label_tensor`` has shape ``[B]`` (integer class indices)
-                    and ``video_id_tensor`` has shape ``[B]`` (integer video IDs).
-
-    Scores for the same ``video_id`` are **summed** across all views.  Top-1 /
-    top-5 accuracy is computed from the aggregated scores at query time.
+    Each ``add_batch`` receives ``output`` (per-view probabilities ``[B,
+    num_classes]``, softmax already applied) and ``gt = (labels, video_ids)``,
+    each ``[B]`` (class indices and shared per-video IDs).
 
     Parameters
     ----------
@@ -57,7 +51,7 @@ class VideoClassificationEvaluator(BaseEvaluator):
         Parameters
         ----------
         output
-            Per-view class scores, shape ``[B, num_classes]``.
+            Per-view class probabilities, shape ``[B, num_classes]``.
         gt
             ``(labels, video_ids)`` each of shape ``[B]``; labels are class
             indices, video_ids are shared across all views of the same video.

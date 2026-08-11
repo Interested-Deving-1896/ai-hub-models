@@ -9,10 +9,9 @@ import torch
 
 from qai_hub_models import SampleInputsType
 from qai_hub_models.datasets.kinetics400 import (
-    DEFAULT_NUM_VIEWS,
     Kinetics400Dataset,
     preprocess_video_kinetics_400,
-    read_video_at_fps,
+    read_video_per_second,
 )
 from qai_hub_models.models._shared.video_classifier.video_classification_evaluator import (
     VideoClassificationEvaluator,
@@ -66,35 +65,28 @@ class KineticsClassifier(BaseModel):
 
     def forward(self, video: torch.Tensor) -> torch.Tensor:
         """
-        Predict class probabilities for a single multi-view video.
+        Predict class probabilities for an input `video`.
 
         Parameters
         ----------
         video
-            Shape ``[B, V*3, T, H, W]`` where ``V = num_clips * num_crops``.
+            A [B, C, Number of frames, H, W] video.
             Assumes video has been resized and normalized to range [0, 1]
-            3-channel Color Space: RGB.
+            3-channel Color Space: RGB
 
         Returns
         -------
         class_probs : torch.Tensor
-            Shape ``[B, 400]`` — summed softmax probabilities across all views.
+            A [B, 400] tensor of per-class softmax probabilities for the
+            video belonging to the corresponding Kinetics class.
         """
-        # [B, V*3, T, H, W] -> [B*V, 3, T, H, W] with explicit sizes so the
-        # torchscript tracer keeps the output rank for ONNX export.
-        B, VC, T, H, W = video.shape
-        V = VC // 3
-        flat = video.view(B * V, 3, T, H, W)
-        flat = (flat - self.input_mean) / self.input_std
-        logits = self.model(flat)
-        probs = torch.softmax(logits, dim=1)
-        return probs.view(B, V, -1).sum(dim=1)
+        video = (video - self.input_mean) / self.input_std
+        logits = self.model(video)
+        return torch.softmax(logits, dim=1)
 
     def get_input_spec(
         self,
-        batch_size: int = 1,
         num_frames: int = 16,
-        num_views: int = DEFAULT_NUM_VIEWS,
     ) -> InputSpec:
         """
         Returns the input specification (name -> (shape, type)). This can be
@@ -102,13 +94,8 @@ class KineticsClassifier(BaseModel):
 
         Parameters
         ----------
-        batch_size
-            Batch dimension of the input tensor.
         num_frames
-            Number of frames per clip.
-        num_views
-            Number of views (temporal clips x spatial crops) per video,
-            packed along the channel dim with ``C=3``.
+            Number of frames in the video input.
 
         Returns
         -------
@@ -117,7 +104,7 @@ class KineticsClassifier(BaseModel):
         """
         return {
             "video": TensorSpec(
-                shape=(batch_size, num_views * 3, num_frames, 112, 112),
+                shape=(1, 3, num_frames, 112, 112),
                 dtype="float32",
                 io_type=IoType.IMAGE,
                 value_range=(0.0, 1.0),
@@ -131,24 +118,12 @@ class KineticsClassifier(BaseModel):
     def _sample_inputs_impl(
         self, input_spec: InputSpec | None = None
     ) -> SampleInputsType:
-        input_tensor = read_video_at_fps(str(INPUT_VIDEO_PATH.fetch()), target_fps=15)
-        input_tensor = preprocess_video_kinetics_400(input_tensor)
-        num_views = DEFAULT_NUM_VIEWS
+        input_tensor = read_video_per_second(str(INPUT_VIDEO_PATH.fetch()))
+        input_tensor = preprocess_video_kinetics_400(input_tensor).unsqueeze(0)
         if input_spec:
             num_frames = input_spec["video"][0][2]
-            num_views = input_spec["video"][0][1] // 3
-            input_tensor = input_tensor[:, :num_frames]
-        # Replicate the single clip `num_views` times packed along channel.
-        C, T, H, W = input_tensor.shape
-        return {
-            "video": [
-                input_tensor.unsqueeze(0)
-                .expand(num_views, -1, -1, -1, -1)
-                .reshape(num_views * C, T, H, W)
-                .unsqueeze(0)
-                .numpy()
-            ]
-        }
+            input_tensor = input_tensor[:, :, :num_frames]
+        return {"video": [input_tensor.numpy()]}
 
     def get_output_spec(self) -> OutputSpec:
         return {

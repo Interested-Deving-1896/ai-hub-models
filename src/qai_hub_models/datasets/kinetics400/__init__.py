@@ -6,7 +6,9 @@ from qai_hub_models.datasets.kinetics400.kinetics400 import Kinetics400Dataset
 from qai_hub_models.datasets.kinetics400.video_utils import (
     DEFAULT_NUM_CLIPS,
     DEFAULT_NUM_CROPS,
-    DEFAULT_NUM_VIEWS,
+    VIDEOMAE_FRAME_SAMPLE_RATE,
+    VIDEOMAE_NUM_CLIPS,
+    VIDEOMAE_NUM_CROPS,
     multi_crop,
     preprocess_video_224,
     preprocess_video_kinetics_400,
@@ -19,7 +21,9 @@ from qai_hub_models.datasets.kinetics400.video_utils import (
 __all__ = [
     "DEFAULT_NUM_CLIPS",
     "DEFAULT_NUM_CROPS",
-    "DEFAULT_NUM_VIEWS",
+    "VIDEOMAE_FRAME_SAMPLE_RATE",
+    "VIDEOMAE_NUM_CLIPS",
+    "VIDEOMAE_NUM_CROPS",
     "Kinetics400Dataset",
     "multi_crop",
     "preprocess_video_224",

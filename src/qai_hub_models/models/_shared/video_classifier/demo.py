@@ -27,12 +27,26 @@ def kinetics_classifier_demo(
     parser.add_argument(
         "--video", type=str, default=default_video, help="video file path or URL."
     )
+    parser.add_argument(
+        "--num-clips",
+        type=int,
+        default=1,
+        help="Number of temporal clips to sample per video. Defaults to 1 "
+        "(single center clip); increase for higher accuracy but slower runs.",
+    )
+    parser.add_argument(
+        "--num-crops",
+        type=int,
+        default=1,
+        help="Number of spatial crops per clip. Defaults to 1 (single center "
+        "crop); increase for higher accuracy but slower runs.",
+    )
 
     args = parser.parse_args([] if is_test else None)
 
     # Load image & model
     model = model_from_cli_args(model_type, args)
-    app = app_cls(model)
+    app = app_cls(model, num_clips=args.num_clips, num_crops=args.num_crops)
     print("Model Loaded")
     with qaihm_temp_dir() as tmpdir:
         dst_path = load_path(args.video, tmpdir)
