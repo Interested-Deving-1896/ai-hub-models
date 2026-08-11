@@ -13,6 +13,7 @@ from qai_hub_models.utils.base_model import WorkbenchModel
 
 try:
     import aimet_onnx
+    from aimet_onnx import quantsim as aimet_quantsim
     from aimet_onnx.common.utils import AimetLogger
     from aimet_onnx.quantsim import QuantizationSimModel as QuantSimOnnx
 
@@ -124,6 +125,25 @@ def set_aimet_log_level(log_level: int) -> Generator[None, None, None]:
     finally:
         for area, level in area_log_levels.items():
             AimetLogger.set_area_logger_level(area, level)
+
+
+@contextmanager
+def untie_aimet_quantizers_for_op_types(
+    op_types: Collection[str],
+) -> Generator[None, None, None]:
+    """
+    Temporarily drop op types from aimet's quantizer-tying list.
+
+    Tying replaces each input's quantizer object with the output's, bitwidth
+    included, which corrupts bitwidths when replaying a calibrated checkpoint
+    whose tied output is intentionally lower precision.
+    """
+    orig = aimet_quantsim.op_types_to_tie_qtzrs
+    try:
+        aimet_quantsim.op_types_to_tie_qtzrs = [t for t in orig if t not in op_types]
+        yield
+    finally:
+        aimet_quantsim.op_types_to_tie_qtzrs = orig
 
 
 class AIMETOnnxQuantizableMixin(WorkbenchModel):

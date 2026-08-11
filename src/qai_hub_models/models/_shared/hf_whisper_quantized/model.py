@@ -18,6 +18,7 @@ from qai_hub_models.utils.onnx.helpers import (
 from qai_hub_models.utils.quantization_aimet_onnx import (
     AIMETOnnxQuantizableMixin,
     set_aimet_log_level,
+    untie_aimet_quantizers_for_op_types,
 )
 
 # isort: on
@@ -53,6 +54,19 @@ from qai_hub_models.utils.input_spec import InputSpec, make_torch_inputs
 WHISPER_AIMET_CONFIG = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "qsim_config_per_tensor.json")
 )
+
+
+def _make_whisper_quant_sim(onnx_model: onnx.ModelProto) -> QuantizationSimModel:
+    # Concat tying (aimet>=2.26 default) replaces each input's quantizer with the output's,
+    # downgrading 16-bit k/v_proj activations to the 8-bit cross-KV cache. tetracode#20671.
+    with untie_aimet_quantizers_for_op_types(["Concat"]):
+        return QuantizationSimModel(
+            model=onnx_model,
+            quant_scheme=QuantScheme.min_max,
+            param_type=aimet_onnx.int8,
+            activation_type=aimet_onnx.int16,
+            config_file=WHISPER_AIMET_CONFIG,
+        )
 
 
 # Using AIMETOnnxQuantizableMixin.forward, ignoring conflict with HfWhisperEncoder
@@ -131,14 +145,7 @@ class WhisperEncoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperEncoder)
                 for op in ["Transpose", "Split", "Reshape", "Gather"]
                 if op in op_outputs_to_ignore
             ]
-        # Create a QuantizationSimModel instance
-        quant_sim = QuantizationSimModel(
-            model=onnx_model,
-            quant_scheme=QuantScheme.min_max,
-            param_type=aimet_onnx.int8,
-            activation_type=aimet_onnx.int16,
-            config_file=WHISPER_AIMET_CONFIG,
-        )
+        quant_sim = _make_whisper_quant_sim(onnx_model)
 
         if aimet_encodings_path is not None:
             # Load the AIMET encodings into the QuantizationSimModel instance
@@ -244,14 +251,7 @@ class WhisperDecoderQuantizableBase(AIMETOnnxQuantizableMixin, HfWhisperDecoder)
                 for op in ["Transpose", "Split", "Reshape", "Gather"]
                 if op in op_outputs_to_ignore
             ]
-        # Create a QuantizationSimModel instance
-        quant_sim = QuantizationSimModel(
-            model=onnx_model,
-            quant_scheme=QuantScheme.min_max,
-            param_type=aimet_onnx.int8,
-            activation_type=aimet_onnx.int16,
-            config_file=WHISPER_AIMET_CONFIG,
-        )
+        quant_sim = _make_whisper_quant_sim(onnx_model)
 
         if aimet_encodings_path is not None:
             # Load the AIMET encodings into the QuantizationSimModel instance
