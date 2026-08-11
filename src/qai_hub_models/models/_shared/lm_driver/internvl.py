@@ -18,9 +18,9 @@ from transformers.models.internvl.video_processing_internvl import (
     InternVLVideoProcessor,
 )
 
-from GenAILab.qai_hub_lm.models.base import VLM
-from GenAILab.qai_hub_lm.models.generator import Generator, VLM_Generator
-from GenAILab.qai_hub_lm.models.utils.layer_cache import (
+from .base import VLM
+from .generator import Generator, VLM_Generator
+from .utils.layer_cache import (
     LayerCacheDescriptor,
     _resolve_text_config,
 )
@@ -142,7 +142,7 @@ class InternVL_VLM_Generator(VLM_Generator):
             return
         num_tiles = pixel_values.shape[0]
         for i in range(num_tiles):
-            yield (pixel_values[i].unsqueeze(0),)
+            yield {"pixel_values": pixel_values[i].unsqueeze(0)}
 
     def forward(
         self,
@@ -337,7 +337,7 @@ class InternVL_VLM(VLM):
         layer_cache_descriptors: list[LayerCacheDescriptor] | None = None,
         **kwargs,
     ) -> dict[str, dict[int, str]]:
-        from GenAILab.qai_hub_lm.models.utils.layer_cache import (
+        from .utils.layer_cache import (
             AttentionType,
             attention_mask_input_names,
         )
