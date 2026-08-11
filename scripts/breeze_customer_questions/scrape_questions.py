@@ -46,7 +46,7 @@ Usage:
     python -m scripts.breeze_customer_questions.scrape_questions \
         --lookback-days 1 \
         --max-questions 50 \
-        --output /tmp/claude/questions.json
+        --output "${TMPDIR:-/tmp}/claude/questions.json"
 """
 
 from __future__ import annotations

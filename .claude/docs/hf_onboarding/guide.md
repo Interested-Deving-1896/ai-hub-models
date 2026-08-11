@@ -14,8 +14,8 @@ HuggingFace → ONNX → AI Hub compile/profile pipeline.
 ## Environment Setup
 
 ```bash
-python3 -m venv /tmp/claude/hf_venv
-PIP=/tmp/claude/hf_venv/bin/pip
+python3 -m venv ${TMPDIR:-/tmp}/claude/hf_venv
+PIP=${TMPDIR:-/tmp}/claude/hf_venv/bin/pip
 $PIP install torch --index-url https://download.pytorch.org/whl/cpu
 $PIP install --force-reinstall torchvision --index-url https://download.pytorch.org/whl/cpu
 $PIP install optimum-onnx onnxruntime onnx qai_hub huggingface_hub
@@ -25,11 +25,11 @@ $PIP install timm sentence-transformers onnxscript
 The PyPI package is `optimum-onnx`. In code, import from `optimum`:
 `from optimum.exporters.onnx import main_export`.
 
-After setup, run all scripts with `/tmp/claude/hf_venv/bin/python`.
+After setup, run all scripts with `${TMPDIR:-/tmp}/claude/hf_venv/bin/python`.
 
 ## Architecture: One script per model
 
-Generate a **separate Python script for each model** in `/tmp/claude/hf_scripts/`.
+Generate a **separate Python script for each model** in `${TMPDIR:-/tmp}/claude/hf_scripts/`.
 Also write `helpers.py` to that directory — its **complete source is included at the
 end of this guide** (see the "helpers.py" section). No additional files or external
 scripts are needed beyond what is defined in this guide.
@@ -392,7 +392,7 @@ DTYPE_MAP = {
     10: "float16",
 }
 
-EXPORT_DIR = "/tmp/claude/onnx_export"
+EXPORT_DIR = os.path.join(os.environ.get("TMPDIR", "/tmp"), "claude", "onnx_export")
 
 
 def safe_name(model_id):

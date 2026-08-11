@@ -22,8 +22,8 @@ Injected via the workflow prompt:
 These are real constraints in the Breeze runner — ignoring them wastes turns on
 permission denials and command-parsing failures.
 
-- **Working dir**: Use `/tmp/claude/`, NOT `/tmp/` directly. `mkdir -p /tmp/<anything>` is
-  denied; `mkdir -p /tmp/claude/<anything>` works.
+- **Working dir**: Use `${TMPDIR:-/tmp}/claude/`, NOT `/tmp/` directly. `mkdir -p /tmp/<anything>` is
+  denied; `mkdir -p ${TMPDIR:-/tmp}/claude/<anything>` works.
 - **No pipes in Bash**: `cmd | head -10` triggers a permission denial because the matcher
   splits on `|` and rechecks each side. Use the tool's own flags instead (`--limit`,
   `--jq '[.[]] | .[0:10]'`, `head -n 10 file.txt` against a saved file).
@@ -46,10 +46,10 @@ permission denials and command-parsing failures.
 
 2. Try downloading test results artifact:
    ```
-   gh run download $RUN_ID -n nightly-test-results -D /tmp/claude/nightly-results
+   gh run download $RUN_ID -n nightly-test-results -D ${TMPDIR:-/tmp}/claude/nightly-results
    ```
 
-3. If download succeeds, read `/tmp/claude/nightly-results/summary.md` — it has pre-built failure tables with test names, errors, and stack traces. This is your primary data source. If download fails, work from job-level pass/fail only.
+3. If download succeeds, read `${TMPDIR:-/tmp}/claude/nightly-results/summary.md` — it has pre-built failure tables with test names, errors, and stack traces. This is your primary data source. If download fails, work from job-level pass/fail only.
 
 ## Step 2: Summarize + Categorize Failures (~3 tool calls)
 

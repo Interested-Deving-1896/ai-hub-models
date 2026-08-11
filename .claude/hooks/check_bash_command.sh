@@ -21,19 +21,20 @@ CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
 # ----------------------------------------------------------------------
 # Rule 1: forbid `python3 -c "..."` with quoted code.
-# CLAUDE.md "Inline Python" rule: write to /tmp/claude/<name>.py instead.
+# CLAUDE.md "Inline Python" rule: write to ${TMPDIR:-/tmp}/claude/<name>.py instead.
 # Detection: `python` or `python3`, then `-c`, then a quote char.
 # ----------------------------------------------------------------------
 if echo "$CMD" | grep -qE 'python3?[[:space:]]+-c[[:space:]]+["'"'"']'; then
+    TMPD="${TMPDIR:-/tmp}/claude"
     cat >&2 <<EOF
 [hook] BLOCKED: python3 -c with quoted code.
 
 The "Inline Python" rule in CLAUDE.md forbids this — the bash permission
 matcher chokes on quotes and triggers repeated permission prompts.
 
-Instead, write the script to /tmp/claude/<name>.py and run it:
-    Write(file_path="/tmp/claude/check_env.py", content="...")
-    Bash(command="python3 /tmp/claude/check_env.py")
+Instead, write the script to $TMPD/<name>.py and run it:
+    Write(file_path="$TMPD/check_env.py", content="...")
+    Bash(command="python3 $TMPD/check_env.py")
 EOF
     exit 2
 fi
@@ -52,6 +53,7 @@ case "$FIRST_TOK" in
         PATH_ARG=$(echo "$CMD" | awk '{for(i=2;i<=NF;i++) if(substr($i,1,1)!="-") {print $i; exit}}')
         case "$PATH_ARG" in
             /|/afs|/afs/|/mnt/share|/mnt/share/)
+                TMPD="${TMPDIR:-/tmp}/claude"
                 cat >&2 <<EOF
 [hook] BLOCKED: $FIRST_TOK against '$PATH_ARG' would traverse the entire root or a shared filesystem.
 
@@ -60,7 +62,7 @@ and may be terminated by infrastructure admins.
 
 Scope the search to a specific subtree:
     $FIRST_TOK . -name <pattern>
-    $FIRST_TOK /tmp/claude -name <pattern>
+    $FIRST_TOK $TMPD -name <pattern>
     $FIRST_TOK /afs/<specific-cell> -name <pattern>
 EOF
                 exit 2
@@ -71,12 +73,13 @@ esac
 
 # Recursive grep / ripgrep against /, /afs, or /mnt/share at the top level.
 if echo "$CMD" | grep -qE '^(grep[[:space:]]+-[rR]+[A-Za-z]*|rg)[[:space:]].*[[:space:]](/|/afs|/mnt/share)/?([[:space:]]|$)'; then
+    TMPD="${TMPDIR:-/tmp}/claude"
     cat >&2 <<EOF
 [hook] BLOCKED: recursive grep/rg against /, /afs, or /mnt/share top level.
 
 Scope to a specific subtree:
     grep -r <pattern> .
-    rg <pattern> /tmp/claude
+    rg <pattern> $TMPD
     grep -r <pattern> /afs/<specific-cell>
 EOF
     exit 2
@@ -94,35 +97,45 @@ fi
 STRIPPED=$(echo "$CMD" | sed -E "s/'[^']*'//g; s/\"[^\"]*\"//g")
 
 if echo "$STRIPPED" | grep -qE '(&&|\|\||;|[[:space:]]\|[[:space:]])'; then
+    TMPD="${TMPDIR:-/tmp}/claude"
     cat >&2 <<EOF
 [hook] BLOCKED: command chaining (&&, ||, ;, |) breaks permission checks.
 
 Pick one:
   - Run each command as a separate Bash call (preferred for 2-3 commands)
   - For sequences that genuinely need pipes/chaining, write the pipeline to
-    /tmp/claude/<name>.sh and execute that file:
-        Write(file_path="/tmp/claude/foo.sh", content="#!/bin/bash\\nset -e\\n...")
-        Bash(command="bash /tmp/claude/foo.sh")
-  - For piping to python, write the script to /tmp/claude/<name>.py
+    $TMPD/<name>.sh and execute that file:
+        Write(file_path="$TMPD/foo.sh", content="#!/bin/bash\\nset -e\\n...")
+        Bash(command="bash $TMPD/foo.sh")
+  - For piping to python, write the script to $TMPD/<name>.py
   - For filtering, use the source command's own flags (e.g. \`gh api ... --jq '<filter>'\`)
 EOF
     exit 2
 fi
 
 # ----------------------------------------------------------------------
-# Rule 4: forbid /tmp/ writes outside /tmp/claude/.
-# CLAUDE.md "Temporary files" rule: always use /tmp/claude/.
+# Rule 4: forbid system-temp writes outside ${TMPDIR:-/tmp}/claude/.
+# CLAUDE.md "Temporary files" rule: always use ${TMPDIR:-/tmp}/claude/.
 # ----------------------------------------------------------------------
-# Match: redirects to /tmp/X (where X != claude), mkdir /tmp/X, touch /tmp/X.
-# We allow /tmp/claude/... and /tmp/claude (without trailing /).
-# Find any reference to /tmp/X in a write context (>, >>, mkdir, touch),
-# extract the path token, and check it doesn't match /tmp/claude{,/...}.
-TMP_VIOLATION=$(echo "$STRIPPED" | grep -oE '(>{1,2}[[:space:]]*|mkdir[^|]*[[:space:]]|touch[^|]*[[:space:]])/tmp/[^[:space:]]*' | grep -oE '/tmp/[^[:space:]]*' | grep -vE '^/tmp/claude(/|$)' | head -1)
+# Match: redirects to <tmp>/X (X != claude), mkdir <tmp>/X, touch <tmp>/X,
+# where <tmp> is /tmp or the current $TMPDIR value.
+TMP_ROOT="${TMPDIR:-/tmp}"
+TMP_ROOT="${TMP_ROOT%/}"
+# Escape regex special characters in the resolved root so grep -E treats it literally.
+TMP_ROOT_RE=$(printf '%s' "$TMP_ROOT" | sed 's/[.[\*^$()+?{|\\]/\\&/g')
+# Check both /tmp (the hardcoded fallback) and the resolved TMPDIR, in case
+# they differ (e.g. macOS with TMPDIR=/var/folders/...).
+if [ "$TMP_ROOT" = "/tmp" ]; then
+    ROOTS_RE="/tmp"
+else
+    ROOTS_RE="(/tmp|$TMP_ROOT_RE)"
+fi
+TMP_VIOLATION=$(echo "$STRIPPED" | grep -oE "(>{1,2}[[:space:]]*|mkdir[^|]*[[:space:]]|touch[^|]*[[:space:]])$ROOTS_RE/[^[:space:]]*" | grep -oE "$ROOTS_RE/[^[:space:]]*" | grep -vE "^$ROOTS_RE/claude(/|\$)" | head -1)
 if [ -n "$TMP_VIOLATION" ]; then
     cat >&2 <<EOF
-[hook] BLOCKED: writing to /tmp/ outside /tmp/claude/.
+[hook] BLOCKED: writing to system-temp outside ${TMP_ROOT}/claude/.
 
-Use /tmp/claude/ for temporary files so they're scoped to this session.
+Use ${TMP_ROOT}/claude/ for temporary files so they're scoped to this session.
 EOF
     exit 2
 fi

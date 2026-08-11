@@ -4,7 +4,7 @@ Use this agent when adding a new model to qai_hub_models.
 
 ## Shell Command Best Practices
 
-- **Never write inline Python with comments in bash commands.** A multiline Python string containing `#` comment lines triggers Claude Code's tool-use approval prompt, blocking execution. Instead, write a `.py` file to `/tmp/claude/` and run it with `python /tmp/claude/script.py`. Always use `/tmp/claude/` (not `/tmp/` directly) to avoid affecting other files.
+- **Never write inline Python with comments in bash commands.** A multiline Python string containing `#` comment lines triggers Claude Code's tool-use approval prompt, blocking execution. Instead, write a `.py` file to `${TMPDIR:-/tmp}/claude/` and run it with `python ${TMPDIR:-/tmp}/claude/script.py`. Always use `${TMPDIR:-/tmp}/claude/` (not `/tmp/` directly) to avoid affecting other files.
 - **Never chain shell commands with `&&`, `||`, `;`, pipes, or redirects.** Claude Code's tool-use approval matches on the first command in the string and can be confused by chaining or redirects. Run each command as a separate Bash call.
 - **For long-running jobs** (AI Hub compile/profile, which take 5-15 minutes), write the job submission and polling logic to a script file and run it as a background task. Use the Agent tool to run it in a subagent so the main conversation stays responsive.
 - **Prefer script files for anything over ~5 lines of Python.** It's faster, avoids escaping issues, and the script can be re-run easily.

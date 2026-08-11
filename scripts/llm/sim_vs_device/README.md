@@ -166,7 +166,7 @@ Runs Phase A, then auto-runs Phase B on the Part its verdict flags.
 | `--phase-b-part` | — | override the Part Phase B instruments, e.g. `part3_of_4` |
 | `--skip-phase-a` | off | go straight to Phase B (requires `--phase-b all` or `--phase-b-part`) |
 | `--model-cache-mode` | `disable` | AI Hub model cache: `disable` = always compile fresh (safe while iterating); `enable` = let the service reuse a compiled model of the same name |
-| `--report-json` | `/tmp/claude/...json` | machine-readable metrics dump (`''` to skip) |
+| `--report-json` | `${TMPDIR:-/tmp}/claude/...json` | machine-readable metrics dump (`''` to skip) |
 
 ### Common recipes
 

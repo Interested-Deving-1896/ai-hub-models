@@ -73,13 +73,15 @@ Then write `.claude/settings.local.json`, replacing `<repo>` and `<cache>` with 
 > - **Web fetches**: any URL (for downloading model weights, documentation, etc.)
 > - **File read/edit/write**: only within this repo (`<repo>`) and the QAIHM cache (`<cache>`)
 >
-> Note: `/tmp/claude/` permissions are in the shared `settings.json`, not the local settings.
+> Note: `${TMPDIR:-/tmp}/claude/` permissions are in the shared `settings.json`, not the local settings.
 >
 > Shall I proceed?
 
 Wait for explicit confirmation before writing. After writing, confirm what was done.
 
-Also ensure the temp directory exists by running `mkdir -p /tmp/claude` (this may prompt once since `/tmp/claude` doesn't exist yet).
+Also ensure the temp directory exists by running `mkdir -p "${TMPDIR:-/tmp}/claude"` (this may prompt once since the directory doesn't exist yet).
+
+**Note on `$TMPDIR`:** the shared `.claude/settings.json` grants Read/Edit permission on `//tmp/claude/**`, which matches the resolved path when `$TMPDIR` is unset (default on Linux). If your environment sets `$TMPDIR` to a different location (common on macOS), add the resolved path to `.claude/settings.local.json` as well.
 
 ### Disable VS Code auto-connect
 
@@ -109,23 +111,23 @@ comment blocks or docstrings that narrate the code line-by-line.
 
 Throughout the session, stay within the boundaries defined by the permissions above:
 
-- **File operations**: Only read/edit/write within this repo, `/tmp/claude/`, and the QAIHM cache. Never write to other locations without asking the user.
+- **File operations**: Only read/edit/write within this repo, `${TMPDIR:-/tmp}/claude/`, and the QAIHM cache. Never write to other locations without asking the user.
 - **Shell commands**: Stick to the approved set (python, pre-commit, pip, pytest, git, gh, and standard file utilities). For anything else, ask first.
-- **Temporary files**: Always use `/tmp/claude/` — never `/tmp/` directly.
-- **Inline Python**: **NEVER use `python3 -c "..."` with multi-line or quote-heavy code** — it confuses the Bash permission matcher and triggers repeated permission prompts. Instead, write the script to a file in `/tmp/claude/` and run it.
+- **Temporary files**: Always use `${TMPDIR:-/tmp}/claude/` — never the system temp directory directly.
+- **Inline Python**: **NEVER use `python3 -c "..."` with multi-line or quote-heavy code** — it confuses the Bash permission matcher and triggers repeated permission prompts. Instead, write the script to a file in `${TMPDIR:-/tmp}/claude/` and run it.
   - **Bad**: `python3 -c "import os\nprint(os.environ['FOO'])"` — permission matcher chokes on quotes
-  - **Good**: Write to `/tmp/claude/check_env.py`, then run `python3 /tmp/claude/check_env.py`
+  - **Good**: Write to `${TMPDIR:-/tmp}/claude/check_env.py`, then run `python3 "${TMPDIR:-/tmp}/claude/check_env.py"`
 - **No command chaining**: Never use `&&`, `||`, `;`, or pipes (`|`) in bash commands. The permission matcher splits on these operators and rechecks each side, so a permitted command (e.g. `git status`) gets rejected when piped into something whose argument shape isn't allow-listed. Run each command as a separate Bash call. Redirects (`>`, `>>`) are fine — they don't trigger command splitting.
   - **Bad**: `gh api ... | python3 -c "..."` — pipe confuses permission check
   - **Bad**: `cmd1 && cmd2` / `cmd1; cmd2` — same problem
-  - **Good**: `git show HEAD:file.py > /tmp/claude/file.py` — redirects are OK
+  - **Good**: `git show HEAD:file.py > "${TMPDIR:-/tmp}/claude/file.py"` — redirects are OK
   - **Good**: `gh api ... --jq '<filter>'` — use tool's own flags instead of piping
-  - **Good**: for sequences that genuinely need pipelining, write the whole pipeline to `/tmp/claude/<name>.sh` and run it with `bash /tmp/claude/<name>.sh`
+  - **Good**: for sequences that genuinely need pipelining, write the whole pipeline to `${TMPDIR:-/tmp}/claude/<name>.sh` and run it with `bash "${TMPDIR:-/tmp}/claude/<name>.sh"`
 - **No filesystem-wide searches**: Never run `find`, `bfs`, `grep -r`, `rg`, or similar tools against the top level of `/`, `/afs`, or `/mnt/share`. These traverse every mountpoint or every cell of a shared filesystem, generating heavy load on file servers and possibly getting terminated by infrastructure admins. Subdirectories (e.g. `/afs/<specific-cell>`, `/mnt/share/<project>`) are fine.
   - **Bad**: `find / -name qdc_api.py` — scans every mount under root
   - **Bad**: `grep -r foo /afs` — walks every AFS cell
   - **Good**: search a known subtree — `find . -name qdc_api.py` (the repo) or `find /afs/<specific-cell> -name ...`
-  - **Good**: locate an installed Python package via the interpreter — write `import pkg, os; print(os.path.dirname(pkg.__file__))` to `/tmp/claude/find_pkg.py`, then run `python3 /tmp/claude/find_pkg.py` (the inline-Python rule above forbids `python3 -c` with quote-heavy code)
+  - **Good**: locate an installed Python package via the interpreter — write `import pkg, os; print(os.path.dirname(pkg.__file__))` to `${TMPDIR:-/tmp}/claude/find_pkg.py`, then run `python3 "${TMPDIR:-/tmp}/claude/find_pkg.py"` (the inline-Python rule above forbids `python3 -c` with quote-heavy code)
   - **Good**: locate venv contents via the venv path — `ls "${VENV:?}/lib/python*/site-packages/<pkg>/"` (the `:?` modifier errors immediately if `$VENV` is unset, preventing a silent fallback to a wide scan)
 
 ## Getting Started
