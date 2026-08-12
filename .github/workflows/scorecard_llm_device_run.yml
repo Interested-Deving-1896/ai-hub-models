@@ -160,7 +160,7 @@ jobs:
     # (path_profile.py::default_sweep_paths), so a 'default' run builds no genie
     # assets. Only collect Genie perf when 'genie' is named explicitly, else this
     # job fails with "No genie release asset found".
-    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && contains(format(',{0},', inputs.test_runtimes), ',genie,') }}
+    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && inputs.test_scope != 'compile_only' && contains(format(',{0},', inputs.test_runtimes), ',genie,') }}
     secrets: inherit
     uses: ./.github/workflows/llm_perf_collection.yml
     with:
@@ -179,7 +179,7 @@ jobs:
     # GENIEX_QAIRT is in default_sweep_paths, so a 'default' token in
     # test_runtimes should enable it -- match on comma-tokens rather than a
     # string equality check so 'default,other-runtime' variants keep working.
-    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && (contains(format(',{0},', inputs.test_runtimes), ',default,') || contains(format(',{0},', inputs.test_runtimes), ',geniex_qairt,') || inputs.test_runtimes == '') }}
+    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && inputs.test_scope != 'compile_only' && (contains(format(',{0},', inputs.test_runtimes), ',default,') || contains(format(',{0},', inputs.test_runtimes), ',geniex_qairt,') || inputs.test_runtimes == '') }}
     secrets: inherit
     uses: ./.github/workflows/llm_perf_collection_geniex.yml
     with:

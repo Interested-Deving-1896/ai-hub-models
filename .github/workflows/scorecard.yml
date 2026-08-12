@@ -203,7 +203,10 @@ jobs:
   scorecard_llm_device_run:
     name: LLM On-Device Run (asset upload, perf, accuracy)
     needs: [wait_workbench_deployment, submit_split_jobs]
-    if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && inputs.test_scope != 'compile_only' }}
+    # compile_only still runs this workflow when release_scope wants uploads; it
+    # produces the LLM release-assets.yaml. Nested collect_llm_perf* jobs gate on
+    # test_scope so on-device work stays skipped.
+    if: ${{ !cancelled() && needs.submit_split_jobs.result != 'skipped' && (inputs.test_scope != 'compile_only' || contains(inputs.release_scope, 'upload_export_assets')) }}
     secrets: inherit
     uses: ./.github/workflows/scorecard_llm_device_run.yml
     with:

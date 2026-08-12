@@ -2231,13 +2231,13 @@ def _fix_gemma4_genie_config(
             "partial-rotary-factor": partial,
         }
     local_rope = {
+        "prefix": "swa_",
         "type": "rope",
         "rope-dim": fp.head_dim // 2,
         "rope-theta": loc["rope_theta"],
     }
     binary = model.pop("binary")
-    model["positional-encoding"] = global_rope
-    model["local-positional-encoding"] = local_rope
+    model["positional-encoding"] = [global_rope, local_rope]
     model["binary"] = binary
 
     # Per-family KV caches. Prefixes/tensor names match the exported ONNX I/O.
