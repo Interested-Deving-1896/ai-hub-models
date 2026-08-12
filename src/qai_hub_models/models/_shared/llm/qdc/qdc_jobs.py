@@ -48,6 +48,7 @@ HUB_DEVICE_TO_QDC_DEVICE_MAP = {
     "SA7255P ADP": "SA7255P",
     "SA8775P ADP": "QAM8775P",
     "Dragonwing IQ-9075 EVK": "QCS9075M",
+    "Arduino VENTUNO Q": "QCS8275_Arduino",
 }
 
 QDC_REST_BASE_URL = "https://api.qualcomm.com/deviceloud/v1"

@@ -707,7 +707,6 @@ cs_8550 = ScorecardDevice.from_registered(
 cs_ventuno_q = ScorecardDevice.from_registered(
     registered_device.cs_ventuno_q,
     name="cs_ventuno_q",
-    qdc_enabled=False,
 )
 
 cs_9075 = ScorecardDevice.from_registered(
