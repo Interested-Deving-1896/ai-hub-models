@@ -3,9 +3,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 import argparse
+import os
+import sys
 import threading
 
+from botocore.exceptions import ClientError
 from mypy_boto3_s3.service_resource import Bucket
+from packaging.version import Version
 
 from qai_hub_models import Precision
 from qai_hub_models._version import __version__
@@ -20,11 +24,15 @@ from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.aws import (
     QAIHM_PRIVATE_S3_BUCKET,
     QAIHM_PUBLIC_S3_BUCKET,
+    attempt_with_s3_credentials_warning,
     get_qaihm_s3,
     s3_copy,
     s3_file_exists,
 )
 from qai_hub_models.utils.version_helpers import QAIHMVersion
+
+LATEST_VERSION_S3_KEY = "qai-hub-models/releases/latest.txt"
+OVERWRITE_ASSETS_ENVVAR = "QAIHM_ALLOW_ASSET_OVERWRITE"
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,7 +45,11 @@ def parse_args() -> argparse.Namespace:
         "-o",
         action="store_true",
         default=False,
-        help="Overwrite existing released assets. Administrator permissions are required to use this flag.",
+        help=(
+            "Overwrite existing released assets. Requires "
+            f"{OVERWRITE_ASSETS_ENVVAR}=1 in the environment plus admin creds; "
+            "CI runs never set the envvar, so this flag is a no-op there."
+        ),
     )
 
     parser.add_argument(
@@ -56,6 +68,11 @@ def main() -> None:
     pytorch_models, _ = validate_and_split_enabled_models(args.models)
     version = QAIHMVersion.tag_from_string(args.version)
     replace_existing_assets: bool = args.overwrite
+    if replace_existing_assets and not os.environ.get(OVERWRITE_ASSETS_ENVVAR):
+        sys.exit(
+            f"--overwrite requires {OVERWRITE_ASSETS_ENVVAR}=1 in the environment "
+            "to prevent accidental release-asset overwrites from CI."
+        )
 
     private_s3 = get_qaihm_s3(QAIHM_PRIVATE_S3_BUCKET)[0]
     public_s3 = get_qaihm_s3(
@@ -69,6 +86,41 @@ def main() -> None:
             )
         except Exception as e:  # noqa: PERF203
             print(f"Unable to upload results for {model_id}: {e}")
+
+    publish_latest_version_pointer(public_s3, args.version)
+
+
+def publish_latest_version_pointer(public_s3: Bucket, version: str) -> None:
+    """Write releases/latest.txt so GenieX can discover the latest release without the CLI.
+
+    Written last so the pointer only flips once every model's assets are uploaded.
+    Skips if the pointer already names a newer release (avoids regressing on a
+    patched older version).
+    """
+    new_version = Version(version.lstrip("v"))
+    try:
+        current = attempt_with_s3_credentials_warning(
+            lambda: public_s3.Object(LATEST_VERSION_S3_KEY)
+            .get()["Body"]
+            .read()
+            .decode()
+            .strip()
+        )
+        if Version(current.lstrip("v")) > new_version:
+            print(f"SKIPPED latest.txt: existing {current} is newer than {new_version}")
+            return
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") != "NoSuchKey":
+            raise
+
+    attempt_with_s3_credentials_warning(
+        lambda: public_s3.Object(LATEST_VERSION_S3_KEY).put(
+            Body=f"{new_version}\n".encode(),
+            ACL="public-read",
+            ContentType="text/plain",
+        )
+    )
+    print(f"WROTE s3://{public_s3.name}/{LATEST_VERSION_S3_KEY} = {new_version}")
 
 
 def release_asset(
