@@ -54,8 +54,11 @@ jobs:
           # Base models + this weekend's rotating LLM group token(s).
           models: ${{ needs.select-llm-models.outputs.models }}
           test_devices: all
-          # 'default' covers geniex_qairt (default_sweep_paths); qnn_dlc_via_qnn_ep is opt-in.
-          test_runtimes: default,qnn_dlc_via_qnn_ep
+          # 'default' covers geniex_qairt (default_sweep_paths); genie and
+          # qnn_dlc_via_qnn_ep are opt-in. Genie compile fans out across all
+          # LLM devices; Genie on-device perf is hardcoded to cs_x_elite in
+          # scorecard_llm_device_run.yml.
+          test_runtimes: default,genie,qnn_dlc_via_qnn_ep
           test_precisions: default
           runtime_versions: qaihm_default
           delay: scorecard_collection_32h_delay

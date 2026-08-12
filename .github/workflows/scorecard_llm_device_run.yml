@@ -165,7 +165,9 @@ jobs:
     uses: ./.github/workflows/llm_perf_collection.yml
     with:
       model: ${{ needs.determine_llm_models.outputs.models }}
-      device: ${{ inputs.device }}
+      # Genie on-device perf is scoped to cs_x_elite even when compile fans out
+      # across all LLM devices, since Genie targets compute chipsets.
+      device: cs_x_elite
       # Map default and default variants to 'all' (see scorecard/envvars.py).
       precision: ${{ contains(fromJSON('["default", "default_minus_float", "default_quantized", "bench"]'), inputs.test_precisions) && 'all' || inputs.test_precisions }}
       deployment: ${{ inputs.deployment }}
