@@ -29,11 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install git+https://github.com/SeanNaren/deepspeech.pytorch.git@709df90 git+https://github.com/romesco/hydra-lightning/#subdirectory=hydra-configs-pytorch-lightning --no-deps
-pip install "qai-hub-models[deepspeech2]"
+pip install qai-hub-models
+qai-hub-models install deepspeech2
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

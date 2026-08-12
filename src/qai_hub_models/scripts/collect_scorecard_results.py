@@ -22,6 +22,7 @@ import pandas as pd
 import ruamel.yaml
 
 from qai_hub_models import Precision
+from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.artifacts import ScorecardArtifact
@@ -422,7 +423,7 @@ def process_model(
 
 
 def _get_pytorch_tags(manifest: QAIHMModelManifest) -> list[str]:
-    assert manifest.status is not None
+    assert manifest.status is not MODEL_STATUS.UNSET
     tags = [tag.value for tag in manifest.tags]
     tags.append("pytorch")
     tags.append(manifest.status.value)

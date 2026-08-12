@@ -177,7 +177,7 @@ def _build_model_protos(
     internal: bool = False,
 ) -> tuple[list[Path], str | None]:
     manifest = QAIHMModelManifest.from_model(model_id)
-    assert manifest.status is not None
+    assert manifest.status is not MODEL_STATUS.UNSET
     if not internal and manifest.status != MODEL_STATUS.PUBLISHED:
         return [], f"status={manifest.status.value}"
 

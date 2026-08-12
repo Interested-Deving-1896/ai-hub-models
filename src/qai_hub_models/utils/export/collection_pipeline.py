@@ -18,7 +18,6 @@ from typing import Any
 import qai_hub as hub
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.ai_hub_access import can_access_qualcomm_ai_hub
 from qai_hub_models.utils.args import get_export_model_name, get_model_kwargs
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
@@ -26,10 +25,11 @@ from qai_hub_models.utils.export.compile import (
     run_collection_compile,
 )
 from qai_hub_models.utils.export.context import (
+    resolve_manifest,
     resolve_model_app_cls,
     resolve_model_cls,
-    resolve_model_dir,
     resolve_model_display_name,
+    resolve_model_id,
 )
 from qai_hub_models.utils.export.download import download_collection_model_bundle
 from qai_hub_models.utils.export.inference import run_collection_inference
@@ -56,7 +56,7 @@ from qai_hub_models.utils.qai_hub_helpers import (
 
 
 def export_model(
-    model_id: str,
+    source_dir: Path,
     device: hub.Device,
     components: list[str] | None = None,
     precision: Precision = Precision.float,
@@ -89,8 +89,9 @@ def export_model(
 
     Parameters
     ----------
-    model_id
-        Model folder name.
+    source_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        ``model.py``).
     device
         Hub device to export for.
     components
@@ -133,6 +134,7 @@ def export_model(
     """
     warnings.filterwarnings("ignore")
 
+    model_id = resolve_model_id(source_dir)
     if not can_access_qualcomm_ai_hub():
         raise RuntimeError(
             "Could not find AI Hub credentials. Sign up at "
@@ -141,11 +143,10 @@ def export_model(
             f"`qai-hub-models fetch {model_id}` instead."
         )
 
-    manifest = QAIHMModelManifest.from_model(model_id)
-    model_cls = resolve_model_cls(model_id)
-    app = resolve_model_app_cls(model_id)
-    display_name = resolve_model_display_name(model_id)
-    source_dir = resolve_model_dir(model_id)
+    manifest = resolve_manifest(source_dir)
+    model_cls = resolve_model_cls(source_dir)
+    app = resolve_model_app_cls(source_dir)
+    display_name = resolve_model_display_name(source_dir)
     model_name = get_export_model_name(
         model_cls, model_id, precision, additional_model_kwargs
     )

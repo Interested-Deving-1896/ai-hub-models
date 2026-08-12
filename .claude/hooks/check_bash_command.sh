@@ -20,6 +20,52 @@ CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 [ -z "$CMD" ] && exit 0
 
 # ----------------------------------------------------------------------
+# Resolve ${VAR}, ${VAR:-default}, and ${VAR:?...} expansions in-place so
+# the permission matcher sees the literal path (e.g. /tmp/claude/foo.diff)
+# instead of the expansion (e.g. ${TMPDIR:-/tmp}/claude/foo.diff). Without
+# this, an otherwise-allowlisted command like `wc -l "${TMPDIR:-/tmp}/..."`
+# triggers a prompt because the matcher does not run shell expansion.
+#
+# Pure textual substitution — no shell exec, no $(...) or backticks.
+# Values come from the hook process's own env (inherited from Claude Code),
+# which matches the env the Bash tool would evaluate the command in.
+# ----------------------------------------------------------------------
+resolve_shell_vars() {
+    local cmd="$1"
+    local prev=""
+    local iter=0
+    while [ "$cmd" != "$prev" ] && [ $iter -lt 50 ]; do
+        prev="$cmd"
+        if [[ "$cmd" =~ (\$\{([A-Za-z_][A-Za-z0-9_]*):-([^{}]*)\}) ]]; then
+            local full="${BASH_REMATCH[1]}"
+            local name="${BASH_REMATCH[2]}"
+            local dflt="${BASH_REMATCH[3]}"
+            local val="${!name:-}"
+            [ -z "$val" ] && val="$dflt"
+            cmd="${cmd//"$full"/$val}"
+        elif [[ "$cmd" =~ (\$\{([A-Za-z_][A-Za-z0-9_]*):\?[^{}]*\}) ]]; then
+            local full="${BASH_REMATCH[1]}"
+            local name="${BASH_REMATCH[2]}"
+            local val="${!name:-}"
+            [ -z "$val" ] && break
+            cmd="${cmd//"$full"/$val}"
+        elif [[ "$cmd" =~ (\$\{([A-Za-z_][A-Za-z0-9_]*)\}) ]]; then
+            local full="${BASH_REMATCH[1]}"
+            local name="${BASH_REMATCH[2]}"
+            local val="${!name:-}"
+            cmd="${cmd//"$full"/$val}"
+        else
+            break
+        fi
+        iter=$((iter+1))
+    done
+    printf '%s' "$cmd"
+}
+
+RESOLVED=$(resolve_shell_vars "$CMD")
+CMD="$RESOLVED"
+
+# ----------------------------------------------------------------------
 # Rule 1: forbid `python3 -c "..."` with quoted code.
 # CLAUDE.md "Inline Python" rule: write to ${TMPDIR:-/tmp}/claude/<name>.py instead.
 # Detection: `python` or `python3`, then `-c`, then a quote char.
@@ -138,6 +184,18 @@ if [ -n "$TMP_VIOLATION" ]; then
 Use ${TMP_ROOT}/claude/ for temporary files so they're scoped to this session.
 EOF
     exit 2
+fi
+
+# If the resolver rewrote the command, emit the resolved form so the permission
+# matcher sees literal paths instead of ${VAR} expansions. Silent no-op when
+# there was nothing to expand — keeps the transcript clean for the common case.
+if [ "$RESOLVED" != "$(echo "$INPUT" | jq -r '.tool_input.command // ""')" ]; then
+    jq -n --arg cmd "$RESOLVED" '{
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            updatedInput: { command: $cmd }
+        }
+    }'
 fi
 
 exit 0

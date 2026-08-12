@@ -24,7 +24,11 @@ from qai_hub_models.utils.ai_hub_access import can_access_qualcomm_ai_hub
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.base_collection_model import PrecompiledCollectionModel
 from qai_hub_models.utils.base_model import PrecompiledWorkbenchModel
-from qai_hub_models.utils.export.context import resolve_model_cls
+from qai_hub_models.utils.export.context import (
+    resolve_manifest,
+    resolve_model_cls,
+    resolve_model_id,
+)
 from qai_hub_models.utils.export.download import (
     save_precompiled_collection_models,
     save_precompiled_model,
@@ -180,7 +184,7 @@ def _export_precompiled_collection(
 
 
 def export_model(
-    model_id: str,
+    source_dir: Path,
     device: hub.Device,
     components: list[str] | None = None,
     skip_profiling: bool = False,
@@ -202,8 +206,9 @@ def export_model(
 
     Parameters
     ----------
-    model_id
-        Model folder name.
+    source_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        ``model.py``).
     device
         Hub device to export for.
     components
@@ -230,6 +235,7 @@ def export_model(
     """
     warnings.filterwarnings("ignore")
 
+    model_id = resolve_model_id(source_dir)
     if not can_access_qualcomm_ai_hub():
         raise RuntimeError(
             "Could not find AI Hub credentials. Sign up at "
@@ -238,8 +244,8 @@ def export_model(
             f"`qai-hub-models fetch {model_id}` instead."
         )
 
-    manifest = QAIHMModelManifest.from_model(model_id)
-    model_cls = resolve_model_cls(model_id)
+    manifest = resolve_manifest(source_dir)
+    model_cls = resolve_model_cls(source_dir)
     precision = manifest.default_precision
     target_runtime = TargetRuntime.QNN_CONTEXT_BINARY
     output_path = Path(output_dir or Path.cwd() / "export_assets")

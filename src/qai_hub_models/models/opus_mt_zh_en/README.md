@@ -33,10 +33,12 @@ This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from t
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[opus-mt-zh-en]"
+pip install qai-hub-models
+qai-hub-models install opus_mt_zh_en
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

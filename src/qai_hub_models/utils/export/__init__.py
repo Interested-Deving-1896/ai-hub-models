@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 """
 Shared export pipelines. Each per-model ``export.py`` shim calls
-``select_pipeline(resolve_model(MODEL_ID))`` from
+``select_pipeline(resolve_recipe_dir(MODEL_ID))`` from
 :mod:`qai_hub_models.utils.export.dispatch` to pick one of:
 
     - :mod:`qai_hub_models.utils.export.pipeline` — single-graph, non-precompiled

@@ -39,11 +39,12 @@ sudo apt install libportaudio2
 ```
 
 ### 2. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install --no-deps git+https://github.com/myshell-ai/MeloTTS.git
-pip install "qai-hub-models[melotts-es]"
+pip install qai-hub-models
+qai-hub-models install melotts_es
 ```
 
 ### 3. Configure Qualcomm® AI Hub Workbench

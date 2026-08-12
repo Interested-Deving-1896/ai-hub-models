@@ -24,7 +24,8 @@ import pytest
 import qai_hub as hub
 from collections.abc import Generator
 from qai_hub_models.models.{{ model_name }} import Model, MODEL_ID
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.context import resolve_recipe_dir
+from qai_hub_models.utils.export.dispatch import select_pipeline
 from qai_hub_models.utils.export.compile import run_{{ step_suffix }}compile as compile_model
 from qai_hub_models.utils.export.link import run_{{ step_suffix }}link as link_model
 from qai_hub_models.utils.export.profile import run_{{ step_suffix }}profile as profile_model
@@ -114,7 +115,7 @@ PASSING_PRECISION_RUNTIMES : {{ common.write_supported_precision_runtimes(test_p
 
 EVAL_DEVICE = ScorecardDevice.get("{{ default_device }}")
 HAS_EVAL_DATASET = len(Model.get_eval_dataset_classes()) > 0
-export_model = select_pipeline(resolve_model(MODEL_ID))
+export_model = select_pipeline(resolve_recipe_dir(MODEL_ID))
 
 {%- if is_llm %}
 

@@ -29,12 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.11 is supported.
-pip install "torch>=2.1,<2.12.0" "setuptools>=80"
-pip install "qai-hub-models[yolox]"
-pip install git+https://github.com/Megvii-BaseDetection/YOLOX.git@6ddff48 --no-build-isolation --use-pep517
+pip install qai-hub-models
+qai-hub-models install yolox
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

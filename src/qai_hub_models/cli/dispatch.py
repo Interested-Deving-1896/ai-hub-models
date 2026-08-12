@@ -2,14 +2,11 @@
 # Copyright (c) 2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-"""Heavy-side dispatcher for ``qai_hub_models <script> <model_id>`` subcommands.
+"""Heavy-side dispatcher for ``qai-hub-models <script> <target>`` subcommands.
 
-Imports ``qai_hub_models.models.<model_id>.<script>``, builds its native
-argparse parser via ``build_parser()``, parses the forwarded args, then calls
-``main(parsed_args)``.
-
-The lean CLI is responsible for resolving display name -> model id and
-checking the model exists in the installed package before calling in.
+Resolves *target* (a recipe folder path or a bare installed model id) to a
+:class:`Path` once at the top layer, then hands it to the export/evaluate
+pipelines and to the CLI parsers.
 """
 
 from __future__ import annotations
@@ -18,215 +15,116 @@ import argparse
 from pathlib import Path
 from typing import cast
 
+from qai_hub_models.cli.generate_files import main as generate_files_main
 from qai_hub_models.cli.install import main as install_main
-from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
+from qai_hub_models.cli.validate import main as validate_main
+from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.utils.args import evaluate_parser, export_parser
-from qai_hub_models.utils.asset_loaders import (
-    check_unpublished_model_warning,
-)
+from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
-from qai_hub_models.utils.export.dispatch import (
-    ResolvedModel,
-    resolve_model,
-    select_pipeline,
+from qai_hub_models.utils.export.context import (
+    resolve_manifest,
+    resolve_model_cls,
+    resolve_recipe_dir,
 )
-from qai_hub_models.utils.path_helpers import MODEL_IDS
+from qai_hub_models.utils.export.dispatch import select_pipeline
 
 
-def _confirm_run_ok(model_id_or_module: str) -> bool:
-    """Return False if an unpublished/unknown model should not proceed.
+def _confirm_run_ok(source_dir: Path) -> bool:
+    """Return False iff the user declines the unpublished-recipe warning.
 
-    Known unpublished ids get a confirmation prompt via
-    :func:`check_unpublished_model_warning`. Module paths outside
-    ``MODEL_IDS`` execute untrusted code on import and require the same
-    confirmation.
-
-    Parameters
-    ----------
-    model_id_or_module
-        Model ID or importable dotted module path.
-
-    Returns
-    -------
-    bool
-        True to proceed, False to abort.
+    Only ``status: published`` skips the prompt. Every other status
+    (``unpublished``, ``pending``, or the ``unset`` default that external /
+    newly-onboarded recipes ship with) triggers the confirmation prompt —
+    running unreviewed recipe code should be an explicit user decision.
     """
-    if model_id_or_module in MODEL_IDS:
-        try:
-            manifest_status = QAIHMModelManifest.from_model(model_id_or_module).status
-            status = (
-                manifest_status.value if manifest_status is not None else "unpublished"
-            )
-        except ValueError:
-            status = "unpublished"
-        if status == "published":
-            return True
+    manifest = resolve_manifest(source_dir)
+    if manifest.status is MODEL_STATUS.PUBLISHED:
+        return True
     return check_unpublished_model_warning()
 
 
-def build_export_parser_for(resolved: ResolvedModel) -> argparse.ArgumentParser:
-    """Build the export parser from an already-resolved model.
-
-    Parameters
-    ----------
-    resolved
-        Model metadata from :func:`resolve_model`.
-
-    Returns
-    -------
-    argparse.ArgumentParser
-        The model's native export argument parser.
-    """
+def build_export_parser_for(source_dir: Path) -> argparse.ArgumentParser:
+    """Build the export parser for the recipe at *source_dir*."""
+    manifest = resolve_manifest(source_dir)
     return export_parser(
-        model_cls=resolved.model_cls,
-        export_fn=select_pipeline(resolved),
-        supported_precision_runtimes=resolved.manifest.get_supported_paths_for_export(),
-        default_export_device=resolved.manifest.default_device,
-        omit_precision=resolved.manifest.separate_quantize_script,
+        model_cls=resolve_model_cls(source_dir),
+        export_fn=select_pipeline(source_dir),
+        supported_precision_runtimes=manifest.get_supported_paths_for_export(),
+        default_export_device=manifest.default_device,
+        omit_precision=manifest.separate_quantize_script,
     )
 
 
-def build_export_parser(model_id_or_module: str) -> argparse.ArgumentParser:
-    """Build the argparse parser for exporting this model.
-
-    Equivalent to the `build_parser()` function that was previously generated
-    in each `models/<model_id>/export.py`.
-
-    Parameters
-    ----------
-    model_id_or_module
-        Model ID (e.g. ``"mobilenet_v2"``) or an importable dotted module path.
-
-    Returns
-    -------
-    argparse.ArgumentParser
-        The model's native export argument parser.
-    """
-    return build_export_parser_for(resolve_model(model_id_or_module))
-
-
-def run_export(model_id_or_module: str, args: argparse.Namespace) -> None:
-    """Run export for the given model with parsed arguments.
-
-    Equivalent to the `main(args)` function that was previously generated
-    in each `models/<model_id>/export.py`.
-
-    Parameters
-    ----------
-    model_id_or_module
-        Model ID (e.g. ``"mobilenet_v2"``) or an importable dotted module path.
-    args
-        Parsed arguments from ``build_export_parser``.
-    """
-    if not _confirm_run_ok(model_id_or_module):
-        return
-    resolved = resolve_model(model_id_or_module)
-    select_pipeline(resolved)(resolved.model_id, **vars(args))
-
-
-def build_evaluate_parser_for(resolved: ResolvedModel) -> argparse.ArgumentParser:
-    """Build the evaluate parser from an already-resolved model.
-
-    Parameters
-    ----------
-    resolved
-        Model metadata from :func:`resolve_model`.
-
-    Returns
-    -------
-    argparse.ArgumentParser
-        The model's native evaluate argument parser.
-    """
-    model_cls = cast(type[BaseModel], resolved.model_cls)
+def build_evaluate_parser_for(source_dir: Path) -> argparse.ArgumentParser:
+    """Build the evaluate parser for the recipe at *source_dir*."""
+    manifest = resolve_manifest(source_dir)
+    model_cls = cast(type[BaseModel], resolve_model_cls(source_dir))
+    supports_quant_cpu = (
+        manifest.can_use_quantize_job and manifest.supports_quantization
+    )
     return evaluate_parser(
         model_cls=model_cls,
         supported_dataset_classes=model_cls.get_eval_dataset_classes(),
-        supported_precision_runtimes=resolved.manifest.get_supported_paths_for_export(),
-        uses_quantize_job=resolved.supports_quant_cpu,
-        num_calibration_samples=resolved.manifest.num_calibration_samples
-        if resolved.manifest.num_calibration_samples
+        supported_precision_runtimes=manifest.get_supported_paths_for_export(),
+        uses_quantize_job=supports_quant_cpu,
+        num_calibration_samples=manifest.num_calibration_samples
+        if manifest.num_calibration_samples
         else None,
-        default_device=resolved.manifest.default_device,
+        default_device=manifest.default_device,
     )
 
 
-def build_evaluate_parser(model_id_or_module: str) -> argparse.ArgumentParser:
-    """Build the argparse parser for evaluating this model.
-
-    Equivalent to the `build_parser()` function that was previously generated
-    in each `models/<model_id>/evaluate.py`.
-
-    Parameters
-    ----------
-    model_id_or_module
-        Model ID (e.g. ``"mobilenet_v2"``) or an importable dotted module path.
-
-    Returns
-    -------
-    argparse.ArgumentParser
-        The model's native evaluate argument parser.
-    """
-    return build_evaluate_parser_for(resolve_model(model_id_or_module))
-
-
-def run_evaluate(model_id_or_module: str, args: argparse.Namespace) -> None:
-    """Run evaluate for the given model with parsed arguments.
-
-    Equivalent to the `main(args)` function that was previously generated
-    in each `models/<model_id>/evaluate.py`.
-
-    Parameters
-    ----------
-    model_id_or_module
-        Model ID (e.g. ``"mobilenet_v2"``) or an importable dotted module path.
-    args
-        Parsed arguments from ``build_evaluate_parser``.
-    """
-    if not _confirm_run_ok(model_id_or_module):
-        return
-    resolved = resolve_model(model_id_or_module)
-    select_evaluate_pipeline(resolved)(resolved.model_id, **vars(args))
-
-
 def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) -> None:
-    """Run the given script for the model.
+    """Run the given script for the given recipe target.
 
     Parameters
     ----------
     model_id
-        Model directory name (e.g. ``"mobilenet_v2"``, validated against
-        ``MODEL_IDS`` by the caller) or a filesystem ``Path`` to a
-        standalone model folder. The CLI is responsible for rejecting
-        combinations the underlying script does not support.
+        A recipe target — either a folder path (``./my_model/``, ``Path``,
+        or path string) or a bare installed model id (``"yolov8_det"``).
+        Kept named ``model_id`` for call-site compatibility. The lean CLI
+        rejects ``script="install"``/``"generate-files"``/``"validate"``
+        with a folder before this is called.
     script
-        Script name (``"export"``, ``"evaluate"``, or ``"install"``).
+        Script name: ``"export"``, ``"evaluate"``, ``"install"``,
+        ``"generate-files"``, or ``"validate"``.
     forwarded
-        Argv tail handed to the model's parser.
+        Argv tail handed to the target's parser.
     """
     if script == "install":
         install_main([str(model_id), *forwarded])
         return
 
-    resolved = resolve_model(model_id)
+    if script == "generate-files":
+        generate_files_main([str(model_id), *forwarded])
+        return
+
+    if script == "validate":
+        validate_main([str(model_id), *forwarded])
+        return
+
+    source_dir = resolve_recipe_dir(model_id)
     if script == "export":
-        parser = build_export_parser_for(resolved)
-        parser.prog = f"qai_hub_models export {resolved.model_id}"
+        parser = build_export_parser_for(source_dir)
+        parser.prog = f"qai_hub_models export {source_dir.name}"
         args = parser.parse_args(forwarded)
-        if not _confirm_run_ok(resolved.model_id):
+        if not _confirm_run_ok(source_dir):
             return
-        select_pipeline(resolved)(resolved.model_id, **vars(args))
+        select_pipeline(source_dir)(**vars(args))
         return
 
     if script == "evaluate":
-        parser = build_evaluate_parser_for(resolved)
-        parser.prog = f"qai_hub_models evaluate {resolved.model_id}"
+        parser = build_evaluate_parser_for(source_dir)
+        parser.prog = f"qai_hub_models evaluate {source_dir.name}"
         args = parser.parse_args(forwarded)
-        if not _confirm_run_ok(resolved.model_id):
+        if not _confirm_run_ok(source_dir):
             return
-        select_evaluate_pipeline(resolved)(resolved.model_id, **vars(args))
+        select_evaluate_pipeline(source_dir)(**vars(args))
         return
 
     raise ValueError(
-        "This function currently only supports evaluate, export, and install."
+        "This function currently only supports evaluate, export, install, "
+        "generate-files, and validate."
     )

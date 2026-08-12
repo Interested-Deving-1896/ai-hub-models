@@ -5,19 +5,13 @@
 
 from __future__ import annotations
 
-import json
 import os
 import shlex
-import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Literal
 
-import requests
-from pydantic import Field, ValidationInfo, model_serializer, model_validator
-from qai_hub_models_cli.common import LOCAL_STORE_DEFAULT_PATH
+from pydantic import Field, model_serializer, model_validator
 from qai_hub_models_cli.proto import info_pb2, numerics_pb2
-from urllib3.util.retry import Retry
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs._info_yaml_enums import (
@@ -42,17 +36,9 @@ from qai_hub_models.configs.proto_helpers import (
     voice_ai_sdk_to_proto,
 )
 from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
-from qai_hub_models.utils.asset_loaders import (
-    ASSET_CONFIG,
-    QAIHM_WEB_ASSET,
-)
+from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
-from qai_hub_models.utils.device import (
-    CANARY_DEVICES,
-    DEFAULT_EXPORT_DEVICE,
-    FormFactor,
-)
-from qai_hub_models.utils.metrics import VALID_METRIC_PAIRS
+from qai_hub_models.utils.device import DEFAULT_EXPORT_DEVICE, FormFactor
 from qai_hub_models.utils.path_helpers import (
     MODEL_IDS,
     MODELS_PACKAGE_NAME,
@@ -143,95 +129,6 @@ def _find_unquoted_shell_meta(cmd: str) -> str | None:
     if in_single or in_double:
         return "<unbalanced quote>"
     return None
-
-
-URL_CACHE_TTL_SECONDS = 86400
-URL_CACHE_PATH = Path(LOCAL_STORE_DEFAULT_PATH) / "url_check_cache.json"
-
-# URLs that should be skipped during validation (e.g., due to SSL issues or rate limiting in CI environments)
-URL_VALIDATION_SKIPLIST = {
-    "https://drive.google.com/file/d/1ICTxogjS9Bc2O3K1P9ZauQYVoruT13n5/view?pli=1",  # llama_v3_taide_8b_chat license - SSL cert issue
-    "https://www.techmahindra.com/makers-lab/indus-project/",  # indus_1b research paper - intermittent 403
-}
-
-
-def _load_url_cache() -> dict[str, float]:
-    """Load the URL check cache. Returns {url: timestamp}."""
-    if not URL_CACHE_PATH.exists():
-        return {}
-    try:
-        return json.loads(URL_CACHE_PATH.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def _save_url_cache(cache: dict[str, float]) -> None:
-    """Save the URL check cache."""
-    URL_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    URL_CACHE_PATH.write_text(json.dumps(cache))
-
-
-def _make_url_check_session() -> requests.Session:
-    """Create a Session that retries on transient gateway/timeout errors and connection failures."""
-    retry = Retry(total=4, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-    adapter = requests.adapters.HTTPAdapter(max_retries=retry)
-    session = requests.Session()
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
-
-
-def _validate_urls_exist(urls: list[tuple[str, str]]) -> None:
-    """HEAD-check a list of (url, error_label) pairs in parallel.
-
-    URLs that were successfully checked within the last 24 hours are
-    skipped. Raises ValueError on failures.
-    """
-    if not urls:
-        return
-
-    now = time.time()
-    cache = _load_url_cache()
-    urls_to_check = [
-        (url, label)
-        for url, label in urls
-        if url not in URL_VALIDATION_SKIPLIST
-        and now - cache.get(url, 0) > URL_CACHE_TTL_SECONDS
-    ]
-
-    if not urls_to_check:
-        return
-
-    session = _make_url_check_session()
-
-    def _check(url: str, label: str) -> str | None:
-        try:
-            # IEEE requires a header or rejects all head requests with error 418.
-            headers = {"User-Agent": "QAIHM Test Suite"}
-            status = session.head(
-                url, allow_redirects=True, timeout=10, headers=headers
-            ).status_code
-            # Some sites respond to HEAD requests differently (IEEE: 202, qwen.ai: 405). We also ignore those.
-            if status not in [
-                requests.codes.ok,
-                requests.codes.accepted,
-                requests.codes.too_many_requests,
-                requests.codes.method_not_allowed,
-            ]:
-                return f"{label} at {url} (status: {status})"
-        except requests.RequestException as e:
-            return f"{label} at {url} ({e})"
-        cache[url] = now
-        return None
-
-    with ThreadPoolExecutor(max_workers=len(urls_to_check)) as pool:
-        results = list(pool.map(lambda t: _check(*t), urls_to_check))
-    errors = [r for r in results if r is not None]
-
-    _save_url_cache(cache)
-
-    if errors:
-        raise ValueError("\n".join(errors))
 
 
 class ExternalRepoConfig(BaseQAIHMConfig):
@@ -383,9 +280,9 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     # Name of the model's folder within the repo.
     id: str | None = None
 
-    # Whether or not the model is published on the website.
-    # This should be set to public unless the model has poor accuracy/perf.
-    status: MODEL_STATUS | None = None
+    # Publish status. UNSET is only for external recipes — the CLI treats
+    # it as neither published nor unpublished and runs without prompting.
+    status: MODEL_STATUS = MODEL_STATUS.UNSET
 
     # A brief catchy headline explaining what the model does and why it may be interesting
     headline: str | None = None
@@ -1083,14 +980,11 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     def get_supported_paths_for_export(
         self,
     ) -> dict[Precision, list[TargetRuntime]]:
-        """
-        Returns {precision: [runtime]} pairs a user can request via
-        ``qai-hub-models export``.
+        """Return {precision: [runtime]} pairs available via ``qai-hub-models export``.
 
-        Unlike :func:`get_supported_paths_for_testing`, this does not filter
-        out AOT runtimes on JIT models — those are still reachable via the
-        JIT-compile + link path — and it does not filter out paths with known
-        scorecard failures (users may have local fixes or accept the risk).
+        Unlike :func:`get_supported_paths_for_testing`, does not filter out AOT
+        runtimes on JIT models (still reachable via JIT-compile + link) or paths
+        with known scorecard failures.
         """
         out: dict[Precision, list[TargetRuntime]] = {}
         for precision in self.supported_precisions:
@@ -1125,32 +1019,27 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         return self.id is not None and self.id in MODEL_IDS
 
     @model_validator(mode="after")
-    def check_fields(self, info: ValidationInfo) -> QAIHMModelManifest:
-        """Validate the manifest.
+    def check_fields(self) -> QAIHMModelManifest:
+        """Validate universal manifest correctness.
 
-        For full model manifests (``id`` in ``MODEL_IDS``), enforces every
-        website-facing invariant. Shared and dataset manifests only need
-        their ``templates:`` / ``external_repos:`` fields to be well-formed.
+        This method enforces only the checks that must hold for *any*
+        recipe — in-tree or external. Website / scorecard / publication
+        lint (headline style, banner reachability, canary-device
+        membership, ``status: published`` gating, arxiv URL style, etc.)
+        lives in ``test_manifest_yamls.py::_check_website_facing`` and
+        runs per-model in CI.
+
+        Shared and dataset manifests only need their ``templates:`` /
+        ``external_repos:`` fields to be well-formed and skip the
+        ``is_full_model_manifest`` block entirely.
         """
-        validate_urls_exist: bool = info.context is not None and bool(
-            info.context.get("validate_urls_exist", False)
-        )
-
-        # =============================================================================
-        # Website-facing validations — only applied to full model manifests.
-        # Shared/dataset manifests carry only ``templates:`` (and optionally
-        # ``external_repos:``) and skip these checks.
-        # =============================================================================
-
         if self.is_full_model_manifest:
             assert self.id is not None
-            # Validate ID
             if " " in self.id or "-" in self.id:
                 raise ValueError("Model IDs cannot contain spaces or dashes.")
             if self.id.lower() != self.id:
                 raise ValueError("Model IDs must be lowercase.")
 
-            # The website-facing block is required for a real model manifest.
             missing_required = [
                 field
                 for field in (
@@ -1172,36 +1061,8 @@ class QAIHMModelManifest(BaseQAIHMConfig):
                 )
 
             assert self.name is not None
-            assert self.headline is not None
             assert self.license_type is not None
-            # Validate (used as repo name for HF as well)
-            if " " in self.name:
-                raise ValueError("Model Name must not have a space.")
-            if "_" in self.name:
-                raise ValueError(
-                    "Model Name should use dashes (-) instead of underscores."
-                )
 
-            # Headline should end with period
-            if not self.headline.endswith("."):
-                raise ValueError("Model headlines must end with a period.")
-
-            # Validate related models are present
-            for r_model in self.related_models:
-                if r_model == self.id:
-                    raise ValueError(f"Model {r_model} cannot be related to itself.")
-
-            # If paper is arxiv, it should be an abs link
-            if (
-                self.research_paper is not None
-                and self.research_paper.startswith("https://arxiv.org/")
-                and "/abs/" not in self.research_paper
-            ):
-                raise ValueError(
-                    "Arxiv links should be `abs` links, not link directly to pdfs."
-                )
-
-            # License validation
             if not self.license and self.license_type != MODEL_LICENSE.COMMERCIAL:
                 raise ValueError("license cannot be empty")
             if (
@@ -1212,139 +1073,10 @@ class QAIHMModelManifest(BaseQAIHMConfig):
                     f"License {self.license_type!s} must have URL {self.license_type.url}"
                 )
 
-            # Status Reason
-            if self.status == MODEL_STATUS.UNPUBLISHED and not self.status_reason:
-                raise ValueError(
-                    "Unpublished models must set `status_reason` in manifest.yaml with a link to the related issue."
-                )
-
-            if self.status == MODEL_STATUS.PUBLISHED and self.status_reason:
-                raise ValueError(
-                    "`status_reason` in manifest.yaml should not be set for published models."
-                )
-
-            # Validate numerics_benchmark metric_name + unit
-            if self.numerics_benchmark is not None:
-                pair = (
-                    self.numerics_benchmark.metric_name,
-                    self.numerics_benchmark.unit,
-                )
-                if pair not in VALID_METRIC_PAIRS:
-                    valid_pairs_str = ", ".join(
-                        f"({n!r}, {u!r})" for n, u in sorted(VALID_METRIC_PAIRS)
-                    )
-                    raise ValueError(
-                        f"numerics_benchmark metric_name={pair[0]!r} with unit={pair[1]!r} "
-                        f"does not match any known metric. Valid pairs:\n  {valid_pairs_str}"
-                    )
-
-            # Required assets exist
-            if self.status == MODEL_STATUS.PUBLISHED:
-                if not os.path.exists(self.get_package_path() / "manifest.yaml"):
-                    raise ValueError("All published models must have a manifest.yaml")
-
-                if not os.path.exists(self.get_package_path() / "perf.yaml"):
-                    raise ValueError("All published models must have a perf.yaml")
-
-                if not self.supports_at_least_1_runtime:
-                    raise ValueError(
-                        "Published models must support at least one export path"
-                    )
-
-                if not self.has_static_banner:
-                    raise ValueError("Published models must have a static asset.")
-
-            urls_to_check: list[tuple[str, str]] = []
-            if validate_urls_exist:
-                if self.has_static_banner:
-                    urls_to_check.append(
-                        (
-                            ASSET_CONFIG.get_web_asset_url(
-                                self.id, QAIHM_WEB_ASSET.STATIC_IMG
-                            ),
-                            "Static banner does not exist",
-                        )
-                    )
-                if self.has_animated_banner:
-                    urls_to_check.append(
-                        (
-                            ASSET_CONFIG.get_web_asset_url(
-                                self.id, QAIHM_WEB_ASSET.ANIMATED_MOV
-                            ),
-                            "Animated banner does not exist",
-                        )
-                    )
-                if self.license:
-                    urls_to_check.append((self.license, "License does not exist"))
-                if self.research_paper:
-                    urls_to_check.append(
-                        (
-                            self.research_paper,
-                            "Research paper does not exist",
-                        )
-                    )
-                if self.source_repo:
-                    urls_to_check.append(
-                        (self.source_repo, "Source repo does not exist")
-                    )
-
-            expected_qaihm_repo = Path("src") / "qai_hub_models" / "models" / self.id
-            if expected_qaihm_repo != ASSET_CONFIG.get_qaihm_repo(self.id):
-                raise ValueError("QAIHM repo not pointing to expected relative path")
-
-            # Check that model_type_llm and llm_details fields
-            if self.model_type_llm:
-                if not self.llm_details:
-                    raise ValueError("llm_details must be set if model type is LLM")
-
-                if self.llm_details.call_to_action in {
-                    LLM_CALL_TO_ACTION.DOWNLOAD,
-                    LLM_CALL_TO_ACTION.DOWNLOAD_AND_VIEW_README,
-                }:
-                    if self.restrict_model_sharing:
-                        raise ValueError(
-                            "LLM call to action cannot be 'download' when restrict model sharing is enabled."
-                        )
-                elif not self.restrict_model_sharing and os.path.exists(
-                    QAIHM_MODELS_ROOT / self.id / "release-assets.yaml"
-                ):
-                    raise ValueError(
-                        "LLM has downloadable assets but the call to action is not 'download'."
-                    )
-
-                if validate_urls_exist and self.llm_details.devices:
-                    for (
-                        device_runtime_config_mapping
-                    ) in self.llm_details.devices.values():
-                        for runtime_detail in device_runtime_config_mapping.values():
-                            if runtime_detail.model_download_url.startswith(
-                                ("http://", "https://")
-                            ):
-                                model_download_url = runtime_detail.model_download_url
-                            else:
-                                version = runtime_detail.model_download_url.split("/")[
-                                    0
-                                ][1:]
-                                relative_path = "/".join(
-                                    runtime_detail.model_download_url.split("/")[1:]
-                                )
-                                model_download_url = ASSET_CONFIG.get_model_asset_url(
-                                    self.id, version, relative_path
-                                )
-                            urls_to_check.append(
-                                (
-                                    model_download_url,
-                                    f"Download URL does not exist ({runtime_detail.model_download_url})",
-                                )
-                            )
-            elif self.llm_details:
+            if self.model_type_llm and not self.llm_details:
+                raise ValueError("llm_details must be set if model type is LLM")
+            if self.llm_details and not self.model_type_llm:
                 raise ValueError("Model type must be LLM if llm_details is set")
-
-            _validate_urls_exist(urls_to_check)
-
-        # =============================================================================
-        # Build/export validations — applied to every manifest that sets these fields.
-        # =============================================================================
 
         if (
             self.python_version_greater_than_or_equal_to is None
@@ -1379,10 +1111,6 @@ class QAIHMModelManifest(BaseQAIHMConfig):
                 raise ValueError(
                     f"{x.value} is not an orchestrator runtime, and should not be listed in orchestrator_runtimes."
                 )
-        if self.default_device not in CANARY_DEVICES:
-            raise ValueError(
-                f"Default device must be any of these canary devices: {CANARY_DEVICES}"
-            )
         if not self.is_collection_model and any(
             p in [Precision.mixed, Precision.mixed_with_float]
             for p in self.supported_precisions

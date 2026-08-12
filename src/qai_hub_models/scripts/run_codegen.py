@@ -273,9 +273,7 @@ def generate_code_for_model(model_name: str) -> list[str]:
         return []
 
     model_display_name = manifest.name or model_name
-    model_status = (
-        manifest.status.value if manifest.status is not None else "unpublished"
-    )
+    model_status = manifest.status.value
 
     environment = Environment(
         loader=FileSystemLoader(Path(__file__).parent / "templates/"),

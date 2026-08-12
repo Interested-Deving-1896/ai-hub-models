@@ -29,10 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[electra-bert-base-discrim-google]"
+pip install qai-hub-models
+qai-hub-models install electra_bert_base_discrim_google
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

@@ -47,7 +47,8 @@ from qai_hub_models.scorecard.utils.testing_export_eval import (
 )
 from qai_hub_models.utils.args import get_model_kwargs
 from qai_hub_models.utils.export.compile import run_collection_compile as compile_model
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.context import resolve_recipe_dir
+from qai_hub_models.utils.export.dispatch import select_pipeline
 from qai_hub_models.utils.export.inference import (
     run_collection_inference as inference_model,
 )
@@ -86,7 +87,7 @@ PASSING_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
 
 EVAL_DEVICE = ScorecardDevice.get("Dragonwing IQ-9075 EVK")
 HAS_EVAL_DATASET = len(Model.get_eval_dataset_classes()) > 0
-export_model = select_pipeline(resolve_model(MODEL_ID))
+export_model = select_pipeline(resolve_recipe_dir(MODEL_ID))
 
 
 @pytest.mark.compile

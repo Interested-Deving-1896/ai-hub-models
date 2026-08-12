@@ -10,6 +10,7 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader
 
 from qai_hub_models import TargetRuntime
+from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG, UNPUBLISHED_MODEL_WARNING
 from qai_hub_models.utils.path_helpers import MODEL_IDS
@@ -32,34 +33,17 @@ def main() -> None:
         generate_and_write_model_readme(model_id)
 
 
-def _pip_command_template_vars(
-    manifest: QAIHMModelManifest,
-) -> dict[str, Any]:
-    """Split manifest pip commands into CPU/GPU README instruction lists.
+def _has_machine_gated_entries(manifest: QAIHMModelManifest) -> bool:
+    """True when the manifest declares any GPU-specific pre/post pip command.
 
-    Each list is a list of raw shell strings (each one starts with ``pip ``).
-    The README shows two blocks when the manifest has any ``machine: gpu`` or
-    ``machine: cpu`` entries — otherwise it collapses to one CPU-side block.
+    The README-side effect is a note telling the reader the recipe has GPU
+    requirements. The actual CPU/GPU split is handled at install time by
+    the ``qai-hub-models install`` CLI, which auto-detects CUDA.
     """
-    pre = manifest.pre_pip_install_commands
-    post = manifest.post_pip_install_commands
-
-    has_machine_gated_entries = any(c.machine != "any" for c in pre + post)
-
-    def _for(machine_ctx: str, cmds: list) -> list[str]:
-        return [c.command for c in cmds if c.machine in ("any", machine_ctx)]
-
-    return {
-        "pre_pip_install_commands": _for("cpu", pre),
-        "post_pip_install_commands": _for("cpu", post),
-        "pre_pip_install_commands_gpu": (
-            _for("gpu", pre) if has_machine_gated_entries else None
-        ),
-        "post_pip_install_commands_gpu": (
-            _for("gpu", post) if has_machine_gated_entries else None
-        ),
-        "has_machine_gated_entries": has_machine_gated_entries,
-    }
+    return any(
+        c.machine != "any"
+        for c in manifest.pre_pip_install_commands + manifest.post_pip_install_commands
+    )
 
 
 def get_shared_template_args(manifest: QAIHMModelManifest) -> dict[str, Any]:
@@ -143,7 +127,7 @@ def get_shared_template_args(manifest: QAIHMModelManifest) -> dict[str, Any]:
 def generate_and_write_model_readme(model_id: str) -> Path:
     """Generate a README for this model from the jinja template and write it."""
     manifest = QAIHMModelManifest.from_model(model_id)
-    assert manifest.status is not None
+    assert manifest.status is not MODEL_STATUS.UNSET
     assert manifest.headline is not None
 
     # Convert precisions to strings for Jinja template. Populated for both
@@ -170,8 +154,7 @@ def generate_and_write_model_readme(model_id: str) -> Path:
             "supported_precisions": supported_precisions,
             "separate_quantize_script": manifest.separate_quantize_script,
             # Package installation
-            "has_model_requirements": manifest.has_model_requirements(),
-            **_pip_command_template_vars(manifest),
+            "has_machine_gated_entries": _has_machine_gated_entries(manifest),
             "python_version_gte": manifest.python_version_greater_than_or_equal_to,
             "python_version_lt": manifest.python_version_less_than,
             # Flags

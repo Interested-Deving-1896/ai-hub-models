@@ -26,9 +26,10 @@ from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.export.compile import run_compile
 from qai_hub_models.utils.export.context import (
+    resolve_manifest,
     resolve_model_cls,
-    resolve_model_dir,
     resolve_model_display_name,
+    resolve_model_id,
 )
 from qai_hub_models.utils.export.download import download_model_bundle
 from qai_hub_models.utils.export.inference import run_inference
@@ -48,7 +49,7 @@ from qai_hub_models.utils.qai_hub_helpers import _AIHUB_URL, get_device_and_chip
 
 
 def export_model(
-    model_id: str,
+    source_dir: Path,
     device: hub.Device,
     precision: Precision = Precision.float,
     target_runtime: TargetRuntime = TargetRuntime.TFLITE,
@@ -80,8 +81,10 @@ def export_model(
 
     Parameters
     ----------
-    model_id
-        Model folder name (e.g. ``yolov8_det``); used as the asset and job-name root.
+    source_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        ``model.py``). The recipe's ``model_id`` is derived from
+        ``source_dir.name``.
     device
         Hub device to export for (e.g. ``hub.Device("Samsung Galaxy S25")``).
     precision
@@ -123,6 +126,7 @@ def export_model(
     """
     warnings.filterwarnings("ignore")
 
+    model_id = resolve_model_id(source_dir)
     if not can_access_qualcomm_ai_hub():
         raise RuntimeError(
             "Could not find AI Hub credentials. Sign up at "
@@ -131,10 +135,9 @@ def export_model(
             f"`qai-hub-models fetch {model_id}` instead."
         )
 
-    manifest = QAIHMModelManifest.from_model(model_id)
-    model_cls = resolve_model_cls(model_id)
-    display_name = resolve_model_display_name(model_id)
-    source_dir = resolve_model_dir(model_id)
+    manifest = resolve_manifest(source_dir)
+    model_cls = resolve_model_cls(source_dir)
+    display_name = resolve_model_display_name(source_dir)
     model_name = get_export_model_name(
         model_cls, model_id, precision, additional_model_kwargs
     )

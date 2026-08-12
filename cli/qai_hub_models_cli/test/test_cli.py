@@ -107,7 +107,7 @@ def test_dispatch_forwards_remaining_args_to_model_parser(script: str) -> None:
 
 
 def test_dispatch_missing_model_arg_exits_with_usage_hint() -> None:
-    """`export` (no model) exits with our usage hint, not argparse's generic error."""
+    """`export` (no target) exits with our usage hint, not argparse's generic error."""
     with (
         patch("qai_hub_models_cli.cli._check_version_match"),
         patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
@@ -115,31 +115,7 @@ def test_dispatch_missing_model_arg_exits_with_usage_hint() -> None:
     ):
         main(["export"])
     assert "Usage:" in str(exc_info.value)
-    assert "export <model>" in str(exc_info.value)
-
-
-def test_dispatch_model_not_in_installed_package_exits() -> None:
-    """Manifest lists the model but it's not in MODEL_IDS -> clean error.
-
-    An arg that isn't a valid installed model ID falls back to the manifest
-    lookup (resolved against CURRENT_VERSION).
-    """
-    fake_entry = MagicMock()
-    fake_entry.id = "future_model"
-    with (
-        patch("qai_hub_models_cli.cli._check_version_match"),
-        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
-        patch("qai_hub_models_cli.cli.CURRENT_VERSION", "9.9.9"),
-        patch(
-            "qai_hub_models_cli.cli.get_manifest_entry", return_value=fake_entry
-        ) as mock_get_entry,
-        patch.dict(sys.modules, _stub_heavy_modules({"mobilenet_v2"})),
-        pytest.raises(SystemExit) as exc_info,
-    ):
-        main(["export", "future_model"])
-    mock_get_entry.assert_called_once_with("future_model", "9.9.9")
-    assert "future_model" in str(exc_info.value)
-    assert "installed qai_hub_models package" in str(exc_info.value)
+    assert "export <target>" in str(exc_info.value)
 
 
 def test_dispatch_builtin_id_wins_over_alias() -> None:

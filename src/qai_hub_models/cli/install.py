@@ -36,6 +36,7 @@ from typing import Any
 
 from qai_hub_models.configs.manifest_yaml import PipCommand
 from qai_hub_models.utils.asset_loaders import load_yaml
+from qai_hub_models.utils.export.context import looks_like_path
 from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_PACKAGE_ROOT
 
 DATASETS_ROOT = QAIHM_PACKAGE_ROOT / "datasets"
@@ -53,13 +54,24 @@ class NodeKind(Enum):
 
 @dataclass(frozen=True)
 class Node:
-    """A single installable unit in the dependency graph."""
+    """A single installable unit in the dependency graph.
+
+    Datasets and templates always resolve inside the installed
+    ``qai_hub_models`` package (they're shared library code). Models
+    normally resolve to ``MODELS_ROOT / name`` — but the DFS root can be
+    an arbitrary folder outside the package, passed via
+    ``folder_override``. That lets ``qai-hub-models install ./my_model/``
+    walk a standalone recipe's dependency graph.
+    """
 
     kind: NodeKind
     name: str
+    folder_override: Path | None = None
 
     @property
     def folder(self) -> Path:
+        if self.folder_override is not None:
+            return self.folder_override
         if self.kind is NodeKind.DATASET:
             return DATASETS_ROOT / self.name
         if self.kind is NodeKind.TEMPLATE:
@@ -234,15 +246,52 @@ def _node_install_commands(node: Node, on_gpu: bool) -> list[list[str]]:
     return commands
 
 
-def plan_install(model_id: str) -> list[tuple[Node, list[list[str]]]]:
-    """Return the full install plan for ``model_id``.
+def _resolve_root(target: str) -> Node:
+    """Build the root Node for ``qai-hub-models install <target>``.
+
+    Accepts either a folder path (external recipe not necessarily under
+    the installed package) or a bare model id (resolved to
+    ``MODELS_ROOT / <id>``). Display names are not accepted.
+    """
+    if looks_like_path(target):
+        folder = Path(target).resolve()
+        if not folder.is_dir():
+            raise ValueError(
+                f"{target!r} is not a directory. Point at a recipe folder "
+                "that contains manifest.yaml."
+            )
+        if not (folder / "manifest.yaml").exists():
+            raise ValueError(f"{folder} has no manifest.yaml — nothing to install.")
+        return Node(NodeKind.MODEL, folder.name, folder_override=folder)
+
+    if target not in MODEL_IDS:
+        raise ValueError(
+            f"{target!r} is not an installed model id and is not a folder "
+            "path. Either use a known model id or pass a recipe folder path "
+            "(e.g. ./my_model/)."
+        )
+    return Node(NodeKind.MODEL, target)
+
+
+def plan_install(target: str) -> list[tuple[Node, list[list[str]]]]:
+    """Return the full install plan for ``target``.
 
     Each entry pairs a graph node with the argv list of every command
     needed to install it, in the order they should run.
+
+    Parameters
+    ----------
+    target
+        Either a recipe folder path (``./my_model/``) or a bare model id
+        (``yolov8_det``). Templates and datasets always resolve inside
+        the installed package.
+
+    Returns
+    -------
+    list[tuple[Node, list[list[str]]]]
+        Install plan as (node, argv-lists) pairs in the order they should run.
     """
-    if model_id not in MODEL_IDS:
-        raise ValueError(f"Unknown model id: {model_id!r}")
-    root = Node(NodeKind.MODEL, model_id)
+    root = _resolve_root(target)
     on_gpu = _has_cuda_gpu()
     return [
         (node, _node_install_commands(node, on_gpu))
@@ -258,23 +307,58 @@ def _run(argv: list[str], dry_run: bool) -> None:
     subprocess.run(argv, check=True)
 
 
-def install_model(model_id: str, dry_run: bool = False) -> None:
-    """Install ``model_id`` and every declared dependency in DFS order.
+class InstallAborted(RuntimeError):
+    """Raised when the user declines the install prompt."""
 
-    Parameters
-    ----------
-    model_id
-        The model id to install (must exist under ``qai_hub_models/models/``).
-    dry_run
-        If True, print each command that would run instead of executing it.
-        Useful for previewing the plan.
-    """
-    plan = plan_install(model_id)
+
+def _print_plan(plan: list[tuple[Node, list[list[str]]]]) -> None:
+    """Print the full install plan (every pip command, grouped per node)."""
     for node, commands in plan:
         if not commands:
             print(f"# {node.kind.value} {node.name}: nothing to install", flush=True)
             continue
         print(f"# {node.kind.value} {node.name}", flush=True)
+        for argv in commands:
+            print("  " + shlex.join(argv), flush=True)
+
+
+def install_model(target: str, dry_run: bool = False, assume_yes: bool = False) -> None:
+    """Install ``target`` and every declared dependency in DFS order.
+
+    Prints the full plan first, then prompts ``[y/N]`` before running any
+    commands. Pass ``assume_yes=True`` (or ``--yes`` on the CLI) to skip
+    the prompt for non-interactive use.
+
+    Parameters
+    ----------
+    target
+        A recipe folder path (``./my_model/``) or a bare model id
+        (``yolov8_det``). Templates and datasets always resolve inside
+        the installed package.
+    dry_run
+        If True, print each command that would run instead of executing it.
+        Useful for previewing the plan.
+    assume_yes
+        If True, skip the interactive ``[y/N]`` confirmation and proceed.
+        ``qai-hub-models validate`` intentionally leaves this ``False`` so
+        Install remains the first interactive gate in the report card.
+    """
+    plan = plan_install(target)
+    print(f"Install plan for {target}:", flush=True)
+    _print_plan(plan)
+
+    if dry_run:
+        return
+
+    if not assume_yes:
+        try:
+            reply = input("Proceed with install? [y/N]: ").strip().lower()
+        except EOFError:
+            reply = ""
+        if reply not in ("y", "yes"):
+            raise InstallAborted("install declined by user at the [y/N] prompt")
+
+    for _, commands in plan:
         for argv in commands:
             _run(argv, dry_run)
 
@@ -291,14 +375,29 @@ def main(argv: list[str] | None = None) -> None:
         description="Install the dependencies for a model, "
         "including its declared datasets, shared templates, and cross-model deps.",
     )
-    parser.add_argument("model_id", help="Model id, e.g. mobilenet_v2.")
+    parser.add_argument(
+        "target",
+        help=(
+            "Recipe folder path (e.g. ./my_model/) or an installed model id "
+            "(e.g. yolov8_det). The folder must contain a manifest.yaml."
+        ),
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the install plan without running any pip commands.",
     )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip the [y/N] confirmation prompt and run the plan immediately.",
+    )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    install_model(args.model_id, dry_run=args.dry_run)
+    try:
+        install_model(args.target, dry_run=args.dry_run, assume_yes=args.yes)
+    except InstallAborted as exc:
+        print(f"Aborted: {exc}", flush=True)
 
 
 if __name__ == "__main__":

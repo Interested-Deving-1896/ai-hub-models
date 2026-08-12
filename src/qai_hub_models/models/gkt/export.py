@@ -13,7 +13,8 @@ import warnings
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.gkt import MODEL_ID, Model
 from qai_hub_models.utils.args import export_parser
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.context import resolve_recipe_dir
+from qai_hub_models.utils.export.dispatch import select_pipeline
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
     Precision.float: [
@@ -25,7 +26,7 @@ SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
 
 DEFAULT_EXPORT_DEVICE = "Samsung Galaxy S25 (Family)"
 
-export_model = select_pipeline(resolve_model(MODEL_ID))
+export_model = select_pipeline(resolve_recipe_dir(MODEL_ID))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,7 +53,7 @@ def main(args: argparse.Namespace | None = None) -> None:
             stacklevel=2,
         )
         args = build_parser().parse_args()
-    export_model(MODEL_ID, **vars(args))
+    export_model(**vars(args))
 
 
 if __name__ == "__main__":

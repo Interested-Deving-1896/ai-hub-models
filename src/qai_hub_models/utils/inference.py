@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, ValuesView
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
@@ -39,7 +40,7 @@ except NotImplementedError:
 
 
 def compile_model_from_args(
-    model_id: str,
+    source_dir: Path,
     cli_args: argparse.Namespace,
     model_kwargs: Mapping[str, Any],
     component: str | None = None,
@@ -47,8 +48,9 @@ def compile_model_from_args(
     """
     Parameters
     ----------
-    model_id
-        e.g., yolov7_quantized, stable_diffusion_v1_5_ao_quantized
+    source_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        ``model.py``).
     cli_args
         CLI arguments. We will use cli_args.chipset, .device,
         .target_runtime.
@@ -70,9 +72,10 @@ def compile_model_from_args(
         model_kwargs_dict["precision"] = cli_args.precision
         cli_str += f"--precision {cli_args.precision} "
 
-    from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+    from qai_hub_models.utils.export.dispatch import select_pipeline
 
-    export_model = select_pipeline(resolve_model(model_id))
+    model_id = source_dir.name
+    export_model = select_pipeline(source_dir)
     if getattr(cli_args, "num_calibration_samples", None):
         model_kwargs_dict["num_calibration_samples"] = cli_args.num_calibration_samples
         cli_str += f"--num-calibration-samples {cli_args.num_calibration_samples} "
@@ -96,7 +99,6 @@ def compile_model_from_args(
     if component is not None:
         component_kwargs = {"components": [component]}
     export_output = export_model(
-        model_id,
         device=cli_args.device,
         skip_profiling=True,
         skip_inferencing=True,

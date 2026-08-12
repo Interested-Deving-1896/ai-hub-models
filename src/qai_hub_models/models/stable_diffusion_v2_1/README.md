@@ -37,10 +37,12 @@ Please follow the [Quantize Stable Diffusion]({REPOSITORY_URL}/tutorials/stable_
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[stable-diffusion-v2-1]"
+pip install qai-hub-models
+qai-hub-models install stable_diffusion_v2_1
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

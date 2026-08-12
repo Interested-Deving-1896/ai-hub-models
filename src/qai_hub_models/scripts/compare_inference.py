@@ -37,11 +37,8 @@ from qai_hub_models.utils.base_multi_graph_collection_model import (
 )
 from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
 from qai_hub_models.utils.compare import METRICS_FUNCTIONS, torch_inference
-from qai_hub_models.utils.export.dispatch import (
-    ResolvedModel,
-    resolve_model,
-    select_pipeline,
-)
+from qai_hub_models.utils.export.context import resolve_model_cls, resolve_recipe_dir
+from qai_hub_models.utils.export.dispatch import select_pipeline
 from qai_hub_models.utils.export.result import (
     CollectionExportResult,
     LegacyCollectionExportResult,
@@ -52,16 +49,6 @@ from qai_hub_models.utils.printing import print_inference_metrics
 from qai_hub_models.utils.transpose_channel import transpose_channel_last_to_first
 
 ALL_METRICS = ",".join(k for k in METRICS_FUNCTIONS if k not in ("top1", "top5"))
-
-
-def load_model(model_id: str) -> ResolvedModel:
-    """Resolve a model ID to its metadata, with a friendly error if unknown."""
-    if model_id not in MODEL_IDS:
-        raise ValueError(
-            f"Unknown model ID: {model_id}. "
-            f"Available models: {', '.join(MODEL_IDS[:10])}..."
-        )
-    return resolve_model(model_id)
 
 
 def get_component_inference_job(
@@ -102,8 +89,8 @@ def export(
     model (no on-device inference path) or if ``component`` is inconsistent with
     the model kind.
     """
-    resolved = load_model(model_id)
-    model_cls: Any = resolved.model_cls
+    source_dir = resolve_recipe_dir(model_id)
+    model_cls: Any = resolve_model_cls(source_dir)
 
     # Multi-graph models (sharded LLMs, e.g. qwen VL) have no on-device
     # inference path -- their export pipelines hardcode skip_inferencing -- so
@@ -129,7 +116,7 @@ def export(
             "--component is not applicable."
         )
 
-    export_model = select_pipeline(resolved)
+    export_model = select_pipeline(source_dir)
     export_kwargs: dict[str, Any] = dict(
         device=device,
         target_runtime=target_runtime,
@@ -146,14 +133,14 @@ def export(
 
     if is_collection:
         assert component is not None  # validated above
-        export_result = export_model(model_id, components=[component], **export_kwargs)
+        export_result = export_model(components=[component], **export_kwargs)
         inference_job = get_component_inference_job(export_result, component)
         model = model_cls.from_pretrained(**model_kwargs).components[component]
         if not isinstance(model, WorkbenchModel):
             raise TypeError(f"Component {component} is not a WorkbenchModel")
         return model, inference_job
 
-    export_result = export_model(model_id, **export_kwargs)
+    export_result = export_model(**export_kwargs)
     return model_cls.from_pretrained(**model_kwargs), export_result.inference_job
 
 

@@ -27,6 +27,7 @@ from qai_hub_models.utils.export.compile import run_multi_graph_compile
 from qai_hub_models.utils.export.context import (
     resolve_model_cls,
     resolve_model_display_name,
+    resolve_model_id,
 )
 from qai_hub_models.utils.export.download import download_multi_graph_model_bundle
 from qai_hub_models.utils.export.link import run_multi_graph_link
@@ -47,7 +48,7 @@ from qai_hub_models.utils.qai_hub_helpers import (
 
 
 def export_model(
-    model_id: str,
+    source_dir: Path,
     device: hub.Device,
     precision: Precision = Precision.float,
     target_runtime: TargetRuntime = TargetRuntime.QNN_CONTEXT_BINARY,
@@ -73,8 +74,9 @@ def export_model(
 
     Parameters
     ----------
-    model_id
-        Model folder name.
+    source_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        ``model.py``).
     device
         Hub device to export for.
     precision
@@ -107,6 +109,7 @@ def export_model(
     """
     warnings.filterwarnings("ignore")
 
+    model_id = resolve_model_id(source_dir)
     if not can_access_qualcomm_ai_hub():
         raise RuntimeError(
             "Could not find AI Hub credentials. Sign up at "
@@ -115,8 +118,8 @@ def export_model(
             f"`qai-hub-models fetch {model_id}` instead."
         )
 
-    model_cls = resolve_model_cls(model_id)
-    display_name = resolve_model_display_name(model_id)
+    model_cls = resolve_model_cls(source_dir)
+    display_name = resolve_model_display_name(source_dir)
     additional_model_kwargs["precision"] = precision
     model_name = get_export_model_name(
         model_cls, model_id, precision, additional_model_kwargs

@@ -101,10 +101,8 @@ from qai_hub_models.utils.args import (  # noqa: E402
     get_on_device_demo_parser,
     validate_on_device_demo_args,
 )
-from qai_hub_models.utils.export.dispatch import (  # noqa: E402
-    resolve_model,
-    select_pipeline,
-)
+from qai_hub_models.utils.export.context import resolve_recipe_dir  # noqa: E402
+from qai_hub_models.utils.export.dispatch import select_pipeline  # noqa: E402
 from qai_hub_models.utils.export.result import ExportResult  # noqa: E402
 from qai_hub_models.utils.inference import (  # noqa: E402
     OnDeviceModel,
@@ -116,7 +114,7 @@ from qai_hub_models.utils.model_cache import CacheMode  # noqa: E402
 def test_parse_resnet18_export() -> None:
     parser = export_parser(
         model_cls=ResnetModel,
-        export_fn=select_pipeline(resolve_model("resnet18")),
+        export_fn=select_pipeline(resolve_recipe_dir("resnet18")),
     )
     args = parser.parse_args([])
     gt_set = {
@@ -148,7 +146,7 @@ def test_parse_resnet18_export() -> None:
     # Add quantized precision
     parser = export_parser(
         model_cls=ResnetModel,
-        export_fn=select_pipeline(resolve_model("resnet18")),
+        export_fn=select_pipeline(resolve_recipe_dir("resnet18")),
         supported_precision_runtimes={
             Precision.float: [TargetRuntime.TFLITE],
             Precision.w8a8: [
@@ -289,7 +287,8 @@ def test_llama_parser_help(llama_parser: argparse.ArgumentParser) -> None:
 
 def test_parse_whisper_export() -> None:
     parser = export_parser(
-        model_cls=WhisperModel, export_fn=select_pipeline(resolve_model("whisper_base"))
+        model_cls=WhisperModel,
+        export_fn=select_pipeline(resolve_recipe_dir("whisper_base")),
     )
     args = parser.parse_args([])
     gt_set = {
@@ -325,7 +324,7 @@ def test_parse_qwen2_7b_export() -> None:
 
     parser = export_parser(
         model_cls=Qwen2Model,
-        export_fn=select_pipeline(resolve_model("qwen2_7b_instruct")),
+        export_fn=select_pipeline(resolve_recipe_dir("qwen2_7b_instruct")),
         supported_precision_runtimes=supported_precision_runtimes,
     )
     args = parser.parse_args([])
@@ -364,7 +363,7 @@ def test_omit_precision_resolves_from_checkpoint() -> None:
     ):
         parser = export_parser(
             model_cls=LlamaModel,
-            export_fn=select_pipeline(resolve_model("llama_v3_1_8b_instruct")),
+            export_fn=select_pipeline(resolve_recipe_dir("llama_v3_1_8b_instruct")),
             supported_precision_runtimes={
                 Precision.w4a16: [TargetRuntime.GENIEX_QAIRT],
             },
@@ -488,7 +487,7 @@ def test_demo_model_from_cli_args() -> None:
     with patch(
         "qai_hub_models.utils.args.compile_model_from_args", return_value=compile_mock
     ):
-        model = demo_model_from_cli_args(ResnetModel, "dummy_model", args)
+        model = demo_model_from_cli_args(ResnetModel, RESNET_MODEL_ID, args)
         assert isinstance(model, OnDeviceModel)
 
     args = parser.parse_args(["--eval-mode", "on-device"])
@@ -527,7 +526,7 @@ def test_compile_model_from_args() -> None:
         mock_compile_job = create_autospec(hub.CompileJob)
         mock_compile_job._target_model = create_autospec(hub.Model)
         resnet_export_mock.return_value = ExportResult(compile_job=mock_compile_job)
-        compile_model_from_args(RESNET_MODEL_ID, args, {})
+        compile_model_from_args(resolve_recipe_dir(RESNET_MODEL_ID), args, {})
         kwargs = resnet_export_mock.call_args_list[0][1]
         assert isinstance(kwargs["device"], hub.Device)
         assert "chipset:qualcomm-snapdragon-8gen3" in kwargs["device"].attributes
@@ -539,7 +538,7 @@ def test_default_runtime_follows_precision() -> None:
     """Default target_runtime should match the first eligible runtime for the chosen precision."""
     parser = export_parser(
         model_cls=ResnetModel,
-        export_fn=select_pipeline(resolve_model("resnet18")),
+        export_fn=select_pipeline(resolve_recipe_dir("resnet18")),
         supported_precision_runtimes={
             Precision.float: [TargetRuntime.TFLITE],
             Precision.w8a16: [TargetRuntime.QNN_DLC, TargetRuntime.QNN_CONTEXT_BINARY],
@@ -574,7 +573,7 @@ def test_default_runtime_no_precision_arg() -> None:
     """
     parser = export_parser(
         model_cls=Qwen2Model,
-        export_fn=select_pipeline(resolve_model("qwen2_7b_instruct")),
+        export_fn=select_pipeline(resolve_recipe_dir("qwen2_7b_instruct")),
         supported_precision_runtimes={
             Precision.w4a16: [
                 TargetRuntime.QNN_CONTEXT_BINARY,
@@ -591,7 +590,7 @@ def test_default_runtime_single_non_float_precision() -> None:
     """When the only precision is non-float, its first runtime should be the default."""
     parser = export_parser(
         model_cls=ResnetModel,
-        export_fn=select_pipeline(resolve_model("resnet18")),
+        export_fn=select_pipeline(resolve_recipe_dir("resnet18")),
         supported_precision_runtimes={
             Precision.w8a8: [TargetRuntime.QNN_DLC, TargetRuntime.TFLITE],
         },

@@ -250,6 +250,7 @@ def perform_runtime_model_validation(
     model_cls: type[WorkbenchModel | CollectionModel | MultiGraphCollectionModel],
     model_id: str,
     app_cls: type | None = None,
+    manifest: QAIHMModelManifest | None = None,
 ) -> None:
     """
     Run all static validation checks on a model's configuration.
@@ -268,13 +269,16 @@ def perform_runtime_model_validation(
         is safe for models without quantized precisions; for models
         with quantized precisions, ``None`` will produce an error
         indicating the missing App.
+    manifest
+        Optional pre-loaded manifest. If None, loads via QAIHMModelManifest.from_model(model_id).
 
     Raises
     ------
     AssertionError
         If any validation check fails.
     """
-    manifest = QAIHMModelManifest.from_model(model_id)
+    if manifest is None:
+        manifest = QAIHMModelManifest.from_model(model_id)
     errors: list[str] = []
 
     assert issubclass(model_cls, FromPretrainedProtocol)

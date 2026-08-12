@@ -19,7 +19,8 @@ from tflite import Model as TFModel
 
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.asset_loaders import qaihm_temp_dir
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.context import resolve_recipe_dir
+from qai_hub_models.utils.export.dispatch import select_pipeline
 from qai_hub_models.utils.export.result import (
     CollectionExportResult,
     ExportResult,
@@ -202,9 +203,8 @@ def main() -> None:
                             ["pip", "install", "-r", requirements_file], check=False
                         )
 
-                    export_model = select_pipeline(resolve_model(model_name))
+                    export_model = select_pipeline(resolve_recipe_dir(model_name))
                     results = export_model(
-                        model_name,
                         device=hub.Device("Samsung Galaxy S25 (Family)"),
                         skip_downloading=True,
                         skip_profiling=True,

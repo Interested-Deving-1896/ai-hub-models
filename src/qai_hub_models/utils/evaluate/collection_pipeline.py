@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import argparse
 import warnings
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 import qai_hub as hub
 
@@ -21,17 +22,19 @@ from qai_hub_models.utils.evaluate.helpers import (
     _load_quant_cpu_onnx,
     evaluate_on_dataset,
 )
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.context import (
+    resolve_manifest,
+    resolve_model_app_cls,
+    resolve_model_cls,
+)
+from qai_hub_models.utils.export.dispatch import select_pipeline
 from qai_hub_models.utils.inference import AsyncOnDeviceModel, compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec
 
 
 def evaluate_model(
-    model_id: str,
-    model_cls: type[WorkbenchModelCollection],
-    app_cls: type[CollectionAppEvaluateProtocol] | None,
+    source_dir: Path,
     device: hub.Device,
-    supports_quant_cpu: bool = False,
     target_runtime: TargetRuntime = TargetRuntime.TFLITE,
     precision: Precision = Precision.float,
     compile_options: str = "",
@@ -52,19 +55,16 @@ def evaluate_model(
     """
     Evaluate a collection model's accuracy on a dataset.
 
+    ``supports_quant_cpu`` (i.e. whether the QDQ ONNX CPU accuracy check
+    should be run for non-float precisions) is derived from the manifest.
+
     Parameters
     ----------
-    model_id
-        Model folder name (e.g. ``mediapipe_hand``).
-    model_cls
-        Model class (e.g. ``qai_hub_models.models.mediapipe_hand.Model``).
-    app_cls
-        App class (e.g. ``qai_hub_models.models.mediapipe_hand.App``), or None.
+    source_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        ``model.py``).
     device
         Device object (e.g. ``hub.Device("Samsung Galaxy S25 (Family)")``).
-    supports_quant_cpu
-        If True and precision != float, adds a "quant cpu" executor via
-        :func:`_load_quant_cpu_onnx` for the QDQ ONNX accuracy check.
     target_runtime
         Target runtime (e.g. ``TargetRuntime.TFLITE``).
     precision
@@ -100,6 +100,15 @@ def evaluate_model(
     """
     warnings.filterwarnings("ignore")
 
+    model_cls = cast(type[WorkbenchModelCollection], resolve_model_cls(source_dir))
+    app_cls = cast(
+        type[CollectionAppEvaluateProtocol] | None,
+        resolve_model_app_cls(source_dir),
+    )
+    manifest = resolve_manifest(source_dir)
+    supports_quant_cpu = (
+        manifest.can_use_quantize_job and manifest.supports_quantization
+    )
     model_kwargs = get_model_kwargs(model_cls, kwargs)
 
     eval_dataset_classes = model_cls.get_eval_dataset_classes()
@@ -108,7 +117,7 @@ def evaluate_model(
         print(
             "Model does not have evaluation dataset specified. Evaluating PSNR on a single sample."
         )
-        export_model = select_pipeline(resolve_model(model_id))
+        export_model = select_pipeline(source_dir)
 
         export_kwargs = {
             "device": device,
@@ -174,7 +183,7 @@ def evaluate_model(
                 num_calibration_samples=num_calibration_samples,
             )
             compiled_result = compile_model_from_args(
-                model_id,
+                source_dir,
                 args_for_compile,
                 model_kwargs,
             )

@@ -2,59 +2,49 @@
 # Copyright (c) 2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
+import inspect
 from functools import partial
 from pathlib import Path
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import patch
 
 from qai_hub_models.utils.base_collection_model import CollectionModel
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
-from qai_hub_models.utils.export.dispatch import ResolvedModel
 
 
-def test_select_evaluate_pipeline_binds_resolved_context() -> None:
-    """select_evaluate_pipeline picks a pipeline for the model_cls and binds resolved fields."""
+def test_select_evaluate_pipeline_binds_source_dir(tmp_path: Path) -> None:
+    """select_evaluate_pipeline binds source_dir and drops it from the signature."""
 
     class FakeModel:
         pass
 
-    resolved = ResolvedModel(
-        model_id="foo",
-        model_cls=FakeModel,
-        manifest=Mock(),
-        display_name="Foo",
-        source_dir=Path("/fake"),
-        supports_quant_cpu=True,
-    )
-    bound = select_evaluate_pipeline(resolved)
-    # Bound keywords are the ResolvedModel fields accepted by the pipeline,
-    # excluding model_id (kept unbound so positional callers don't collide).
-    bound_partial = cast(partial, bound)
-    assert "model_id" not in bound_partial.keywords
-    assert bound_partial.keywords["model_cls"] is FakeModel
-    assert bound_partial.keywords["supports_quant_cpu"] is True
+    source_dir = tmp_path / "fake_recipe"
+    with patch(
+        "qai_hub_models.utils.evaluate.dispatch.resolve_model_cls",
+        return_value=FakeModel,
+    ):
+        bound = select_evaluate_pipeline(source_dir)
+
+    sig = inspect.signature(bound)
+    assert "source_dir" not in sig.parameters
 
 
-def test_select_evaluate_pipeline_picks_collection_for_collection_model() -> None:
-    """select_evaluate_pipeline picks collection_pipeline for CollectionModel subclasses."""
+def test_select_evaluate_pipeline_picks_collection_for_collection_model(
+    tmp_path: Path,
+) -> None:
+    """CollectionModel subclasses go through the collection evaluate pipeline."""
 
     class FakeCollectionModel(CollectionModel):
         pass
 
-    resolved = ResolvedModel(
-        model_id="fake_collection",
-        model_cls=FakeCollectionModel,
-        manifest=Mock(),
-        display_name="Fake Collection",
-        source_dir=Path("/fake"),
-        app_cls=Mock(),
-    )
-    bound = select_evaluate_pipeline(resolved)
-    # The collection pipeline requires app_cls in its signature
+    source_dir = tmp_path / "fake_collection"
+    with patch(
+        "qai_hub_models.utils.evaluate.dispatch.resolve_model_cls",
+        return_value=FakeCollectionModel,
+    ):
+        bound = select_evaluate_pipeline(source_dir)
+
     bound_partial = cast(partial, bound)
-    assert bound_partial.keywords["model_cls"] is FakeCollectionModel
-    assert bound_partial.keywords["app_cls"] is resolved.app_cls
-    # Verify the function name matches the collection pipeline
     assert (
         bound_partial.func.__module__
         == "qai_hub_models.utils.evaluate.collection_pipeline"

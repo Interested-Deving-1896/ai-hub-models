@@ -41,6 +41,7 @@ from qai_hub_models.utils.checkpoint import CheckpointType
 from qai_hub_models.utils.device import resolve_hub_device
 from qai_hub_models.utils.envvars import DevModeEnvvar
 from qai_hub_models.utils.evaluate.helpers import EvalMode
+from qai_hub_models.utils.export.context import resolve_recipe_dir
 from qai_hub_models.utils.inference import OnDeviceModel, compile_model_from_args
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.kwarg_helpers import filter_kwargs, get_params
@@ -849,7 +850,10 @@ def demo_model_components_from_cli_args(
                     **filter_kwargs(component.get_input_spec, cli_dict),
                 )
                 target_model = compile_model_from_args(  # type: ignore[assignment]
-                    model_id, cli_args, additional_kwargs, comp_name
+                    resolve_recipe_dir(model_id),
+                    cli_args,
+                    additional_kwargs,
+                    comp_name,
                 )
                 assert not isinstance(target_model, list)
                 print(f"Exported asset: {model_id}::{comp_name}\n")
@@ -899,7 +903,7 @@ def demo_model_from_cli_args(
                 **filter_kwargs(model_cls.get_input_spec, cli_dict),
             )
             target_model = compile_model_from_args(
-                model_id,
+                resolve_recipe_dir(model_id),
                 cli_args,
                 additional_kwargs,
                 component,

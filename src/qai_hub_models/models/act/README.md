@@ -39,11 +39,12 @@ You can export this model on windows without extra system dependencies.
  To run the demo, you will need to install LibEGL libraries. Options include ANGLE or Mesa3D. This is not a well-tested path; we recommend using WSL or a Linux machine for the demo.
 
 ### 2. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install dm_control==1.0.36 --no-deps
-pip install "qai-hub-models[act]"
+pip install qai-hub-models
+qai-hub-models install act
 ```
 
 ### 3. Configure Qualcomm® AI Hub Workbench

@@ -276,7 +276,7 @@ class TestPlanInstall:
         assert template_entry[1] == []
 
     def test_unknown_model_id_rejected(self, fake_tree: Path) -> None:
-        with pytest.raises(ValueError, match="Unknown model id"):
+        with pytest.raises(ValueError, match="not an installed model id"):
             plan_install("does_not_exist")
 
 
@@ -302,9 +302,39 @@ class TestInstallModel:
             "  - command: pip install second\n",
         )
         with patch("qai_hub_models.cli.install.subprocess.run") as mock_run:
-            install_mod.install_model("root_model", dry_run=False)
+            install_mod.install_model("root_model", dry_run=False, assume_yes=True)
         argvs = [call.args[0] for call in mock_run.call_args_list]
         assert argvs == [["pip", "install", "first"], ["pip", "install", "second"]]
+
+    def test_declining_prompt_raises_install_aborted(self, fake_tree: Path) -> None:
+        """A user declining the [y/N] prompt raises InstallAborted."""
+        model_dir = fake_tree / "models" / "root_model"
+        _write_manifest(
+            model_dir,
+            "post_pip_install_commands:\n  - command: pip install foo\n",
+        )
+        with (
+            patch("qai_hub_models.cli.install.subprocess.run") as mock_run,
+            patch("builtins.input", return_value="n"),
+            pytest.raises(install_mod.InstallAborted),
+        ):
+            install_mod.install_model("root_model", dry_run=False)
+        mock_run.assert_not_called()
+
+    def test_accepting_prompt_runs_commands(self, fake_tree: Path) -> None:
+        """A `y` reply to the [y/N] prompt runs the plan."""
+        model_dir = fake_tree / "models" / "root_model"
+        _write_manifest(
+            model_dir,
+            "post_pip_install_commands:\n  - command: pip install foo\n",
+        )
+        with (
+            patch("qai_hub_models.cli.install.subprocess.run") as mock_run,
+            patch("builtins.input", return_value="y"),
+        ):
+            install_mod.install_model("root_model", dry_run=False)
+        argvs = [call.args[0] for call in mock_run.call_args_list]
+        assert argvs == [["pip", "install", "foo"]]
 
 
 class TestHasCudaGpu:

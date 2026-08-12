@@ -134,7 +134,9 @@ Throughout the session, stay within the boundaries defined by the permissions ab
 
 After permissions are configured, ask the user what they're working on and load the appropriate resource:
 
-- **Adding a new model** → read `.claude/agents/onboarding.md`
+- **Authoring a new model recipe** → read `plugin/skills/onboard/SKILL.md` (or invoke `/ai-hub-models:onboard`). Onboarding is the *first* of three sequential authoring skills — after it's green, the user runs `/ai-hub-models:validate-on-device`, and then (optionally) `/ai-hub-models:add-quantization`.
+- **Validating an already-authored float recipe on device** → `/ai-hub-models:validate-on-device` (`plugin/skills/validate-on-device/SKILL.md`).
+- **Adding quantization to a float recipe** → `/ai-hub-models:add-quantization` (`plugin/skills/add-quantization/SKILL.md`).
 - **Running a HuggingFace model on device** (export, compile, profile on Snapdragon) → read `.claude/docs/hf_onboarding/guide.md`
 - **Testing, CI, environment config** → read `.claude/docs/repo-reference.md`
 - **Something else** → explore the repo structure and existing models as needed
@@ -142,13 +144,22 @@ After permissions are configured, ask the user what they're working on and load 
 ## Key Commands
 
 - `pre-commit run --all-files` — lint/format check
-- `python qai_hub_models/scripts/run_codegen.py -m <model_id>` — generate export.py, README, etc.
+- `qai-hub-models install <model_id>` — install a model and all its declared deps
+- `qai-hub-models export <model_id>` — compile + profile on device
+- `qai-hub-models evaluate <model_id>` — run accuracy evaluation
+- `python -m <model_folder>.demo` — run the model's demo (no `qai-hub-models demo` subcommand yet)
 - `python -m pytest qai_hub_models/models/<model_id>/test.py -v` — run model tests
-- `python -m qai_hub_models.models.<model_id>.export` — export + profile on device
 
 ## Resources
 
-- **Model onboarding agent**: `.claude/agents/onboarding.md` — the main workflow
+Model authoring is broken into three sequential skills, each packaged as part of the `ai-hub-models` plugin (`plugin/`; install with `claude plugin marketplace add <repo-root>`):
+
+1. **`/ai-hub-models:onboard`** (`plugin/skills/onboard/SKILL.md`) — author the recipe (`model.py`, `manifest.yaml`, etc.) and iterate until `qai-hub-models validate` is green. Ships `supported_precisions: [float]`. No Workbench jobs.
+2. **`/ai-hub-models:validate-on-device`** (`plugin/skills/validate-on-device/SKILL.md`) — compile + profile the float recipe on device via `qai-hub-models export --target-runtime qnn_dlc --precision float`, then check torch and on-device accuracy if an evaluator is wired. Iterates on failures using `.claude/docs/on-device-debugging.md`.
+3. **`/ai-hub-models:add-quantization`** (`plugin/skills/add-quantization/SKILL.md`) — try `w8a8`, fall back to `w8a16`, or give up cleanly. Requires the recipe already have a dataset + evaluator wired.
+
+For in-tree recipes (Qualcomm-catalog-bound), `onboard-internal` (`plugin/skills/onboard-internal/SKILL.md`) is the delta over `onboard`.
+
 - **Repo reference**: `.claude/docs/repo-reference.md` — testing, CI, env vars, conventions
 
 Onboarding sub-guides (loaded only when needed):

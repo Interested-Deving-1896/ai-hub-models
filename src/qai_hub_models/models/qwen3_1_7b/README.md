@@ -38,10 +38,12 @@ See the [LLM-on-Genie](https://github.com/qualcomm/ai-hub-apps/tree/main/tutoria
 
 ### Setup
 #### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[qwen3-1-7b]"
+pip install qai-hub-models
+qai-hub-models install qwen3_1_7b
 ```
 For qwen3_1_7b, some additional functionality can be faster or is available
 only with a GPU on the host machine.
@@ -54,14 +56,8 @@ only with a GPU on the host machine.
 If you are quantizing your own variant of qwen3_1_7b, a dedicated CUDA enabled
 GPU (40 GB VRAM for 3B models to 80 GB VRAM for 8B models) is recommended. A GPU
 can also increase the speed of evaluation and demo of your quantized model
-significantly but it not strictly required.
-
-Install the GPU package via pip:
-```bash
-# NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[qwen3-1-7b]"
-pip install onnxruntime-gpu==1.23.2 https://github.com/quic/aimet/releases/download/2.34.0/aimet_onnx-2.34.0+cu126-cp310-abi3-manylinux_2_34_x86_64.whl -f https://download.pytorch.org/whl/torch_stable.html
-```
+significantly but is not strictly required. The CLI auto-detects CUDA and installs
+the GPU-flavored dependencies (e.g. the AIMET ONNX wheel) when available.
 
 #### 2. Configure Qualcomm® AI Hub Workbench
 Sign-in to [Qualcomm® AI Hub Workbench](https://workbench.aihub.qualcomm.com/) with your

@@ -30,10 +30,11 @@ from qai_hub_models.scorecard.device import cs_x_elite
 from qai_hub_models.scorecard.utils.testing_export_eval import run_llm_compile
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.checkpoint import CheckpointSpec
-from qai_hub_models.utils.export.dispatch import resolve_model, select_pipeline
+from qai_hub_models.utils.export.context import resolve_recipe_dir
+from qai_hub_models.utils.export.dispatch import select_pipeline
 from qai_hub_models.utils.export.result import MultiGraphCollectionExportResult
 
-export_model = select_pipeline(resolve_model(MODEL_ID))
+export_model = select_pipeline(resolve_recipe_dir(MODEL_ID))
 
 DEFAULT_EVAL_SEQLEN = [2048, 128, 1]
 

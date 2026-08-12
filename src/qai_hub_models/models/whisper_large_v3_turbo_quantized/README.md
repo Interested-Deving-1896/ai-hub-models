@@ -44,10 +44,12 @@ winget install ffmpeg
 ```
 
 ### 2. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[whisper-large-v3-turbo-quantized]"
+pip install qai-hub-models
+qai-hub-models install whisper_large_v3_turbo_quantized
 ```
 
 ### 3. Configure Qualcomm® AI Hub Workbench

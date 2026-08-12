@@ -40,11 +40,12 @@ winget install ffmpeg
 ```
 
 ### 2. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[yamnet]"
-pip install git+https://github.com/w-hc/torch_audioset.git
+pip install qai-hub-models
+qai-hub-models install yamnet
 ```
 
 ### 3. Configure Qualcomm® AI Hub Workbench

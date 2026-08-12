@@ -29,12 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install torch==2.9.0+cpu -f https://download.pytorch.org/whl/torch/
-pip install "qai-hub-models[zipformer]"
-pip install k2==1.24.4.dev20251029+cpu.torch2.9.0 -f https://k2-fsa.github.io/k2/cpu.html
+pip install qai-hub-models
+qai-hub-models install zipformer
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

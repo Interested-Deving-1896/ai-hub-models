@@ -4,6 +4,7 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from unittest import mock
 
@@ -18,7 +19,6 @@ from qai_hub_models.utils.base_multi_graph_collection_model import (
     MultiGraphCollectionModel,
 )
 from qai_hub_models.utils.base_multi_graph_model import MultiGraphWorkbenchModel
-from qai_hub_models.utils.export.dispatch import ResolvedModel
 from qai_hub_models.utils.export.result import (
     CollectionExportResult,
     ComponentGroup,
@@ -60,10 +60,36 @@ def _fake_device() -> hub.Device:
 
 
 def _patch_resolved(model_cls: type) -> Any:
-    """Patch export()'s model resolution to return *model_cls*."""
-    resolved = mock.create_autospec(ResolvedModel, instance=True)
-    resolved.model_cls = model_cls
-    return mock.patch.object(compare_inference, "load_model", return_value=resolved)
+    """Patch export()'s model resolution so resolve_model_cls returns *model_cls*.
+
+    ``resolve_recipe_dir`` is stubbed to return a placeholder Path; ``resolve_model_cls``
+    is patched at the ``compare_inference`` module boundary to return
+    *model_cls*. This mirrors the module's real call sequence:
+    ``resolve_recipe_dir`` produces the ``source_dir`` and ``resolve_model_cls`` looks
+    up the class from it.
+    """
+    resolve_dir = mock.patch.object(
+        compare_inference, "resolve_recipe_dir", return_value=Path("/fake")
+    )
+    resolve = mock.patch.object(
+        compare_inference, "resolve_model_cls", return_value=model_cls
+    )
+    return _CombinedPatch(resolve_dir, resolve)
+
+
+class _CombinedPatch:
+    """Context manager that enters/exits two patches together."""
+
+    def __init__(self, *patches: Any) -> None:
+        self._patches = patches
+
+    def __enter__(self) -> None:
+        for p in self._patches:
+            p.__enter__()
+
+    def __exit__(self, *exc: object) -> None:
+        for p in reversed(self._patches):
+            p.__exit__(*exc)
 
 
 def test_collection_export_result_returns_component_job() -> None:

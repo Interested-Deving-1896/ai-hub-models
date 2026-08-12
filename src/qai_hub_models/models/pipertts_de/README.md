@@ -35,11 +35,12 @@ sudo apt install libportaudio2
 ```
 
 ### 2. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.12 is supported.
-pip install git+https://github.com/rhasspy/piper.git#subdirectory=src/python --no-deps
-pip install "qai-hub-models[pipertts-de]"
+pip install qai-hub-models
+qai-hub-models install pipertts_de
 ```
 
 ### 3. Configure Qualcomm® AI Hub Workbench

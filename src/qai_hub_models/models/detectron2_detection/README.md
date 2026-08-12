@@ -29,12 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "torch>=2.1,<2.12.0" "setuptools>=80"
-pip install "qai-hub-models[detectron2-detection]"
-pip install git+https://github.com/facebookresearch/detectron2.git@8a9d885 --no-build-isolation
+pip install qai-hub-models
+qai-hub-models install detectron2_detection
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

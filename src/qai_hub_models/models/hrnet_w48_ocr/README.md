@@ -29,10 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install "qai-hub-models[hrnet-w48-ocr]"
+pip install qai-hub-models
+qai-hub-models install hrnet_w48_ocr
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

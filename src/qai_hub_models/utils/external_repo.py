@@ -90,15 +90,11 @@ def _load_repo_configs(manifest_path: Path) -> dict[str, RepoConfig]:
 
 
 def _resolve_external_repos(
-    name: str, shared: bool = False
+    recipe_dir: Path,
 ) -> tuple[dict[str, RepoConfig], Path]:
-    """Resolve repo configs and external_repos path from a model or shared name."""
-    if shared:
-        base_dir = QAIHM_MODELS_ROOT / "_shared" / name
-    else:
-        base_dir = QAIHM_MODELS_ROOT / name
-    external_repos_path = base_dir / "external_repos"
-    manifest_path = base_dir / "manifest.yaml"
+    """Resolve repo configs and external_repos path from a recipe folder."""
+    external_repos_path = recipe_dir / "external_repos"
+    manifest_path = recipe_dir / "manifest.yaml"
     return _load_repo_configs(manifest_path), external_repos_path
 
 
@@ -313,16 +309,28 @@ def _derive_package_path(repo_path: Path) -> str:
     Raises
     ------
     ValueError
-        If ``qai_hub_models`` is not in the resolved path.
+        If the path structure cannot be parsed.
     """
     parts = repo_path.resolve().parts
-    if "qai_hub_models" not in parts:
-        raise ValueError(
-            f"Cannot derive package path from {repo_path}. "
-            "Expected 'qai_hub_models' in the path."
-        )
-    idx = parts.index("qai_hub_models")
-    return ".".join(parts[idx:])
+
+    # In-tree: path contains qai_hub_models/models/<model_id>/external_repos/<repo>
+    if "qai_hub_models" in parts:
+        idx = parts.index("qai_hub_models")
+        return ".".join(parts[idx:])
+
+    # Standalone: path is <any_prefix>/<model_id>/external_repos/<repo>
+    # Derive package path as <model_id>.external_repos.<repo>
+    if "external_repos" in parts:
+        idx = parts.index("external_repos")
+        if idx > 0:
+            model_id = parts[idx - 1]
+            remaining = parts[idx:]
+            return ".".join([model_id, *remaining])
+
+    raise ValueError(
+        f"Cannot derive package path from {repo_path}. "
+        "Expected 'qai_hub_models' or 'external_repos' in the path."
+    )
 
 
 def _get_top_level_packages(path: Path) -> set[str]:
@@ -572,7 +580,15 @@ def clone_and_link_repo(
         Whether to prompt the user before cloning. Defaults to True
         outside CI.
     """
-    use_cache = IS_PIP_PACKAGE or USE_SYMLINK_CACHE
+    # Only use cache for in-tree recipes (under QAIHM_MODELS_ROOT).
+    # Standalone recipes clone directly into their external_repos/ folder.
+    try:
+        external_repos_path.resolve().relative_to(QAIHM_MODELS_ROOT.resolve())
+        is_in_tree = True
+    except ValueError:
+        is_in_tree = False
+
+    use_cache = is_in_tree and (IS_PIP_PACKAGE or USE_SYMLINK_CACHE)
     cache_dir = get_cache_dir(external_repos_path, repo_name, content_hash)
     repo_in_cache = cache_dir / repo_name
     local_dir = external_repos_path / repo_name
@@ -705,7 +721,7 @@ def setup_external_repos_impl(
     return repo_paths
 
 
-def get_repo_cache_paths(name: str, shared: bool = False) -> list[Path]:
+def get_repo_cache_paths(recipe_dir: Path) -> list[Path]:
     """Return cache directory paths for all external repos.
 
     Used to set ``__path__`` for pip installs so sub-imports resolve
@@ -713,17 +729,16 @@ def get_repo_cache_paths(name: str, shared: bool = False) -> list[Path]:
 
     Parameters
     ----------
-    name
-        Model ID (e.g. ``"gkt"``) or shared folder name (e.g. ``"centernet"``).
-    shared
-        If True, looks in ``_shared/<name>/`` instead of ``models/<name>/``.
+    recipe_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml`` and
+        an ``external_repos/`` subfolder).
 
     Returns
     -------
     list[Path]
         List of cache directory paths.
     """
-    repo_configs, external_repos_path = _resolve_external_repos(name, shared)
+    repo_configs, external_repos_path = _resolve_external_repos(recipe_dir)
     return [
         get_cache_dir(external_repos_path, repo_name, content_hash)
         for repo_name, content_hash in compute_repo_hashes(
@@ -732,22 +747,20 @@ def get_repo_cache_paths(name: str, shared: bool = False) -> list[Path]:
     ]
 
 
-def setup_external_repos(name: str, shared: bool = False) -> dict[str, Path]:
+def setup_external_repos(recipe_dir: Path) -> dict[str, Path]:
     """Setup external repos by reading manifest.yaml and cloning if needed.
 
     Parameters
     ----------
-    name
-        Model ID (e.g. ``"gkt"``) or shared folder name (e.g. ``"centernet"``).
-    shared
-        If True, looks in ``_shared/<name>/`` instead of ``models/<name>/``.
+    recipe_dir
+        On-disk path to the recipe folder (contains ``manifest.yaml``).
 
     Returns
     -------
     dict[str, Path]
         Mapping of repo name to its resolved directory path on disk.
     """
-    repo_configs, external_repos_path = _resolve_external_repos(name, shared)
+    repo_configs, external_repos_path = _resolve_external_repos(recipe_dir)
     if repo_configs:
         return setup_external_repos_impl(repo_configs, external_repos_path)
     return {}

@@ -12,19 +12,11 @@ from qai_hub_models.utils.external_repo import (
     setup_external_repos,
 )
 
-{%- if shared_name is defined %}
-MODEL_ID = "{{ shared_name }}"
-{%- else %}
-MODEL_ID = "{{ model_id }}"
-{%- endif %}
+RECIPE_DIR = Path(__file__).resolve().parent.parent
 EXTERNAL_REPO_PATHS: dict[str, Path] = {}
 
 if not TYPE_CHECKING:
     with FileLock(Path(__file__).resolve().parent / ".setup.lock"):
-{%- if shared_name is defined %}
-        EXTERNAL_REPO_PATHS = setup_external_repos(MODEL_ID, shared=True)
-{%- else %}
-        EXTERNAL_REPO_PATHS = setup_external_repos(MODEL_ID)
-{%- endif %}
+        EXTERNAL_REPO_PATHS = setup_external_repos(RECIPE_DIR)
     if IS_PIP_PACKAGE:
         __path__ = [str(p.parent) for p in EXTERNAL_REPO_PATHS.values()]

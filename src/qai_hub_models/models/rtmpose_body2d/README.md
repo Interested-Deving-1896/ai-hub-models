@@ -29,11 +29,12 @@ for the full list of commands and filters.
 
 ## Setup
 ### 1. Install the package
-Install the package via pip:
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
 ```bash
 # NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
-pip install mmpose==1.2.0 --no-deps
-pip install "qai-hub-models[rtmpose-body2d]"
+pip install qai-hub-models
+qai-hub-models install rtmpose_body2d
 ```
 
 ### 2. Configure Qualcomm® AI Hub Workbench

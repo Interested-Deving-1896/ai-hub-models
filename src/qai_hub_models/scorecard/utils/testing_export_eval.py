@@ -116,6 +116,7 @@ from qai_hub_models.utils.hub_clients import (
 from qai_hub_models.utils.inference import AsyncOnDeviceModel
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.onnx.helpers import ONNXBundle
+from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT
 from qai_hub_models.utils.qai_hub_helpers import assert_success_and_get_target_models
 
 __all__ = [
@@ -668,7 +669,7 @@ def quantize_via_export(
     # Run quantize jobs
     quantize_kwargs: dict[str, Any] = {}
     if isinstance(model, CollectionModel):
-        quantize_kwargs["app"] = resolve_model_app_cls(model_id)
+        quantize_kwargs["app"] = resolve_model_app_cls(QAIHM_MODELS_ROOT / model_id)
 
     with mock.patch(
         "qai_hub_models.utils.quantization.get_calibration_data",
@@ -947,7 +948,6 @@ def run_llm_compile(
     )
 
     result = export_model(
-        model_id,
         device=device.execution_device,
         precision=precision,
         skip_downloading=skip_downloading,
@@ -1452,7 +1452,6 @@ def export_test_e2e(
                 for m in mocks:
                     stack.enter_context(m)
                 result = export_model(
-                    model_id,
                     device=device.execution_device,
                     precision=precision,
                     target_runtime=scorecard_path.runtime,
@@ -1867,7 +1866,6 @@ def accuracy_on_sample_inputs_via_export(
         tabulate_patch,
     ):
         export_model(
-            model_id,
             device=device.execution_device,
             target_runtime=scorecard_path.runtime,
             precision=precision,
@@ -2111,7 +2109,6 @@ def accuracy_on_dataset_via_evaluate_and_export(
         tabulate_patch,
     ):
         export_model(
-            model_id,
             device=device.execution_device,
             target_runtime=scorecard_path.runtime,
             precision=precision,

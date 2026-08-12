@@ -511,58 +511,49 @@ def add_numerics_parser(
     return parser
 
 
-_HEAVY_DISPATCH_SCRIPTS = ("export", "evaluate", "install")
+_RECIPE_COMMANDS = ("export", "evaluate", "install", "generate-files", "validate")
 
 
-def _dispatch_export_or_evaluate(script: str, raw_args: list[str]) -> None:
-    """Run ``qai-hub-models {export,evaluate,install} <model> [model-args...]``.
+def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
+    """Run ``qai-hub-models {export,evaluate,install,generate-files} <target> [args...]``.
 
-    Resolves the model name -> id, then hands the remaining args to the model's
-    own ``build_parser()``/``main()`` (via the heavy-side dispatcher) so that
-    ``--target-runtime``, ``--device``, etc. are natively parsed instead of
-    forwarded through an ``argparse.REMAINDER`` bucket.
+    Hands the first positional (a recipe folder path or a bare model id) plus
+    the remaining args to the heavy-side dispatcher, which itself uses the
+    model's own ``build_parser()``/``main()`` so that ``--target-runtime``,
+    ``--device``, etc. are natively parsed instead of forwarded through an
+    ``argparse.REMAINDER`` bucket.
 
-    The manifest is always read at ``CURRENT_VERSION``; ``-v/--qaihm-version``
-    isn't exposed for these subcommands because the dispatch target is the
-    locally-installed model module, not a manifest entry.
+    Display names (``"MobileNetV2"``) are NOT accepted — heavy commands
+    operate on folders and ids, not on manifest lookups.
     """
     if not raw_args or raw_args[0] in ("-h", "--help"):
         sys.exit(
-            f"Usage: {CLI_NAME} {script} <model> [args...]\n"
-            f"Run `{CLI_NAME} {script} <model> --help` for the model's options."
+            f"Usage: {CLI_NAME} {script} <target> [args...]\n"
+            f"  <target> — recipe folder path (./my_model/) or model id (yolov8_det).\n"
+            f"Run `{CLI_NAME} {script} <target> --help` for the target's options."
         )
-    model_arg, forwarded = raw_args[0], list(raw_args[1:])
+    target, forwarded = raw_args[0], list(raw_args[1:])
 
     from qai_hub_models.utils.path_helpers import MODEL_IDS
 
     # Built-in ids win over aliases; register_alias's collision check only
     # runs when heavy is installed, so alias-shadowing is possible otherwise.
-    model_ref: str | Path
-    aliased_folder = None if model_arg in MODEL_IDS else resolve_alias(model_arg)
-    if aliased_folder is not None:
-        if script == "install":
-            sys.exit(
-                f"`{CLI_NAME} install` does not support registered folders; "
-                "pass a built-in model id instead."
-            )
-        model_ref = aliased_folder
-    else:
-        model_ref = model_arg
-        if model_ref not in MODEL_IDS:
-            # get_manifest_entry will rebuild the manifest for internal dev versions (which takes a long time).
-            # We only call it if model_args does not exactly map to a model ID.
-            model_ref = get_manifest_entry(model_arg, CURRENT_VERSION).id
-            if model_ref not in MODEL_IDS:
+    resolved_target: str | Path = target
+    if target not in MODEL_IDS:
+        aliased_folder = resolve_alias(target)
+        if aliased_folder is not None:
+            if script in ("install", "generate-files"):
                 sys.exit(
-                    f"Model {model_ref!r} is in the v{CURRENT_VERSION} manifest but not "
-                    f"in the installed qai_hub_models package. Upgrade with "
-                    f"`pip install -U qai_hub_models`."
+                    f"`{CLI_NAME} {script}` does not support registered "
+                    "folders; pass a built-in model id or a folder path "
+                    "directly instead."
                 )
+            resolved_target = aliased_folder
 
     from qai_hub_models.cli.dispatch import run_model_script
 
     try:
-        run_model_script(model_id=model_ref, script=script, forwarded=forwarded)
+        run_model_script(model_id=resolved_target, script=script, forwarded=forwarded)
     except Exception as e:
         raise RuntimeError(
             f"\nSomething went wrong (an exception was thrown). Email us at ai-hub-support@qti.qualcomm.com for assistance.\n\n"
@@ -662,12 +653,54 @@ def add_install_parser(
         name="install",
         helpmsg="Install a model and all of its declared dependencies.",
         description=(
-            f"Run `{CLI_NAME} install <model>` to walk the model's dependency graph "
+            f"Run `{CLI_NAME} install <target>` to walk the model's dependency graph "
             "(datasets, shared templates, other models) and install each node's "
             "requirements exactly once. Shared deps between two models install only "
-            "once. Use `--dry-run` to preview the plan."
+            "once. <target> is a recipe folder path (./my_model/) or an installed "
+            "model id (yolov8_det). Use `--dry-run` to preview the plan."
         ),
-        args=[("model", str)],
+        args=[("target", str)],
+    )
+
+
+def add_validate_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    return add_qaihm_required_help_only_parser(
+        subparsers,
+        name="validate",
+        helpmsg="Run local report-card checks against a recipe folder.",
+        description=(
+            f"Run `{CLI_NAME} validate <target>` to print a pass/fail report card "
+            "covering install, folder shape, manifest schema, requirements.txt "
+            "vs. the base package's pin set, model imports and torch forward "
+            "pass, App instantiation, and URL reachability. Install is the "
+            "first check — it prints the full pip plan and prompts [y/N] "
+            "before running. Pass --no-install to skip. Pass --internal to "
+            "additionally enforce Qualcomm-catalog rules (website-facing "
+            "manifest fields, canary devices, banner URL reachability). No "
+            "AI Hub workbench calls. <target> is a recipe folder path "
+            "(./my_model/) or an installed model id (yolov8_det)."
+        ),
+        args=[("target", str)],
+    )
+
+
+def add_generate_files_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    return add_qaihm_required_help_only_parser(
+        subparsers,
+        name="generate-files",
+        helpmsg="Regenerate auto-generated files (README, external_repos init) in a recipe folder.",
+        description=(
+            f"Run `{CLI_NAME} generate-files <target>` to rewrite the auto-generated "
+            "files (external_repos/__init__.py when applicable, and README.md) "
+            "inside a recipe folder from its manifest.yaml. Run this after editing "
+            "manifest.yaml so downstream files stay in sync. <target> is a recipe "
+            "folder path (./my_model/) or an installed model id (yolov8_det)."
+        ),
+        args=[("target", str)],
     )
 
 
@@ -1541,9 +1574,11 @@ def _build_parser() -> argparse.ArgumentParser:
     add_export_parser(subparsers)
     add_evaluate_parser(subparsers)
     add_install_parser(subparsers)
+    add_generate_files_parser(subparsers)
     add_register_parser(subparsers)
     add_unregister_parser(subparsers)
     add_list_registered_parser(subparsers)
+    add_validate_parser(subparsers)
     if use_internal_releases() or is_internal_repo():
         add_validate_aws_parser(subparsers)
 
@@ -1559,6 +1594,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "install",
             "export",
             "evaluate",
+            "generate-files",
+            "validate",
             "register",
             "unregister",
             "list-registered",
@@ -1584,14 +1621,12 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(args: list[str] | None = None) -> None:
     _check_version_match()
 
-    # `export`/`evaluate`/`install` route through the heavy-side dispatcher,
-    # not this parser. Sniff for them before constructing the lean parser so
-    # argparse doesn't try to consume `--help` or unknown model-specific flags
-    # at this layer.
+    # Recipe commands route through the heavy dispatcher on <target>; intercept
+    # here so argparse doesn't try to consume model-specific flags.
     raw = sys.argv[1:] if args is None else args
-    if raw and raw[0] in _HEAVY_DISPATCH_SCRIPTS and is_heavy_package_installed():
+    if raw and raw[0] in _RECIPE_COMMANDS and is_heavy_package_installed():
         try:
-            _dispatch_export_or_evaluate(raw[0], raw[1:])
+            _dispatch_recipe_command(raw[0], raw[1:])
         except Exception as e:
             if bool_envvar_value(VERBOSE_EXCEPTIONS_ENVVAR):
                 raise

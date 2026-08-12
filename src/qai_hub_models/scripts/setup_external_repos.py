@@ -56,7 +56,7 @@ def main() -> None:
                 continue
             print(f"Setting up shared external repo: {shared_folder.name}...")
             try:
-                setup_external_repos(shared_folder.name, shared=True)
+                setup_external_repos(shared_folder)
             except Exception as e:
                 print(f"  FAILED: {e}")
                 failed.append(f"_shared/{shared_folder.name}")
@@ -65,7 +65,7 @@ def main() -> None:
     for model_id in models:
         print(f"Setting up external repos for {model_id}...")
         try:
-            setup_external_repos(model_id)
+            setup_external_repos(QAIHM_MODELS_ROOT / model_id)
         except Exception as e:
             print(f"  FAILED: {e}")
             failed.append(model_id)

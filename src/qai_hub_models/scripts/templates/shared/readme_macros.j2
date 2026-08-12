@@ -27,86 +27,42 @@
     source_repo,
     model_url,
     qaihm_model_url=None,
-    is_hf_readme=False
+    is_hf_readme=False,
+    is_external=False
 ) -%}
 {% if source_repo -%}
 This is based on the implementation of {{ model_name }} found [here]({{ source_repo }}).
 {% endif -%}
 {%- if is_hf_readme -%}
 This repository contains pre-exported model files optimized for Qualcomm® devices. You can use the [Qualcomm® AI Hub Models]({{ qaihm_model_url }}) library to export with custom configurations.
+{%- elif is_external -%}
+This is a standalone recipe compatible with the [Qualcomm® AI Hub Models](https://github.com/quic/ai-hub-models) CLI — it can be installed, compiled, and evaluated on real Snapdragon devices via [Qualcomm® AI Hub Workbench](https://workbench.aihub.qualcomm.com).
 {%- else -%}
 This repository contains scripts for optimized on-device export suitable to run on Qualcomm® devices.
-{%- endif %} More details on model performance across various devices, can be found [here]({{ '#performance-summary' if is_hf_readme else model_url }}).
+{%- endif %}{% if not is_external %} More details on model performance across various devices, can be found [here]({{ '#performance-summary' if is_hf_readme else model_url }}).{% endif %}
+
 
 Qualcomm AI Hub Models uses [Qualcomm AI Hub Workbench](https://workbench.aihub.qualcomm.com) to compile, profile, and evaluate this model. [Sign up](https://myaccount.qualcomm.com/signup) to run these models on a hosted Qualcomm® device.
 {%- endmacro -%}
 
 
 {#
-    Generate a pip install code block.
-
-    Parameters
-    ----------
-    model_id : str
-        Model identifier (e.g., "resnet50").
-    has_model_requirements : bool
-        Whether model has additional pip requirements.
-    pre_pip_install_commands : list[str], optional
-        pip commands to run before the main install (each string is a full
-        ``pip install ...`` command).
-    post_pip_install_commands : list[str], optional
-        pip commands to run after the main install.
-    python_version_gte : str, optional
-        Minimum Python version (default: "3.10").
-    python_version_lt : str, optional
-        Maximum Python version (default: "3.14").
-#}
-{%- macro _pip_install_block(
-    model_id,
-    has_model_requirements,
-    pre_pip_install_commands=None,
-    post_pip_install_commands=None,
-    python_version_gte=None,
-    python_version_lt=None
-) -%}
-{% set install_package = '"qai-hub-models[' ~ (model_id | replace('_', '-')) ~ ']"' if has_model_requirements else 'qai-hub-models' %}
-```bash
-# NOTE: {{ python_version_gte or '3.10' }} <= PYTHON_VERSION < {{ python_version_lt or '3.14' }} is supported.
-{% for cmd in (pre_pip_install_commands or []) %}
-{{ cmd }}
-{% endfor %}
-pip install {{ install_package }}
-{% for cmd in (post_pip_install_commands or []) %}
-{{ cmd }}
-{% endfor %}
-```
-{%- endmacro -%}
-
-
-{#
     Generate package installation instructions.
 
-    ``pre_pip_install_commands`` / ``post_pip_install_commands`` are the CPU-
-    (or machine-agnostic) command lists. ``pre_pip_install_commands_gpu`` /
-    ``post_pip_install_commands_gpu`` are the GPU variants; when supplied a
-    separate "Install the GPU package" section is emitted.
+    The primary install line is always the CLI-driven form; the CLI reads
+    the recipe's manifest and runs the right pre/post pip commands for the
+    host (CPU / CUDA GPU auto-detected). Machine-gated recipes (LLMs, etc.)
+    get an extra note about GPU requirements.
 
     Parameters
     ----------
     model_id : str
         Model identifier (e.g., "resnet50").
-    has_model_requirements : bool
-        Whether model has additional pip requirements.
-    pre_pip_install_commands : list[str], optional
-        pip commands to run before the main install on a CPU-only host.
-    post_pip_install_commands : list[str], optional
-        pip commands to run after the main install on a CPU-only host.
-    pre_pip_install_commands_gpu : list[str], optional
-        pip commands to run before the main install on a GPU host.
-    post_pip_install_commands_gpu : list[str], optional
-        pip commands to run after the main install on a GPU host.
+    target : str
+        Argument passed to ``qai-hub-models install`` — bare id for internal
+        recipes, folder path (``./<id>/``) for external.
     has_machine_gated_entries : bool, optional
-        If True, emits the GPU-specific installation section.
+        If True, emits the GPU-requirement note.
     python_version_gte : str, optional
         Minimum Python version (default: "3.10").
     python_version_lt : str, optional
@@ -114,17 +70,18 @@ pip install {{ install_package }}
 #}
 {%- macro package_instructions(
     model_id,
-    has_model_requirements,
-    pre_pip_install_commands=None,
-    post_pip_install_commands=None,
-    pre_pip_install_commands_gpu=None,
-    post_pip_install_commands_gpu=None,
+    target,
     has_machine_gated_entries=False,
     python_version_gte=None,
     python_version_lt=None
 ) -%}
-Install the package via pip:
-{{ _pip_install_block(model_id, has_model_requirements, pre_pip_install_commands, post_pip_install_commands, python_version_gte, python_version_lt) }}
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
+```bash
+# NOTE: {{ python_version_gte or '3.10' }} <= PYTHON_VERSION < {{ python_version_lt or '3.14' }} is supported.
+pip install qai-hub-models
+qai-hub-models install {{ target }}
+```
 {%- if has_machine_gated_entries %}
 
 For {{ model_id }}, some additional functionality can be faster or is available
@@ -138,10 +95,8 @@ only with a GPU on the host machine.
 If you are quantizing your own variant of {{ model_id }}, a dedicated CUDA enabled
 GPU (40 GB VRAM for 3B models to 80 GB VRAM for 8B models) is recommended. A GPU
 can also increase the speed of evaluation and demo of your quantized model
-significantly but it not strictly required.
-
-Install the GPU package via pip:
-{{ _pip_install_block(model_id, has_model_requirements, pre_pip_install_commands_gpu, post_pip_install_commands_gpu, python_version_gte, python_version_lt) }}
+significantly but is not strictly required. The CLI auto-detects CUDA and installs
+the GPU-flavored dependencies (e.g. the AIMET ONNX wheel) when available.
 {%- endif %}
 {%- endmacro -%}
 
@@ -220,18 +175,8 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
         List of supported precisions (e.g., ["float", "int8"]).
     has_on_target_demo : bool
         Whether the model supports on-device demo.
-    has_model_requirements : bool
-        Whether model has additional pip requirements.
-    pre_pip_install_commands : list[str], optional
-        pip commands to run before the main install on a CPU-only host.
-    post_pip_install_commands : list[str], optional
-        pip commands to run after the main install on a CPU-only host.
-    pre_pip_install_commands_gpu : list[str], optional
-        pip commands to run before the main install on a GPU host.
-    post_pip_install_commands_gpu : list[str], optional
-        pip commands to run after the main install on a GPU host.
     has_machine_gated_entries : bool, optional
-        If True, emits the GPU-specific installation section.
+        If True, emits the GPU-requirement note in the install section.
     python_version_gte : str, optional
         Minimum Python version (default: "3.10").
     python_version_lt : str, optional
@@ -261,17 +206,15 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
         If True, render a pre-quantized ``--checkpoint DEFAULT_<PRECISION>`` export
         command with an optional quantize-your-own step, instead of the single
         ``--precision`` export command.
+    is_external : bool, optional
+        Whether the recipe is standalone (folder-path CLI target) vs.
+        installed catalog model (bare-id CLI target).
 #}
 {%- macro example_and_usage(
     model_id,
     model_package,
     supported_precisions,
     has_on_target_demo,
-    has_model_requirements,
-    pre_pip_install_commands=None,
-    post_pip_install_commands=None,
-    pre_pip_install_commands_gpu=None,
-    post_pip_install_commands_gpu=None,
     has_machine_gated_entries=False,
     python_version_gte=None,
     python_version_lt=None,
@@ -281,13 +224,17 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
     local_device_deployment=False,
     default_runtime=None,
     default_precision=None,
-    separate_quantize_script=False
+    separate_quantize_script=False,
+    is_external=False
 ) -%}
 {%- set precisions_str = "{ --quantize " ~ (supported_precisions | reject('equalto', 'float') | join(', ')) ~ " }" if supported_precisions and supported_precisions|length > 1 and not separate_quantize_script else "" -%}
 {%- set step = namespace(num=1) -%}
 {# Header levels shift one deeper when nesting under a single "## Export" parent. #}
 {%- set h_setup = "###" if local_device_deployment else "##" -%}
 {%- set h_step = "####" if local_device_deployment else "###" -%}
+{# Target string used by CLI commands: folder path for external, bare id for internal. #}
+{%- set cli_target = "./" ~ model_id ~ "/" if is_external else model_id -%}
+{%- set demo_module = model_id if is_external else model_package -%}
 {% if local_device_deployment %}
 ## Export
 
@@ -303,7 +250,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 {% endif %}
 {{ h_step }} {{ step.num }}. Install the package
 {% set step.num = step.num + 1 %}
-{{ package_instructions(model_id, has_model_requirements, pre_pip_install_commands, post_pip_install_commands, pre_pip_install_commands_gpu, post_pip_install_commands_gpu, has_machine_gated_entries, python_version_gte, python_version_lt) }}
+{{ package_instructions(model_id, cli_target, has_machine_gated_entries, python_version_gte, python_version_lt) }}
 
 {{ h_step }} {{ step.num }}. Configure Qualcomm® AI Hub Workbench
 {{ configure_aihub() }}
@@ -312,12 +259,12 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m {{ model_package }}.demo{{ ' ' ~ precisions_str if precisions_str else '' }}
+python -m {{ demo_module }}.demo{{ ' ' ~ precisions_str if precisions_str else '' }}
 ```
 More details on the CLI tool can be found with the `--help` option.{% if not is_hf_readme %} See
 [demo.py](demo.py) for sample usage of the model including pre/post processing
-scripts. Please refer to our [general instructions on using
-models](../../../#getting-started) for more usage instructions.{% endif %}
+scripts.{% if not is_external %} Please refer to our [general instructions on using
+models](../../../#getting-started) for more usage instructions.{% endif %}{% endif %}
 
 {% if has_on_target_demo %}
 
@@ -330,20 +277,20 @@ TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 {% if separate_quantize_script %}
 Export the pre-quantized model (published on AI Hub) for on-device deployment:
 ```bash
-qai-hub-models export {{ model_id }} --checkpoint DEFAULT_{{ default_precision | upper }} --target-runtime {{ default_runtime }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
+qai-hub-models export {{ cli_target }} --checkpoint DEFAULT_{{ default_precision | upper }} --target-runtime {{ default_runtime }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
 ```
 `--checkpoint` also accepts `DEFAULT` (the model's default precision){% if supported_precisions and supported_precisions|length > 1 %} or any of
 {%- for p in supported_precisions %} `DEFAULT_{{ p | upper }}`{{ ',' if not loop.last }}{% endfor %}{% endif %}.
 
 Optionally, quantize your own variant first and export the resulting checkpoint:
 ```bash
-python -m {{ model_package }}.quantize --precision {{ default_precision }} --output-dir ./quantized_checkpoint
-qai-hub-models export {{ model_id }} --checkpoint ./quantized_checkpoint --target-runtime {{ default_runtime }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
+python -m {{ demo_module }}.quantize --precision {{ default_precision }} --output-dir ./quantized_checkpoint
+qai-hub-models export {{ cli_target }} --checkpoint ./quantized_checkpoint --target-runtime {{ default_runtime }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
 ```
 {% else %}
 Use the following command to export the model:
 ```bash
-qai-hub-models export {{ model_id }}{{ ' --target-runtime ' ~ default_runtime if default_runtime else '' }}{{ ' --precision ' ~ default_precision if default_precision else '' }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
+qai-hub-models export {{ cli_target }}{{ ' --target-runtime ' ~ default_runtime if default_runtime else '' }}{{ ' --precision ' ~ default_precision if default_precision else '' }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
 ```
 {% endif %}
 Additional options are documented with the `--help` option.

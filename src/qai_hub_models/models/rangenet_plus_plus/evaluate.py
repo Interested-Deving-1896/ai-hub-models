@@ -14,7 +14,7 @@ from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.rangenet_plus_plus import MODEL_ID, Model
 from qai_hub_models.utils.args import evaluate_parser
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
-from qai_hub_models.utils.export.dispatch import resolve_model
+from qai_hub_models.utils.export.context import resolve_recipe_dir
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
     Precision.float: [
@@ -35,7 +35,7 @@ SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
 
 DEFAULT_EVAL_DEVICE = "Samsung Galaxy S25 (Family)"
 
-evaluate_model = select_evaluate_pipeline(resolve_model(MODEL_ID))
+evaluate_model = select_evaluate_pipeline(resolve_recipe_dir(MODEL_ID))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,7 +62,7 @@ def main(args: argparse.Namespace | None = None) -> None:
             stacklevel=2,
         )
         args = build_parser().parse_args()
-    evaluate_model(MODEL_ID, **vars(args))
+    evaluate_model(**vars(args))
 
 
 if __name__ == "__main__":
