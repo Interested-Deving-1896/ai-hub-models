@@ -22,22 +22,9 @@ on:
         default: ''
 
       force_kube:
-        description: Force routing through the kube ephemeral pod even if a -gpulv runner is online. Use to keep multiple parallel callers (e.g. nightly's 4 python versions) from queueing on a single GPU node.
+        description: Force routing through the mlops-ci-gpu-xlarge runner group even if a -gpulv runner is online. Use to keep multiple parallel callers (e.g. nightly's 4 python versions) from queueing on a single GPU node.
         type: boolean
         default: false
-
-      runner-id:
-        type: string
-        required: true
-      gpu-request:
-        type: string
-        default: '0'
-      cpu-request:
-        type: string
-        default: '8'
-      memory-request:
-        type: string
-        default: '256Gi'
 
       deployment:
         type: string
@@ -101,31 +88,10 @@ jobs:
         with:
           pat-token: ${{ secrets.KUBE_GH_TOKEN }}
 
-  start_runner:
-    name: "Start Ephemeral GPU Runner"
-    needs: check_gpu_node
-    if: ${{ needs.check_gpu_node.outputs.use_kube == 'true' }}
-    runs-on: [tetra-ubuntu-2204, self-hosted]
-    outputs:
-      runner-label: ${{ steps.start.outputs.runner-label }}
-    steps:
-      - uses: actions/checkout@v7
-      - id: start
-        uses: ./.github/actions/start-gpu-runner
-        with:
-          runner-id: ${{ inputs.runner-id }}
-          gpu-request: ${{ inputs.gpu-request }}
-          cpu-request: ${{ inputs.cpu-request }}
-          memory-request: ${{ inputs.memory-request }}
-          argo-namespace: "aihub-ci"
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-          pat-token: ${{ secrets.KUBE_GH_TOKEN }}
-          sudo-password: ${{ secrets.TETRASERVICE_PASSWORD }}
-
   run_test_models:
     name: "Run test_models"
-    needs: [check_gpu_node, start_runner]
-    if: ${{ !cancelled() && inputs.is_test_models && needs.check_gpu_node.result == 'success' && (needs.start_runner.result == 'success' || needs.start_runner.result == 'skipped') }}
+    needs: check_gpu_node
+    if: ${{ !cancelled() && inputs.is_test_models && needs.check_gpu_node.result == 'success' }}
     permissions:
       contents: read
       id-token: write
@@ -143,7 +109,7 @@ jobs:
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       ignore_known_failures: ${{ inputs.ignore_known_failures }}
       split_name: ${{ inputs.split_name }}
-      runs_on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && format('["{0}"]', inputs.runner-id) || toJson(fromJson('{"group":"GPU"}')) }}
+      runs_on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && toJson(fromJson('["mlops-ci-gpu-xlarge"]')) || toJson(fromJson('{"group":"GPU"}')) }}
       is_gpu_node: ${{ needs.check_gpu_node.result == 'success' && needs.check_gpu_node.outputs.use_kube == 'false' }}
       sync_assets_branch: ${{ inputs.sync_assets_branch }}
       python_version: ${{ inputs.python_version }}
@@ -151,9 +117,9 @@ jobs:
 
   run_gpu_tests:
     name: "Run GPU Tests"
-    needs: [check_gpu_node, start_runner]
-    if: ${{ !cancelled() && (inputs.is_gpu_weekly || inputs.is_gpu_nightly) && needs.check_gpu_node.result == 'success' && (needs.start_runner.result == 'success' || needs.start_runner.result == 'skipped') }}
-    runs-on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && fromJson(format('["{0}"]', inputs.runner-id)) || fromJson('{"group":"GPU"}') }}
+    needs: check_gpu_node
+    if: ${{ !cancelled() && (inputs.is_gpu_weekly || inputs.is_gpu_nightly) && needs.check_gpu_node.result == 'success' }}
+    runs-on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && fromJson('["mlops-ci-gpu-xlarge"]') || fromJson('{"group":"GPU"}') }}
     container: ${{ needs.check_gpu_node.outputs.use_kube == 'false' && fromJson('{"image":"docker-registry.qualcomm.com/library/nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04","options":"--gpus all -v /local:/local"}') || null }}
     timeout-minutes: 5760
     permissions:
@@ -182,7 +148,7 @@ jobs:
         mkdir -p /local/mnt2/workspace2/qaihm_bot/tmp
         chown $DOCKER_USER_ID:$DOCKER_GROUP_ID /local/mnt2/workspace2/qaihm_bot/tmp
 
-    - name: Setup environment (kube only)
+    - name: Setup environment (mlops-ci-gpu-xlarge only)
       if: ${{ needs.check_gpu_node.outputs.use_kube == 'true' }}
       run: |
         # /scratch is the 256 GB volume; the root overlay fills first.
@@ -286,9 +252,9 @@ jobs:
 
   run_grader:
     name: "Grade LLM Responses"
-    needs: [check_gpu_node, start_runner]
-    if: ${{ !cancelled() && inputs.is_grader && needs.check_gpu_node.result == 'success' && (needs.start_runner.result == 'success' || needs.start_runner.result == 'skipped') }}
-    runs-on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && fromJson(format('["{0}"]', inputs.runner-id)) || fromJson('{"group":"GPU"}') }}
+    needs: check_gpu_node
+    if: ${{ !cancelled() && inputs.is_grader && needs.check_gpu_node.result == 'success' }}
+    runs-on: ${{ needs.check_gpu_node.outputs.use_kube == 'true' && fromJson('["mlops-ci-gpu-xlarge"]') || fromJson('{"group":"GPU"}') }}
     container: ${{ needs.check_gpu_node.outputs.use_kube == 'false' && fromJson('{"image":"docker-registry.qualcomm.com/library/nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04","options":"--gpus all -v /local:/local"}') || null }}
     timeout-minutes: 720
     permissions:
@@ -301,7 +267,7 @@ jobs:
       GRADER_VENV: ${{ github.workspace }}/grader_env
       GRADER_INPUT_DIR: ${{ github.workspace }}/llm-perf-results
     steps:
-    - name: Setup environment (kube only)
+    - name: Setup environment (mlops-ci-gpu-xlarge only)
       if: ${{ needs.check_gpu_node.outputs.use_kube == 'true' }}
       run: |
         mkdir -p /scratch/qaihm/tmp /scratch/qaihm/.cache/huggingface
@@ -394,20 +360,3 @@ jobs:
       with:
         name: llm-perf-results-graded
         path: ${{ env.GRADER_INPUT_DIR }}
-
-  cleanup_runner:
-    name: "Cleanup GPU Runner"
-    needs: [check_gpu_node, start_runner, run_test_models, run_gpu_tests, run_grader]
-    # A cancelled start_runner can leave the Argo workflow alive, so clean up
-    # on any non-skipped result.
-    if: ${{ always() && needs.check_gpu_node.outputs.use_kube == 'true' && needs.start_runner.result != 'skipped' }}
-    runs-on: [tetra-ubuntu-2204, self-hosted]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/stop-gpu-runner
-        with:
-          runner-ids: ${{ inputs.runner-id }}
-          argo-namespace: "aihub-ci"
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-          pat-token: ${{ secrets.KUBE_GH_TOKEN }}
-          sudo-password: ${{ secrets.TETRASERVICE_PASSWORD }}

@@ -29,9 +29,6 @@ jobs:
     uses: ./.github/workflows/gpu_pod_lifecycle.yml
     with:
       is_gpu_weekly: true
-      runner-id: gpu-weekly-${{ github.run_id }}-${{ github.run_attempt }}
-      gpu-request: '1'
-      memory-request: '512Gi'
       models: ${{ inputs.models || 'all' }}
       deployment: ${{ inputs.deployment || 'prod' }}
     secrets: inherit

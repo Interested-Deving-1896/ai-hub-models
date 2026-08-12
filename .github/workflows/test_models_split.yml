@@ -175,10 +175,6 @@ jobs:
     with:
       is_test_models: true
       force_kube: ${{ inputs.force_kube }}
-      runner-id: gpu-pr-${{ github.run_id }}-${{ github.run_attempt }}-py${{ inputs.python_version }}-${{ matrix.split.split_name }}
-      gpu-request: '0'
-      cpu-request: '8'
-      memory-request: '256Gi'
       deployment: ${{ inputs.deployment }}
       models: ${{ matrix.split.models }}
       test_devices: ${{ inputs.test_devices }}

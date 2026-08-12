@@ -453,10 +453,6 @@ jobs:
     uses: ./.github/workflows/gpu_pod_lifecycle.yml
     with:
       is_grader: true
-      runner-id: geniex-perf-grader-${{ github.run_id }}-${{ github.run_attempt }}
-      gpu-request: '1'
-      cpu-request: '8'
-      memory-request: '256Gi'
       grader_artifacts_run_id: ${{ github.run_id }}
       split_name: geniex
     secrets: inherit
