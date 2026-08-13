@@ -330,11 +330,15 @@ def _normalize_pip_command(raw: str) -> str:
     - Strips ``--no-build-isolation`` when running under plain pip (that
       flag is only meaningful under uv here — pip uses build isolation by
       default and the surrounding logic installs the required build deps).
+    - Strips ``-y`` / ``--yes`` from ``uninstall`` under uv (uv never prompts
+      and rejects the flag; plain pip needs it to skip the confirmation).
     """
     tokens = raw.split()
     assert tokens and tokens[0] == "pip", raw
     if uv_installed():
         tokens = [t for t in tokens if t != "--use-pep517"]
+        if len(tokens) >= 2 and tokens[1] == "uninstall":
+            tokens = [t for t in tokens if t not in ("-y", "--yes")]
     else:
         tokens = [t for t in tokens if t != "--no-build-isolation"]
     return " ".join([get_pip(), *tokens[1:]])

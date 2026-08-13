@@ -58,5 +58,7 @@ templates:
 - llm
 - lm_driver
 post_pip_install_commands:
+- command: pip uninstall -y onnxruntime
+  machine: gpu
 - command: pip install onnxruntime-gpu==1.23.2 https://github.com/quic/aimet/releases/download/2.26.0/aimet_onnx-2.26.0+cu121-cp310-cp310-manylinux_2_34_x86_64.whl -f https://download.pytorch.org/whl/torch_stable.html
   machine: gpu
