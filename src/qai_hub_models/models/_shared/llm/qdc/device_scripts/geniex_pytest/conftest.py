@@ -26,11 +26,25 @@ def _make_options() -> AppiumOptions:
     options.set_capability("platformName", "Android")
     options.set_capability("deviceName", os.getenv("ANDROID_DEVICE_VERSION"))
     options.set_capability("appium:androidInstallTimeout", 300000)  # 5 minutes
+    options.set_capability("appium:adbExecTimeout", 300000)  # 5 minutes
     return options
+
+
+def _set_package_verifier(enabled: bool) -> None:
+    # Play Protect blocks Appium's unsigned settings_apk-debug.apk install,
+    # which surfaces as an adb-install timeout. Toggle both flags off before
+    # Appium starts and restore them in teardown.
+    value = "1" if enabled else "0"
+    for key in ("package_verifier_enable", "verifier_verify_adb_installs"):
+        subprocess.run(
+            ["adb", "shell", "settings", "put", "global", key, value],
+            check=False,
+        )
 
 
 @pytest.fixture(scope="session", autouse=True)
 def driver() -> Any:
+    _set_package_verifier(False)
     session = webdriver.Remote(
         command_executor="http://127.0.0.1:4723/wd/hub",
         options=_make_options(),
@@ -40,6 +54,7 @@ def driver() -> Any:
     finally:
         with contextlib.suppress(Exception):
             session.quit()
+        _set_package_verifier(True)
 
 
 def _push_results_xml(xml_path: str) -> None:

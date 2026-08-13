@@ -2954,7 +2954,9 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
         shutil.move(onnx_path, os.path.join(output_checkpoint, "model_dynamic.onnx"))
 
         self.llm_config.save_pretrained(output_checkpoint)
-        self.tokenizer.save_pretrained(output_checkpoint)
+        # save_jinja_files=False embeds chat_template inside tokenizer_config.json
+        # so downstream Genie/geniex bundle staging picks it up.
+        self.tokenizer.save_pretrained(output_checkpoint, save_jinja_files=False)
 
     @classmethod
     def create_onnx_models(
@@ -2990,9 +2992,11 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
     def save_tokenizer_and_config(
         cls, checkpoint: str | os.PathLike | Path, fp_model: LLMBase
     ) -> None:
-        # Make sure tokenizer/config exist in the checkpoint
+        # Make sure tokenizer/config exist in the checkpoint.
+        # save_jinja_files=False embeds chat_template inside tokenizer_config.json
+        # so downstream Genie/geniex bundle staging picks it up.
         if not os.path.isfile(os.path.join(checkpoint, "tokenizer.json")):
-            fp_model.tokenizer.save_pretrained(checkpoint)
+            fp_model.tokenizer.save_pretrained(checkpoint, save_jinja_files=False)
         if not os.path.isfile(os.path.join(checkpoint, "config.json")):
             fp_model.llm_config.save_pretrained(checkpoint)
 
@@ -3184,8 +3188,6 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             json.dump(text_gen_config, f, indent=4)
 
         # sample_prompt.txt
-        from transformers import AutoTokenizer
-
         tokenizer = AutoTokenizer.from_pretrained(str(checkpoint))
         sample_prompt = cls.get_input_prompt_with_tags(tokenizer=tokenizer)
         with open(output_path / "sample_prompt.txt", "w") as f:

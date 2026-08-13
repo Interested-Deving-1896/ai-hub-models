@@ -15,14 +15,31 @@ options.set_capability("automationName", "UiAutomator2")
 options.set_capability("platformName", "Android")
 options.set_capability("deviceName", os.getenv("ANDROID_DEVICE_VERSION"))
 options.set_capability("appium:androidInstallTimeout", 300000)  # 5 minutes
+options.set_capability("appium:adbExecTimeout", 300000)  # 5 minutes
+
+
+def _set_package_verifier(enabled: bool) -> None:
+    # Play Protect blocks Appium's unsigned settings_apk-debug.apk install,
+    # which surfaces as an adb-install timeout. Toggle both flags off before
+    # Appium starts and restore them in teardown.
+    value = "1" if enabled else "0"
+    for key in ("package_verifier_enable", "verifier_verify_adb_installs"):
+        subprocess.run(
+            ["adb", "shell", "settings", "put", "global", key, value],
+            check=False,
+        )
 
 
 class TestGenie:
     @pytest.fixture
     def driver(self) -> webdriver.Remote:
-        return webdriver.Remote(
-            command_executor="http://127.0.0.1:4723/wd/hub", options=options
-        )
+        _set_package_verifier(False)
+        try:
+            return webdriver.Remote(
+                command_executor="http://127.0.0.1:4723/wd/hub", options=options
+            )
+        finally:
+            _set_package_verifier(True)
 
     def test_genie(self, driver: webdriver.Remote) -> None:
         # download qairt sdk via curl on device
