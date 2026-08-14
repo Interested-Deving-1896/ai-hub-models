@@ -52,7 +52,9 @@ HUB_DEVICE_TO_QDC_DEVICE_MAP = {
 }
 
 QDC_REST_BASE_URL = "https://api.qualcomm.com/deviceloud/v1"
-# QDC job limit
+# Default client-side cap on concurrent QDC jobs. The shared QDC pool
+# enforces 3 server-side; dedicated pools allow more (see get_qdc_job_limit
+# in llm/common.py) and pass an override via QDCJobs(job_limit=...).
 QDC_JOB_LIMIT = 3
 # Default timeout for job status polling (in seconds)
 DEFAULT_JOB_TIMEOUT = 21600  # 6 hours
@@ -321,6 +323,7 @@ class QDCJobs:
         *,
         api_key: str,
         app_name_header: str,
+        job_limit: int = QDC_JOB_LIMIT,
     ) -> None:
         """
         Parameters
@@ -329,6 +332,10 @@ class QDCJobs:
             API key for QDC authentication.
         app_name_header
             Application name header for QDC API client.
+        job_limit
+            Maximum concurrent QDC jobs to submit under this api_key. Defaults
+            to the shared-pool cap (``QDC_JOB_LIMIT``); dedicated-pool callers
+            pass a higher value.
         """
         self.client = qdc_api.get_public_api_client_using_api_key(
             api_key_header=api_key,
@@ -338,6 +345,7 @@ class QDCJobs:
         )
         self._api_key = api_key
         self._app_name_header = app_name_header
+        self.job_limit = job_limit
         self._session = requests.Session()
         self._session.headers.update(
             {
@@ -498,10 +506,10 @@ class QDCJobs:
         """
         elapsed = 0
         while elapsed < timeout:
-            if len(self.get_active_jobs()) < QDC_JOB_LIMIT:
+            if len(self.get_active_jobs()) < self.job_limit:
                 # jitter: wait POLL_INTERNAL + random(0, 10) to avoid TOCTOU race condition
                 time.sleep(POLL_INTERVAL + random.randint(0, 10))
-                if len(self.get_active_jobs()) < QDC_JOB_LIMIT:
+                if len(self.get_active_jobs()) < self.job_limit:
                     break
             print(
                 f"Job is waiting as the service is at capacity, "
@@ -512,7 +520,7 @@ class QDCJobs:
 
         if elapsed >= timeout:
             raise TimeoutError(
-                f"Job {job_name} did not start within {timeout}s because the service is at capacity (>={QDC_JOB_LIMIT} active jobs). "
+                f"Job {job_name} did not start within {timeout}s because the service is at capacity (>={self.job_limit} active jobs). "
             )
 
         target_id = qdc_api.get_target_id(self.client, qdc_device.qdc_name)

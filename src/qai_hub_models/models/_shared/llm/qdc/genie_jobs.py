@@ -20,7 +20,10 @@ from abc import ABC, abstractmethod
 from qualcomm_device_cloud_sdk.models import ArtifactType
 from transformers import AutoTokenizer
 
-from qai_hub_models.models._shared.llm.common import JobOutcome
+from qai_hub_models.models._shared.llm.common import (
+    JobOutcome,
+    get_qdc_job_limit,
+)
 from qai_hub_models.models._shared.llm.model import LLMBase
 from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
     HUB_DEVICE_TO_QDC_DEVICE_MAP,
@@ -29,6 +32,7 @@ from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
     create_zip_from_entries,
 )
 from qai_hub_models.scorecard import ScorecardProfilePath
+from qai_hub_models.scorecard.device import ScorecardDevice
 
 GENIE_JOB_TIMEOUT = 21600  # 6 hours
 
@@ -801,6 +805,7 @@ def submit_genie_bundle_only(
     genie_job = GenieQDCJobs(
         api_key=api_token,
         app_name_header="GenieQDCJobApp",
+        job_limit=get_qdc_job_limit(ScorecardDevice.get(device)),
     )
 
     job_artifacts, entry_script = genie_job.add_job_artifacts(

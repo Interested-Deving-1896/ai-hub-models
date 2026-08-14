@@ -17,7 +17,7 @@ import json
 import os
 import sys
 
-DEDICATED_DEVICES = {"cs_8_elite_qrd", "cs_x_elite"}
+DEDICATED_DEVICES = {"cs_8_elite_qrd", "cs_x_elite", "cs_ventuno_q"}
 
 # Keep in sync with ALL_GENIEX_DEVICES in
 # src/qai_hub_models/scripts/run_geniex_bench_benchmarks.py.

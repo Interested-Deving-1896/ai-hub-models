@@ -18,6 +18,7 @@ from packaging.version import Version
 from qai_hub_models.scorecard.device import (
     ScorecardDevice,
     cs_8_elite_qrd,
+    cs_ventuno_q,
     cs_x_elite,
 )
 
@@ -43,8 +44,11 @@ def cleanup() -> None:
 
 
 DEDICATED_POOL_DEVICES: frozenset[ScorecardDevice] = frozenset(
-    {cs_8_elite_qrd, cs_x_elite}
+    {cs_8_elite_qrd, cs_x_elite, cs_ventuno_q}
 )
+
+SHARED_POOL_JOB_LIMIT = 3
+DEDICATED_POOL_JOB_LIMIT = 4
 
 
 def get_qdc_api_token(device: ScorecardDevice) -> str:
@@ -61,6 +65,13 @@ def get_qdc_api_token(device: ScorecardDevice) -> str:
     if not token:
         raise ValueError("QDC_API_TOKEN is not set.")
     return token
+
+
+def get_qdc_job_limit(device: ScorecardDevice) -> int:
+    """Max concurrent QDC jobs allowed under the device's pool."""
+    if device in DEDICATED_POOL_DEVICES:
+        return DEDICATED_POOL_JOB_LIMIT
+    return SHARED_POOL_JOB_LIMIT
 
 
 class LLMIOType(Enum):

@@ -18,7 +18,10 @@ from dataclasses import dataclass
 from qualcomm_device_cloud_sdk.models import ArtifactType
 from transformers import AutoTokenizer
 
-from qai_hub_models.models._shared.llm.common import JobOutcome
+from qai_hub_models.models._shared.llm.common import (
+    JobOutcome,
+    get_qdc_job_limit,
+)
 from qai_hub_models.models._shared.llm.model import LLMBase
 from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
     QDCDevice,
@@ -26,6 +29,7 @@ from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
     create_zip,
 )
 from qai_hub_models.scorecard import ScorecardProfilePath
+from qai_hub_models.scorecard.device import ScorecardDevice
 
 GENIEX_BENCH_JOB_TIMEOUT = 21600  # 6 hours
 
@@ -791,6 +795,7 @@ def submit_geniex_bench_only(
     geniex_job = GenieXBenchQDCJobs(
         api_key=api_token,
         app_name_header="GenieXBenchQDCJobApp",
+        job_limit=get_qdc_job_limit(ScorecardDevice.get(hub_device_name)),
     )
 
     job_artifacts, entry_script = geniex_job.add_job_artifacts(
