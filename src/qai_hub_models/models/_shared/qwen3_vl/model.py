@@ -2334,7 +2334,7 @@ class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
         ]
 
         metadata.genie = GenieMetadata(
-            chat_template=GenieChatTemplate(**chat_spec),
+            chat_template=GenieChatTemplate(**cast(dict[str, Any], chat_spec)),
             context_lengths=[context_length],
             supports_streaming=True,
             supports_vision=True,

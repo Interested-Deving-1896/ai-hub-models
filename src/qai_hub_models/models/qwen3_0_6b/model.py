@@ -234,6 +234,8 @@ class Qwen3_0_6B_Collection(Qwen3PreSplitCollectionBase):
     fp_presplit_cls = Qwen3_0_6B_PreSplit
     part_base_cls = Qwen3_0_6B_PartBase
     supports_thinking = True
+    think_start = "<think>\n"
+    think_end = "\n</think>"
     default_context_lengths = DEFAULT_EXPORT_CONTEXT_LENGTHS
     parts = {
         "part1_of_2": Qwen3_0_6B_Part1_Of_2,

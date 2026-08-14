@@ -1698,7 +1698,9 @@ class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
     ``fp_presplit_cls`` (the FP PreSplit class, for chat template / sample
     prompt), ``part_base_cls`` (the model's Part base, for the isinstance
     check), ``supports_thinking`` (whether the model supports a thinking mode,
-    propagated to ``GenieMetadata``), and ``parts`` (an ordered mapping from
+    propagated to ``GenieMetadata``), ``think_start`` / ``think_end`` (tags
+    delimiting the reasoning span, attached to the emitted
+    ``GenieChatTemplate``), and ``parts`` (an ordered mapping from
     component name to Part class).
     """
 
@@ -1706,6 +1708,9 @@ class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
     fp_presplit_cls: Any
     part_base_cls: Any
     supports_thinking: bool = False
+    think_start: str = ""
+    think_end: str = ""
+    think_header: str = ""
     parts: dict[str, Any]
     # Default (seq_len, ctx_len) graphs to emit. Override in subclasses that
     # need non-standard sequence lengths (e.g. SSD uses an AR-32 token graph).
@@ -1850,10 +1855,17 @@ class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
             f.write(sample_prompt)
 
         chat_spec = self.fp_presplit_cls.get_chat_template()
-        metadata.genie = GenieMetadata(
-            chat_template=GenieChatTemplate(**chat_spec)
+        chat_template = (
+            GenieChatTemplate(**cast(dict[str, Any], chat_spec))
             if chat_spec
-            else GenieChatTemplate(),
+            else GenieChatTemplate()
+        )
+        if self.supports_thinking:
+            chat_template.think_start = self.think_start
+            chat_template.think_end = self.think_end
+            chat_template.think_header = self.think_header
+        metadata.genie = GenieMetadata(
+            chat_template=chat_template,
             context_lengths=context_lengths,
             supports_streaming=True,
             supports_vision=False,
@@ -3215,7 +3227,7 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             ),
         ]
         metadata.genie = GenieMetadata(
-            chat_template=GenieChatTemplate(**chat_spec)
+            chat_template=GenieChatTemplate(**cast(dict[str, Any], chat_spec))
             if chat_spec
             else GenieChatTemplate(),
             context_lengths=context_lengths,

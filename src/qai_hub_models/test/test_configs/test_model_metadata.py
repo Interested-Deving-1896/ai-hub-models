@@ -9,6 +9,8 @@ import pytest
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.model_metadata import (
+    GenieChatTemplate,
+    GenieMetadata,
     ModelFileMetadata,
     ModelMetadata,
     merge_input_metadata,
@@ -707,3 +709,112 @@ def test_merge_output_metadata_bbox() -> None:
         assert outputs["boxes"]["bbox_metadata"]["bbox_format"] == "xyxy"
         assert outputs["scores"]["io_type"] == "tensor"
         assert outputs["class_idx"]["io_type"] == "tensor"
+
+
+def test_genie_chat_template_thinking_tags_default_empty() -> None:
+    """GenieChatTemplate defaults think_start/think_end/think_header to empty strings."""
+    template = GenieChatTemplate()
+    assert template.think_start == ""
+    assert template.think_end == ""
+    assert template.think_header == ""
+
+
+def test_genie_chat_template_thinking_tags_to_proto() -> None:
+    """think_start/think_end/think_header flow through to_proto as top-level proto fields."""
+    template = GenieChatTemplate(
+        system_prefix="<|im_start|>system\n",
+        user_prefix="<|im_start|>user\n",
+        assistant_prefix="<|im_start|>assistant\n",
+        think_start="<think>\n",
+        think_end="\n</think>",
+    )
+    proto = template.to_proto()
+    assert proto.think_start == "<think>\n"
+    assert proto.think_end == "\n</think>"
+    assert proto.think_header == ""
+
+
+def test_genie_chat_template_thinking_tags_json_roundtrip() -> None:
+    """JSON round-trip preserves flat think_start/think_end on chat_template."""
+    template = GenieChatTemplate(
+        system_prefix="<|im_start|>system\n",
+        user_prefix="<|im_start|>user\n",
+        assistant_prefix="<|im_start|>assistant\n",
+        think_start="<think>\n",
+        think_end="\n</think>",
+    )
+    genie = GenieMetadata(
+        chat_template=template,
+        context_lengths=[4096],
+        supports_thinking=True,
+    )
+    model_metadata = ModelMetadata(
+        model_id=DEFAULT_MODEL_ID,
+        model_name=DEFAULT_MODEL_NAME,
+        runtime=DEFAULT_RUNTIME,
+        precision=DEFAULT_PRECISION,
+        tool_versions=DEFAULT_TOOL_VERSIONS,
+        model_files={},
+        genie=genie,
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        json_path = Path(tmpdir) / "metadata.json"
+        model_metadata.to_json(json_path)
+
+        loaded = ModelMetadata.from_json(json_path)
+        assert loaded.genie is not None
+        assert loaded.genie.chat_template.think_start == "<think>\n"
+        assert loaded.genie.chat_template.think_end == "\n</think>"
+
+        raw = load_json(json_path)
+        chat = raw["genie"]["chat_template"]
+        assert chat["think_start"] == "<think>\n"
+        assert chat["think_end"] == "\n</think>"
+        assert "thinking" not in chat
+        # Empty-thinking render should produce <think>\n\n</think>.
+        assert chat["think_start"] + chat["think_end"] == "<think>\n\n</think>"
+
+
+def test_genie_chat_template_thinking_tags_gemma4_shape() -> None:
+    """Gemma-4-style channel markers survive the round-trip as-is.
+
+    Confirms the flat think_start/think_end/think_header schema generalizes
+    across the two output-marker conventions observed in the wild (Qwen3's
+    <think>/</think> and Gemma-4's <|think|> + <|channel>thought.../<channel|>).
+    """
+    template = GenieChatTemplate(
+        think_start="<|channel>thought\n",
+        think_end="<channel|>",
+        think_header="<|think|>\n",
+    )
+    genie = GenieMetadata(
+        chat_template=template,
+        context_lengths=[4096],
+        supports_thinking=True,
+    )
+    model_metadata = ModelMetadata(
+        model_id=DEFAULT_MODEL_ID,
+        model_name=DEFAULT_MODEL_NAME,
+        runtime=DEFAULT_RUNTIME,
+        precision=DEFAULT_PRECISION,
+        tool_versions=DEFAULT_TOOL_VERSIONS,
+        model_files={},
+        genie=genie,
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        json_path = Path(tmpdir) / "metadata.json"
+        model_metadata.to_json(json_path)
+
+        loaded = ModelMetadata.from_json(json_path)
+        assert loaded.genie is not None
+        assert loaded.genie.chat_template.think_start == "<|channel>thought\n"
+        assert loaded.genie.chat_template.think_end == "<channel|>"
+        assert loaded.genie.chat_template.think_header == "<|think|>\n"
+
+        raw = load_json(json_path)
+        chat = raw["genie"]["chat_template"]
+        assert chat["think_start"] == "<|channel>thought\n"
+        assert chat["think_end"] == "<channel|>"
+        assert chat["think_header"] == "<|think|>\n"

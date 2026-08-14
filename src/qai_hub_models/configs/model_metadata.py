@@ -139,6 +139,9 @@ class GenieChatTemplate(BaseQAIHMConfig):
     vision_start: str = ""
     vision_end: str = ""
     default_system_prompt: str = ""
+    think_start: str = ""
+    think_end: str = ""
+    think_header: str = ""
 
     def to_proto(self) -> model_metadata_pb2.GenieChatTemplate:
         return model_metadata_pb2.GenieChatTemplate(
@@ -152,6 +155,9 @@ class GenieChatTemplate(BaseQAIHMConfig):
             vision_start=self.vision_start,
             vision_end=self.vision_end,
             default_system_prompt=self.default_system_prompt,
+            think_start=self.think_start,
+            think_end=self.think_end,
+            think_header=self.think_header,
         )
 
 

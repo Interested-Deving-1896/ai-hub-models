@@ -38,7 +38,7 @@ import shutil
 import tempfile
 from collections.abc import Collection
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import onnx
@@ -1589,7 +1589,7 @@ class Qwen2_5_VL_7B_Collection(MultiGraphWorkbenchModelCollection):
         ]
 
         metadata.genie = GenieMetadata(
-            chat_template=GenieChatTemplate(**chat_spec),
+            chat_template=GenieChatTemplate(**cast(dict[str, Any], chat_spec)),
             context_lengths=sorted(set(all_context_lengths)),
             supports_streaming=True,
             supports_vision=True,

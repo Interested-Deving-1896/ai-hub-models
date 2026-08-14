@@ -219,6 +219,10 @@ class Gemma4_E4B_Collection(Gemma4PreSplitCollectionBase):
     fp_presplit_cls = Gemma4_E4B_PreSplit
     part_base_cls = Gemma4_E4B_PartBase
     vision_encoder_cls = Gemma4_E4B_VisionEncoder
+    supports_thinking = True
+    think_start = "<|channel>thought\n"
+    think_end = "<channel|>"
+    think_header = "<|think|>\n"
     parts = {
         "part1_of_4": Gemma4_E4B_Part1_Of_4,
         "part2_of_4": Gemma4_E4B_Part2_Of_4,

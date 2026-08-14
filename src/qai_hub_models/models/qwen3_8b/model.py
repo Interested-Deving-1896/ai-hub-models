@@ -205,6 +205,8 @@ class Qwen3_8B_Collection(Qwen3PreSplitCollectionBase):
     fp_presplit_cls = Qwen3_8B_PreSplit
     part_base_cls = Qwen3_8B_PartBase
     supports_thinking = True
+    think_start = "<think>\n"
+    think_end = "\n</think>"
     parts = {
         "part1_of_5": Qwen3_8B_Part1_Of_5,
         "part2_of_5": Qwen3_8B_Part2_Of_5,

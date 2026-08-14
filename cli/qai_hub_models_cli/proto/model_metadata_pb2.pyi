@@ -92,6 +92,9 @@ class GenieChatTemplate(google.protobuf.message.Message):
     VISION_START_FIELD_NUMBER: builtins.int
     VISION_END_FIELD_NUMBER: builtins.int
     DEFAULT_SYSTEM_PROMPT_FIELD_NUMBER: builtins.int
+    THINK_START_FIELD_NUMBER: builtins.int
+    THINK_END_FIELD_NUMBER: builtins.int
+    THINK_HEADER_FIELD_NUMBER: builtins.int
     global_prefix: builtins.str
     system_prefix: builtins.str
     system_suffix: builtins.str
@@ -102,6 +105,9 @@ class GenieChatTemplate(google.protobuf.message.Message):
     vision_start: builtins.str
     vision_end: builtins.str
     default_system_prompt: builtins.str
+    think_start: builtins.str
+    think_end: builtins.str
+    think_header: builtins.str
     def __init__(
         self,
         *,
@@ -115,8 +121,11 @@ class GenieChatTemplate(google.protobuf.message.Message):
         vision_start: builtins.str = ...,
         vision_end: builtins.str = ...,
         default_system_prompt: builtins.str = ...,
+        think_start: builtins.str = ...,
+        think_end: builtins.str = ...,
+        think_header: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["assistant_prefix", b"assistant_prefix", "assistant_suffix", b"assistant_suffix", "default_system_prompt", b"default_system_prompt", "global_prefix", b"global_prefix", "system_prefix", b"system_prefix", "system_suffix", b"system_suffix", "user_prefix", b"user_prefix", "user_suffix", b"user_suffix", "vision_end", b"vision_end", "vision_start", b"vision_start"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["assistant_prefix", b"assistant_prefix", "assistant_suffix", b"assistant_suffix", "default_system_prompt", b"default_system_prompt", "global_prefix", b"global_prefix", "system_prefix", b"system_prefix", "system_suffix", b"system_suffix", "think_end", b"think_end", "think_header", b"think_header", "think_start", b"think_start", "user_prefix", b"user_prefix", "user_suffix", b"user_suffix", "vision_end", b"vision_end", "vision_start", b"vision_start"]) -> None: ...
 
 global___GenieChatTemplate = GenieChatTemplate
 
