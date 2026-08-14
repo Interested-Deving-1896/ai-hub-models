@@ -194,3 +194,23 @@ jobs:
       release_assets_action_id: ${{ inputs.action_id }}
       create_pr: false
       scope: ${{ inputs.test_scope }}
+
+  collect_llm_perf_geniex_llamacpp:
+    name: Collect LLM Performance Numbers (GenieX-llama.cpp)
+    needs: [determine_llm_models, combine_llm_release_assets]
+    # GENIEX_LLAMACPP is in default_sweep_paths, so a 'default' token in
+    # test_runtimes enables it. Mirrors the qairt collector; the plugin
+    # selection is the only difference.
+    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && inputs.test_scope != 'compile_only' && (contains(format(',{0},', inputs.test_runtimes), ',default,') || contains(format(',{0},', inputs.test_runtimes), ',geniex_llamacpp,') || inputs.test_runtimes == '') }}
+    secrets: inherit
+    uses: ./.github/workflows/llm_perf_collection_geniex.yml
+    with:
+      model: ${{ needs.determine_llm_models.outputs.models }}
+      device: ${{ inputs.device }}
+      # Map default and default variants to 'all' (see scorecard/envvars.py).
+      precision: ${{ contains(fromJSON('["default", "default_minus_float", "default_quantized", "bench"]'), inputs.test_precisions) && 'all' || inputs.test_precisions }}
+      geniex_bench_plugin: llama_cpp
+      geniex_version: ${{ needs.determine_llm_models.outputs.geniex_version }}
+      release_assets_action_id: ${{ inputs.action_id }}
+      create_pr: false
+      scope: ${{ inputs.test_scope }}
