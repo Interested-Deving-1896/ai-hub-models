@@ -158,6 +158,16 @@ replies.
 - Multiple handoffs stacked in one message (e.g. `<@A> <@B> can one of
   you chime in`). Still `ack-only` regardless of URL count.
 
+**Common false-negative traps (all → `answered`, NOT `ack-only`):**
+- A short internal reply that names a tool + quickstart URL (or a
+  released app URL) as the answer, even when the customer's question
+  was multi-part. The reply can be *higher-altitude* than the ask —
+  "use tool X, or the shipped app" supersedes sub-questions about
+  which flag / preprocessing step of tool Y.
+- A one-line reply that redefines the recommended path ("this is now
+  the supported way") + URL. If the URL directly resolves the
+  question, it's bucket #4 regardless of reply length.
+
 **Only after ruling out #1–#3 for every internal reply**, apply keyword
 shortcuts to confirm bucket #4:
 - "use v0.56.0", "set --target-runtime onnx", "fixed in #1234",
@@ -331,3 +341,13 @@ Thread replies: `[{user: "Czar", is_internal: true, text: "<@Eng> any chance you
 → `status: ack-only` (handoff + redirect, no substantive answer). The
 Discord URL is a redirect, not an answer to the TOPS math. `topic: "tops
 derivation"`, `draft_answer: null`, `kb_citation: null`.
+
+**Question:** "What's the right workflow for running a VLM on-device via GenieX (QAIRT)? I've tried genie-t2t-run.exe (text-only) and see genie-app-script.txt in the bundle. Is genie-app.exe the intended VLM path? What's the preprocessing pipeline for a custom image (.raw files)?"
+Thread replies: `[{user: "Eng", is_internal: true, text: "Now you can run LLM/VLM directly via GenieX (https://github.com/qualcomm/GenieX#quickstart), or try the released app GenieX Chat Windows (https://aihub.qualcomm.com/apps/geniex_chat_windows)."}]`
+→ `status: answered`. Bucket #4: fresh URLs, no `@mention` handoff, no
+info-gathering, no forum redirect. The one-line reply is
+higher-altitude than the multi-part ask — "use GenieX quickstart or
+the shipped app" supersedes the sub-questions about which `.exe` and
+which preprocessing step. A short URL-directed reply can answer a
+long question. `topic: "geniex vlm"`, `draft_answer: null`,
+`kb_citation: null`.
