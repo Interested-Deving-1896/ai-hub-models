@@ -3,6 +3,51 @@ precisions:
     components:
       Ministral-3-3B-Instruct-2512:
         performance_metrics:
+          Arduino VENTUNO Q:
+            geniex_llamacpp:
+              llm_metrics:
+              - context_length: 4096
+                desired_compute_unit: cpu
+                prefill_tokens_per_second: 28.994528
+                time_to_first_token_range_milliseconds:
+                  max: 4520622.816
+                  min: 141269.463
+                tokens_per_second: 1.586321
+              - context_length: 512
+                desired_compute_unit: cpu
+                prefill_tokens_per_second: 41.195772
+                time_to_first_token_range_milliseconds:
+                  max: 49719.328
+                  min: 12429.832
+                tokens_per_second: 4.989335
+              - context_length: 4096
+                desired_compute_unit: gpu
+                prefill_tokens_per_second: 19.271472
+                time_to_first_token_range_milliseconds:
+                  max: 6801376.448
+                  min: 212543.014
+                tokens_per_second: 2.434938
+              - context_length: 512
+                desired_compute_unit: gpu
+                prefill_tokens_per_second: 29.172172
+                time_to_first_token_range_milliseconds:
+                  max: 70207.696
+                  min: 17551.924
+                tokens_per_second: 3.09749
+              - context_length: 4096
+                desired_compute_unit: npu
+                prefill_tokens_per_second: 398.944978
+                time_to_first_token_range_milliseconds:
+                  max: 328558.176
+                  min: 10267.443
+                tokens_per_second: 6.189207
+              - context_length: 512
+                desired_compute_unit: npu
+                prefill_tokens_per_second: 497.761047
+                time_to_first_token_range_milliseconds:
+                  max: 4116.22
+                  min: 1029.055
+                tokens_per_second: 10.362591
           Dragonwing Q-8750:
             geniex_llamacpp:
               llm_metrics:
@@ -142,7 +187,9 @@ supported_chipsets:
 - qualcomm-snapdragon-8-elite
 - qualcomm-snapdragon-x2-elite
 - qualcomm-qcs8750
+- qualcomm-qcs8275
 supported_devices:
 - Snapdragon X2 Elite CRD
 - Snapdragon 8 Elite QRD
 - Dragonwing Q-8750
+- Arduino VENTUNO Q

@@ -3,6 +3,51 @@ precisions:
     components:
       Qwen3-VL-4B-Instruct:
         performance_metrics:
+          Arduino VENTUNO Q:
+            geniex_llamacpp:
+              llm_metrics:
+              - context_length: 4096
+                desired_compute_unit: cpu
+                prefill_tokens_per_second: 22.34157
+                time_to_first_token_range_milliseconds:
+                  max: 5866782.176
+                  min: 183336.943
+                tokens_per_second: 1.090219
+              - context_length: 512
+                desired_compute_unit: cpu
+                prefill_tokens_per_second: 32.684255
+                time_to_first_token_range_milliseconds:
+                  max: 62662.656
+                  min: 15665.664
+                tokens_per_second: 3.894601
+              - context_length: 4096
+                desired_compute_unit: gpu
+                prefill_tokens_per_second: 14.397638
+                time_to_first_token_range_milliseconds:
+                  max: 9103839.872
+                  min: 284494.996
+                tokens_per_second: 1.932704
+              - context_length: 512
+                desired_compute_unit: gpu
+                prefill_tokens_per_second: 22.195339
+                time_to_first_token_range_milliseconds:
+                  max: 92287.904
+                  min: 23071.976
+                tokens_per_second: 2.535065
+              - context_length: 4096
+                desired_compute_unit: npu
+                prefill_tokens_per_second: 310.417132
+                time_to_first_token_range_milliseconds:
+                  max: 422256.768
+                  min: 13195.524
+                tokens_per_second: 5.205161
+              - context_length: 512
+                desired_compute_unit: npu
+                prefill_tokens_per_second: 399.520887
+                time_to_first_token_range_milliseconds:
+                  max: 5128.08
+                  min: 1282.02
+                tokens_per_second: 9.179426
           Dragonwing IQ-X7181:
             geniex_llamacpp:
               llm_metrics:
@@ -310,6 +355,7 @@ supported_chipsets:
 - qualcomm-qcs7181
 - qualcomm-qcs8750
 - qualcomm-qcs9075
+- qualcomm-qcs8275
 supported_devices:
 - Snapdragon 8 Elite Gen 5 QRD
 - Snapdragon X Elite CRD
@@ -318,3 +364,4 @@ supported_devices:
 - Dragonwing Q-8750
 - Dragonwing IQ-9075 EVK
 - Snapdragon X2 Elite CRD
+- Arduino VENTUNO Q
