@@ -151,6 +151,7 @@ except (ImportError, ModuleNotFoundError):
 
 if TYPE_CHECKING:
     from qai_hub_models.models._shared.lm_driver.generator import Generator
+    from qai_hub_models.models._shared.lm_schema import DatasetSpec, TechniqueSpec
     from qai_hub_models.utils.base_evaluator import BaseEvaluator
 
 logger = logging.getLogger(__name__)
@@ -3933,34 +3934,45 @@ class LLMDynamic_AIMETOnnx(LLM_AIMETOnnx):
         )
         return make_hub_dataset_entries(tuple(inputs), list(input_spec.keys()))
 
-    def get_calibration_data(  # type: ignore[override]
+    # Per-model interleave loaders, keyed by frozenset of source schema names.
+    # (Not a default calibration set: this is the name -> loader registry that
+    # resolve_dataset_cls uses to map an Interleaved{...} spec a recipe names to
+    # the model's local dataset class.)
+    extra_interleaved_datasets: dict[frozenset[str], type] = {}
+
+    def prefill_dataset(
         self,
+        dataset_spec: DatasetSpec,
         num_samples: int = 0,
-        input_spec: InputSpec | None = None,
         sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
         image_size: tuple[int, int] | None = None,
     ) -> DatasetEntries | None:
-        # Default: calibrate on WikiText. Models needing a different calibration
-        # set (e.g. an interleave of self-generated text + WikiText) override
-        # this and get_weight_optimization_data, reusing _prefill_from_dataset_cls.
-        # Lazy import: keeps this module importable without transformers (WikiText
-        # imports it), as the rest of the module's transformers use is deferred.
-        from qai_hub_models.datasets.wikitext import WikiText
+        """Resolve a dataset spec to a loader and prefill it (text path; VLM
+        subclasses override to engage vision machinery for image datasets).
+        """
+        # Local import avoids the model <-> quantize import cycle.
+        from qai_hub_models.models._shared.llm.quantize import resolve_dataset_cls
 
+        dataset_cls = resolve_dataset_cls(dataset_spec, self.extra_interleaved_datasets)
         return self._prefill_from_dataset_cls(
-            WikiText,
+            dataset_cls,
             num_samples=num_samples,
             sequence_length=sequence_length,
             context_length=context_length,
         )
 
-    def get_weight_optimization_data(
-        self,
-        num_samples: int = 0,
-        input_spec: InputSpec | None = None,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        image_size: tuple[int, int] | None = None,
-    ) -> DatasetEntries | None:
-        return None
+    def _resolve_step_dataset(self, step: TechniqueSpec) -> DatasetSpec:
+        """The dataset a data-consuming step runs on. The recipe is the single source
+        of truth for data: every SeqMSE / AdaScale / Calibration step must name its
+        own ``dataset:`` -- there is no class-level default. (Only data-consuming
+        techniques reach here; SpinQuant is pre-sim, Skip/RemoveQuantization carry
+        no data.)
+        """
+        if step.dataset is None:
+            raise ValueError(
+                f"Recipe step {step.name!r} consumes calibration data but names no "
+                f"`dataset:`. Add one to this step in the recipe (manifest "
+                f"lm_quantization_details, or the --precision recipe file)."
+            )
+        return step.dataset

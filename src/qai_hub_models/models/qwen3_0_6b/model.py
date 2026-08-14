@@ -13,12 +13,11 @@ tied-embedding encoding fix). This module supplies the 0.6B-specific architectur
 constants and the small concrete subclasses (Part classes + the Collection,
 whose ``parts`` mapping registers the Part classes).
 
-Quantization uses the SpinQuant (R2+R3) -> AdaScale -> Calibration recipe; the
-SpinQuant rotations are configured via ``spinquant_config`` on the Quantizable
-PreSplit and applied automatically inside ``quantize()``. AdaScale runs on
-Wikitext/train (via ``get_weight_optimization_data``) and the final calibration
-runs on an interleave of self-generated text + Wikitext/train (via
-``get_calibration_data``).
+Quantization uses the SpinQuant (R2+R3) -> AdaScale -> Calibration recipe,
+authored in the model's ``manifest.yaml`` under ``lm_quantization_details``: AdaScale
+weight-opt runs on Wikitext/train and the final calibration on an interleave of
+self-generated text + Wikitext/train. The interleave name in the recipe is mapped
+to this model's local loader via ``extra_interleaved_datasets``.
 """
 
 from __future__ import annotations
@@ -28,18 +27,13 @@ import logging
 # LLMIOType is re-exported from this module so the CLI input-spec parser can
 # resolve the inherited get_input_spec's "llm_io_type" annotation, which it
 # looks up in the concrete model's module.
-from qai_hub.public_rest_api import DatasetEntries
-
 from qai_hub_models import Precision
-from qai_hub_models.datasets.wikitext import WikiText
 from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
 from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_CONTEXT_LENGTH,
-    DEFAULT_SEQUENCE_LENGTH,
-    SplitForwardMixin,
+    DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
 from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
+    SplitForwardMixin,
 )
 from qai_hub_models.models._shared.lm_driver.generator import HubCompatibleGenerator
 from qai_hub_models.models._shared.qwen3.model import (
@@ -49,7 +43,6 @@ from qai_hub_models.models._shared.qwen3.model import (
     Qwen3QuantizablePreSplitBase,
 )
 from qai_hub_models.models.qwen3_0_6b.dataset import InterleavedGeneratedWikitext
-from qai_hub_models.utils.input_spec import InputSpec
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +80,6 @@ SUPPORTED_PRECISIONS = [Precision.w4a16]
 DEFAULT_CHECKPOINT = {
     Precision.w4a16: "qwen3_0_6b_w4a16",
 }
-
-# SpinQuant recipe: R2 (V/O Hadamard) + R3 (online Hadamard on Q/K). R2 on the
-# dynamo/SHA export needs fix_node_names_pass first (see tetracode#20426).
-SPINQUANT_CONFIG = {"enable_r1": False, "enable_r2": True, "enable_r3": True}
 
 # Name used for split ONNX file basenames (e.g. Qwen3_0_6B_1_of_2.onnx)
 SPLIT_MODEL_NAME = "Qwen3_0_6B"
@@ -141,43 +130,16 @@ class Qwen3_0_6B_QuantizablePreSplit(Qwen3QuantizablePreSplitBase[Qwen3_0_6B_Pre
 
     # AdaScale config (16 attn heads + 8 KV heads + 1).
     ada_scale_num_rmsnorm_per_blk = NUM_ATTN_HEADS + NUM_KEY_VALUE_HEADS + 1
-    # SpinQuant (R2+R3) is applied in-place before calibration inside quantize().
-    spinquant_config = SPINQUANT_CONFIG
     supports_thinking = True
+    # Base class holds these at int8 (per-channel, symmetric) via _hold_params_at_int8.
     int8_param_names = INT8_PARAM_NAMES
 
-    def get_calibration_data(  # type: ignore[override]
-        self,
-        num_samples: int = 0,
-        input_spec: InputSpec | None = None,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        image_size: tuple[int, int] | None = None,
-    ) -> DatasetEntries | None:
-        # Final calibration runs on an interleave of self-generated text +
-        # Wikitext/train (AdaScale weight-opt uses plain Wikitext, below).
-        return self._prefill_from_dataset_cls(
-            InterleavedGeneratedWikitext,
-            num_samples=num_samples,
-            sequence_length=sequence_length,
-            context_length=context_length,
-        )
-
-    def get_weight_optimization_data(
-        self,
-        num_samples: int = 0,
-        input_spec: InputSpec | None = None,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-        context_length: int = DEFAULT_CONTEXT_LENGTH,
-        image_size: tuple[int, int] | None = None,
-    ) -> DatasetEntries | None:
-        # AdaScale runs on plain Wikitext/train.
-        return self._prefill_from_dataset_cls(
-            WikiText,
-            num_samples=num_samples,
-            sequence_length=sequence_length,
-            context_length=context_length,
-        )
+    # The recipe's Calibration step names an Interleaved{GeneratedDataset, Wikitext}.
+    # GeneratedDataset is model-specific, so its interleave loader is registered here
+    # (rather than in the shared registry) for resolve_dataset_cls to find.
+    extra_interleaved_datasets = {
+        frozenset({"GeneratedDataset", "Wikitext"}): InterleavedGeneratedWikitext,
+    }
 
 
 class Qwen3_0_6B_PartBase(Qwen3PartBase):

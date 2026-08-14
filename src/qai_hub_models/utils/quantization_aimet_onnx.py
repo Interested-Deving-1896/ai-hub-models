@@ -40,6 +40,13 @@ from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
 
 from qai_hub_models import Precision, SampleInputsType
+from qai_hub_models.models._shared.lm_schema import (
+    AdaScaleSpec,
+    CalibrationSpec,
+    DatasetSpec,
+    SeqMSESpec,
+    TechniqueSpec,
+)
 from qai_hub_models.utils.aimet.aimet_dummy_model import zip_aimet_model
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, qaihm_temp_dir
 from qai_hub_models.utils.base_evaluator import _DataLoader
@@ -315,6 +322,8 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel):
         model_type: str,
         num_rmsnorm_per_blk: int | None = None,
     ) -> None:
+        if self.ada_scale_model_type is None:
+            raise ValueError("AdaScale is not supported for this model.")
         assert self.quant_sim is not None
         ensure_min_aimet_onnx_version("2.26.0")
         from aimet_onnx.experimental.adascale.adascale_optimizer import (
@@ -411,6 +420,105 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel):
         ensure_min_aimet_onnx_version("2.8.0")
         self.quant_sim.compute_encodings(self._dataloader_to_numpy(data, num_batches))
 
+    def prefill_dataset(
+        self,
+        dataset_spec: DatasetSpec,
+        num_samples: int = 0,
+        sequence_length: int = 2048,
+        context_length: int = 4096,
+        image_size: tuple[int, int] | None = None,
+    ) -> DatasetEntries | None:
+        """Resolve a recipe dataset spec to a loader and prefill it into hub
+        dataset entries. Implemented by the LLM/VLM subclasses (which own the
+        generator + vision machinery); the base mixin has no dataset pipeline.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement prefill_dataset; recipe-driven "
+            "quantization (quantize_from_steps) is only supported for LLM/VLM models."
+        )
+
+    def _resolve_step_dataset(self, step: TechniqueSpec) -> DatasetSpec:
+        """The dataset a data-consuming step runs on. Implemented by LLM/VLM
+        subclasses (each step must name its own dataset; there is no default).
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement _resolve_step_dataset; recipe-"
+            "driven quantization is only supported for LLM/VLM models."
+        )
+
+    def quantize_from_steps(
+        self,
+        on_sim_steps: list[TechniqueSpec],
+        seq_len: int = 2048,
+        context_length: int = 4096,
+        image_size: tuple[int, int] | None = None,
+    ) -> None:
+        """Run on-sim steps (validated technique specs) in order, memoizing prefills
+        by dataset + volume. SpinQuant is pre-sim (caller-handled) and must not appear.
+
+        Per-step data volume follows GenAI Lab: ``num_iterations`` for
+        Calibration/SeqMSE, ``num_batches`` for AdaScale (whose ``num_iterations`` is
+        the optimizer step count, a separate axis). That count sizes the prefill; the
+        loader is then consumed whole (applier ``num_batches = len(data)``).
+        """
+        prefill_cache: dict[str, DataLoader] = {}
+
+        def _loader_for(step: TechniqueSpec, num_blocks: int) -> DataLoader:
+            spec = self._resolve_step_dataset(step)
+            cache_key = f"{spec.model_dump_json()}::{num_blocks}"
+            if cache_key not in prefill_cache:
+                entries = self.prefill_dataset(
+                    spec,
+                    num_samples=num_blocks,
+                    sequence_length=seq_len,
+                    context_length=context_length,
+                    image_size=image_size,
+                )
+                assert entries is not None
+                prefill_cache[cache_key] = dataset_entries_to_dataloader(entries)
+            return prefill_cache[cache_key]
+
+        for step in on_sim_steps:
+            if isinstance(step, SeqMSESpec):
+                data = _loader_for(step, num_blocks=step.num_iterations or 0)
+                num_batches = len(data)
+                print(f"\nApply Sequential MSE ({num_batches} batches)\n")
+                self._apply_seq_mse(data=data, num_batches=num_batches)
+                gc.collect()
+                torch.cuda.empty_cache()
+            elif isinstance(step, AdaScaleSpec):
+                if self.ada_scale_model_type is None:
+                    raise ValueError("AdaScale is not supported for this model.")
+                data = _loader_for(step, num_blocks=step.num_batches or 0)
+                num_iterations = step.num_iterations or DEFAULT_ADA_SCALE_NUM_ITERATIONS
+                num_batches = len(data)
+                print(
+                    f"\nApply AdaScale ({num_batches} batches, {num_iterations} iterations)\n"
+                )
+                self._apply_ada_scale(
+                    data=data,
+                    num_batches=num_batches,
+                    num_iterations=num_iterations,
+                    model_type=self.ada_scale_model_type,
+                    num_rmsnorm_per_blk=self.ada_scale_num_rmsnorm_per_blk,
+                )
+                gc.collect()
+                torch.cuda.empty_cache()
+            elif isinstance(step, CalibrationSpec):
+                data = _loader_for(step, num_blocks=step.num_iterations or 0)
+                num_batches = len(data)
+                print(
+                    f"\nStart QuantSim calibration for {self.__class__.__name__} "
+                    f"({num_batches} batches)\n"
+                )
+                self._apply_calibration(data=data, num_batches=num_batches)
+            else:
+                raise TypeError(
+                    f"Quantization technique {step.name!r} is not implemented in AI "
+                    f"Hub Models. Implemented on-sim techniques: SeqMSE, AdaScale, "
+                    f"Calibration."
+                )
+
     def quantize(
         self,
         data: DataLoader | None = None,
@@ -424,6 +532,9 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel):
     ) -> None:
         """
         Quantize the model using calibration data.
+
+        The two-boolean path for non-LLM models; LLM/VLM models instead drive
+        quantization from a recipe (``LLMDynamic_AIMETOnnx.quantize_from_steps``).
 
         Parameters
         ----------

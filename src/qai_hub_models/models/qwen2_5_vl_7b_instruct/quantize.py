@@ -11,12 +11,16 @@ from pathlib import Path
 
 import torch
 
-from qai_hub_models import Precision
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CALIBRATION_SEQ_LEN,
     DEFAULT_CONTEXT_LENGTH,
 )
-from qai_hub_models.models._shared.llm.quantize import quantize, save_command_args
+from qai_hub_models.models._shared.llm.quantize import (
+    quantize,
+    resolve_quantize_recipe,
+    save_command_args,
+)
+from qai_hub_models.models._shared.vlm.quantize import resolve_veg_calibration_samples
 from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     DEFAULT_IMAGE_HEIGHT,
     DEFAULT_IMAGE_WIDTH,
@@ -27,7 +31,6 @@ from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     Qwen2_5_VL_7B_QuantizablePreSplit,
     Qwen2_5_VL_7B_VisionEncoder,
 )
-from qai_hub_models.utils.args import get_quantize_action_with_default
 
 
 def quantize_vision_encoder(
@@ -108,53 +111,12 @@ def main() -> None:
     )
 
     parser.add_argument(
-        "--use-seq-mse",
-        action="store_true",
-        default=False,
-        help="Add to apply Sequential MSE.",
-    )
-
-    parser.add_argument(
-        "--use-ada-scale",
-        action="store_true",
-        default=False,
-        help="Add to apply AdaScale.",
-    )
-
-    parser.add_argument(
-        "--num-samples",
-        type=int,
-        default=20,
-        help="Number of samples to be used for calibration.",
-    )
-
-    parser.add_argument(
-        "--seq-mse-num-samples",
-        type=int,
-        default=None,
-        help="Number of samples for sequential MSE.",
-    )
-
-    parser.add_argument(
-        "--ada-scale-num-samples",
-        type=int,
-        default=None,
-        help="Number of samples for AdaScale.",
-    )
-
-    parser.add_argument(
-        "--ada-scale-num-iterations",
-        type=int,
-        default=None,
-        help="Number of iterations for AdaScale.",
-    )
-
-    parser.add_argument(
         "--precision",
-        default=Precision.parse(SUPPORTED_PRECISIONS[0]),
-        action=get_quantize_action_with_default(SUPPORTED_PRECISIONS[0]),
-        choices=[str(p) for p in SUPPORTED_PRECISIONS],
-        help="Pick the precision with which the model must be quantized.",
+        type=str,
+        default=str(SUPPORTED_PRECISIONS[0]),
+        help="Quantization precision: either a precision name (e.g. 'w4a16') present "
+        "in the model's lm_quantization_details, or a path to a recipe YAML "
+        "({precision:, recipe:}). Defaults to the model's first supported precision.",
     )
 
     parser.add_argument(
@@ -171,15 +133,10 @@ def main() -> None:
         help="Skip LLM text model quantization (Pass 1).",
     )
 
-    parser.add_argument(
-        "--veg-num-samples",
-        type=int,
-        default=100,
-        help="Number of calibration samples for VEG quantization.",
-    )
-
     cli_args = sys.argv[1:]
     args = parser.parse_args(cli_args)
+
+    precision, recipe, _ = resolve_quantize_recipe(args.precision, MODEL_ID)
 
     # Pass 1: LLM text model
     if not args.skip_llm:
@@ -191,15 +148,10 @@ def main() -> None:
             fp_model_cls=Qwen2_5_VL_7B_PreSplit,
             context_length=args.context_length,
             seq_len=args.calibration_sequence_length,
-            precision=args.precision,
+            precision=precision,
             output_dir=args.output_dir,
-            num_samples=args.num_samples,
             checkpoint=args.checkpoint,
-            use_seq_mse=args.use_seq_mse,
-            use_ada_scale=args.use_ada_scale,
-            seq_mse_num_samples=args.seq_mse_num_samples,
-            ada_scale_num_samples=args.ada_scale_num_samples,
-            ada_scale_num_iterations=args.ada_scale_num_iterations,
+            recipe=recipe,
         )
     else:
         print("Skipping Pass 1 (LLM) as requested.")
@@ -212,7 +164,7 @@ def main() -> None:
         print("=" * 60)
         quantize_vision_encoder(
             output_dir=args.output_dir,
-            num_calibration_samples=args.veg_num_samples,
+            num_calibration_samples=resolve_veg_calibration_samples(recipe),
         )
     else:
         print("Skipping Pass 2 (VEG) as requested.")

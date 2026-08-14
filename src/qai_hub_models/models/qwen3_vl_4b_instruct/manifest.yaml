@@ -38,6 +38,45 @@ llm_details:
   call_to_action: Download and View Readme
   geniex_llamacpp_compatible: true
   genie_compatible: true
+lm_quantization_details:
+  w4a16:
+    precision:
+      blocks:
+        qtype: int4
+        granularity: PCQ
+      lm_head:
+        qtype: int8
+        granularity: PCQ
+      kv_cache: int8
+      activations: int16
+      visual:
+        weight:
+          qtype: int8
+          granularity: PCQ
+        activations: int16
+    recipe:
+      backbone:
+        - name: AdaScale
+          num_batches: 128
+          num_iterations: 2048
+          dataset:
+            name: Wikitext
+            split: train
+        - name: Calibration
+          num_iterations: 20
+          dataset:
+            name: Interleaved
+            source_datasets:
+              - name: AOKVQA
+                split: train
+              - name: Wikitext
+                split: train
+      visual:
+        - name: Calibration
+          num_iterations: 64
+          dataset:
+            name: Imagenette
+            split: train
 runtime_technical_details:
   geniex_qairt:
     model_infer_id: ai-hub-models/Qwen3-VL-4B-Instruct

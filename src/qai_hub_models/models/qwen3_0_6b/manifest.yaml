@@ -43,6 +43,36 @@ llm_details:
   genie_compatible: true
   geniex_llamacpp_compatible: true
   devices: {}
+lm_quantization_details:
+  w4a16:
+    precision:
+      blocks:
+        qtype: int4
+        granularity: PCQ
+      lm_head:
+        qtype: int8
+        granularity: PCQ
+      kv_cache: int8
+      activations: int16
+    recipe:
+      - name: SpinQuant
+        enable_r1: false
+        enable_r2: true
+        enable_r3: true
+      - name: AdaScale
+        num_batches: 128
+        num_iterations: 2048
+        dataset:
+          name: Wikitext
+          split: train
+      - name: Calibration
+        num_iterations: 20
+        dataset:
+          name: Interleaved
+          source_datasets:
+            - name: Wikitext
+              split: train
+            - name: GeneratedDataset
 runtime_technical_details:
   geniex_qairt:
     Input sequence length for Prompt Processor: '128'

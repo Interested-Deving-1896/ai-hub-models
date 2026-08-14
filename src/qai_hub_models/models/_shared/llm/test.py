@@ -13,6 +13,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from inspect import signature
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, _patch, patch
 
@@ -38,12 +39,31 @@ from qai_hub_models.models._shared.llm.model import (
     LLM_QNN,
     LLM_AIMETOnnx,
     LLMBase,
+    LLMDynamic_AIMETOnnx,
 )
 from qai_hub_models.models._shared.llm.perf_collection import (
     load_release_assets_for_model,
     update_perf_yaml,
 )
-from qai_hub_models.models._shared.llm.quantize import quantize
+from qai_hub_models.models._shared.llm.quantize import (
+    assert_realizable_precision,
+    derive_precision,
+    quantize,
+    resolve_dataset_cls,
+    resolve_quantize_recipe,
+    spec_is_multimodal,
+)
+from qai_hub_models.models._shared.lm_schema import (
+    AdaScaleSpec,
+    AOKVQASpec,
+    CalibrationSpec,
+    DatasetSpec,
+    InterleavedSpec,
+    PrecisionSchema,
+    Recipe,
+    SeqMSESpec,
+    WikitextSpec,
+)
 from qai_hub_models.scorecard import ScorecardDevice, ScorecardProfilePath
 from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE
 from qai_hub_models.scorecard.utils.fetch_prerelease_assets import (
@@ -774,6 +794,50 @@ def setup_test_quantization(
         and (Path(output_path) / "model.data").exists()
         and (Path(output_path) / "model_dynamic.onnx").exists()
     ):
+        # Build the technique chain the flag-style test knobs describe: optional
+        # SpinQuant (pre-sim), optional SeqMSE / AdaScale, then terminal Calibration.
+        # Datasets: the terminal Calibration reuses the model's REAL calibration
+        # dataset (pulled from its manifest recipe, so e.g. the VLM interleave is
+        # preserved); the synthesized weight-opt steps (SeqMSE / AdaScale) use plain
+        # WikiText, matching the old get_weight_optimization_data default.
+        weight_opt_dataset = {"name": "Wikitext", "split": "train"}
+        calibration_dataset: dict[str, Any] = weight_opt_dataset
+        try:
+            _, manifest_recipe, _ = resolve_quantize_recipe(
+                str(precision), model_cls.model_id
+            )
+            manifest_calibration = next(
+                s for s in manifest_recipe.backbone if isinstance(s, CalibrationSpec)
+            )
+            if manifest_calibration.dataset is not None:
+                calibration_dataset = manifest_calibration.dataset.model_dump(
+                    exclude_unset=True
+                )
+        except (ValueError, StopIteration):
+            # No manifest recipe / no Calibration step -> fall back to plain WikiText.
+            pass
+
+        steps: list[dict[str, Any]] = []
+        if spinquant_config:
+            steps.append({"name": "SpinQuant", **spinquant_config})
+        if use_seq_mse:
+            steps.append({"name": "SeqMSE", "dataset": weight_opt_dataset})
+        if use_ada_scale:
+            steps.append(
+                {
+                    "name": "AdaScale",
+                    "num_batches": ada_scale_num_samples,
+                    "num_iterations": ada_scale_num_iterations,
+                    "dataset": weight_opt_dataset,
+                }
+            )
+        steps.append(
+            {
+                "name": "Calibration",
+                "num_iterations": num_samples or None,
+                "dataset": calibration_dataset,
+            }
+        )
         quantize(
             quantized_model_cls=model_cls,
             fp_model_cls=fp_model_cls,
@@ -782,13 +846,8 @@ def setup_test_quantization(
             precision=precision,
             output_dir=output_path,
             checkpoint=checkpoint,
-            num_samples=num_samples,
-            use_seq_mse=use_seq_mse,
-            use_ada_scale=use_ada_scale,
-            ada_scale_num_samples=ada_scale_num_samples,
-            ada_scale_num_iterations=ada_scale_num_iterations,
             image_size=image_size,
-            spinquant_config=spinquant_config,
+            recipe=Recipe.model_validate(steps),
         )
         cleanup()
     return output_path
@@ -1152,3 +1211,413 @@ def run_llm_perf_test(
     finally:
         with contextlib.suppress(FileNotFoundError):
             os.unlink(jobs_file)
+
+
+# =============================================================================
+# Recipe-driven quantize path (lm_quantization_details). Pure/deterministic:
+# recipe resolution, precision derivation, dataset resolution, and
+# quantize_from_steps dispatch. Prefill and the aimet _apply_* calls are mocked.
+# =============================================================================
+def _wikitext() -> WikitextSpec:
+    return WikitextSpec(name="Wikitext", split="train")
+
+
+def _aokvqa_wikitext_interleave() -> InterleavedSpec:
+    return InterleavedSpec(
+        name="Interleaved",
+        source_datasets=[AOKVQASpec(name="AOKVQA"), _wikitext()],
+    )
+
+
+class TestDerivePrecision:
+    @pytest.mark.parametrize(
+        ("overrides", "expected"),
+        [
+            ({}, Precision.w4a16),  # default block == W4A16 contract
+            ({"activations": "float16"}, Precision.w4),
+            ({"activations": 16}, Precision.w4a16),  # bare int bitwidth
+        ],
+    )
+    def test_derives_realizable_precision(
+        self, overrides: dict, expected: Precision
+    ) -> None:
+        assert derive_precision(PrecisionSchema.model_validate(overrides)) == expected
+
+    def test_unrealizable_block_fails_loud(self) -> None:
+        # int8 weights match no realizable pattern -> no addressing key to guess.
+        schema = PrecisionSchema.model_validate(
+            {"blocks": {"qtype": "int8"}, "activations": "int16"}
+        )
+        with pytest.raises(ValueError, match="does not match any precision"):
+            derive_precision(schema)
+
+
+class TestResolveQuantizeRecipe:
+    def _patch_manifest(
+        self, monkeypatch: pytest.MonkeyPatch, details_by_precision: dict
+    ) -> None:
+        import qai_hub_models.configs.manifest_yaml as m
+
+        fake_manifest = SimpleNamespace(lm_quantization_details=details_by_precision)
+        monkeypatch.setattr(
+            m.QAIHMModelManifest, "from_model", staticmethod(lambda _mid: fake_manifest)
+        )
+
+    def test_precision_name_reads_manifest(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        recipe = Recipe.model_validate([{"name": "Calibration"}])
+        schema = PrecisionSchema()
+        self._patch_manifest(
+            monkeypatch,
+            {Precision.w4a16: SimpleNamespace(recipe=recipe, precision=schema)},
+        )
+        precision, r, sch = resolve_quantize_recipe("w4a16", "some_model")
+        assert (precision, r, sch) == (Precision.w4a16, recipe, schema)
+
+    def test_unknown_precision_name_fails_loud(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._patch_manifest(monkeypatch, {})
+        with pytest.raises(ValueError, match="No lm_quantization_details recipe"):
+            resolve_quantize_recipe("w4a16", "some_model")
+
+    def test_garbage_arg_fails_loud(self) -> None:
+        # Neither an existing file nor a parseable precision name.
+        with pytest.raises(ValueError, match="neither an existing file"):
+            resolve_quantize_recipe("not-a-precision-or-path", "some_model")
+
+    def test_recipe_file_path_derives_precision(self, tmp_path: Path) -> None:
+        # A user-authored {precision:, recipe:} file: precision derived from block.
+        f = tmp_path / "my_experiment.yaml"
+        f.write_text(
+            "recipe:\n  - name: AdaScale\n  - name: Calibration\n"
+            "precision:\n  activations: float16\n"
+        )
+        precision, r, _ = resolve_quantize_recipe(str(f), "some_model")
+        assert precision == Precision.w4  # float activations -> w4
+        assert [s.name for s in r.backbone] == ["AdaScale", "Calibration"]
+
+
+class TestResolveDatasetCls:
+    def test_wikitext(self) -> None:
+        from qai_hub_models.datasets.wikitext.wikitext import WikiText
+
+        assert resolve_dataset_cls(_wikitext()) is WikiText
+
+    def test_aokvqa_wikitext_interleave_maps_to_named_class(self) -> None:
+        from qai_hub_models.datasets.wikitext.interleaved_aokvqa_wikitext import (
+            InterleavedAOKVQAWikitext,
+        )
+
+        assert (
+            resolve_dataset_cls(_aokvqa_wikitext_interleave())
+            is InterleavedAOKVQAWikitext
+        )
+
+    def test_per_model_interleave_registration(self) -> None:
+        from qai_hub_models.datasets.wikitext.wikitext import WikiText
+        from qai_hub_models.models._shared.lm_schema import GeneratedDatasetSpec
+        from qai_hub_models.utils.base_dataset import BaseDataset
+
+        spec = InterleavedSpec(
+            name="Interleaved",
+            source_datasets=[
+                GeneratedDatasetSpec(name="GeneratedDataset"),
+                _wikitext(),
+            ],
+        )
+        # A per-model registration (here standing in with WikiText) resolves an
+        # interleave the central table doesn't know.
+        registry: dict[frozenset[str], type[BaseDataset]] = {
+            frozenset({"GeneratedDataset", "Wikitext"}): WikiText
+        }
+        assert resolve_dataset_cls(spec, registry) is WikiText
+
+    def test_unwired_datasets_fail_loud(self) -> None:
+        from qai_hub_models.models._shared.lm_schema import C4Spec, GeneratedDatasetSpec
+
+        # C4: shape-valid but no AIHM loader. Interleave: not in the central table
+        # and no per-model registration supplied.
+        with pytest.raises(ValueError, match="C4"):
+            resolve_dataset_cls(C4Spec(name="C4"))
+        unwired_interleave = InterleavedSpec(
+            name="Interleaved",
+            source_datasets=[
+                GeneratedDatasetSpec(name="GeneratedDataset"),
+                _wikitext(),
+            ],
+        )
+        with pytest.raises(ValueError, match="interleave"):
+            resolve_dataset_cls(unwired_interleave)
+
+
+class TestSpecIsMultimodal:
+    @pytest.mark.parametrize(
+        ("spec", "expected"),
+        [
+            (WikitextSpec(name="Wikitext"), False),
+            (AOKVQASpec(name="AOKVQA"), True),
+            (_aokvqa_wikitext_interleave(), True),  # interleave w/ an image source
+            (  # text-only interleave
+                InterleavedSpec(
+                    name="Interleaved",
+                    source_datasets=[
+                        WikitextSpec(name="Wikitext"),
+                        WikitextSpec(name="Wikitext"),
+                    ],
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_multimodal_iff_image_source(
+        self, spec: DatasetSpec, expected: bool
+    ) -> None:
+        assert spec_is_multimodal(spec) is expected
+
+
+class TestQuantizeFromStepsDispatch:
+    def _fake_self(self) -> MagicMock:
+        fake = MagicMock(spec=LLMDynamic_AIMETOnnx)
+        fake.ada_scale_model_type = "llama"
+        fake.ada_scale_num_rmsnorm_per_blk = None
+        # _resolve_step_dataset is real logic (each step must name its own dataset).
+        fake._resolve_step_dataset = (
+            lambda step: LLMDynamic_AIMETOnnx._resolve_step_dataset(fake, step)
+        )
+        # prefill_dataset returns a sentinel; dataset_entries_to_dataloader is
+        # patched to turn it into a length-2 fake loader.
+        fake.prefill_dataset = MagicMock(return_value=["entry"])
+        return fake
+
+    def _call(
+        self, fake: MagicMock, steps: list, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import qai_hub_models.utils.quantization_aimet_onnx as qmod
+
+        monkeypatch.setattr(
+            qmod, "dataset_entries_to_dataloader", lambda entries: [0, 0]
+        )
+        monkeypatch.setattr("torch.cuda.empty_cache", lambda: None)
+        LLMDynamic_AIMETOnnx.quantize_from_steps(fake, steps, seq_len=2048)
+
+    def test_all_three_run_in_recipe_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake = self._fake_self()
+        parent = MagicMock()
+        parent.attach_mock(fake._apply_seq_mse, "seq_mse")
+        parent.attach_mock(fake._apply_ada_scale, "ada")
+        parent.attach_mock(fake._apply_calibration, "calib")
+        self._call(
+            fake,
+            [
+                SeqMSESpec(name="SeqMSE", dataset=_wikitext()),
+                AdaScaleSpec(name="AdaScale", dataset=_wikitext()),
+                CalibrationSpec(name="Calibration", dataset=_wikitext()),
+            ],
+            monkeypatch,
+        )
+        assert [c[0] for c in parent.mock_calls] == ["seq_mse", "ada", "calib"]
+        # Applier consumes the whole prefilled loader (len == 2 here).
+        assert fake._apply_calibration.call_args.kwargs["num_batches"] == 2
+
+    def test_step_volume_sizes_prefill(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Calibration/SeqMSE use num_iterations; AdaScale uses num_batches to size
+        # the prefill, and forwards num_iterations (optimizer steps) to the applier.
+        fake = self._fake_self()
+        self._call(
+            fake,
+            [
+                CalibrationSpec(
+                    name="Calibration", num_iterations=8, dataset=_wikitext()
+                )
+            ],
+            monkeypatch,
+        )
+        assert fake.prefill_dataset.call_args.kwargs["num_samples"] == 8
+
+        fake = self._fake_self()
+        self._call(
+            fake,
+            [
+                AdaScaleSpec(
+                    name="AdaScale",
+                    num_batches=16,
+                    num_iterations=99,
+                    dataset=_wikitext(),
+                )
+            ],
+            monkeypatch,
+        )
+        assert fake.prefill_dataset.call_args.kwargs["num_samples"] == 16
+        assert fake._apply_ada_scale.call_args.kwargs["num_iterations"] == 99
+
+    def test_prefill_memoized_by_dataset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Same dataset + volume across steps -> ONE prefill; a distinct dataset is a
+        # second. Here SeqMSE+AdaScale share an interleave, Calibration uses Wikitext.
+        interleave = _aokvqa_wikitext_interleave()
+        fake = self._fake_self()
+        self._call(
+            fake,
+            [
+                SeqMSESpec(name="SeqMSE", dataset=interleave),
+                AdaScaleSpec(name="AdaScale", dataset=interleave),
+                CalibrationSpec(name="Calibration", dataset=_wikitext()),
+            ],
+            monkeypatch,
+        )
+        assert fake.prefill_dataset.call_count == 2
+
+    def test_data_consuming_step_without_dataset_fails_loud(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # No class-level default: a data-consuming step naming no dataset must fail
+        # loud at resolve time (not silently pick Wikitext).
+        fake = self._fake_self()
+        with pytest.raises(ValueError, match="names no `dataset:`"):
+            self._call(fake, [CalibrationSpec(name="Calibration")], monkeypatch)
+
+    def test_unimplemented_technique_fails_loud(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from qai_hub_models.models._shared.lm_schema import ClipSpec
+
+        fake = self._fake_self()
+        with pytest.raises(TypeError, match="not implemented"):
+            self._call(fake, [ClipSpec(name="Clip")], monkeypatch)
+
+
+class TestAssertRealizablePrecision:
+    @pytest.mark.parametrize(
+        ("precision", "overrides"),
+        [
+            (Precision.w4a16, None),  # None schema (synthesized recipe) is a no-op
+            (Precision.w4a16, {}),  # default block == W4A16
+            (
+                Precision.w4a16,
+                {
+                    "blocks": {"qtype": "int4", "granularity": "PCQ"},
+                    "lm_head": {"qtype": "int8", "granularity": "PCQ"},
+                    "kv_cache": "int8",
+                    "activations": "int16",
+                },
+            ),
+            (Precision.w4a16, {"activations": 16}),  # bare int bitwidth
+            (Precision.w4, {"activations": "float16"}),
+            # Backbone guard ignores the visual block (VLM module owns that check).
+            (
+                Precision.w4a16,
+                {"visual": {"weight": {"qtype": "int4"}, "activations": "int8"}},
+            ),
+        ],
+    )
+    def test_realizable_blocks_pass(
+        self, precision: Precision, overrides: dict | None
+    ) -> None:
+        schema = (
+            None if overrides is None else PrecisionSchema.model_validate(overrides)
+        )
+        assert_realizable_precision(precision, schema)
+
+    @pytest.mark.parametrize(
+        ("precision", "overrides", "match"),
+        [
+            (Precision.w4a16, {"activations": "int8"}, "inconsistent"),
+            (
+                Precision.w4a16,
+                {"blocks": {"qtype": "int8"}, "activations": "int16"},
+                "inconsistent",
+            ),
+            (Precision.w4, {"activations": "int16"}, "inconsistent"),
+            # w8a16 is a valid Precision but _configure_quant_sim can't build it.
+            (Precision.w8a16, {}, "can only realize"),
+        ],
+    )
+    def test_inconsistent_or_unrealizable_rejected(
+        self, precision: Precision, overrides: dict, match: str
+    ) -> None:
+        with pytest.raises(ValueError, match=match):
+            assert_realizable_precision(
+                precision, PrecisionSchema.model_validate(overrides)
+            )
+
+
+class TestAssertRealizableVisualPrecision:
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            ({}, None),  # no visual block -> no-op
+            ({"visual": {"weight": {"qtype": "int8"}, "activations": "int16"}}, None),
+            (
+                {"visual": {"weight": {"qtype": "int4"}, "activations": "int16"}},
+                "visual.weight",
+            ),
+            (
+                {"visual": {"weight": {"qtype": "int8"}, "activations": "int8"}},
+                "visual.activations",
+            ),
+        ],
+    )
+    def test_visual_block_realizability(
+        self, overrides: dict, match: str | None
+    ) -> None:
+        from qai_hub_models.models._shared.vlm.quantize import (
+            _assert_realizable_visual_precision,
+        )
+
+        schema = PrecisionSchema.model_validate(overrides)
+        if match is None:
+            _assert_realizable_visual_precision(Precision.w4a16, schema)
+        else:
+            with pytest.raises(ValueError, match=match):
+                _assert_realizable_visual_precision(Precision.w4a16, schema)
+
+
+class TestResolveVegCalibrationSamples:
+    def test_visual_num_iterations_is_the_count(self) -> None:
+        from qai_hub_models.models._shared.vlm.quantize import (
+            resolve_veg_calibration_samples,
+        )
+
+        recipe = Recipe.model_validate(
+            {
+                "backbone": [{"name": "Calibration"}],
+                "visual": [{"name": "Calibration", "num_iterations": 250}],
+            }
+        )
+        assert resolve_veg_calibration_samples(recipe) == 250
+
+    @pytest.mark.parametrize(
+        "recipe_data",
+        [
+            [{"name": "AdaScale"}, {"name": "Calibration"}],  # no visual chain
+            {  # visual Calibration without a count
+                "backbone": [{"name": "Calibration"}],
+                "visual": [{"name": "Calibration"}],
+            },
+        ],
+    )
+    def test_missing_visual_count_fails_loud(self, recipe_data: object) -> None:
+        from qai_hub_models.models._shared.vlm.quantize import (
+            resolve_veg_calibration_samples,
+        )
+
+        recipe = Recipe.model_validate(recipe_data)
+        with pytest.raises(ValueError, match="no visual Calibration count"):
+            resolve_veg_calibration_samples(recipe)
+
+    def test_non_calibration_visual_step_fails_loud(self) -> None:
+        from qai_hub_models.models._shared.vlm.quantize import (
+            resolve_veg_calibration_samples,
+        )
+
+        recipe = Recipe.model_validate(
+            {
+                "backbone": [{"name": "Calibration"}],
+                "visual": [{"name": "SeqMSE"}, {"name": "Calibration"}],
+            }
+        )
+        with pytest.raises(TypeError, match="only realizes Calibration"):
+            resolve_veg_calibration_samples(recipe)

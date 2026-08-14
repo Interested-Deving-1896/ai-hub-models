@@ -36,6 +36,28 @@ llm_details:
   call_to_action: View Readme
   genie_compatible: true
   devices: {}
+lm_quantization_details:
+  w4a16:
+    precision:
+      blocks:
+        qtype: int4
+        granularity: PCQ
+      lm_head:
+        qtype: int8
+        granularity: PCQ
+      kv_cache: int8
+      activations: int16
+    recipe:
+      - name: SeqMSE
+        num_iterations: 20
+        dataset:
+          name: Wikitext
+          split: train
+      - name: Calibration
+        num_iterations: 20
+        dataset:
+          name: Wikitext
+          split: train
 runtime_technical_details:
   geniex_qairt:
     Input sequence length for Prompt Processor: '128'

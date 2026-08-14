@@ -8,13 +8,18 @@ import argparse
 import gc
 import json
 import logging
+import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import torch
 
 from qai_hub_models import Precision
+from qai_hub_models.configs.manifest_yaml import (
+    LMQuantizationDetails,
+    QAIHMModelManifest,
+)
 from qai_hub_models.models._shared.llm.common import (
     TORCH_DYNAMIC_SHAPE_BELOW_VERSION,
     TORCH_DYNAMIC_SHAPE_MIN_VERSION,
@@ -29,33 +34,244 @@ from qai_hub_models.models._shared.llm.model import (
     LLMDynamicBase,
     SplitForwardMixin,
 )
-from qai_hub_models.utils.args import get_quantize_action_with_default
-from qai_hub_models.utils.dataset_util import dataset_entries_to_dataloader
+from qai_hub_models.models._shared.lm_schema import (
+    DatasetSpec,
+    InterleavedSpec,
+    PrecisionSchema,
+    QType,
+    QTypeRef,
+    Recipe,
+    pre_sim_flags,
+    split_recipe,
+)
 from qai_hub_models.utils.version_helpers import ensure_supported_version
+
+if TYPE_CHECKING:
+    from qai_hub_models.utils.base_dataset import BaseDataset
 
 logger = logging.getLogger(__name__)
 
 _SERIALIZABLE_TYPES = (str, int, float, bool)
 
-_VALID_SPIN_QUANT_PASSES = {"r1", "r2", "r3"}
+# Dataset resolution: recipe DatasetSpec -> AI Hub Models BaseDataset class, via
+# a hybrid registry (shared datasets here + per-model additions passed in).
+
+# Schema dataset names that carry images (a VLM must engage vision to prefill).
+_MULTIMODAL_DATASET_NAMES = frozenset({"AOKVQA", "MMMU"})
 
 
-def _parse_spin_quant_args(args: argparse.Namespace) -> dict | None:
-    """Convert --use-spin-quant CLI arg to a config dict."""
-    if args.use_spin_quant is None:
-        return None
-    passes = {p.strip().lower() for p in args.use_spin_quant.split(",")}
-    invalid = passes - _VALID_SPIN_QUANT_PASSES
-    if invalid:
+def _interleave_source_names(spec: InterleavedSpec) -> frozenset[str]:
+    return frozenset(s.name for s in spec.source_datasets)
+
+
+def spec_is_multimodal(spec: DatasetSpec) -> bool:
+    """True if prefilling this spec needs vision inputs (an image dataset, or an
+    interleave containing one). VLM prefill uses it to pick vision vs. text.
+    """
+    if isinstance(spec, InterleavedSpec):
+        return bool(_interleave_source_names(spec) & _MULTIMODAL_DATASET_NAMES)
+    return spec.name in _MULTIMODAL_DATASET_NAMES
+
+
+def resolve_dataset_cls(
+    spec: DatasetSpec,
+    extra_interleaved_datasets: dict[frozenset[str], type[BaseDataset]] | None = None,
+) -> type[BaseDataset]:
+    """Map a ``DatasetSpec`` to the ``BaseDataset`` class that loads it.
+
+    ``extra_interleaved_datasets`` (per-model interleaves keyed by source-name set)
+    are checked before the central table. Fails loud on datasets AIHM can't load.
+    """
+    from qai_hub_models.datasets.wikitext.interleaved_aokvqa_wikitext import (
+        InterleavedAOKVQAWikitext,
+    )
+    from qai_hub_models.datasets.wikitext.wikitext import WikiText
+
+    if isinstance(spec, InterleavedSpec):
+        sources = _interleave_source_names(spec)
+        central: dict[frozenset[str], type[BaseDataset]] = {
+            frozenset({"AOKVQA", "Wikitext"}): InterleavedAOKVQAWikitext,
+        }
+        table = {**central, **(extra_interleaved_datasets or {})}
+        cls = table.get(sources)
+        if cls is None:
+            raise ValueError(
+                f"No AI Hub Models dataset for an interleave of {sorted(sources)}. "
+                f"Known interleaves: {[sorted(k) for k in table]}. Register one via "
+                f"the model's `extra_interleaved_datasets`."
+            )
+        return cls
+
+    common_datasets: dict[str, type[BaseDataset]] = {"Wikitext": WikiText}
+    cls = common_datasets.get(spec.name)
+    if cls is None:
         raise ValueError(
-            f"Invalid SpinQuant passes: {sorted(invalid)}. "
-            f"Valid passes are: {sorted(_VALID_SPIN_QUANT_PASSES)}"
+            f"AI Hub Models cannot load calibration dataset {spec.name!r} today "
+            f"(known: {sorted(common_datasets)} plus registered interleaves). Re-quantize "
+            f"with a supported dataset, or add a loader for {spec.name!r}."
         )
-    return {
-        "enable_r1": "r1" in passes,
-        "enable_r2": "r2" in passes,
-        "enable_r3": "r3" in passes,
-    }
+    return cls
+
+
+# What _configure_quant_sim (model.py) realizes from each Precision key; the
+# manifest precision: block is cross-checked against this so it can't silently
+# lie. qtype fields: None == float (activations) or "not enforced" (kv_cache,
+# where the field is only set for keys that tie it). lm_head is int8 for every
+# realized key. get_hub_compile_options rejects any Precision not listed here.
+class _RealizablePattern(NamedTuple):
+    weight: QType
+    activations: QType | None
+    lm_head: QType
+    kv_cache: QType | None
+
+
+_REALIZABLE_PRECISION_PATTERNS: dict[Precision, _RealizablePattern] = {
+    # w4a16: _apply_int8_kv_cache_tying_and_lm_head ties KV + lm_head to int8.
+    Precision.w4a16: _RealizablePattern(
+        QType.int4, QType.int16, QType.int8, QType.int8
+    ),
+    # w4: _set_lm_head_to_8b only; float activations, KV not separately configured.
+    Precision.w4: _RealizablePattern(QType.int4, None, QType.int8, None),
+}
+
+
+def qtype_ref_to_qtype(ref: QTypeRef) -> QType | None:
+    """Resolve a ``QTypeRef`` to a ``QType``, or ``None`` for float (so it compares
+    equal to a ``Precision`` with no activation dtype). Accepts a bare int bitwidth.
+    """
+    if isinstance(ref, QType):
+        return None if ref in (QType.float16, QType.float32) else ref
+    try:
+        return QType(f"int{ref}")
+    except ValueError as e:
+        raise ValueError(
+            f"Unsupported integer bitwidth {ref!r} in precision section; "
+            f"expected one of {[q.value for q in QType]}."
+        ) from e
+
+
+def assert_realizable_precision(
+    precision: Precision, schema: PrecisionSchema | None
+) -> None:
+    """Fail loud unless the manifest ``precision:`` block resolves to what AIHM
+    realizes for its ``Precision`` key (the block is documentation, not the source of
+    truth). ``None`` (synthesized recipe, no authored block) is a no-op.
+    """
+    if schema is None:
+        return
+    if precision not in _REALIZABLE_PRECISION_PATTERNS:
+        raise ValueError(
+            f"lm_quantization_details has a recipe for precision {precision!s}, but "
+            f"AI Hub Models can only realize {sorted(str(p) for p in _REALIZABLE_PRECISION_PATTERNS)} "
+            f"for LLM/VLM quantization today. Remove the entry or add support in "
+            f"_configure_quant_sim."
+        )
+
+    pattern = _REALIZABLE_PRECISION_PATTERNS[precision]
+    got_weight = qtype_ref_to_qtype(schema.blocks["default"].qtype)
+    got_act = qtype_ref_to_qtype(schema.activations)
+
+    mismatches = []
+    if got_weight != pattern.weight:
+        mismatches.append(
+            f"block weights are {schema.blocks['default'].qtype!r} "
+            f"(resolves to {got_weight}), expected {pattern.weight}"
+        )
+    if got_act != pattern.activations:
+        want_desc = pattern.activations if pattern.activations is not None else "float"
+        mismatches.append(
+            f"activations are {schema.activations!r} (resolves to "
+            f"{got_act if got_act is not None else 'float'}), expected {want_desc}"
+        )
+    got_lm_head = qtype_ref_to_qtype(schema.lm_head.qtype)
+    if got_lm_head != pattern.lm_head:
+        mismatches.append(
+            f"lm_head is {schema.lm_head.qtype!r} (resolves to {got_lm_head}), "
+            f"expected {pattern.lm_head}"
+        )
+    # kv_cache only enforced for keys that tie it (w4a16); w4 leaves it float.
+    if pattern.kv_cache is not None:
+        got_kv = qtype_ref_to_qtype(schema.kv_cache)
+        if got_kv != pattern.kv_cache:
+            mismatches.append(
+                f"kv_cache is {schema.kv_cache!r} (resolves to {got_kv}), "
+                f"expected {pattern.kv_cache}"
+            )
+    if mismatches:
+        raise ValueError(
+            f"The precision: block under lm_quantization_details[{precision!s}] is "
+            f"inconsistent with the {precision!s} pattern AI Hub Models realizes: "
+            + "; ".join(mismatches)
+            + ". Fix the manifest precision block to match the Precision key."
+        )
+
+
+def derive_precision(schema: PrecisionSchema) -> Precision:
+    """Map a ``precision:`` block back to the AIHM ``Precision`` it realizes.
+
+    Quantize takes a recipe file (no ``--precision``), but AIHM still needs a
+    ``Precision`` object for QuantSim config and asset addressing. The reverse map
+    is total only over what AIHM realizes today (``_REALIZABLE_PRECISION_PATTERNS``);
+    anything else fails loud rather than guessing an addressing key.
+    """
+    got_weight = qtype_ref_to_qtype(schema.blocks["default"].qtype)
+    got_act = qtype_ref_to_qtype(schema.activations)
+    for precision, pattern in _REALIZABLE_PRECISION_PATTERNS.items():
+        if got_weight == pattern.weight and got_act == pattern.activations:
+            return precision
+    raise ValueError(
+        f"The recipe's precision block (block weights {schema.blocks['default'].qtype!r}, "
+        f"activations {schema.activations!r}) does not match any precision AI Hub Models "
+        f"can realize today ({sorted(str(p) for p in _REALIZABLE_PRECISION_PATTERNS)}). "
+        f"Add support in _configure_quant_sim or fix the recipe's precision block."
+    )
+
+
+def resolve_quantize_recipe(
+    recipe_arg: str,
+    model_id: str,
+) -> tuple[Precision, Recipe, PrecisionSchema]:
+    """Resolve ``--precision`` (a precision name or a recipe file path) to this
+    run's ``(precision, recipe, precision_schema)``.
+
+    * A precision name (e.g. ``w4a16``) selects the model's manifest
+      ``lm_quantization_details`` entry; the dict key *is* the ``Precision``.
+    * A path loads a user-authored ``{precision:, recipe:}`` file; its ``Precision``
+      is derived from the file's precision block (:func:`derive_precision`).
+
+    Fails loud when the name has no manifest recipe or the path does not exist --
+    there is no implicit default recipe.
+    """
+    if os.path.exists(recipe_arg):
+        details = LMQuantizationDetails.from_yaml(recipe_arg)
+        precision = derive_precision(details.precision)
+        logger.info(
+            "Using recipe file %s (precision %s) for %s.",
+            recipe_arg,
+            precision,
+            model_id,
+        )
+        return precision, details.recipe, details.precision
+
+    # Not a file -> treat as a precision name and look it up in the manifest.
+    try:
+        precision = Precision.parse(recipe_arg)
+    except Exception as e:
+        raise ValueError(
+            f"--precision {recipe_arg!r} is neither an existing file nor a valid "
+            f"precision name. Pass a precision name (e.g. 'w4a16') present in the "
+            f"model's lm_quantization_details, or a path to a recipe YAML."
+        ) from e
+
+    manifest = QAIHMModelManifest.from_model(model_id)
+    manifest_details = manifest.lm_quantization_details.get(precision)
+    if manifest_details is None:
+        raise ValueError(
+            f"No lm_quantization_details recipe for {model_id} at precision "
+            f"{precision}. Author one in the model's manifest.yaml, or pass a recipe "
+            f"file path to --precision."
+        )
+    return precision, manifest_details.recipe, manifest_details.precision
 
 
 def save_command_args(
@@ -81,17 +297,18 @@ def quantize(
     seq_len: int,
     precision: Precision,
     output_dir: str,
-    num_samples: int = 0,
+    recipe: Recipe,
     checkpoint: str | None = None,
-    use_seq_mse: bool = False,
-    use_ada_scale: bool = False,
-    seq_mse_num_samples: int | None = None,
-    ada_scale_num_samples: int | None = None,
-    ada_scale_num_iterations: int | None = None,
     image_size: tuple[int, int] | None = None,
     fp_model: LLMBase | None = None,
-    spinquant_config: dict | None = None,
 ) -> None:
+    """Quantize an LLM/VLM backbone and save the calibrated checkpoint.
+
+    Driven by a validated ``Recipe``. Split into a pre-sim prefix (SpinQuant, on the
+    float graph before QuantSim) and on-sim steps (run by ``quantize_from_steps``).
+    Per-step sample counts come from the recipe (``num_iterations``/``num_batches``);
+    a step that leaves them unset draws the model's default calibration pool.
+    """
     # Every deployable LLM/VLM routes through the dynamic-shape classes
     # (DynamicQuantizablePreSplitMixin + LLMDynamic_AIMETOnnx). The static
     # code paths are dead, so require the dynamic class here rather than
@@ -100,6 +317,17 @@ def quantize(
         f"{quantized_model_cls.__name__} is not a DynamicQuantizablePreSplitMixin; "
         "only dynamic-shape quantization is supported."
     )
+
+    # Pre-sim (SpinQuant) is lowered to flat dicts for the backend flag API; the
+    # backbone on-sim tail stays as typed specs for quantize_from_steps (the VEG is
+    # quantized separately).
+    pre_sim, _ = split_recipe(recipe)
+    _, on_sim_steps = recipe.phased_steps("backbone")
+    spinquant_config = pre_sim_flags(pre_sim, "SpinQuant")
+
+    step_names = {s.name for s in on_sim_steps}
+    use_seq_mse = "SeqMSE" in step_names
+    use_ada_scale = "AdaScale" in step_names
 
     # Calibration should run on the PreSplit (monolithic QuantSim) class. A
     # split-forward wrapper stacks one ORT session per Part on the monolithic and
@@ -186,36 +414,7 @@ def quantize(
         _skip_quantsim_creation=False,
     )
 
-    # Determine how many samples we need
-    num_max_samples = 0
-    if num_samples is not None:
-        num_max_samples = num_samples
-    if use_seq_mse and seq_mse_num_samples is not None:
-        num_max_samples = max(num_max_samples, seq_mse_num_samples)
-    if use_ada_scale and ada_scale_num_samples is not None:
-        num_max_samples = max(num_max_samples, ada_scale_num_samples)
-
     assert isinstance(model_quant, LLMDynamic_AIMETOnnx)
-    calib_data = model_quant.get_calibration_data(
-        num_samples=num_max_samples,
-        sequence_length=seq_len,
-        context_length=context_length,
-        image_size=image_size,
-    )
-    assert calib_data is not None
-    dataloader = dataset_entries_to_dataloader(calib_data)
-
-    weight_optim_dataloader = None
-    if use_seq_mse or use_ada_scale:
-        optim_num_samples = max(seq_mse_num_samples or 0, ada_scale_num_samples or 0)
-        optim_data = model_quant.get_weight_optimization_data(
-            num_samples=optim_num_samples,
-            sequence_length=seq_len,
-            context_length=context_length,
-            image_size=image_size,
-        )
-        if optim_data is not None:
-            weight_optim_dataloader = dataset_entries_to_dataloader(optim_data)
 
     gc.collect()
     torch.cuda.empty_cache()
@@ -224,16 +423,13 @@ def quantize(
         print()
         print("NOTE: This quantization technique can take hours to complete.")
 
-    # Do calibration
-    model_quant.quantize(
-        data=dataloader,
-        num_samples=num_samples,
-        use_seq_mse=use_seq_mse,
-        use_ada_scale=use_ada_scale,
-        seq_mse_num_samples=seq_mse_num_samples,
-        ada_scale_num_samples=ada_scale_num_samples,
-        ada_scale_num_iterations=ada_scale_num_iterations,
-        weight_optimization_data=weight_optim_dataloader,
+    # Run the on-sim steps (resolve + prefill + apply happen per-step inside
+    # quantize_from_steps); each step's data volume comes from the recipe.
+    model_quant.quantize_from_steps(
+        on_sim_steps,
+        seq_len=seq_len,
+        context_length=context_length,
+        image_size=image_size,
     )
 
     model_quant.save_calibrated_checkpoint(output_dir, fp_model=fp_model)
@@ -280,76 +476,30 @@ def llm_quantize(
         help="Input directory with custom weights.",
     )
     parser.add_argument(
-        "--use-seq-mse",
-        action="store_true",
-        default=False,
-        help="Add to apply Sequential MSE.",
-    )
-    parser.add_argument(
-        "--use-ada-scale",
-        action="store_true",
-        default=False,
-        help="Add to apply AdaScale.",
-    )
-    parser.add_argument(
-        "--num-samples",
-        type=int,
-        default=20,
-        help="Number of samples to be used for calibration.",
-    )
-    parser.add_argument(
-        "--seq-mse-num-samples",
-        type=int,
-        default=None,
-        help="Number of samples for sequential MSE. Defaults to --num-samples.",
-    )
-    parser.add_argument(
-        "--ada-scale-num-samples",
-        type=int,
-        default=None,
-        help="Number of samples for AdaScale.",
-    )
-    parser.add_argument(
-        "--ada-scale-num-iterations",
-        type=int,
-        default=None,
-        help="Number of iterations for AdaScale.",
-    )
-    parser.add_argument(
         "--precision",
-        default=Precision.parse(supported_precisions[0]),
-        action=get_quantize_action_with_default(supported_precisions[0]),
-        choices=[str(p) for p in supported_precisions],
-        help="Pick the precision with which the model must be quantized.",
-    )
-    parser.add_argument(
-        "--use-spin-quant",
         type=str,
-        default=None,
-        metavar="PASSES",
-        help="Comma-separated SpinQuant passes to apply (r1,r2,r3). "
-        "Example: --use-spin-quant r1,r3",
+        default=str(supported_precisions[0]),
+        help="Quantization precision: either a precision name (e.g. 'w4a16') present "
+        "in the model's lm_quantization_details, or a path to a recipe YAML "
+        "({precision:, recipe:}). Defaults to the model's first supported precision.",
     )
     cli_args = sys.argv[1:]
     args = parser.parse_args(cli_args)
 
-    spinquant_config = _parse_spin_quant_args(args)
+    precision, recipe, precision_schema = resolve_quantize_recipe(
+        args.precision, model_id
+    )
+    assert_realizable_precision(precision, precision_schema)
 
     quantize(
         quantized_model_cls=quantized_model_cls,
         fp_model_cls=fp_model_cls,
         context_length=args.context_length,
-        precision=args.precision,
+        precision=precision,
         seq_len=args.calibration_sequence_length,
         output_dir=args.output_dir,
-        num_samples=args.num_samples,
         checkpoint=args.checkpoint,
-        use_seq_mse=args.use_seq_mse,
-        use_ada_scale=args.use_ada_scale,
-        seq_mse_num_samples=args.seq_mse_num_samples,
-        ada_scale_num_samples=args.ada_scale_num_samples,
-        ada_scale_num_iterations=args.ada_scale_num_iterations,
-        spinquant_config=spinquant_config,
+        recipe=recipe,
     )
 
     save_command_args(Path(args.output_dir) / "args.json", args, cli_args)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,12 +21,99 @@ from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
 )
 from qai_hub_models.models._shared.llm.quantize import (
-    _parse_spin_quant_args,
+    assert_realizable_precision,
+    qtype_ref_to_qtype,
     quantize,
+    resolve_quantize_recipe,
     save_command_args,
 )
-from qai_hub_models.utils.args import get_quantize_action_with_default
+from qai_hub_models.models._shared.lm_schema import (
+    CalibrationSpec,
+    PrecisionSchema,
+    QType,
+    Recipe,
+)
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
+
+logger = logging.getLogger(__name__)
+
+# The VEG is quantized structurally to int8 weights / int16 activations regardless
+# of the backbone Precision key (Qwen3VLVisionEncoder.create_quantsim_from_onnx).
+_REALIZABLE_VISUAL_PATTERN: tuple[QType, QType] = (QType.int8, QType.int16)
+
+
+def _assert_realizable_visual_precision(
+    precision: Precision, schema: PrecisionSchema | None
+) -> None:
+    """Fail loud unless a manifest ``precision.visual`` block resolves to the VEG's
+    realized int8-weight / int16-activation pattern. No block (or synthesized recipe,
+    ``schema is None``) => no-op. Lives here, with the VEG, not in the LLM module.
+    """
+    if schema is None or schema.visual is None:
+        return
+    want_weight, want_act = _REALIZABLE_VISUAL_PATTERN
+    got_weight = qtype_ref_to_qtype(schema.visual.weight.qtype)
+    got_act = qtype_ref_to_qtype(schema.visual.activations)
+    mismatches = []
+    if got_weight != want_weight:
+        mismatches.append(
+            f"visual.weight is {schema.visual.weight.qtype!r} (resolves to "
+            f"{got_weight}), expected {want_weight} (the VEG quantizes weights to int8)"
+        )
+    if got_act != want_act:
+        mismatches.append(
+            f"visual.activations are {schema.visual.activations!r} (resolves to "
+            f"{got_act if got_act is not None else 'float'}), expected {want_act} "
+            f"(the VEG quantizes activations to int16)"
+        )
+    if mismatches:
+        raise ValueError(
+            f"The precision.visual block under lm_quantization_details[{precision!s}] "
+            f"is inconsistent with what the VEG realizes: "
+            + "; ".join(mismatches)
+            + "."
+        )
+
+
+def resolve_veg_calibration_samples(recipe: Recipe) -> int:
+    """Validate the recipe's ``visual`` chain and return the VEG calibration image count.
+
+    The count is fully recipe-owned (there is no ``--veg-num-samples`` flag): the
+    visual chain must be a single ``Calibration`` whose ``num_iterations`` (one image
+    == one iteration) gives the count. The VEG is calibration-only (its ``calibrate``
+    is a plain ``compute_encodings``, no SeqMSE/AdaScale applier), so a non-Calibration
+    visual step fails loud, as does a missing count -- there is no implicit default.
+    Its ``dataset`` is ignored (the VEG uses its built-in imagenette images).
+    """
+    _, visual_steps = recipe.phased_steps("visual")
+    num_samples: int | None = None
+    for step in visual_steps:
+        if not isinstance(step, CalibrationSpec):
+            raise TypeError(
+                f"The recipe's visual chain contains {step.name!r}, but the VLM "
+                f"vision encoder (VEG) only realizes Calibration today (it has no "
+                f"{step.name!r} applier). Remove it from the visual chain, or add "
+                f"VEG support for {step.name!r}."
+            )
+        # The VEG always calibrates on its built-in imagenette images. Naming
+        # "Imagenette" matches that, so it's not surprising -- only warn when a
+        # DIFFERENT dataset is named, which really would be silently ignored.
+        if step.dataset is not None and step.dataset.name != "Imagenette":
+            logger.warning(
+                "The visual Calibration step names dataset %r, but the VEG "
+                "calibrates on its built-in imagenette images; the dataset spec "
+                "is ignored.",
+                step.dataset.name,
+            )
+        if step.num_iterations:
+            num_samples = step.num_iterations
+    if num_samples is None:
+        raise ValueError(
+            "The VLM recipe has no visual Calibration count: its `visual` chain must "
+            "contain a Calibration step with `num_iterations` (the VEG calibration "
+            "image count). Add one to the recipe's visual chain."
+        )
+    return num_samples
 
 
 def _quantize_vision_encoder(
@@ -136,47 +224,12 @@ def quantize_vlm(
         help="Input directory with custom weights.",
     )
     parser.add_argument(
-        "--use-seq-mse",
-        action="store_true",
-        default=False,
-        help="Add to apply Sequential MSE.",
-    )
-    parser.add_argument(
-        "--use-ada-scale",
-        action="store_true",
-        default=False,
-        help="Add to apply AdaScale.",
-    )
-    parser.add_argument(
-        "--num-samples",
-        type=int,
-        default=20,
-        help="Number of samples to be used for calibration.",
-    )
-    parser.add_argument(
-        "--seq-mse-num-samples",
-        type=int,
-        default=None,
-        help="Number of samples for sequential MSE.",
-    )
-    parser.add_argument(
-        "--ada-scale-num-samples",
-        type=int,
-        default=None,
-        help="Number of samples for AdaScale.",
-    )
-    parser.add_argument(
-        "--ada-scale-num-iterations",
-        type=int,
-        default=None,
-        help="Number of iterations for AdaScale.",
-    )
-    parser.add_argument(
         "--precision",
-        default=Precision.parse(supported_precisions[0]),
-        action=get_quantize_action_with_default(supported_precisions[0]),
-        choices=[str(p) for p in supported_precisions],
-        help="Pick the precision with which the model must be quantized.",
+        type=str,
+        default=str(supported_precisions[0]),
+        help="Quantization precision: either a precision name (e.g. 'w4a16') present "
+        "in the model's lm_quantization_details, or a path to a recipe YAML "
+        "({precision:, recipe:}). Defaults to the model's first supported precision.",
     )
     parser.add_argument(
         "--skip-veg",
@@ -191,12 +244,6 @@ def quantize_vlm(
         help="Skip LLM text model quantization.",
     )
     parser.add_argument(
-        "--veg-num-samples",
-        type=int,
-        default=100,
-        help="Number of calibration samples for VEG quantization.",
-    )
-    parser.add_argument(
         "--image-size",
         type=int,
         nargs=2,
@@ -205,19 +252,15 @@ def quantize_vlm(
         help="Image size (height width) used to resize calibration images. "
         "Must match the size the model's input spec is built for.",
     )
-    parser.add_argument(
-        "--use-spin-quant",
-        type=str,
-        default=None,
-        metavar="PASSES",
-        help="Comma-separated SpinQuant passes to apply (r1,r2,r3). "
-        "Example: --use-spin-quant r1,r3",
-    )
 
     cli_args = sys.argv[1:]
     args = parser.parse_args(cli_args)
 
-    spinquant_config = _parse_spin_quant_args(args)
+    precision, recipe, precision_details = resolve_quantize_recipe(
+        args.precision, model_id
+    )
+    assert_realizable_precision(precision, precision_details)
+    _assert_realizable_visual_precision(precision, precision_details)
 
     # LLM backbone quantization (export -> SpinQuant -> QuantSim -> calibrate -> save)
     if not args.skip_llm:
@@ -226,23 +269,18 @@ def quantize_vlm(
             fp_model_cls=fp_model_cls,
             context_length=args.context_length,
             seq_len=args.calibration_sequence_length,
-            precision=args.precision,
+            precision=precision,
             output_dir=args.output_dir,
-            num_samples=args.num_samples,
             checkpoint=args.checkpoint,
-            use_seq_mse=args.use_seq_mse,
-            use_ada_scale=args.use_ada_scale,
-            seq_mse_num_samples=args.seq_mse_num_samples,
-            ada_scale_num_samples=args.ada_scale_num_samples,
-            ada_scale_num_iterations=args.ada_scale_num_iterations,
             image_size=tuple(args.image_size),
-            spinquant_config=spinquant_config,
+            recipe=recipe,
         )
     else:
         print("Skipping LLM quantization as requested.")
 
-    # VEG quantization (loads rotated VEG ONNX from disk if present)
+    # VEG quantization (loads rotated VEG ONNX from disk if present).
     if not args.skip_veg:
+        veg_num_samples = resolve_veg_calibration_samples(recipe)
         print()
         print("=" * 60)
         print("Vision Encoder (VEG) Quantization")
@@ -252,7 +290,7 @@ def quantize_vlm(
             output_dir=args.output_dir,
             image_height=args.image_size[0],
             image_width=args.image_size[1],
-            num_calibration_samples=args.veg_num_samples,
+            num_calibration_samples=veg_num_samples,
         )
     else:
         print("Skipping VEG quantization as requested.")

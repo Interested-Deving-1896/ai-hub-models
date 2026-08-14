@@ -132,8 +132,17 @@ MANUAL_EDGES = {
         *REPRESENTATIVE_EXPORT_FILES,
         REPRESENTATIVE_AIMET_MODEL_FILE,
     ],
+    # Hosts the shared AIMET quantize path (quantize_from_steps) used by LLMs and
+    # VLMs in addition to the SD collection model, so a change here must exercise
+    # a representative beyond SD. The text-LLM path is covered by the qwen-VL
+    # backbone (a text transformer), so llama/qwen text reps are omitted to keep
+    # this fan-out cheap.
     "src/qai_hub_models/utils/quantization_aimet_onnx.py": [
         REPRESENTATIVE_AIMET_MODEL_FILE,
+        LLAMA_REPRESENTATIVE_EXPORT_FILE,
+        QWEN_VL_REPRESENTATIVE_EXPORT_FILE,
+        GEMMA4_REPRESENTATIVE_EXPORT_FILE,
+        PI05_REPRESENTATIVE_EXPORT_FILE,
     ],
     "src/qai_hub_models/utils/export/pipeline.py": [SINET_EXPORT_FILE],
     "src/qai_hub_models/utils/export/collection_pipeline.py": [

@@ -13,8 +13,9 @@ tied-embedding encoding fix). This module supplies the 1.7B-specific architectur
 constants and the small concrete subclasses (Part classes + the Collection,
 whose ``parts`` mapping registers the Part classes).
 
-Quantization uses the SpinQuant (R1+R3) -> AdaScale -> Calibration recipe;
-SpinQuant passes are specified via ``--use-spin-quant r1,r3`` on the quantize CLI.
+Quantization uses the SpinQuant (R1+R3) -> AdaScale -> Calibration recipe,
+authored in the model's ``manifest.yaml`` under ``lm_quantization_details`` (or
+supplied as a ``--precision`` recipe YAML on the quantize CLI).
 """
 
 from __future__ import annotations
@@ -131,7 +132,7 @@ class Qwen3_1_7B_QuantizablePreSplit(Qwen3QuantizablePreSplitBase[Qwen3_1_7B_Pre
 
     # AdaScale config (16 attn heads + 8 KV heads + 1).
     ada_scale_num_rmsnorm_per_blk = NUM_ATTN_HEADS + NUM_KEY_VALUE_HEADS + 1
-    # SpinQuant (R1+R3) is applied via `--use-spin-quant r1,r3` on the quantize CLI.
+    # SpinQuant (R1+R3) is a pre-sim step in the quant recipe (lm_quantization_details).
     supports_thinking = True
     int8_param_names = INT8_PARAM_NAMES
 

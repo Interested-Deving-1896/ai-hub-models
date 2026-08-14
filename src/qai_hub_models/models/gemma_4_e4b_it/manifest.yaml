@@ -43,6 +43,28 @@ llm_details:
   call_to_action: Download and View Readme
   geniex_llamacpp_compatible: true
   genie_compatible: true
+lm_quantization_details:
+  w4a16:
+    precision:
+      blocks:
+        qtype: int4
+        granularity: PCQ
+      lm_head:
+        qtype: int8
+        granularity: PCQ
+      kv_cache: int8
+      activations: int16
+    recipe:
+      - name: SeqMSE
+        num_iterations: 20
+        dataset:
+          name: Wikitext
+          split: train
+      - name: Calibration
+        num_iterations: 20
+        dataset:
+          name: Wikitext
+          split: train
 runtime_technical_details:
   geniex_qairt:
     model_infer_id: ai-hub-models/Gemma-4-E4B-it
