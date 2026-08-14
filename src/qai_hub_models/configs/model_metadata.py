@@ -19,8 +19,13 @@ import qai_hub as hub
 from qai_hub_models_cli.proto import model_metadata_pb2, platform_pb2
 
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.configs._info_yaml_enums import MODEL_USE_CASE
 from qai_hub_models.configs.chipset_yaml import ChipsetYaml, WebsiteWorld
-from qai_hub_models.configs.proto_helpers import precision_to_proto, runtime_to_proto
+from qai_hub_models.configs.proto_helpers import (
+    precision_to_proto,
+    runtime_to_proto,
+    use_case_to_proto,
+)
 from qai_hub_models.configs.tensor_spec import (
     QuantizationParameters,
     TensorSpec,
@@ -356,6 +361,9 @@ class ModelMetadata(BaseQAIHMConfig):
         Optional structured tokenizer parameters required to preprocess inputs.
         When present, applications can use this to configure the tokenizer without
         consulting external documentation.
+    use_case
+        The model's use case (e.g. text generation, object detection). Sourced
+        from info.yaml.
     """
 
     model_id: str = ""
@@ -368,6 +376,7 @@ class ModelMetadata(BaseQAIHMConfig):
     genie: GenieMetadata | None = None
     chipset_attributes: ChipsetAttributes | None = None
     tokenizer: TokenizerMetadata | None = None
+    use_case: MODEL_USE_CASE | None = None
 
     def to_yaml(
         self,
@@ -419,6 +428,7 @@ class ModelMetadata(BaseQAIHMConfig):
             chipset_attributes=self.chipset_attributes.to_proto()
             if self.chipset_attributes
             else None,
+            use_case=use_case_to_proto(self.use_case) if self.use_case else 0,
         )
 
 

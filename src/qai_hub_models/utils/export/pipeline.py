@@ -283,6 +283,7 @@ def export_model(
             target_model=target_model,
             zip_assets=zip_assets,
             hub_device=device,
+            use_case=manifest.use_case,
         )
 
     if not skip_summary:

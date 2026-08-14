@@ -12,6 +12,7 @@ syntax = "proto3";
 
 package qaihm;
 
+import "info.proto";
 import "platform.proto";
 import "shared/precision.proto";
 import "shared/runtime.proto";
@@ -142,4 +143,7 @@ message ModelMetadata {
 
   // Optional structured tokenizer parameters required to preprocess inputs.
   optional TokenizerMetadata tokenizer = 11;
+
+  // The model's use case (e.g. text generation, object detection).
+  ModelUseCase use_case = 12;
 }

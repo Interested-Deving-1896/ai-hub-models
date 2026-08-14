@@ -25,6 +25,7 @@ from qai_hub_models.utils.args import get_export_model_name, get_model_kwargs
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.export.compile import run_multi_graph_compile
 from qai_hub_models.utils.export.context import (
+    resolve_manifest,
     resolve_model_cls,
     resolve_model_display_name,
     resolve_model_id,
@@ -118,6 +119,7 @@ def export_model(
             f"`qai-hub-models fetch {model_id}` instead."
         )
 
+    manifest = resolve_manifest(source_dir)
     model_cls = resolve_model_cls(source_dir)
     display_name = resolve_model_display_name(source_dir)
     additional_model_kwargs["precision"] = precision
@@ -204,6 +206,7 @@ def export_model(
             target_model=target_model,
             zip_assets=zip_assets,
             hub_device=device,
+            use_case=manifest.use_case,
         )
 
     if not skip_summary:

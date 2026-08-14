@@ -22,6 +22,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+from qai_hub_models_cli.proto import info_pb2
 from qai_hub_models_cli.proto import platform_pb2
 import shared.precision_pb2
 import shared.runtime_pb2
@@ -340,12 +341,15 @@ class ModelMetadata(google.protobuf.message.Message):
     GENIE_FIELD_NUMBER: builtins.int
     CHIPSET_ATTRIBUTES_FIELD_NUMBER: builtins.int
     TOKENIZER_FIELD_NUMBER: builtins.int
+    USE_CASE_FIELD_NUMBER: builtins.int
     aihm_version: builtins.str
     model_id: builtins.str
     model_name: builtins.str
     runtime: shared.runtime_pb2.Runtime.ValueType
     """Export configuration"""
     precision: shared.precision_pb2.Precision.ValueType
+    use_case: info_pb2.ModelUseCase.ValueType
+    """The model's use case (e.g. text generation, object detection)."""
     @property
     def tool_versions(self) -> shared.tool_versions_pb2.ToolVersions: ...
     @property
@@ -386,9 +390,10 @@ class ModelMetadata(google.protobuf.message.Message):
         genie: global___GenieMetadata | None = ...,
         chipset_attributes: platform_pb2.ChipsetInfo | None = ...,
         tokenizer: global___TokenizerMetadata | None = ...,
+        use_case: info_pb2.ModelUseCase.ValueType = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "_tokenizer", b"_tokenizer", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "tokenizer", b"tokenizer", "tool_versions", b"tool_versions"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "_tokenizer", b"_tokenizer", "aihm_version", b"aihm_version", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "model_files", b"model_files", "model_id", b"model_id", "model_name", b"model_name", "precision", b"precision", "runtime", b"runtime", "supplementary_files", b"supplementary_files", "tokenizer", b"tokenizer", "tool_versions", b"tool_versions"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_chipset_attributes", b"_chipset_attributes", "_genie", b"_genie", "_tokenizer", b"_tokenizer", "aihm_version", b"aihm_version", "chipset_attributes", b"chipset_attributes", "genie", b"genie", "model_files", b"model_files", "model_id", b"model_id", "model_name", b"model_name", "precision", b"precision", "runtime", b"runtime", "supplementary_files", b"supplementary_files", "tokenizer", b"tokenizer", "tool_versions", b"tool_versions", "use_case", b"use_case"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_chipset_attributes", b"_chipset_attributes"]) -> typing.Literal["chipset_attributes"] | None: ...
     @typing.overload

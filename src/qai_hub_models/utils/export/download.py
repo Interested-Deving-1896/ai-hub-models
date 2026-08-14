@@ -14,6 +14,7 @@ from pathlib import Path
 import qai_hub as hub
 
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.configs._info_yaml_enums import MODEL_USE_CASE
 from qai_hub_models.configs.model_metadata import (
     ChipsetAttributes,
     ModelFileMetadata,
@@ -47,6 +48,7 @@ def download_model_bundle(
     target_model: hub.Model,
     zip_assets: bool,
     hub_device: hub.Device | None = None,
+    use_case: MODEL_USE_CASE | None = None,
 ) -> Path:
     """Download the compiled hub model and write semantic + file metadata alongside it."""
     output_folder_name = os.path.basename(output_dir)
@@ -80,6 +82,7 @@ def download_model_bundle(
                 if runtime.is_aot_compiled
                 else None
             ),
+            use_case=use_case,
         )
 
         model.write_supplementary_files(dst_path, model_metadata)
@@ -138,6 +141,7 @@ def download_collection_model_bundle(
     target_models: ComponentGroup[hub.Model],
     zip_assets: bool,
     hub_device: hub.Device | None = None,
+    use_case: MODEL_USE_CASE | None = None,
 ) -> Path:
     """Download each component's hub model and write combined semantic metadata."""
     output_folder_name = os.path.basename(output_dir)
@@ -185,6 +189,7 @@ def download_collection_model_bundle(
                 if runtime.is_aot_compiled
                 else None
             ),
+            use_case=use_case,
         )
         model.write_supplementary_files(dst_path, model_metadata)
         model_metadata.to_json(dst_path / "metadata.json")
@@ -213,6 +218,7 @@ def download_multi_graph_collection_model_bundle(
     target_models: ComponentGroup[hub.Model],
     zip_assets: bool,
     hub_device: hub.Device | None = None,
+    use_case: MODEL_USE_CASE | None = None,
 ) -> Path:
     """
     Download each component's hub model and merge metadata across every graph
@@ -256,6 +262,7 @@ def download_multi_graph_collection_model_bundle(
                 if runtime.is_aot_compiled
                 else None
             ),
+            use_case=use_case,
         )
         model.write_supplementary_files(dst_path, model_metadata)
         model_metadata.to_json(dst_path / "metadata.json")
@@ -284,6 +291,7 @@ def download_multi_graph_model_bundle(
     target_model: hub.Model,
     zip_assets: bool,
     hub_device: hub.Device | None = None,
+    use_case: MODEL_USE_CASE | None = None,
 ) -> Path:
     """
     Download the linked context binary and merge metadata across every graph
@@ -322,6 +330,7 @@ def download_multi_graph_model_bundle(
                 if runtime.is_aot_compiled
                 else None
             ),
+            use_case=use_case,
         )
         model.write_supplementary_files(dst_path, model_metadata)
         model_metadata.to_json(dst_path / "metadata.json")

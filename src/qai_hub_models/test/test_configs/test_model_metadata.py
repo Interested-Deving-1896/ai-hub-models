@@ -6,8 +6,10 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from qai_hub_models_cli.proto import info_pb2
 
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.configs._info_yaml_enums import MODEL_USE_CASE
 from qai_hub_models.configs.model_metadata import (
     GenieChatTemplate,
     GenieMetadata,
@@ -818,3 +820,44 @@ def test_genie_chat_template_thinking_tags_gemma4_shape() -> None:
         assert chat["think_start"] == "<|channel>thought\n"
         assert chat["think_end"] == "<channel|>"
         assert chat["think_header"] == "<|think|>\n"
+
+
+@pytest.mark.parametrize(
+    ("use_case", "expected_proto"),
+    [
+        (None, info_pb2.MODEL_USE_CASE_UNSPECIFIED),
+        (MODEL_USE_CASE.TEXT_GENERATION, info_pb2.MODEL_USE_CASE_TEXT_GENERATION),
+        (MODEL_USE_CASE.OBJECT_DETECTION, info_pb2.MODEL_USE_CASE_OBJECT_DETECTION),
+    ],
+)
+def test_model_metadata_use_case_roundtrip(
+    use_case: MODEL_USE_CASE | None, expected_proto: int
+) -> None:
+    """use_case is optional (None -> UNSPECIFIED proto) and survives to_proto and
+    JSON save/load.
+    """
+    model_metadata = ModelMetadata(
+        model_id=DEFAULT_MODEL_ID,
+        model_name=DEFAULT_MODEL_NAME,
+        runtime=DEFAULT_RUNTIME,
+        precision=DEFAULT_PRECISION,
+        tool_versions=DEFAULT_TOOL_VERSIONS,
+        model_files={},
+        use_case=use_case,
+    )
+    assert model_metadata.use_case is use_case
+    assert model_metadata.to_proto(aihm_version="0.0.0").use_case == expected_proto
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        json_path = Path(tmpdir) / "metadata.json"
+        model_metadata.to_json(json_path)
+
+        loaded = ModelMetadata.from_json(json_path)
+        assert loaded.use_case is use_case
+
+        raw = load_json(json_path)
+        # Unset use_case is omitted from the JSON dict by exclude_defaults.
+        if use_case is None:
+            assert "use_case" not in raw
+        else:
+            assert raw["use_case"] == use_case.value
