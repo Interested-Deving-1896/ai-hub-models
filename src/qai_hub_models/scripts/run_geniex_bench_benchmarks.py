@@ -760,15 +760,17 @@ def _resolve_eval_prompts(run_eval: bool) -> list[str] | None:
 
 
 def _eval_prompts_for_device(
-    eval_prompts: list[str] | None, sd: ScorecardDevice
+    eval_prompts: list[str] | None, sd: ScorecardDevice, plugin: str
 ) -> list[str] | None:
     """Restrict the accuracy eval to the default LLM scorecard device.
 
     Mirrors the genie path (see ``_shared/llm/test.py``): eval is expensive
     (~100 prompts x per-prompt DSP attach), so run it only on
     ``DEFAULT_QDC_DEVICE`` (cs_8_elite_qrd) and leave the other devices
-    doing perf only.
+    doing perf only. Eval is disabled entirely for the llama.cpp plugin.
     """
+    if plugin == "llama_cpp":
+        return None
     return eval_prompts if sd == DEFAULT_QDC_DEVICE else None
 
 
@@ -843,7 +845,7 @@ def _cmd_submit(args: argparse.Namespace) -> int:
                 args.jobs_file,
                 llamacpp_quant=llamacpp_quant,
                 eval_prompts=_eval_prompts_for_device(
-                    eval_prompts, _scorecard_device(device_token)
+                    eval_prompts, _scorecard_device(device_token), plugin
                 ),
                 run_perf=args.run_perf,
             )
@@ -914,7 +916,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
                 save_dir_root=args.results_dir,
                 geniex_version=args.geniex_version,
                 llamacpp_urls=llamacpp_urls,
-                eval_prompts=_eval_prompts_for_device(eval_prompts, sd),
+                eval_prompts=_eval_prompts_for_device(eval_prompts, sd, plugin),
                 run_perf=args.run_perf,
             )
         except Exception as e:
@@ -982,7 +984,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         args.geniex_version,
     ):
         sd = _scorecard_device(device_token)
-        device_eval_prompts = _eval_prompts_for_device(eval_prompts, sd)
+        device_eval_prompts = _eval_prompts_for_device(eval_prompts, sd, plugin)
         try:
             metrics, eval_results = run_geniex_bench_job(
                 model_id,
