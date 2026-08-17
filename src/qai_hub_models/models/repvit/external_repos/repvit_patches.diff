@@ -1,0 +1,81 @@
+diff --git a/model/__init__.py b/model/__init__.py
+index 9f713ac..4e1c9f7 100644
+--- a/model/__init__.py
++++ b/model/__init__.py
+@@ -1 +1 @@
+-import model.repvit
+\ No newline at end of file
++from .repvit import repvit_m1_0, repvit_m0_6, repvit_m0_9, repvit_m1_1, repvit_m1_5, repvit_m2_3
+diff --git a/model/repvit.py b/model/repvit.py
+index 8432a61..c895882 100644
+--- a/model/repvit.py
++++ b/model/repvit.py
+@@ -19,7 +19,7 @@ def _make_divisible(v, divisor, min_value=None):
+         new_v += divisor
+     return new_v
+ 
+-from timm.models.layers import SqueezeExcite
++from timm.layers import SqueezeExcite
+ 
+ import torch
+ 
+@@ -159,7 +159,7 @@ class RepViTBlock(nn.Module):
+     def forward(self, x):
+         return self.channel_mixer(self.token_mixer(x))
+ 
+-from timm.models.vision_transformer import trunc_normal_
++from timm.layers import trunc_normal_
+ class BN_Linear(torch.nn.Sequential):
+     def __init__(self, a, b, bias=True, std=0.02):
+         super().__init__()
+@@ -244,10 +244,8 @@ class RepViT(nn.Module):
+         x = self.classifier(x)
+         return x
+ 
+-from timm.models import register_model
+ 
+ 
+-@register_model
+ def repvit_m0_6(pretrained=False, num_classes = 1000, distillation=False):
+     """
+     Constructs a MobileNetV3-Large model
+@@ -273,7 +271,6 @@ def repvit_m0_6(pretrained=False, num_classes = 1000, distillation=False):
+     ]
+     return RepViT(cfgs, num_classes=num_classes, distillation=distillation)
+ 
+-@register_model
+ def repvit_m0_9(pretrained=False, num_classes = 1000, distillation=False):
+     """
+     Constructs a MobileNetV3-Large model
+@@ -309,7 +306,6 @@ def repvit_m0_9(pretrained=False, num_classes = 1000, distillation=False):
+     ]
+     return RepViT(cfgs, num_classes=num_classes, distillation=distillation)
+ 
+-@register_model
+ def repvit_m1_0(pretrained=False, num_classes = 1000, distillation=False):
+     """
+     Constructs a MobileNetV3-Large model
+@@ -346,7 +342,6 @@ def repvit_m1_0(pretrained=False, num_classes = 1000, distillation=False):
+     return RepViT(cfgs, num_classes=num_classes, distillation=distillation)
+ 
+ 
+-@register_model
+ def repvit_m1_1(pretrained=False, num_classes = 1000, distillation=False):
+     """
+     Constructs a MobileNetV3-Large model
+@@ -381,7 +376,6 @@ def repvit_m1_1(pretrained=False, num_classes = 1000, distillation=False):
+     return RepViT(cfgs, num_classes=num_classes, distillation=distillation)
+ 
+ 
+-@register_model
+ def repvit_m1_5(pretrained=False, num_classes = 1000, distillation=False):
+     """
+     Constructs a MobileNetV3-Large model
+@@ -435,7 +429,6 @@ def repvit_m1_5(pretrained=False, num_classes = 1000, distillation=False):
+ 
+ 
+ 
+-@register_model
+ def repvit_m2_3(pretrained=False, num_classes = 1000, distillation=False):
+     """
+     Constructs a MobileNetV3-Large model
