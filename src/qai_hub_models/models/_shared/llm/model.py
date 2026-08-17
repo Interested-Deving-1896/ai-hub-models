@@ -1595,9 +1595,17 @@ class DynamicSplitPartBase(LLMPartBase, torch.nn.Module, MultiGraphWorkbenchMode
 
         onnx_bundle = self._get_onnx_bundle()
 
-        providers: list[str] = ["CPUExecutionProvider"]
+        providers: list[str | tuple[str, dict[str, str | int]]] = [
+            "CPUExecutionProvider"
+        ]
         if "CUDAExecutionProvider" in onnxruntime.get_available_providers():
-            providers.insert(0, "CUDAExecutionProvider")
+            providers.insert(
+                0,
+                (
+                    "CUDAExecutionProvider",
+                    {"arena_extend_strategy": "kSameAsRequested"},
+                ),
+            )
 
         # Dynamo export (opset 18) produces IR version 11, but ORT 1.x
         # only supports up to 10.  Patch the file in-place (graph-only
@@ -2447,6 +2455,9 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
                 torch.cuda.empty_cache()
 
     def release(self) -> None:
+        free_memory = getattr(self, "free_memory", None)
+        if callable(free_memory):
+            free_memory()
         self.to("cpu")
         if hasattr(self, "quant_sim") and self.quant_sim is not None:
             del self.quant_sim

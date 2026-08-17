@@ -696,7 +696,7 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel):
     @staticmethod
     def get_ort_providers(
         device: torch.device,
-    ) -> list[str | tuple[str, dict[str, int]]]:
+    ) -> list[str | tuple[str, dict[str, str | int]]]:
         if device.type == "cuda":
             available = onnxruntime.get_available_providers()
             if "CUDAExecutionProvider" not in available:
@@ -720,14 +720,15 @@ class AIMETOnnxQuantizableMixin(WorkbenchModel):
                     )
                 print(msg)
                 return ["CPUExecutionProvider"]
-            return (
-                [
-                    ("CUDAExecutionProvider", {"device_id": device.index}),
-                    "CPUExecutionProvider",
-                ]
-                if device.index is not None
-                else ["CUDAExecutionProvider", "CPUExecutionProvider"]
-            )
+            cuda_options: dict[str, str | int] = {
+                "arena_extend_strategy": "kSameAsRequested",
+            }
+            if device.index is not None:
+                cuda_options["device_id"] = device.index
+            return [
+                ("CUDAExecutionProvider", cuda_options),
+                "CPUExecutionProvider",
+            ]
         return ["CPUExecutionProvider"]
 
     def convert_to_onnx_and_aimet_encodings(
