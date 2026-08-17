@@ -122,6 +122,7 @@ lowers confidence on bisected suspects when the out-of-band signals are present.
 | Argo `AlreadyExists` — GPU runner workflow name collision across Python matrix | Sporadic | Race condition: multiple Python-version matrix legs try to create same Argo workflow name (e.g. `gpu-pr-<run_id>-1`). One wins, others fail. Re-run or ignore — the winning leg ran tests. Recurring (2026-06-12, 2026-06-13). |
 | `503 Service Unavailable` from `download.pytorch.org` during `uv pip install torch` | Sporadic | PyTorch index server outage. `uv` does not retry across indexes. Re-run. |
 | DNS failure resolving external dataset host (e.g. `www.cs.utexas.edu`) | Sporadic | Transient DNS resolution failure on CI runner. Only affects models that download from that host at test time. Re-run. |
+| `test_manifest_yaml` failure: "Research paper does not exist at URL (status: 5xx)" + other Python versions pass | Sporadic | External publisher returned transient 5xx for `research_paper` URL in manifest.yaml. Confirm py3.12/3.13 passed same test. Re-run. If persistent 2+ days, add URL to skiplist or replace with stable mirror. See tetracode#20663. |
 | External URL returns HTTP 202 (Accepted) instead of 200 | Sporadic | Some academic publishers (IEEE, ACM) intermittently return 202 for HEAD probes. Not a broken URL — re-run. If persistent across multiple runs, consider adding 202 to the validator's allowlist. See tetracode#19869. |
 
 ### Workbench Service Issues (Not a compiler/code bug)
