@@ -8,6 +8,7 @@ import argparse
 import fnmatch
 import importlib
 import json
+import logging
 import os
 import pathlib
 import re
@@ -33,6 +34,12 @@ from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
 )
 from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.device import ScorecardDevice
+
+# Perf/job diagnostics go through logging, not print: nightly runs pytest under
+# xdist, where worker stdout is dropped even with --capture=no. INFO is set
+# explicitly because pytest leaves the root logger at WARNING.
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 GENIE_JOB_TIMEOUT = 21600  # 6 hours
 
@@ -266,9 +273,8 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
         )
 
         # Append the QAIRT SDK into the artifact zip under genie_bundle/
-        print(
-            f"[QDC] Adding QAIRT SDK from {self.qairt_sdk_path} to {zip_path}...",
-            flush=True,
+        logger.info(
+            "[QDC] Adding QAIRT SDK from %s to %s...", self.qairt_sdk_path, zip_path
         )
         arcname = os.path.join("genie_bundle", "qairt_sdk.zip")
         # force_zip64 so a >2 GiB SDK doesn't abort mid-write.
@@ -278,7 +284,7 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
             zf.open(arcname, "w", force_zip64=True) as dest,
         ):
             shutil.copyfileobj(src, dest)
-        print("[QDC] QAIRT SDK addition to zip complete", flush=True)
+        logger.info("[QDC] QAIRT SDK addition to zip complete")
         return zip_path
 
 
@@ -529,7 +535,6 @@ class GenieQDCJobs(QDCJobs):
                     self.download_job_log_files(job_log.filename, target_path)
 
                     if "genie" in job_log.filename:
-                        print("On device output (genie.log):")
                         shutil.unpack_archive(target_path, tmpdirname, "zip")
                         genie_log_path = os.path.join(tmpdirname, "genie.log")
                         displayed = False
@@ -537,13 +542,16 @@ class GenieQDCJobs(QDCJobs):
                             try:
                                 with open(genie_log_path, encoding=encoding) as file:
                                     genie_content = file.read()
-                                    print(genie_content)
+                                    logger.info(
+                                        "On device output (genie.log):\n%s",
+                                        genie_content,
+                                    )
                                     displayed = True
                                     break
                             except Exception:
                                 pass
                         if not displayed:
-                            print(f"Warning: Could not read {genie_log_path}")
+                            logger.warning("Could not read %s", genie_log_path)
 
                     if fnmatch.fnmatch(
                         os.path.basename(job_log.filename), "profile*.json"
@@ -575,27 +583,34 @@ class GenieQDCJobs(QDCJobs):
                                 float(component["prompt-processing-rate"]["value"])
                             )
                         else:
-                            print(
-                                "Warning: Unexpected profile log structure, "
-                                "skipping metrics for this file."
+                            logger.warning(
+                                "Unexpected profile log structure in %s, "
+                                "skipping metrics for this file.",
+                                profile_path,
                             )
 
         if len(tps) > 0:
             # TTFT in profile logs is in microseconds, convert to milliseconds
             ttft_ms = [t / 1000.0 for t in ttft]
 
-            print("Perf metrics:")
-            print(f"  Tokens Per Second (all trials): {tps}")
-            print(f"  Time to First Token ms (all trials): {ttft_ms}")
-            print(f"  Prefill Tokens Per Second (all trials): {prefill_tps}")
-            print(
-                f"  Tokens Per Second — average: {statistics.mean(tps):.2f}, median: {statistics.median(tps):.2f}"
+            logger.info("Perf metrics:")
+            logger.info("  Tokens Per Second (all trials): %s", tps)
+            logger.info("  Time to First Token ms (all trials): %s", ttft_ms)
+            logger.info("  Prefill Tokens Per Second (all trials): %s", prefill_tps)
+            logger.info(
+                "  Tokens Per Second — average: %.2f, median: %.2f",
+                statistics.mean(tps),
+                statistics.median(tps),
             )
-            print(
-                f"  Time to First Token (ms) — average: {statistics.mean(ttft_ms):.2f}, median: {statistics.median(ttft_ms):.2f}"
+            logger.info(
+                "  Time to First Token (ms) — average: %.2f, median: %.2f",
+                statistics.mean(ttft_ms),
+                statistics.median(ttft_ms),
             )
-            print(
-                f"  Prefill Tokens Per Second — average: {statistics.mean(prefill_tps):.2f}, median: {statistics.median(prefill_tps):.2f}"
+            logger.info(
+                "  Prefill Tokens Per Second — average: %.2f, median: %.2f",
+                statistics.mean(prefill_tps),
+                statistics.median(prefill_tps),
             )
             return (
                 statistics.median(tps),
@@ -603,11 +618,12 @@ class GenieQDCJobs(QDCJobs):
                 statistics.median(ttft_ms),
             )
 
-        print("No performance metrics found.")
+        logger.error("No performance metrics found.")
         if job_log_files:
-            print("Available log files:")
-            for job_log in job_log_files:
-                print(f"  {job_log.filename}")
+            logger.error(
+                "Available log files:\n%s",
+                "\n".join(f"  {job_log.filename}" for job_log in job_log_files),
+            )
         return None, None, None
 
     @staticmethod
@@ -704,7 +720,7 @@ class GenieQDCJobs(QDCJobs):
                         pass
 
                 if content is None:
-                    print(f"Warning: Could not decode {extracted_name}")
+                    logger.warning("Could not decode %s", extracted_name)
                     continue
 
                 outputs = self._parse_eval_outputs(content)
@@ -719,10 +735,11 @@ class GenieQDCJobs(QDCJobs):
         ]
 
         if not results:
-            print("Warning: No eval results found in job logs.")
-            print("Available log files:")
-            for job_log in job_log_files:
-                print(f"  {job_log.filename}")
+            logger.warning("No eval results found in job logs.")
+            logger.warning(
+                "Available log files:\n%s",
+                "\n".join(f"  {job_log.filename}" for job_log in job_log_files),
+            )
 
         return results
 
@@ -730,7 +747,7 @@ class GenieQDCJobs(QDCJobs):
 def save_eval_results_json(results: list[dict], output_path: str) -> None:
     """Save evaluation results to a JSON file."""
     if not results:
-        print("No results to save.")
+        logger.warning("No results to save.")
         return
 
     results.sort(key=lambda r: r.get("idx", 0))
@@ -738,7 +755,7 @@ def save_eval_results_json(results: list[dict], output_path: str) -> None:
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
-    print(f"Results saved to: {output_path}")
+    logger.info("Results saved to: %s", output_path)
 
 
 def save_eval_metadata_json(
@@ -765,7 +782,7 @@ def save_eval_metadata_json(
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
-    print(f"Eval metadata saved to: {output_path}")
+    logger.info("Eval metadata saved to: %s", output_path)
 
 
 _USE_DEFAULT_PROMPTS = object()
@@ -827,7 +844,7 @@ def submit_genie_bundle_only(
     )
     if job_id is None:
         raise RuntimeError("Job submission failed.")
-    print(f"Submitted QDC job with ID: {job_id}")
+    logger.info("Submitted QDC job with ID: %s", job_id)
     return job_id
 
 
@@ -859,7 +876,12 @@ def collect_genie_bundle_result(
 
     job_status = genie_job.status(job_id)
     job_result = genie_job.result(job_id)
-    print(f"QDC job {job_id} completed with status: {job_status}, result: {job_result}")
+    logger.info(
+        "QDC job %s completed with status: %s, result: %s",
+        job_id,
+        job_status,
+        job_result,
+    )
 
     if job_result is not None and job_result != "Successful":
         reason = (
@@ -871,7 +893,7 @@ def collect_genie_bundle_result(
             if job_result == "Error"
             else JobOutcome.RETRYABLE_UNSUCCESSFUL
         )
-        print(f"[result={job_result}] {reason}")
+        logger.error("[result=%s] %s", job_result, reason)
         return None, None, None, [], outcome, reason
 
     genie_job.log_upload_status(job_id)
@@ -884,7 +906,7 @@ def collect_genie_bundle_result(
             f"QDC job {job_id} on device '{device}' reported result="
             f"'{job_result}' but produced no retrievable log files"
         )
-        print(f"[empty logs] {reason}")
+        logger.error("[empty logs] %s", reason)
         return None, None, None, [], JobOutcome.RETRYABLE_EMPTY_LOGS, reason
 
     tps, prefill_tps, ttft = genie_job.compute_metrics(job_log_files)
