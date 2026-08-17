@@ -73,12 +73,22 @@ _EVAL_NUM_PROMPTS = 100
 
 
 def _qairt_precisions(model_id: str) -> list[Precision]:
-    # Mirror Genie: filter on runtime capability only, ignore disabled_paths.
+    # Filter on runtime capability AND manifest allow-rules so llamacpp-only
+    # LLMs (only_allow_orchestrator_runtimes without GENIEX_QAIRT in
+    # orchestrator_runtimes) aren't scheduled onto the QAIRT plugin.
     cg = QAIHMModelManifest.from_model(model_id)
     return [
         p
         for p in cg.supported_precisions
         if TargetRuntime.GENIEX_QAIRT.supports_precision(p)
+        and cg.failure_reason(
+            p,
+            TargetRuntime.GENIEX_QAIRT,
+            include_scorecard_failures=False,
+            include_user_defined_failures=False,
+            include_timeouts=False,
+        )
+        is None
     ]
 
 
@@ -640,12 +650,18 @@ def _iter_work(
                 for device_token in devices:
                     sd = _scorecard_device(device_token)
                     if plugin == "qairt":
-                        bundle_dir, ctx_list = fetch_geniex_qairt_bundle(
-                            model_id,
-                            precision,
-                            sd.chipset,
-                            Path(results_dir) / "qairt_bundles",
-                        )
+                        try:
+                            bundle_dir, ctx_list = fetch_geniex_qairt_bundle(
+                                model_id,
+                                precision,
+                                sd.chipset,
+                                Path(results_dir) / "qairt_bundles",
+                            )
+                        except RuntimeError as e:
+                            print(
+                                f"Skipping {model_id} [{precision}] @ {device_token}: {e}"
+                            )
+                            continue
                         # Only bench max(ctx); perf.yaml stores only that.
                         if ctx_list:
                             ctx_list = [max(ctx_list)]
