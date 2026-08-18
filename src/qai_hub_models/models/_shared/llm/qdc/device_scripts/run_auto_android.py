@@ -91,12 +91,29 @@ genie_retry() {{
     }}
 }}
 cd /data/local/tmp/genie_bundle
-unzip -q qairt_sdk.zip -d /data/local/tmp/genie_bundle || {{
-    echo "unzip failed, retrying once" >&2
-    rm -rf /data/local/tmp/genie_bundle/artifact
-    unzip -q qairt_sdk.zip -d /data/local/tmp/genie_bundle
+unzip_qairt() {{
+    rm -rf {qairt_path}
+    unzip -q qairt_sdk.zip -d {qairt_path}
 }}
-mv /data/local/tmp/genie_bundle/artifact /data/local/tmp/genie_bundle/qairt
+unzip_qairt || {{
+    echo "unzip failed, retrying once" >&2
+    unzip_qairt
+}}
+# Some SDK zips nest the SDK under a single top-level dir (2.42's artifact/,
+# so lib is at artifact/lib); newer ones put lib/ at the zip root. Hoist the
+# nested case so {qairt_path}/lib is the SDK root either way.
+if [ ! -d {qairt_path}/lib ]; then
+    for d in {qairt_path}/*/; do
+        [ -d "$d/lib" ] || continue
+        mv "$d"* {qairt_path}/
+        rmdir "$d"
+        break
+    done
+fi
+[ -d {qairt_path}/lib ] || {{
+    echo "FATAL: no lib/ found in qairt_sdk.zip (unexpected SDK layout)" >&2
+    exit 1
+}}
 export QAIRT_HOME={qairt_path}
 export PATH={qairt_path}/bin/aarch64-android:${{PATH}}
 export LD_LIBRARY_PATH={qairt_path}/lib/aarch64-android
