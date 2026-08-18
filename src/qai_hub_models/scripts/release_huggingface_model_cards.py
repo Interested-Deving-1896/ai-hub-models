@@ -227,6 +227,12 @@ def release_hf_model_cards(
 
     for model_id in model_list:
         try:
+            manifest = QAIHMModelManifest.from_model(model_id)
+            if manifest.status != MODEL_STATUS.PUBLISHED:
+                print(
+                    f"Skipping {model_id}: status is {manifest.status.name.lower()}, not published"
+                )
+                continue
             print(f"Releasing {model_id} to HuggingFace")
             release_model_to_hf(
                 model_id=model_id,
@@ -236,7 +242,7 @@ def release_hf_model_cards(
                 commit_msg=commit_msg,
                 dry_run=dry_run,
             )
-        except Exception as e:  # noqa: PERF203
+        except Exception as e:
             print(f"ERROR: Failed to release {model_id}: {e}")
             traceback.print_exc()
             failed_models.append((model_id, e))

@@ -12,7 +12,7 @@ from typing import Any
 import jinja2
 import ruamel.yaml
 
-from qai_hub_models import Precision
+from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models._version import __version__ as qaihm_version
 from qai_hub_models.configs._info_yaml_llm_details import LLM_CALL_TO_ACTION
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
@@ -50,6 +50,30 @@ def _chipset_sort_key(chipset_id: str) -> int:
         return len(WEBSITE_CHIPSET_ORDER)
 
 
+def _resolve_asset_download_url(
+    model_id: str,
+    runtime: TargetRuntime,
+    precision: Precision,
+    chipset: str | None,
+    version: str,
+    asset_details: QAIHMModelReleaseAssets.AssetDetails,
+) -> str | None:
+    # Externally-hosted assets (e.g. geniex_llamacpp GGUFs on HuggingFace) inline
+    # their URL in the yaml; fetch_static_assets only resolves S3-hosted assets.
+    if asset_details.download_url:
+        return asset_details.download_url
+    _, download_url = fetch_static_assets(
+        model_id,
+        runtime,
+        precision,
+        device_or_chipset=chipset,
+        qaihm_version_tag=version,
+        skip_download=True,
+        verbose=False,
+    )
+    return download_url
+
+
 def get_download_links_rows(
     model_id: str,
     version: str,
@@ -80,15 +104,11 @@ def get_download_links_rows(
     for precision, precision_details in release_assets.precisions.items():
         # Universal assets (not chipset-specific)
         for path, asset_details in precision_details.universal_assets.items():
-            _, download_url = fetch_static_assets(
-                model_id,
-                path.runtime,
-                precision,
-                device_or_chipset=None,
-                qaihm_version_tag=version,
-                skip_download=True,
-                verbose=False,
+            download_url = _resolve_asset_download_url(
+                model_id, path.runtime, precision, None, version, asset_details
             )
+            if download_url is None:
+                continue
             rows.append(
                 {
                     "precision": str(precision),
@@ -105,15 +125,11 @@ def get_download_links_rows(
             chipset_info = devices_yaml.chipsets.get(chipset)
             chipset_display = chipset_info.marketing_name if chipset_info else chipset
             for path, asset_details in chipset_paths.items():
-                _, download_url = fetch_static_assets(
-                    model_id,
-                    path.runtime,
-                    precision,
-                    device_or_chipset=chipset,
-                    qaihm_version_tag=version,
-                    skip_download=True,
-                    verbose=False,
+                download_url = _resolve_asset_download_url(
+                    model_id, path.runtime, precision, chipset, version, asset_details
                 )
+                if download_url is None:
+                    continue
                 rows.append(
                     {
                         "precision": str(precision),
@@ -242,15 +258,11 @@ def generate_hf_manifest(
     for precision, precision_details in release_assets.precisions.items():
         # Universal assets
         for path, asset_details in precision_details.universal_assets.items():
-            _, download_url = fetch_static_assets(
-                model_id,
-                path.runtime,
-                precision,
-                device_or_chipset=None,
-                qaihm_version_tag=version,
-                skip_download=True,
-                verbose=False,
+            download_url = _resolve_asset_download_url(
+                model_id, path.runtime, precision, None, version, asset_details
             )
+            if download_url is None:
+                continue
             new_details = QAIHMModelReleaseAssets.AssetDetails(
                 tool_versions=asset_details.tool_versions,
                 download_url=download_url,
@@ -260,15 +272,11 @@ def generate_hf_manifest(
         # Chipset-specific assets
         for chipset, chipset_paths in precision_details.chipset_assets.items():
             for path, asset_details in chipset_paths.items():
-                _, download_url = fetch_static_assets(
-                    model_id,
-                    path.runtime,
-                    precision,
-                    device_or_chipset=chipset,
-                    qaihm_version_tag=version,
-                    skip_download=True,
-                    verbose=False,
+                download_url = _resolve_asset_download_url(
+                    model_id, path.runtime, precision, chipset, version, asset_details
                 )
+                if download_url is None:
+                    continue
                 new_details = QAIHMModelReleaseAssets.AssetDetails(
                     tool_versions=asset_details.tool_versions,
                     download_url=download_url,
