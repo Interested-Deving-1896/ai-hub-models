@@ -46,6 +46,7 @@ Use alongside `error-patterns.md` and `runtime-guide.md` for triage.
 | Samsung Galaxy S25 `-inf` across all runtimes, sustained across multiple consecutive runs (2026-06-05: 203, 2026-06-08: 57, 2026-06-12: 15 entries) | HIGH | Cloud Services / Tungsten — S25 device pool or firmware. Improving trend but not fully resolved. (low confidence — verify with next scorecard run) |
 | ONNX runtime `-inf` concentrated on Snapdragon 7 Gen 4 QRD + Dragonwing Q-6690 MTP (100+ models, w8a8/w8a16 only, float ONNX fine) | HIGH | Cloud Services (device pool) / Tungsten (firmware). First observed prod scorecard 2026-07-27 (#20562, 269 entries). Check device pool health for these two chipsets specifically. |
 | Single model regresses >5x across ALL devices and ALL runtimes (qnn_dlc + tflite + onnx), same run | HIGH | AI Hub Models (model code / graph shape change). Cross-runtime + cross-device rules out infra/firmware. Check recent PRs touching that model directory or shared backbone. See #20562 pspnet cluster (confirmed model change by human). |
+| `efficientformer_onnx` (float/qnn, float/tflite) profile `Failed` on `qualcomm-sa8295p` ADP across 3+ consecutive nightly scorecard integration runs (Aug 2026), different runtimes on different nights | HIGH | Cloud Services (QDC device pool / SA8295P ADP farm health) — not a compiler or model bug. Cross-runtime flip (tflite one night, qnn the next) rules out single-runtime compiler regression. Treat as transient device-pool issue; QDC retry step does not recover it. See tetracode#20784, #20796, #20824. |
 
 ---
 
@@ -115,6 +116,7 @@ Use alongside `error-patterns.md` and `runtime-guide.md` for triage.
 | `detr_resnet50_dc5` | Samsung Galaxy S25 | `onnx` | `-inf` timing (w8a16_mixed_int16). Same root cause as `detr_resnet101`. Appeared Jul 2 dev + Jul 9 dev + Jul 16 dev + Jul 23 dev scorecards. |
 | `convnext_tiny` | Samsung Galaxy S25 | `qnn_dlc` | `-inf` timing (w8a8). Appeared Jul 16 dev (#20451) + Jul 23 dev (#20535) scorecards. Part of broader S25/QAIRT cluster. |
 | `detr_resnet50` | Samsung Galaxy S25 | `qnn_dlc` | `-inf` timing (w8a16_mixed_fp16). Appeared Jul 16 dev (#20451) + Jul 23 dev (#20535) scorecards. Part of broader S25/QAIRT cluster. |
+| `efficientformer_onnx` | `qualcomm-sa8295p` ADP | `qnn_dlc`, `tflite` | Recurring transient profile failures (float/qnn Aug 13; float/tflite Aug 12; missing accuracy row Aug 11). Different runtimes fail on different nights — device pool instability on SA8295P automotive ADP, not a compiler bug. QDC retry does not recover. Tracked tetracode#20784, #20796, #20824 (Aug 2026). |
 
 ---
 

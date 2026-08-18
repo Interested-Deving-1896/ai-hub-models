@@ -114,6 +114,7 @@ lowers confidence on bisected suspects when the out-of-band signals are present.
 | HuggingFace `HTTPError 429` or connection timeout | Sporadic | Rate limited or HF outage. Re-run after 30 min. |
 | `git clone` timeout / GitHub API 5xx (multiple unrelated URLs) | Sporadic | Transient GitHub connectivity. Re-run. |
 | GitHub 502 on ONE specific URL (license, model source) + other tests pass | `ai-hub-models` | **NOT transient.** Repo was likely transferred/renamed. Fix the URL. See Example 19. |
+| `Invalid OS: ubuntu` in "Sync Performance Data / Test Public Website Import" (100+ rows, all same signature, all unrelated models) | `Cloud services` / website sync | **NOT a model bug.** Profile jobs ran fine; only the bundle metadata field `os=ubuntu` is rejected by the public-website importer. Fix lives on the website side. Key signal: every failing row has the identical signature across unrelated models. Appeared consecutive nightlies tetracode#20784 and #20796 (Aug 2026), closed as "fixed on website side". |
 | `An action could not be found at the URI` + `codeload.github.com` | Sporadic | GitHub Actions CDN outage. All affected jobs share same error at "Set up job" step. Re-run. |
 | Qualcomm internal network / proxy SSL failure | Sporadic | Internal network blip. Re-run. |
 | `KeyError: 'Unable to synchronously open object'` | Sporadic | Corrupted HDF5 on CI machine. Re-run or clear cache. |
