@@ -23,7 +23,7 @@ from qai_hub_models import (
     SampleInputsType,
     TargetRuntime,
 )
-from qai_hub_models.models.huggingface_wavlm_base_plus.dataset import (
+from qai_hub_models.datasets.librispeech import (
     LibriSpeechDataset,
 )
 from qai_hub_models.models.huggingface_wavlm_base_plus.evaluator import (
