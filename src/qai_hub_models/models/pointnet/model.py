@@ -8,9 +8,12 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import os
+
 import torch
 from typing_extensions import Self
 
+from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.models.pointnet.external_repos.pointnet.source.model import PointNet
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
@@ -18,6 +21,7 @@ from qai_hub_models.utils.asset_loaders import (
 )
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import InputSpec, IoType, OutputSpec, TensorSpec
+from qai_hub_models.utils.labels import write_labels_file
 
 MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 2
@@ -81,3 +85,10 @@ class Pointnet(BaseModel):
             "crit_idxs": TensorSpec(),
             "A_feat": TensorSpec(),
         }
+
+    def write_supplementary_files(
+        self,
+        output_dir: str | os.PathLike,
+        metadata: ModelMetadata,
+    ) -> None:
+        write_labels_file("modelnet10", output_dir, metadata)
