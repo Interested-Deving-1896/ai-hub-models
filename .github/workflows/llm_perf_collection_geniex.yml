@@ -279,6 +279,10 @@ jobs:
         path: |
           ${{ github.workspace }}/geniex_bench_results.csv
           ${{ github.workspace }}/geniex_bench_results/**/*.json
+          ${{ github.workspace }}/geniex_bench_results/qdc_logs/**/*.zip
+        # Raw device log zips can incidentally capture device identifiers /
+        # paths; keep them short-lived rather than the org default (90 days).
+        retention-days: 14
 
     - name: Stage eval results for grading
       if: ${{ !cancelled() && inputs.scope != 'perf' }}

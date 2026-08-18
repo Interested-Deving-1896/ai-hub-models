@@ -453,14 +453,21 @@ class GenieXBenchQDCJobs(QDCJobs):
         self,
         job_log_files: list,
         save_results_dir: str | None = None,
+        save_logs_dir: str | None = None,
     ) -> list[GenieXBenchMetrics]:
+        """Parse metrics from QDC logs; if ``save_logs_dir`` is set, keep the raw zips there too."""
         metrics: list[GenieXBenchMetrics] = []
+        if save_logs_dir:
+            os.makedirs(save_logs_dir, exist_ok=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for job_log in job_log_files:
                 target = os.path.join(tmpdir, "logs", f"{job_log.filename}.zip")
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 self.download_job_log_files(job_log.filename, target)
+                if save_logs_dir:
+                    safe_name = os.path.basename(job_log.filename)
+                    shutil.copy(target, os.path.join(save_logs_dir, f"{safe_name}.zip"))
                 try:
                     _safe_extract_zip(target, tmpdir)
                 except zipfile.BadZipFile:
@@ -538,14 +545,18 @@ class GenieXBenchQDCJobs(QDCJobs):
         self,
         job_log_files: list,
         prompts: list[str],
+        save_logs_dir: str | None = None,
     ) -> list[dict]:
         """Parse ``geniex_eval_outputs.txt`` into [{idx, prompt, output}].
 
         The device scripts run ``geniex-bench --accuracy`` once per prompt and
         append each invocation's stdout to a single ``geniex_eval_outputs.txt``,
-        with ``===EVAL_IDX_NNN===`` markers separating prompts.
+        with ``===EVAL_IDX_NNN===`` markers separating prompts. If
+        ``save_logs_dir`` is set the raw eval log zip lands there too.
         """
         outputs: dict[int, str] = {}
+        if save_logs_dir:
+            os.makedirs(save_logs_dir, exist_ok=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for job_log in job_log_files:
@@ -554,6 +565,14 @@ class GenieXBenchQDCJobs(QDCJobs):
                 target = os.path.join(tmpdir, "logs", f"{job_log.filename}.zip")
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 self.download_job_log_files(job_log.filename, target)
+                if save_logs_dir:
+                    safe_name = os.path.basename(job_log.filename)
+                    dest = os.path.join(save_logs_dir, f"{safe_name}.zip")
+                    # Skip if compute_metrics already copied this zip in the
+                    # same call -- avoids the redundant I/O when both perf
+                    # and eval run.
+                    if not os.path.exists(dest):
+                        shutil.copy(target, dest)
                 try:
                     _safe_extract_zip(target, tmpdir)
                 except zipfile.BadZipFile:
@@ -830,6 +849,7 @@ def collect_geniex_bench_result(
     save_results_dir: str | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
+    save_logs_dir: str | None = None,
 ) -> tuple[list[GenieXBenchMetrics], list[dict], JobOutcome, str | None]:
     """Poll a submitted geniex-bench job and download+parse logs on success.
 
@@ -875,14 +895,20 @@ def collect_geniex_bench_result(
         return [], [], JobOutcome.RETRYABLE_EMPTY_LOGS, reason
 
     metrics = (
-        geniex_job.compute_metrics(job_log_files, save_results_dir=save_results_dir)
+        geniex_job.compute_metrics(
+            job_log_files,
+            save_results_dir=save_results_dir,
+            save_logs_dir=save_logs_dir,
+        )
         if run_perf
         else []
     )
     # eval_prompts holds the raw questions so compute_eval_results labels each
     # output with the human-readable prompt (not the templated form).
     eval_results = (
-        geniex_job.compute_eval_results(job_log_files, eval_prompts)
+        geniex_job.compute_eval_results(
+            job_log_files, eval_prompts, save_logs_dir=save_logs_dir
+        )
         if eval_prompts
         else []
     )

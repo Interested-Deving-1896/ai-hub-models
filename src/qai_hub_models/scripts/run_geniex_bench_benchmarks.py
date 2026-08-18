@@ -254,6 +254,26 @@ def write_summary(rows: list[dict]) -> None:
         f.write("\n")
 
 
+def _qdc_logs_dir(
+    save_dir_root: str,
+    model_id: str,
+    precision: Precision,
+    device_name: str,
+    runtime: str,
+    job_id: str,
+) -> str:
+    """Structured path for persisted QDC log zips.
+
+    Keyed on job_id so a retried job's logs don't clobber the prior attempt.
+    """
+    return os.path.join(
+        save_dir_root,
+        "qdc_logs",
+        model_id,
+        f"{precision}_{device_name}_{runtime}_{job_id}",
+    )
+
+
 def run_geniex_bench_job(
     model_id: str,
     model_ref: str,
@@ -262,6 +282,7 @@ def run_geniex_bench_job(
     save_dir_root: str,
     plugin: str,
     geniex_version: str | None,
+    precision: Precision,
     llamacpp_quant: str | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
@@ -289,6 +310,7 @@ def run_geniex_bench_job(
 
     save_dir = os.path.join(save_dir_root, model_id, sd.name)
     job_name = f"geniex-bench {plugin} {model_id}"
+    runtime = "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
 
     def _submit() -> str:
         job_id, _, _ = submit_geniex_bench_only(
@@ -309,6 +331,9 @@ def run_geniex_bench_job(
         return job_id
 
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
+        logs_dir = _qdc_logs_dir(
+            save_dir_root, model_id, precision, sd.name, runtime, job_id
+        )
         metrics, eval_results, outcome, reason = collect_geniex_bench_result(
             api_token,
             sd.reference_device_name,
@@ -316,6 +341,7 @@ def run_geniex_bench_job(
             save_results_dir=save_dir,
             eval_prompts=eval_prompts,
             run_perf=run_perf,
+            save_logs_dir=logs_dir,
         )
         return (metrics, eval_results), outcome, reason
 
@@ -479,6 +505,9 @@ def _collect_one(
         return new_job_id
 
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
+        logs_dir = _qdc_logs_dir(
+            save_dir_root, model_id, precision, sd.name, runtime, job_id
+        )
         metrics, eval_results, outcome, reason = collect_geniex_bench_result(
             api_token,
             sd.reference_device_name,
@@ -486,6 +515,7 @@ def _collect_one(
             save_results_dir=save_dir,
             eval_prompts=eval_prompts,
             run_perf=run_perf,
+            save_logs_dir=logs_dir,
         )
         return (metrics, eval_results), outcome, reason
 
@@ -1010,6 +1040,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 args.results_dir,
                 plugin,
                 args.geniex_version,
+                precision,
                 llamacpp_quant=llamacpp_quant,
                 eval_prompts=device_eval_prompts,
                 run_perf=args.run_perf,
