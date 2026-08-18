@@ -5,12 +5,19 @@
 
 from __future__ import annotations
 
-from functools import partial
 from pathlib import Path
+from typing import Any
 
 import torch
 
 from qai_hub_models.models._shared.nafnet.denoising_evaluator import DenoisingEvaluator
+from qai_hub_models.models._shared.nafnet.external_repos import EXTERNAL_REPO_PATHS
+from qai_hub_models.models._shared.nafnet.external_repos.nafnet.basicsr.models.archs import (
+    NAFNet_arch as NAFarch,
+)
+from qai_hub_models.models._shared.nafnet.external_repos.nafnet.basicsr.models.archs import (
+    NAFSSR_arch as NAFSSRarch,
+)
 from qai_hub_models.models._shared.nafnet.model_patches import (
     AutoLayerNorm2d,
     NAFLocal_Base,
@@ -18,7 +25,7 @@ from qai_hub_models.models._shared.nafnet.model_patches import (
 )
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
-    SourceAsRoot,
+    load_torch,
     load_yaml,
 )
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
@@ -26,16 +33,6 @@ from qai_hub_models.utils.base_model import BaseModel
 
 MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 1
-
-NAFNET_SOURCE_REPOSITORY = "https://github.com/megvii-research/NAFNet.git"
-NAFNET_SOURCE_REPO_COMMIT = "2b4af71ebe098a92a75910c233a3965a3e93ede4"
-NAFNetAsRoot = partial(
-    SourceAsRoot,
-    NAFNET_SOURCE_REPOSITORY,
-    NAFNET_SOURCE_REPO_COMMIT,
-    MODEL_ID,
-    MODEL_ASSET_VERSION,
-)
 
 
 class NAFNetModelBase(BaseModel):
@@ -109,37 +106,37 @@ def _load_nafnet_source_model(
             MODEL_ID, MODEL_ASSET_VERSION, nafnet_weights
         ).fetch()
 
-    with NAFNetAsRoot() as repo_path:
-        import basicsr.models.archs.NAFNet_arch as NAFarch
-        import basicsr.models.archs.NAFSSR_arch as NAFSSRarch
+    naf_arch: Any = NAFarch
+    nafssr_arch: Any = NAFSSRarch
+    naf_arch.LayerNorm2d = AutoLayerNorm2d
+    nafssr_arch.LayerNorm2d = AutoLayerNorm2d
+    naf_arch.Local_Base.convert = NAFLocal_Base.convert
+    nafssr_arch.Local_Base.convert = NAFLocal_Base.convert
+    nafssr_arch.NAFNetSR.forward = ssrforward
 
-        NAFarch.LayerNorm2d = AutoLayerNorm2d
-        NAFSSRarch.LayerNorm2d = AutoLayerNorm2d
+    # Handle config path
+    if isinstance(yaml_path_nafnet, Path):
+        yaml_path = yaml_path_nafnet.resolve()
+        if not yaml_path.exists():
+            raise FileNotFoundError(f"Local config file not found: {yaml_path_nafnet}")
+    else:
+        # Load YAML from the cloned repo
+        yaml_path = Path(
+            EXTERNAL_REPO_PATHS["nafnet"], "options/test", yaml_path_nafnet
+        ).resolve()
 
-        NAFarch.Local_Base.convert = NAFLocal_Base.convert
-        NAFSSRarch.Local_Base.convert = NAFLocal_Base.convert
-        NAFSSRarch.NAFNetSR.forward = ssrforward
+    opt = load_yaml(yaml_path)
 
-        from basicsr.models import create_model
+    # Build net_g directly from the config instead of basicsr's create_model,
+    # which relies on dynamic imports that don't survive the external_repos move.
+    network_g = dict(opt["network_g"])
+    builders = {
+        "NAFNet": NAFarch.NAFNet,
+        "NAFNetLocal": NAFarch.NAFNetLocal,
+        "NAFSSR": NAFSSRarch.NAFSSR,
+    }
+    model = builders[network_g.pop("type")](**network_g)
 
-        # Handle config path
-        if isinstance(yaml_path_nafnet, Path):
-            yaml_path = yaml_path_nafnet.resolve()
-            if not yaml_path.exists():
-                raise FileNotFoundError(
-                    f"Local config file not found: {yaml_path_nafnet}"
-                )
-        else:
-            # Load YAML from the cloned repo
-            yaml_path = Path(repo_path, "options/test", yaml_path_nafnet).resolve()
-
-        opt = load_yaml(yaml_path)
-
-        opt["is_train"] = False
-        opt["dist"] = False
-        opt["num_gpu"] = 0
-        opt["path"]["pretrain_network_g"] = str(weights_path_nafnet)
-
-        model = create_model(opt)
-
-    return model.net_g
+    state_dict = load_torch(weights_path_nafnet)["params"]
+    model.load_state_dict({k.removeprefix("module."): v for k, v in state_dict.items()})
+    return model.eval()

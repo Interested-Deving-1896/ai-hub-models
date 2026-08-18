@@ -1,0 +1,124 @@
+diff --git a/basicsr/models/__init__.py b/basicsr/models/__init__.py
+index 9664bfa..eaa0432 100644
+--- a/basicsr/models/__init__.py
++++ b/basicsr/models/__init__.py
+@@ -4,45 +4,6 @@
+ # Modified from BasicSR (https://github.com/xinntao/BasicSR)
+ # Copyright 2018-2020 BasicSR Authors
+ # ------------------------------------------------------------------------
+-import importlib
+-from os import path as osp
+-
+-from basicsr.utils import get_root_logger, scandir
+-
+-# automatically scan and import model modules
+-# scan all the files under the 'models' folder and collect files ending with
+-# '_model.py'
+-model_folder = osp.dirname(osp.abspath(__file__))
+-model_filenames = [
+-    osp.splitext(osp.basename(v))[0] for v in scandir(model_folder)
+-    if v.endswith('_model.py')
+-]
+-# import all the model modules
+-_model_modules = [
+-    importlib.import_module(f'basicsr.models.{file_name}')
+-    for file_name in model_filenames
+-]
+-
+-
+-def create_model(opt):
+-    """Create model.
+-
+-    Args:
+-        opt (dict): Configuration. It constains:
+-            model_type (str): Model type.
+-    """
+-    model_type = opt['model_type']
+-
+-    # dynamic instantiation
+-    for module in _model_modules:
+-        model_cls = getattr(module, model_type, None)
+-        if model_cls is not None:
+-            break
+-    if model_cls is None:
+-        raise ValueError(f'Model {model_type} is not found.')
+-
+-    model = model_cls(opt)
+-
+-    logger = get_root_logger()
+-    logger.info(f'Model [{model.__class__.__name__}] is created.')
+-    return model
++# qai_hub_models: dynamic model scanning / create_model removed. The NAFNet arch
++# is instantiated directly, so the importlib scan (which pulled in the full
++# basicsr training framework: cv2, lmdb, losses, metrics) is not needed.
+diff --git a/basicsr/models/archs/__init__.py b/basicsr/models/archs/__init__.py
+index 11cfbdc..40f2f32 100644
+--- a/basicsr/models/archs/__init__.py
++++ b/basicsr/models/archs/__init__.py
+@@ -4,49 +4,6 @@
+ # Modified from BasicSR (https://github.com/xinntao/BasicSR)
+ # Copyright 2018-2020 BasicSR Authors
+ # ------------------------------------------------------------------------
+-import importlib
+-from os import path as osp
+-
+-from basicsr.utils import scandir
+-
+-# automatically scan and import arch modules
+-# scan all the files under the 'archs' folder and collect files ending with
+-# '_arch.py'
+-arch_folder = osp.dirname(osp.abspath(__file__))
+-arch_filenames = [
+-    osp.splitext(osp.basename(v))[0] for v in scandir(arch_folder)
+-    if v.endswith('_arch.py')
+-]
+-# import all the arch modules
+-_arch_modules = [
+-    importlib.import_module(f'basicsr.models.archs.{file_name}')
+-    for file_name in arch_filenames
+-]
+-
+-
+-def dynamic_instantiation(modules, cls_type, opt):
+-    """Dynamically instantiate class.
+-
+-    Args:
+-        modules (list[importlib modules]): List of modules from importlib
+-            files.
+-        cls_type (str): Class type.
+-        opt (dict): Class initialization kwargs.
+-
+-    Returns:
+-        class: Instantiated class.
+-    """
+-
+-    for module in modules:
+-        cls_ = getattr(module, cls_type, None)
+-        if cls_ is not None:
+-            break
+-    if cls_ is None:
+-        raise ValueError(f'{cls_type} is not found.')
+-    return cls_(**opt)
+-
+-
+-def define_network(opt):
+-    network_type = opt.pop('type')
+-    net = dynamic_instantiation(_arch_modules, network_type, opt)
+-    return net
++# qai_hub_models: dynamic arch scanning removed. Archs are imported directly by
++# fully-qualified path, so the importlib scan (which also pulled basicsr.utils ->
++# cv2/lmdb) is not needed.
+diff --git a/basicsr/models/archs/arch_util.py b/basicsr/models/archs/arch_util.py
+index 09beabf..ba4ba4e 100644
+--- a/basicsr/models/archs/arch_util.py
++++ b/basicsr/models/archs/arch_util.py
+@@ -11,7 +11,8 @@ from torch.nn import functional as F
+ from torch.nn import init as init
+ from torch.nn.modules.batchnorm import _BatchNorm
+ 
+-from basicsr.utils import get_root_logger
++# qai_hub_models: get_root_logger import removed (only used in dead DCNv2 code)
++# to avoid pulling basicsr.utils -> cv2/lmdb at import time.
+ 
+ # try:
+ #     from basicsr.models.ops.dcn import (ModulatedDeformConvPack,
