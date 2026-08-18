@@ -1102,6 +1102,14 @@ class QAIHMModelManifest(BaseQAIHMConfig):
                 raise ValueError(
                     f"License {self.license_type!s} must have URL {self.license_type.url}"
                 )
+            if (
+                self.license_type.restricts_redistribution
+                and not self.restrict_model_sharing
+            ):
+                raise ValueError(
+                    f"License {self.license_type!s} does not permit redistributing "
+                    f"model weights; set restrict_model_sharing: true in manifest.yaml."
+                )
 
             if self.model_type_llm and not self.llm_details:
                 raise ValueError("llm_details must be set if model type is LLM")

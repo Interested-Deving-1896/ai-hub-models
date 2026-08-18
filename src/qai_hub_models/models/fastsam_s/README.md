@@ -9,20 +9,20 @@ Qualcomm AI Hub Models uses [Qualcomm AI Hub Workbench](https://workbench.aihub.
 
 ## Quick Start
 
-Use our lightweight command-line interface to inspect and download FastSam-S:
+Use our lightweight command-line interface to inspect FastSam-S:
 
 ```bash
 pip install qai_hub_models_cli # (the CLI is also available with the qai-hub-models package)
 
-# Inspect the model and list the available download options
+# Inspect the model's metadata
 qai-hub-models info FastSam-S
 
 # Print performance and accuracy metrics
 qai-hub-models perf FastSam-S
 qai-hub-models numerics FastSam-S
 
-# Download a ready-to-deploy asset
-qai-hub-models fetch FastSam-S --runtime tflite --precision float
+# Pre-exported assets are not available to download for this model due to
+# licensing restrictions. Continue to the next section to export it yourself.
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

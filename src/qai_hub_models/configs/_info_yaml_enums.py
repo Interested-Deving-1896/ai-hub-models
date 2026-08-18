@@ -145,6 +145,22 @@ class MODEL_LICENSE(Enum):
         ]
 
     @property
+    def restricts_redistribution(self) -> bool:
+        # Gated / proprietary, plus (A)GPL whose viral clause would extend
+        # to surrounding code. Manifests must set restrict_model_sharing: true.
+        return self in [
+            MODEL_LICENSE.COMMERCIAL,
+            MODEL_LICENSE.AGPL_3_0,
+            MODEL_LICENSE.GPL_3_0,
+            MODEL_LICENSE.LLAMA2,
+            MODEL_LICENSE.LLAMA3,
+            MODEL_LICENSE.TAIDE,
+            MODEL_LICENSE.FALCON3,
+            MODEL_LICENSE.GEMMA,
+            MODEL_LICENSE.SAM3,
+        ]
+
+    @property
     def huggingface_name(self) -> str:
         hf_str = None
         if self == MODEL_LICENSE.CC_BY_NON_COMMERCIAL_4_0:
