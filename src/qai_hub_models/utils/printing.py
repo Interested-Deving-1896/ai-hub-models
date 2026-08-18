@@ -22,6 +22,7 @@ from qai_hub_models import TargetRuntime
 from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.utils.compare import METRICS_FUNCTIONS, generate_comparison_metrics
 from qai_hub_models.utils.device import OperatingSystem, OperatingSystemType
+from qai_hub_models.utils.qai_hub_helpers import get_device_and_chipset_name
 
 _INFO_DASH = "-" * 60
 
@@ -199,10 +200,11 @@ def print_on_target_demo_cmd(
         f"python {model_folder / 'demo.py'} --eval-mode on-device --hub-model-id {target_model_id_str} ",
         end="",
     )
-    if device.attributes:
-        print(f"--chipset {device.attributes[len('chipset:') :]}\n")
+    device_name, chipset = get_device_and_chipset_name(device)
+    if chipset:
+        print(f"--chipset {chipset}\n")
     else:
-        print(f'--device "{device.name}"\n')
+        print(f'--device "{device_name}"\n')
 
 
 def print_file_tree_changes(
