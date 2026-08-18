@@ -8,7 +8,6 @@ from __future__ import annotations
 import copy
 from typing import cast
 
-import numpy as np
 import torch
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from transformers.modeling_utils import PreTrainedModel
@@ -30,7 +29,7 @@ from qai_hub_models.utils.input_spec import (
     TensorSpec,
 )
 
-HUGGINGFACE_TROCR_MODEL = "microsoft/trocr-small-stage1"
+HUGGINGFACE_TROCR_MODEL = "microsoft/trocr-small-handwritten"
 MODEL_ID = __name__.split(".")[-2]
 TROCR_BATCH_SIZE = 1
 MAX_DECODE_LEN = 20
@@ -210,7 +209,9 @@ class TrOCRDecoder(BaseModel):
         #
         # Therefore, we set the hidden state to shape [1] in this case to minimize footprint.
         # It will go away when traced.
-        encoder_hidden_states = torch.from_numpy(np.array([1]))
+        # Use torch.ones rather than torch.from_numpy: an unused numpy constant traces to a
+        # zero-user lift_fresh_copy node that crashes torch.export (StopIteration).
+        encoder_hidden_states = torch.ones(1)
 
         # Convert KV Cache from export friendly format to decoder format
         kv_cache: list[tuple[torch.Tensor, ...]] = []

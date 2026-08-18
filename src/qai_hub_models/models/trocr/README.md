@@ -2,7 +2,7 @@
 
 End-to-end text recognition approach with pre-trained image transformer and text transformer models for both image understanding and wordpiece-level text generation.
 
-This is based on the implementation of TrOCR found [here](https://huggingface.co/microsoft/trocr-small-stage1).
+This is based on the implementation of TrOCR found [here](https://huggingface.co/microsoft/trocr-small-handwritten).
 This repository contains scripts for optimized on-device export suitable to run on Qualcomm® devices. More details on model performance across various devices, can be found [here](https://aihub.qualcomm.com/models/trocr).
 
 Qualcomm AI Hub Models uses [Qualcomm AI Hub Workbench](https://workbench.aihub.qualcomm.com) to compile, profile, and evaluate this model. [Sign up](https://myaccount.qualcomm.com/signup) to run these models on a hosted Qualcomm® device.
@@ -74,7 +74,7 @@ Additional options are documented with the `--help` option.
 
 ## References
 * [TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models](https://arxiv.org/abs/2109.10282)
-* [Source Model Implementation](https://huggingface.co/microsoft/trocr-small-stage1)
+* [Source Model Implementation](https://huggingface.co/microsoft/trocr-small-handwritten)
 
 ## Community
 * Join [our AI Hub Slack community](https://aihub.qualcomm.com/community/slack) to collaborate, post questions and learn more about on-device AI.
