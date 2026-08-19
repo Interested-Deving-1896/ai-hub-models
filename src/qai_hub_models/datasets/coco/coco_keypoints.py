@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
-import json
+import shutil
 
 import torch
 from PIL import Image
 
 from qai_hub_models.datasets.coco.coco import COCO_VAL_DATASET
+from qai_hub_models.extern.xtcocotools.coco import COCO
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetMetadata, DatasetSplit
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs, resize_pad
 from qai_hub_models.utils.input_spec import InputSpec, TensorSpec
+from qai_hub_models.utils.printing import suppress_stdout
 
 COCO_KPT_FOLDER_NAME = "coco"
 COCO_KPT_VERSION = 3
@@ -91,18 +93,18 @@ class CocoKeypointsDataset(BaseDataset):
         self.annotation_path = COCO_KPT_PERSON_ANNOTATIONS_PATH
         BaseDataset.__init__(self, self.annotation_path, split)
 
-        with open(self.annotation_path) as f:
-            data = json.load(f)
+        with suppress_stdout():
+            self.cocoGt = COCO(self.annotation_path)
 
         # Build image-id -> file_name map.
         self._id_to_filename: dict[int, str] = {
-            img["id"]: img["file_name"] for img in data["images"]
+            img["id"]: img["file_name"] for img in self.cocoGt.dataset["images"]
         }
 
         # Keep only images that have at least one person annotation with keypoints.
         seen: set[int] = set()
         self._samples: list[tuple[int, int]] = []  # (image_id, category_id)
-        for ann in data["annotations"]:
+        for ann in self.cocoGt.dataset["annotations"]:
             img_id = ann["image_id"]
             if img_id not in seen and ann.get("num_keypoints", 0) > 0:
                 seen.add(img_id)
@@ -158,6 +160,9 @@ class CocoKeypointsDataset(BaseDataset):
 
     def _download_data(self) -> None:
         COCO_VAL_DATASET.fetch(extract=True)
+        ann_dir = COCO_KPT_ANNOTATIONS_ASSET.extracted_path
+        if ann_dir.exists() and not COCO_KPT_PERSON_ANNOTATIONS_PATH.exists():
+            shutil.rmtree(ann_dir)
         COCO_KPT_ANNOTATIONS_ASSET.fetch(extract=True)
 
     @staticmethod

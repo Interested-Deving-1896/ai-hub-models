@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.datasets.coco import COCO_KPT_PERSON_ANNOTATIONS_PATH
-from qai_hub_models.extern.xtcocotools.coco import COCO
+from qai_hub_models.datasets.coco.coco_keypoints import CocoKeypointsDataset
 from qai_hub_models.models._shared.pose.pose_evaluator import CocoBodyPoseEvaluator
 from qai_hub_models.utils.bounding_box_processing import batched_nms
+from qai_hub_models.utils.printing import suppress_stdout
 
 
 class YoloPoseEvaluator(CocoBodyPoseEvaluator):
@@ -43,7 +43,8 @@ class YoloPoseEvaluator(CocoBodyPoseEvaluator):
     ) -> None:
         self.reset()
         self.in_vis_thre = in_vis_thre
-        self.coco_gt = COCO(COCO_KPT_PERSON_ANNOTATIONS_PATH)
+        with suppress_stdout():
+            self.coco_gt = CocoKeypointsDataset().cocoGt
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
 
