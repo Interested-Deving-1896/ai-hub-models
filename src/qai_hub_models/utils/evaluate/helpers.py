@@ -650,7 +650,15 @@ def evaluate(
         else:
             local_inference_models[n] = m
 
-    evaluators = {name: evaluator_func() for name in model_executors}
+    def _get_evaluator(name: str, m: object) -> BaseEvaluator:
+        if hasattr(m, "get_evaluator"):
+            try:
+                return m.get_evaluator()
+            except NotImplementedError:
+                pass
+        return evaluator_func()
+
+    evaluators = {name: _get_evaluator(name, m) for name, m in model_executors.items()}
     async_outputs: dict[str, list[AsyncOnDeviceResult]] = {
         name: [] for name in {**ai_hub_inference_models, **collection_inference_models}
     }

@@ -436,6 +436,14 @@ class OnDeviceModel(ExecutableModelProtocol):
         )
         self.model = model
 
+    @property
+    def input_names(self) -> list[str]:
+        return self.async_model.input_names
+
+    @property
+    def channel_last_input(self) -> list[str]:
+        return self.async_model.channel_last_input
+
     def __call__(
         self,
         *args: torch.Tensor
