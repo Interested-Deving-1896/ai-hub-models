@@ -15,18 +15,28 @@ Injected via the workflow prompt:
 
 - ALWAYS use `--json` and `--jq` flags — never parse human-readable text
 - NEVER use `!=` in `--jq` expressions — bash mangles `!`. Use `select(.conclusion == "failure")` instead
-- Check run status before using `--log-failed`
+- Do NOT use `gh run view --log-failed <PARENT_RUN_ID>`. Breeze runs *inside*
+  the workflow it analyzes, so the parent run is always "in progress" and the
+  command returns `run <id> is still in progress; logs will be available when
+  it is complete`. Use the per-job endpoint from Step 1.5 instead — job logs
+  are available the moment the job finishes.
 
 ## Sandbox Gotchas
 
 These are real constraints in the Breeze runner — ignoring them wastes turns on
 permission denials and command-parsing failures.
 
-- **Working dir**: Use `${TMPDIR:-/tmp}/claude/`, NOT `/tmp/` directly. `mkdir -p /tmp/<anything>` is
-  denied; `mkdir -p ${TMPDIR:-/tmp}/claude/<anything>` works.
+- **Writable paths**: redirect to flat files under `/tmp/` (e.g.
+  `/tmp/breeze-<job_id>.log`), NOT into a subdirectory like `/tmp/claude/`.
+  The runner's write allowlist is `/__w/<repo>/<repo>` and `/tmp` at file
+  granularity — `> /tmp/claude/foo.log` is blocked even though
+  `mkdir -p /tmp/claude` used to be granted.
 - **No pipes in Bash**: `cmd | head -10` triggers a permission denial because the matcher
   splits on `|` and rechecks each side. Use the tool's own flags instead (`--limit`,
   `--jq '[.[]] | .[0:10]'`, `head -n 10 file.txt` against a saved file).
+- **No newline-chained commands**: `cmd > file\necho "exit: $?"` counts as
+  command chaining and is denied like `;` or `&&`. Run each command as its
+  own Bash call.
 - **Quote `gh api` URLs that contain `&`**: bash parses unquoted `&` as a background
   operator and splits the command. Always:
   ```
@@ -46,10 +56,33 @@ permission denials and command-parsing failures.
 
 2. Try downloading test results artifact:
    ```
-   gh run download $RUN_ID -n nightly-test-results -D ${TMPDIR:-/tmp}/claude/nightly-results
+   gh run download $RUN_ID -n nightly-test-results -D /tmp/nightly-results
    ```
 
-3. If download succeeds, read `${TMPDIR:-/tmp}/claude/nightly-results/summary.md` — it has pre-built failure tables with test names, errors, and stack traces. This is your primary data source. If download fails, work from job-level pass/fail only.
+3. If download succeeds, read `/tmp/nightly-results/summary.md` — it has pre-built failure tables with test names, errors, and stack traces. This is your primary data source. If download fails, or the summary.md does not name a specific failing test/error for one of the failing jobs, proceed to Step 1.5 before categorizing.
+
+## Step 1.5: When JUnit is empty, READ THE ACTUAL LOG (mandatory)
+
+If a failing job has 0 JUnit failures, or summary.md does not name a
+specific failing test/error, you MUST fetch that job's raw log before
+proposing any root cause. Do not skip this and guess from commit history.
+
+For each failing job, use its `databaseId` from Step 1 and fetch the
+per-job log (this endpoint works while the parent workflow is still
+running — unlike `gh run view --log-failed <RUN_ID>`, which does not):
+
+    gh api "repos/$REPO/actions/jobs/<JOB_ID>/logs" > /tmp/breeze-<JOB_ID>.log
+
+Then extract error markers into a hits file and Read a ~50-line window
+around the deepest Traceback in the raw log:
+
+    grep -nE "Traceback|ImportError|ModuleNotFoundError|FileNotFoundError|##\[error\]|FAILED|Error:|failed\." \
+      /tmp/breeze-<JOB_ID>.log > /tmp/breeze-<JOB_ID>-hits.txt
+
+The log names the failing model, the missing binary/module, and the
+exact call site. That is your ground truth. Only after you have a
+concrete error string from the log may you proceed to Step 3 (commit
+bisection) and Step 4 (routing).
 
 ## Step 2: Summarize + Categorize Failures (~3 tool calls)
 
@@ -116,6 +149,13 @@ without deeper investigation. Only dig into commits/code if the pattern is novel
 
 Do NOT propose workarounds that mask the real issue. A fix that tolerates bad data is a
 bandaid — the right fix addresses WHY the data is bad in the first place.
+
+NEVER propose a root cause naming a specific dep/model/PR unless you have
+quoted an exact error string from a log fetched via Step 1.5. "Zero JUnit
+failures suggests collection abort" is a *category*, not a root cause — the
+log names the actual failing import. If every Step 1.5 fetch failed, post
+with confidence `LOW` and say "unable to read logs from sandbox; root cause
+not identified" — do not guess from commit history alone.
 
 **Root cause checklist:**
 1. **Where does the unexpected data/state originate?** Trace the error upstream:

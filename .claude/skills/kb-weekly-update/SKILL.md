@@ -190,6 +190,15 @@ the reappearance ratio (if not):
 - **Nightly misrouted patterns**: existing rules that led to wrong team suggestion
 - **New nightly examples**: correct triage of non-obvious cases (add to `examples.md`)
 - **Team changes**: fixers not listed in `teams.md` (add, never remove)
+- **New historical patterns from `triage-wrong` closures**: for any issue graded
+  VERIFIED-INCORRECT in Step 2a, extract the real root cause from the human
+  comment or the fix PR and add a row to the appropriate section of
+  `historical-patterns.md` (Transient, Workbench Service, Dependency Breakage,
+  Compiler/Quantizer Bug, QAIHM Bug, External Contributor Bug, etc.). This is
+  how last week's wrong triage becomes next week's known pattern. Only add
+  concrete signatures the human evidence actually names (missing binary,
+  specific dep version, specific import chain) — no speculation, no
+  restatement of the agent's disproven guess.
 - **New scorecard signatures**: regression patterns not matched by `scorecard-patterns.md`
   (add to the appropriate "Performance Regression Signatures" or "Numerics Regression
   Signatures" subsection)
@@ -209,6 +218,9 @@ a "no updates" PR that just reports the accuracy scores.
 
 2. Edit the KB files using the Edit tool. Editable files:
    - `error-patterns.md`, `teams.md`, `runtime-guide.md`, `examples.md` — nightly KB
+   - `historical-patterns.md` — recurring failure patterns; new rows come
+     exclusively from `triage-wrong` closures where the human comment or fix
+     PR identifies a specific, concrete signature (see Step 2c)
    - `scorecard-patterns.md` — scorecard KB (signatures + Known Flaky Combos table)
 
    Rules:
@@ -218,6 +230,11 @@ a "no updates" PR that just reports the accuracy scores.
    - For new error patterns: add to the appropriate confidence section
    - For new examples: append after the last numbered example
    - For misroute corrections: update the routing rule AND add an anti-pattern example
+   - For new historical patterns: append a row to the section whose header matches
+     the failure category (e.g. an `ImportError` from a missing system binary goes
+     under "External Contributor Bug" or "QAIHM Bug" depending on whose code
+     triggered the import; a compiler-side crash goes under "Workbench Compiler /
+     Quantizer Bug"). Cite the tetracode issue number in the Occurrences column.
    - For new scorecard signatures: add to the right subsection (Performance / Numerics
      / Deployment) with Signal/Confidence/Team columns matching the existing format
    - For confirmed flaky combos: replace the `(initially empty)` placeholder row
