@@ -382,7 +382,32 @@ def resolve_affected_models(
     return changed_models
 
 
-@functools.lru_cache(maxsize=3)
+def _expand_diff_to_seed_py_files(diff_path: str) -> list[str]:
+    """
+    Map a changed patches-diff path (under models/<X>/ or models/_shared/<Y>/) to
+    a list of .py seed files whose "change" should trigger the same downstream
+    tests. For a top-level model, seed model.py so model + export tests run. For
+    a _shared component, seed every .py in that component so the DFS finds every
+    dependent model.
+    """
+    parts = Path(diff_path).parts
+    try:
+        models_idx = parts.index("models")
+    except ValueError:
+        return []
+    tail = parts[models_idx + 1 :]
+    if not tail:
+        return []
+    if tail[0] == "_shared" and len(tail) >= 2:
+        shared_dir = Path(PY_PACKAGE_MODELS_ROOT, "_shared", tail[1])
+        return [p.relative_to(REPO_ROOT).as_posix() for p in shared_dir.rglob("*.py")]
+    model_py_rel = Path(PY_PACKAGE_RELATIVE_MODELS_ROOT, tail[0], "model.py")
+    if Path(REPO_ROOT, model_py_rel).exists():
+        return [model_py_rel.as_posix()]
+    return []
+
+
+@functools.lru_cache(maxsize=4)
 def get_changed_files_in_package(
     prefix: str | None = None,
     suffix: str | None = None,
@@ -430,6 +455,8 @@ def get_ci_test_models(
     files = list(get_changed_files_in_package(suffix="requirements.txt"))
     files.extend(get_changed_files_in_package(suffix=".py"))
     files.extend(get_changed_files_in_package(suffix="manifest.yaml"))
+    for diff in get_changed_files_in_package(suffix=".diff"):
+        files.extend(_expand_diff_to_seed_py_files(diff))
     return resolve_affected_models(
         files,
         include_model,

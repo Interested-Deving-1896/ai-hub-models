@@ -201,7 +201,8 @@ class CenterPointApp:
             lidar_input["num_points"],
             lidar_input["points"],
         )
-        batch_box_preds, batch_hm = self.model(voxels, coordinates, num_points)
+        with torch.no_grad():
+            batch_box_preds, batch_hm = self.model(voxels, coordinates, num_points)
         return self.visualizer(lidar_points, batch_box_preds, batch_hm)
 
     def post_processing(

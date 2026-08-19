@@ -208,3 +208,60 @@ index 18a3b12..2beda63 100644
 
      if post_max_size is not None:
          selected = selected[:post_max_size]
+diff --git a/det3d/models/__init__.py b/det3d/models/__init__.py
+index 1c0f34a..0e187a4 100644
+--- a/det3d/models/__init__.py
++++ b/det3d/models/__init__.py
+@@ -1,7 +1,10 @@
+ import importlib
+-spconv_spec = importlib.util.find_spec("spconv")
+-found = spconv_spec is not None
+-if found:
++try:
++    import spconv  # noqa: F401
++    _has_spconv = True
++except Exception:
++    _has_spconv = False
++if _has_spconv:
+     from .backbones import *  # noqa: F401,F403
+ else:
+     print("No spconv, sparse convolution disabled!")
+diff --git a/det3d/models/backbones/__init__.py b/det3d/models/backbones/__init__.py
+index 7a9f397..9d8e5f2 100644
+--- a/det3d/models/backbones/__init__.py
++++ b/det3d/models/backbones/__init__.py
+@@ -1,8 +1,11 @@
+ import importlib
+-spconv_spec = importlib.util.find_spec("spconv")
+-found = spconv_spec is not None
+-
+-if found:
++try:
++    import spconv  # noqa: F401
++    _has_spconv = True
++except Exception:
++    _has_spconv = False
++
++if _has_spconv:
+     from .scn import SpMiddleResNetFHD
+ else:
+     print("No spconv, sparse convolution disabled!")
+diff --git a/det3d/torchie/trainer/checkpoint.py b/det3d/torchie/trainer/checkpoint.py
+index 61c1f67..82f3b3e 100644
+--- a/det3d/torchie/trainer/checkpoint.py
++++ b/det3d/torchie/trainer/checkpoint.py
+@@ -42,8 +42,11 @@ import torch.nn as nn
+ from typing import Set
+
+ try:
+-    import spconv.pytorch as spconv
+-except:
+-    import spconv as spconv
++    try:
++        import spconv.pytorch as spconv
++    except Exception:
++        import spconv as spconv
++except Exception:
++    spconv = None
+
+ def find_all_spconv_keys(model: nn.Module, prefix="") -> Set[str]:
