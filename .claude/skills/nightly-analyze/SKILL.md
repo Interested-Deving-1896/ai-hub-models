@@ -91,7 +91,7 @@ From summary.md or job data, group failures:
 | Category | Detection |
 |----------|-----------|
 | Unit Test | `*-unit-tests-junit.xml` or "QAIHM Tests" |
-| Model Test | `*-model-tests-junit.xml` or "Model Tests" |
+| Model Test | `*-model-tests-junit.xml` or "Model Tests" — nightly runs each model in a fresh per-model venv, so `ModuleNotFoundError`, `ImportError`, or an `environment_setup` failure in the JUnit XML almost always means a manifest bug (missing dep, broken `pre_pip_install_commands`), NOT a model bug. Route to the model's owner. |
 | Workbench Job | `*-verify-workbench-jobs-junit.xml` |
 | Workflow/Infra | Jobs that failed without XML |
 | Cross-Version | Same test fails across 3.10/3.11/3.12/3.13 |

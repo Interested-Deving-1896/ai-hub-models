@@ -176,39 +176,11 @@ class GPUPyTestModelsTask(CompositeTask):
                     include_dev_deps=True,
                 )
             )
-
-            # Install QDC wheel and optional GPU-specific requirements into the model venv.
-            qdc_wheel_glob = os.path.join(REPO_ROOT, "qualcomm_device_cloud_sdk-*.whl")
-            has_gpu_reqs = os.path.exists(
-                os.path.join(PY_PACKAGE_MODELS_ROOT, model_name, "requirements-gpu.txt")
-            )
-            gpu_req_rel_path = (
-                f"src/qai_hub_models/models/{model_name}/requirements-gpu.txt"
-            )
-            install_cmds = [f"pip install $(ls {qdc_wheel_glob})"]
-            if has_gpu_reqs:
-                # onnxruntime and onnxruntime-gpu share files in the onnxruntime/
-                # namespace, so uninstalling one deletes files the other still
-                # claims to own. On reused venvs this leaves onnxruntime-gpu
-                # half-broken (e.g. `GraphOptimizationLevel` missing). Clean
-                # both, install reqs, then uninstall the transitively re-pulled
-                # onnxruntime and force-reinstall onnxruntime-gpu to repair
-                # any shared files that got removed.
-                install_cmds.append("pip uninstall -y onnxruntime onnxruntime-gpu")
-                install_cmds.append(f"pip install -r {gpu_req_rel_path}")
-                # aimet_onnx transitively re-installs onnxruntime via onnxruntime-extensions
-                install_cmds.append("pip uninstall -y onnxruntime")
-                install_cmds.append(
-                    f"pip install --force-reinstall --no-deps "
-                    f"$(grep '^onnxruntime-gpu' {gpu_req_rel_path})"
-                )
             tasks.append(
                 RunCommandsWithVenvTask(
-                    group_name=f"Install GPU Dependencies For Model {model_name}",
+                    group_name=f"qai-hub-models install {model_name}",
                     venv=model_venv,
-                    commands=[" && ".join(install_cmds)],
-                    raise_on_failure=False,
-                    ignore_return_codes=[5],
+                    commands=[f"qai-hub-models install {model_name} --yes"],
                     retries=2,
                 )
             )
@@ -337,6 +309,14 @@ class PyTestModelTask(CompositeTask):
                     junit_xml_path=junit_xml_path,
                 )
                 tasks.append(setup_task)
+                tasks.append(
+                    RunCommandsWithVenvTask(
+                        group_name=f"qai-hub-models install {model_name}",
+                        venv=model_venv,
+                        commands=[f"qai-hub-models install {model_name} --yes"],
+                        retries=2,
+                    )
+                )
             else:
                 model_venv = venv
                 if install_deps:

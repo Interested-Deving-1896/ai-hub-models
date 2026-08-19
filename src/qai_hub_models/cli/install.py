@@ -108,6 +108,44 @@ def _has_cuda_gpu() -> bool:
         return False
 
 
+@cache
+def uv_installed() -> bool:
+    try:
+        return (
+            subprocess.run(["which", "uv"], check=False, capture_output=True).returncode
+            == 0
+        )
+    except Exception:
+        return False
+
+
+@cache
+def get_pip() -> str:
+    return "uv pip" if uv_installed() else "pip"
+
+
+def _rewrite_pip_tokens(tokens: list[str]) -> list[str]:
+    assert tokens and tokens[0] == "pip", tokens
+    if uv_installed():
+        tokens = [t for t in tokens if t != "--use-pep517"]
+        if len(tokens) >= 2 and tokens[1] == "uninstall":
+            tokens = [t for t in tokens if t not in ("-y", "--yes")]
+        return tokens
+    return [t for t in tokens if t != "--no-build-isolation"]
+
+
+def normalize_pip_command(raw: str) -> str:
+    """Rewrite a manifest ``pip …`` string for the resolved pip binary."""
+    tokens = _rewrite_pip_tokens(raw.split())
+    return " ".join([get_pip(), *tokens[1:]])
+
+
+def normalize_pip_argv(argv: list[str]) -> list[str]:
+    """Rewrite an argv list starting with ``pip`` for the resolved pip binary."""
+    tokens = _rewrite_pip_tokens(list(argv))
+    return [*get_pip().split(), *tokens[1:]]
+
+
 def _validate_dep_name(name: str, kind: NodeKind, referrer: Node) -> None:
     r"""Reject dep names that could escape their intended root.
 
@@ -239,10 +277,14 @@ def _node_install_commands(node: Node, on_gpu: bool) -> list[list[str]]:
         _load_pip_commands(node, "post_pip_install_commands"), on_gpu
     )
 
-    commands: list[list[str]] = [shlex.split(c.command) for c in pre]
+    commands: list[list[str]] = [
+        normalize_pip_argv(shlex.split(c.command)) for c in pre
+    ]
     if node.requirements_path.exists():
-        commands.append(["pip", "install", "-r", str(node.requirements_path)])
-    commands.extend(shlex.split(c.command) for c in post)
+        commands.append(
+            [*get_pip().split(), "install", "-r", str(node.requirements_path)]
+        )
+    commands.extend(normalize_pip_argv(shlex.split(c.command)) for c in post)
     return commands
 
 

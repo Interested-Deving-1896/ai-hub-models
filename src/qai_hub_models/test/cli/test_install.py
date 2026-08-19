@@ -47,6 +47,8 @@ def fake_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(install_mod, "MODELS_ROOT", models)
     monkeypatch.setattr(install_mod, "MODEL_IDS", {"root_model", "leaf_model"})
     monkeypatch.setattr(install_mod, "_has_cuda_gpu", lambda: False)
+    monkeypatch.setattr(install_mod, "uv_installed", lambda: False)
+    install_mod.get_pip.cache_clear()
     install_mod._load_manifest.cache_clear()
     return tmp_path
 
@@ -359,3 +361,52 @@ class TestDispatchWiring:
         with patch("qai_hub_models.cli.dispatch.install_main") as mock_install_main:
             run_model_script("mobilenet_v2", "install", ["--dry-run"])
         mock_install_main.assert_called_once_with(["mobilenet_v2", "--dry-run"])
+
+
+class TestUvRewrite:
+    """When uv is on PATH, planned argv should use `uv pip` and strip uv-rejected flags."""
+
+    def test_argv_rewritten_when_uv_installed(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(install_mod, "uv_installed", lambda: True)
+        install_mod.get_pip.cache_clear()
+        _write_manifest(
+            fake_tree / "models" / "root_model",
+            "post_pip_install_commands:\n  - command: pip install foo\n",
+        )
+        _write_requirements(fake_tree / "models" / "root_model")
+        plan = plan_install("root_model")
+        commands = plan[0][1]
+        assert commands[0][:2] == ["uv", "pip"]
+        assert commands[0][2:] == [
+            "install",
+            "-r",
+            str(fake_tree / "models" / "root_model" / "requirements.txt"),
+        ]
+        assert commands[1] == ["uv", "pip", "install", "foo"]
+
+    def test_use_pep517_stripped_under_uv(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(install_mod, "uv_installed", lambda: True)
+        install_mod.get_pip.cache_clear()
+        _write_manifest(
+            fake_tree / "models" / "root_model",
+            "post_pip_install_commands:\n  - command: pip install --use-pep517 foo\n",
+        )
+        plan = plan_install("root_model")
+        assert plan[0][1] == [["uv", "pip", "install", "foo"]]
+
+    def test_uninstall_y_stripped_under_uv(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Uv rejects -y/--yes on uninstall; the rewrite must drop them."""
+        monkeypatch.setattr(install_mod, "uv_installed", lambda: True)
+        install_mod.get_pip.cache_clear()
+        _write_manifest(
+            fake_tree / "models" / "root_model",
+            "post_pip_install_commands:\n  - command: pip uninstall -y foo\n",
+        )
+        plan = plan_install("root_model")
+        assert plan[0][1] == [["uv", "pip", "uninstall", "foo"]]

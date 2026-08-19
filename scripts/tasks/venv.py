@@ -464,7 +464,7 @@ class SyncLocalQAIHMVenvTask(CompositeTask):
 
 
 class SyncModelVenvTask(SyncLocalQAIHMVenvTask):
-    """Sync the provided environment with local QAIHM and the provided extras needed for the model_name."""
+    """Sync the venv with QAIHM base. Model deps are installed later via `qai-hub-models install`."""
 
     def __init__(
         self,
@@ -475,23 +475,10 @@ class SyncModelVenvTask(SyncLocalQAIHMVenvTask):
         cli_wheel_dir: str | os.PathLike | None = None,
         junit_xml_path: str | None = None,
     ) -> None:
-        extras = []
-        if include_dev_deps:
-            extras.append("dev")
-        if os.path.exists(
-            os.path.join(PY_PACKAGE_MODELS_ROOT, model_name, "requirements.txt")
-        ):
-            extras.append(model_name)
-
+        extras = ["dev"] if include_dev_deps else []
         super().__init__(
             venv_path,
             extras,
-            pre_pip_install_commands=get_pip_install_commands(
-                model_name, "pre_pip_install_commands"
-            ),
-            post_pip_install_commands=get_pip_install_commands(
-                model_name, "post_pip_install_commands"
-            ),
             qaihm_wheel_dir=qaihm_wheel_dir,
             cli_wheel_dir=cli_wheel_dir,
             junit_xml_path=junit_xml_path,

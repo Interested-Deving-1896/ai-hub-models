@@ -54,6 +54,7 @@ jobs:
         # 4 python versions in parallel would otherwise queue on a single
         # -gpulv runner; force kube so each fans out to its own pod.
         force_kube: true
+        use_per_model_venv: true
 
     run-tests311:
       name: Run Tests (py 3.11)
@@ -67,6 +68,7 @@ jobs:
         deployment: prod
         generate_test_summary: false
         force_kube: true
+        use_per_model_venv: true
 
     run-tests312:
       name: Run Tests (py 3.12)
@@ -80,6 +82,7 @@ jobs:
         deployment: prod
         generate_test_summary: false
         force_kube: true
+        use_per_model_venv: true
 
     run-tests313:
       name: Run Tests (py 3.13)
@@ -93,6 +96,7 @@ jobs:
         deployment: prod
         generate_test_summary: false
         force_kube: true
+        use_per_model_venv: true
 
     generate_test_summary:
       name: Generate Combined Test Summary

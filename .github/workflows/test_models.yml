@@ -73,6 +73,11 @@ on:
         type: boolean
         default: false
 
+      use_per_model_venv:
+        description: Install each model into a fresh venv rather than the fused global_requirements.txt venv. Set true for nightly to catch manifest-completeness bugs.
+        type: boolean
+        default: false
+
 
 env:
   # Versions MUST be quoted, otherwise they will be interpreted as a floats
@@ -104,6 +109,7 @@ jobs:
       QAIHM_TEST_MODELS: ${{ inputs.models }}
       QAIHM_TEST_PRECISIONS: ${{ inputs.test_precisions }}
       QAIHM_TEST_IGNORE_DEVICE_JOB_CACHE: ${{ inputs.ignore_job_cache }}
+      QAIHM_PER_MODEL_VENV: ${{ inputs.use_per_model_venv && '1' || '' }}
       HUGGING_FACE_HUB_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       COMPILE_JOBS_URL: NONE
 
