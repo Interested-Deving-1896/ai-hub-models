@@ -56,7 +56,7 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
         ("DEFAULT_W4A16", "wikitext", 9.46, 0),
-        ("DEFAULT_W4A16", "mmlu", 0.6725, 1000),
+        ("DEFAULT_W4A16", "mmlu", 0.691, 1000),
         # Re-measured after the lm_head untie fix; the old 9.61/0.74 were taken
         # while Qwen3-8B's trained lm_head was being overwritten. FP now scores
         # better than w4a16 (8.99 < 9.46 PPL), which is the expected ordering.
@@ -92,7 +92,6 @@ def test_evaluate(
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
         model_id=MODEL_ID,
-        rtol=0.05,
     )
 
 

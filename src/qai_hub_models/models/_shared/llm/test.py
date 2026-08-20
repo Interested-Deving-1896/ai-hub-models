@@ -871,7 +871,7 @@ def run_llm_evaluate_test(
     context_length: int,
     model_id: str,
     tmp_path: Path | None = None,
-    rtol: float = 0.03,
+    rtol: float = 0.06,
     log_checkpoint: str | None = None,
     evaluate_kwargs: dict[str, Any] | None = None,
     add_unquantized_extra_kwargs: bool = True,

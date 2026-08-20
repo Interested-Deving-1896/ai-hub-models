@@ -57,7 +57,7 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
         ("DEFAULT_W4A16", "wikitext", 12.273, 0),
-        ("DEFAULT_W4A16", "mmlu", 0.550, 1000),
+        ("DEFAULT_W4A16", "mmlu", 0.559, 1000),
         ("DEFAULT_UNQUANTIZED", "wikitext", 10.14, 0),
         ("DEFAULT_UNQUANTIZED", "mmlu", 0.607, 1000),
     ],

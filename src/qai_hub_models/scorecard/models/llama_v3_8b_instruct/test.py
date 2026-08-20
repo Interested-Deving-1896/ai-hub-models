@@ -90,7 +90,6 @@ def test_evaluate(
         prompt_sequence_length=DEFAULT_EVAL_SEQLEN,
         context_length=DEFAULT_CONTEXT_LENGTH,
         model_id=MODEL_ID,
-        rtol=0.06,
     )
 
 

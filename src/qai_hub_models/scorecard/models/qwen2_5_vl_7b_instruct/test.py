@@ -98,7 +98,6 @@ def test_evaluate(
         context_length=DEFAULT_CONTEXT_LENGTH,
         tmp_path=tmp_path,
         model_id=MODEL_ID,
-        rtol=0.06,
         log_checkpoint="DEFAULT_W4A16" if checkpoint == "DEFAULT" else checkpoint,
         add_unquantized_extra_kwargs=False,
         evaluate_kwargs=dict(

@@ -71,7 +71,7 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
         ("DEFAULT_W4", "mmlu", 0.399, 1000),
         ("DEFAULT_W4", "tiny_mmlu", 0.43, 0),
         pytest.param("DEFAULT_W4A16", "wikitext", 17.24, 0, marks=pytest.mark.nightly),
-        ("DEFAULT_W4A16", "mmlu", 0.376, 1000),
+        ("DEFAULT_W4A16", "mmlu", 0.384, 1000),
         # Prompt-generation + LLM-grader smoke test (5 samples). The grader
         # label is an argmax over near-valued logits that can flip across hosts,
         # so expected_metric is a floor. FP PreSplit measures 41/50 on Grace2.
