@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 from typing_extensions import Self
 
+from qai_hub_models import Precision
 from qai_hub_models.datasets.reid.entire_id import ENTIReIDDataset
 from qai_hub_models.datasets.reid.market1501 import Market1501Dataset
 from qai_hub_models.models._shared.reid.reid_evaluator import ReIDEvaluator
@@ -152,3 +153,12 @@ class OSNet(BaseModel):
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
         return ENTIReIDDataset
+
+    def get_hub_quantize_options(
+        self, precision: Precision, other_options: str = ""
+    ) -> str:
+        # min_max: tf_enhanced clips OSNet embeddings and tanks w8a8 ReID mAP.
+        options = super().get_hub_quantize_options(precision, other_options)
+        if "--range_scheme" not in options:
+            options = (options + " --range_scheme min_max").strip()
+        return options
