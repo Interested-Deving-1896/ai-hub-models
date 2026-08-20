@@ -3,6 +3,16 @@ precisions:
     components:
       Llama-v3.2-3B-Instruct-SSD:
         performance_metrics:
+          Arduino VENTUNO Q:
+            geniex_qairt:
+              llm_metrics:
+              - context_length: 4096
+                desired_compute_unit: npu
+                prefill_tokens_per_second: 1023.443247
+                time_to_first_token_range_milliseconds:
+                  max: 4002.176
+                  min: 125.068
+                tokens_per_second: 30.146247
           Dragonwing IQ-9075 EVK:
             genie:
               llm_metrics:
@@ -174,6 +184,7 @@ supported_chipsets:
 - qualcomm-qcs7181
 - qualcomm-qcs8750
 - qualcomm-qcs9075
+- qualcomm-qcs8275
 supported_devices:
 - Snapdragon 8 Elite Gen 5 QRD
 - Snapdragon 8 Elite QRD
@@ -188,3 +199,4 @@ supported_devices:
 - SA8255P ADP
 - SA8650P ADP
 - Dragonwing IQ-9075 EVK
+- Arduino VENTUNO Q
