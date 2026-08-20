@@ -34,7 +34,7 @@ ALL_GENIEX_DEVICES = (
 # S25 Family), which is *not* the LLM default -- so if the token "default"
 # reaches run_geniex_bench_benchmarks.py it would dispatch to the wrong
 # device. Expand it here instead.
-DEFAULT_LLM_DEVICE = "cs_8_elite_qrd"
+DEFAULT_LLM_DEVICE = "cs_x_elite"
 
 
 def split(device_input: str) -> tuple[str, str]:

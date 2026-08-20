@@ -5,7 +5,8 @@
 """Build a scorecard-format ``accuracy.csv`` from on-device LLM grading output.
 
 Reads ``*_eval_grade.json`` (and ``*_eval.meta.json``) and writes one
-accuracy.csv row per file.
+accuracy.csv row per file. The resolved manifest baseline is also written back
+into each grade file as ``reference_score_pct``, for the CI summary to render.
 
 To add an FP32 baseline for an LLM model, add a ``numerics_benchmark`` block to the
 model's ``info.yaml``.
@@ -21,13 +22,12 @@ from pathlib import Path
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
+from qai_hub_models.models._shared.llm.grader.grace import GRACE_TASK_NAME
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.utils.testing_async_utils import write_accuracy
 from qai_hub_models.utils.base_dataset import DatasetMetadata
-from qai_hub_models.utils.metrics import LLM_RESPONSE_GRADE
+from qai_hub_models.utils.metrics import GRACE2_GRADE
 
-# Dataset name for the on-device prompt eval. Matches TextPrompts.dataset_name().
-PROMPTS_DATASET_NAME = "prompts"
 GRADE_SUFFIX = "_grade.json"
 META_SUFFIX = ".meta.json"
 
@@ -37,11 +37,17 @@ def _meta_path_for(grade_path: str) -> str:
     return grade_path[: -len(GRADE_SUFFIX)] + META_SUFFIX
 
 
-def _reference_grade(model_id: str, dataset_name: str) -> float | None:
-    """Optional FP32 baseline grade from info.yaml's numerics_benchmark.
+def _grace_metric_name(dataset_name: str) -> str:
+    """The label a Grace dataset's score is reported under (``grace2`` -> ``Grace2``)."""
+    return dataset_name.replace("grace", "Grace", 1)
 
-    Returns the benchmark value if the (dataset_name, metric_name, unit) matches
-    (dataset_name, "LLM Response Grade", "%"). Otherwise returns None.
+
+def _reference_grade(model_id: str, dataset_name: str) -> float | None:
+    """FP baseline grade from the manifest's numerics_benchmark, if comparable.
+
+    The baseline must have been measured on the same Grace version as this run: a
+    Grace1 number beside a Grace2 device score is two different metrics, not a
+    float-vs-device delta.
     """
     try:
         manifest = QAIHMModelManifest.from_model(model_id)
@@ -53,10 +59,15 @@ def _reference_grade(model_id: str, dataset_name: str) -> float | None:
         return None
     if (
         benchmark.dataset_name == dataset_name
-        and benchmark.metric_name == "LLM Response Grade"
+        and benchmark.metric_name == _grace_metric_name(dataset_name)
         and benchmark.unit == "%"
     ):
         return benchmark.value
+    print(
+        f"  {model_id}: manifest baseline is {benchmark.metric_name} on "
+        f"{benchmark.dataset_name}, not {_grace_metric_name(dataset_name)} on "
+        f"{dataset_name}; leaving the float reference empty."
+    )
     return None
 
 
@@ -85,7 +96,7 @@ def collect(directory: str) -> int:
         model_id = meta["model_id"]
         chipset = meta["chipset"]
         precision = meta["precision"]
-        dataset_name = meta.get("dataset_name", PROMPTS_DATASET_NAME)
+        dataset_name = meta.get("dataset_name", GRACE_TASK_NAME)
         # The sidecar records the scorecard runtime; older/genie sidecars omit
         # it and fall back to GENIE.
         path_value = meta.get("path")
@@ -100,6 +111,11 @@ def collect(directory: str) -> int:
             continue
 
         torch_accuracy = _reference_grade(model_id, dataset_name)
+        # scripts/ci/grader_summary.py renders this alongside the device score,
+        # and cannot resolve it itself: it runs on the system python, no venv.
+        if grade.get("reference_score_pct") != torch_accuracy:
+            grade["reference_score_pct"] = torch_accuracy
+            Path(grade_path).write_text(json.dumps(grade, indent=2))
         write_accuracy(
             model_name=model_id,
             chipset=chipset,
@@ -112,7 +128,7 @@ def collect(directory: str) -> int:
             dataset_metadata=DatasetMetadata(
                 link="", split_description="on-device prompt eval set"
             ),
-            metric_metadata=LLM_RESPONSE_GRADE,
+            metric_metadata=GRACE2_GRADE,
             num_samples=grade.get("num_items"),
         )
         rows_written += 1

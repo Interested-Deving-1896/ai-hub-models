@@ -19,6 +19,7 @@ import torch
 from tqdm import tqdm
 from transformers import GenerationConfig, PreTrainedTokenizerBase, set_seed
 
+from qai_hub_models.models._shared.llm.grader.grader import MAX_POINTS
 from qai_hub_models.models._shared.llm.llm_evaluator import LLMEvaluator
 from qai_hub_models.utils.base_evaluator import _DataLoader
 from qai_hub_models.utils.path_helpers import QAIHM_REPO_ROOT
@@ -40,6 +41,7 @@ class GeneratedResponse:
     prompt: str
     output: str
     image_path: str | None = None
+    category: str | None = None
 
 
 def _grader_venv_candidates(grader_venv: str | None) -> list[Path]:
@@ -105,21 +107,58 @@ def _run_grader_subprocess(
 
 
 def _format_grader_summary(summary: dict[str, Any]) -> str:
-    counts = summary.get("counts", {})
     lines = [
         "=" * 60,
         f"Grader: {summary.get('grader_model', 'unknown')}",
         f"Responses graded: {summary.get('num_items', 0)}",
         "=" * 60,
+        "",
     ]
-    lines.extend(
-        f"  {letter}: {counts.get(letter, 0)}" for letter in ("A", "B", "C", "D")
-    )
-    lines.append("")
     lines.append(
         f"Overall score: {summary.get('score_pct', 0.0):.1f}%  "
         f"({summary.get('total_points', 0)}/{summary.get('max_points', 0)} pts)"
     )
+    if summary.get("num_unparsed"):
+        lines.append(
+            f"GRADER FAILURE: {summary['num_unparsed']} item(s) produced no "
+            f"readable rating and were scored 0. The score above is a floor, not "
+            f"a measurement — fix the grader and re-run before trusting it."
+        )
+    category_scores = summary.get("category_scores") or {}
+    if category_scores:
+        lines.append("")
+        lines.append("By category:")
+        lines.extend(
+            f"  {name:15s} {entry['score_pct']:5.1f}%  (n={entry['num_scored']})"
+            for name, entry in sorted(
+                category_scores.items(), key=lambda kv: kv[1]["score_pct"]
+            )
+        )
+    # The reasoning behind every non-perfect grade, so a regression can be
+    # triaged from the log alone without re-running the grader.
+    penalized = sorted(
+        (
+            item
+            for item in summary.get("items", [])
+            if item.get("points", MAX_POINTS) < MAX_POINTS and item.get("rationale")
+        ),
+        key=lambda item: item["points"],
+    )
+    if penalized:
+        lines.append("")
+        lines.append("Deductions:")
+        lines.extend(
+            f"  idx={item['idx']} [{item['points']}/{MAX_POINTS} pts] "
+            f"{item['rationale']}"
+            for item in penalized
+        )
+    summary_items = summary.get("summary_items") or []
+    if summary_items:
+        lines.append("")
+        lines.append("Summary:")
+        lines.extend(
+            f"  {number}. {text}" for number, text in enumerate(summary_items, start=1)
+        )
     return "\n".join(lines)
 
 
@@ -264,6 +303,7 @@ class LLMResponseEvaluator(LLMEvaluator):
                         prompt=label.prompt,
                         output=response.strip(),
                         image_path=label.image_path,
+                        category=getattr(label, "category", None),
                     )
                 )
                 # Persist after every prompt so progress is visible on disk and
@@ -297,6 +337,7 @@ class LLMResponseEvaluator(LLMEvaluator):
         items = [
             {
                 "idx": r.index,
+                **({"category": r.category} if r.category else {}),
                 "prompt": r.prompt,
                 "output": r.output,
                 **({"image_path": r.image_path} if r.image_path else {}),

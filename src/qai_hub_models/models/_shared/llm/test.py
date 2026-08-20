@@ -34,6 +34,10 @@ from qai_hub_models.models._shared.llm.common import (
     save_job,
 )
 from qai_hub_models.models._shared.llm.evaluate import evaluate
+from qai_hub_models.models._shared.llm.grader.grace import (
+    PROMPT_TASKS,
+    resolve_task_name,
+)
 from qai_hub_models.models._shared.llm.llm_helpers import log_evaluate_test_result
 from qai_hub_models.models._shared.llm.model import (
     LLM_QNN,
@@ -853,9 +857,6 @@ def setup_test_quantization(
     return output_path
 
 
-PROMPTS_TASKS = {"prompts", "multimodal_prompts"}
-
-
 def run_llm_evaluate_test(
     task: str,
     checkpoint: str,
@@ -901,7 +902,7 @@ def run_llm_evaluate_test(
     VLMs don't take them. ``fp_baseline_uses_presplit`` (default True) can be
     set False to route the FP baseline through the split wrapper instead.
     """
-    is_prompts = task in PROMPTS_TASKS
+    is_prompts = resolve_task_name(task) in PROMPT_TASKS
     is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
     if is_prompts:
         assert tmp_path is not None, "tmp_path is required for prompt-generation tasks"

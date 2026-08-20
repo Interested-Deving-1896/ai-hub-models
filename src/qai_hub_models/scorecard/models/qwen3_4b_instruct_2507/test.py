@@ -36,7 +36,7 @@ from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,
 )
-from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE, cs_8_elite_qrd
+from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE, cs_x_elite
 from qai_hub_models.scorecard.utils.testing_export_eval import run_llm_compile
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.checkpoint import CheckpointSpec
@@ -144,7 +144,7 @@ def test_evaluate(
 @pytest.mark.parametrize(
     ("precision", "scorecard_path", "device", "checkpoint"),
     [
-        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_8_elite_qrd, "DEFAULT_W4A16"),
+        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_x_elite, "DEFAULT_W4A16"),
     ],
 )
 @pytest.mark.compile_ram_intensive
@@ -193,7 +193,7 @@ def test_compile(
 @pytest.mark.parametrize(
     ("precision", "scorecard_path", "device"),
     [
-        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_8_elite_qrd),
+        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_x_elite),
     ],
 )
 @pytest.mark.qdc

@@ -15,6 +15,12 @@ from transformers import AutoProcessor
 from qai_hub_models import Precision
 from qai_hub_models.datasets import instantiate_dataset
 from qai_hub_models.models._shared.llm.generator_factory import make_generator
+from qai_hub_models.models._shared.llm.grader.grace import (
+    GRACE_TASK_ALIAS,
+    GRACE_TASK_NAME,
+    PROMPT_TASKS,
+    resolve_task_name,
+)
 from qai_hub_models.models._shared.llm.llm_evaluator import LLMEvaluator
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CALIBRATION_SEQ_LEN,
@@ -288,11 +294,15 @@ def llm_evaluate(
         help="One or more AR sequence-length buckets. With multiple values the "
         "generator selects the smallest bucket that fits each step",
     )
+    task_choices = [d.dataset_name() for d in fp_model_cls.get_eval_dataset_classes()]
+    if GRACE_TASK_NAME in task_choices:
+        # Version-less alias for whichever Grace version this branch ships.
+        task_choices.append(GRACE_TASK_ALIAS)
     parser.add_argument(
         "--task",
         type=str,
         default="wikitext",
-        choices=[d.dataset_name() for d in fp_model_cls.get_eval_dataset_classes()],
+        choices=task_choices,
         help="Tasks for evaluation.",
     )
     parser.add_argument(
@@ -318,7 +328,7 @@ def llm_evaluate(
     prompt_group = parser.add_argument_group(
         "prompt-based tasks",
         "Options that only apply to the prompt-generation tasks "
-        "('prompts', 'multimodal_prompts'); ignored by all other tasks.",
+        f"({', '.join(sorted(PROMPT_TASKS))}); ignored by all other tasks.",
     )
     prompt_group.add_argument(
         "--output-dir",
@@ -326,7 +336,7 @@ def llm_evaluate(
         default=None,
         help=(
             "Directory to write generated responses and grader summary. "
-            "Required for the 'prompts' and 'multimodal_prompts' tasks."
+            f"Required for the {', '.join(sorted(PROMPT_TASKS))} tasks."
         ),
     )
     prompt_group.add_argument(
@@ -347,6 +357,7 @@ def llm_evaluate(
     )
 
     args = parser.parse_args()
+    args.task = resolve_task_name(args.task)
 
     kwargs = dict(get_model_kwargs(quantized_model_cls, vars(args)))
 
@@ -374,7 +385,7 @@ def llm_evaluate(
     )
 
     task_kwargs: dict[str, Any] | None = None
-    if args.task in {"prompts", "multimodal_prompts"}:
+    if args.task in PROMPT_TASKS:
         if args.output_dir is None:
             parser.error(f"--output-dir is required for the '{args.task}' task.")
         task_kwargs = {

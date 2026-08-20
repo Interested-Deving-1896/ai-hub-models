@@ -335,11 +335,8 @@ jobs:
           --venv="$GRADER_VENV" \
           grade_llm_responses
 
-    - name: Add grader scores to GitHub summary
-      if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}
-      run: |
-        python3 scripts/ci/grader_summary.py "$GRADER_INPUT_DIR" >> "$GITHUB_STEP_SUMMARY"
-
+    # Ahead of the summary step: this resolves each model's manifest baseline
+    # into the grade files, which is where the summary reads the ref score from.
     - name: Collect LLM Accuracy CSV
       if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}
       env:
@@ -349,6 +346,11 @@ jobs:
         python3 scripts/build_and_test.py \
           --venv="${{ env.VENV_PATH }}" \
           collect_llm_accuracy_csv
+
+    - name: Add grader scores to GitHub summary
+      if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}
+      run: |
+        python3 scripts/ci/grader_summary.py "$GRADER_INPUT_DIR" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload Accuracy CSV
       if: ${{ !cancelled() && steps.grade_responses.outcome == 'success' }}

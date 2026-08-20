@@ -10,7 +10,7 @@ run-name: "GenieX Perf (${{ inputs.model || 'all' }}, ${{ inputs.device || 'all'
 env:
   VENV_PATH: build/ci-envs/qaihm-build
   QAIHM_CI: 1
-  QAIHM_TEST_DEVICES_RESOLVED: ${{ inputs.device == 'default' && 'cs_8_elite_qrd' || inputs.device || 'all' }}
+  QAIHM_TEST_DEVICES_RESOLVED: ${{ inputs.device == 'default' && 'cs_x_elite' || inputs.device || 'all' }}
 
 on:
   # Allows this workflow to be manually triggered.

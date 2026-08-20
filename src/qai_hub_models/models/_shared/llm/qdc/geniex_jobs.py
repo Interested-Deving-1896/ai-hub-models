@@ -22,6 +22,7 @@ from qai_hub_models.models._shared.llm.common import (
     JobOutcome,
     get_qdc_job_limit,
 )
+from qai_hub_models.models._shared.llm.grader.grace import GRACE_TASK_NAME
 from qai_hub_models.models._shared.llm.model import LLMBase
 from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
     QDCDevice,
@@ -34,11 +35,6 @@ from qai_hub_models.scorecard.device import ScorecardDevice
 GENIEX_BENCH_JOB_TIMEOUT = 21600  # 6 hours
 
 DEFAULT_LLM_SYSTEM_PROMPT = LLMBase.default_system_prompt
-
-# The built-in 100-prompt accuracy set, shared with the genie eval path.
-DEFAULT_EVAL_PROMPTS_PATH = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "eval_prompts.json")
-)
 
 # Versioned URLs follow the geniex release workflow's flat S3 layout
 # (<stem>-<vX.Y.Z>.<ext>); the unversioned mirror is refreshed on every
@@ -647,7 +643,7 @@ def save_eval_metadata_json(
     precision: str,
     output_path: str,
     path: ScorecardProfilePath,
-    dataset_name: str = "prompts",
+    dataset_name: str = GRACE_TASK_NAME,
 ) -> None:
     """Save a sidecar identifying which (model, chipset, precision, path, dataset) an eval JSON belongs to.
 
@@ -668,12 +664,6 @@ def save_eval_metadata_json(
         json.dump(metadata, f, indent=2)
 
     print(f"Eval metadata saved to: {output_path}")
-
-
-def load_default_eval_prompts() -> list[str]:
-    """Load the built-in 100-prompt accuracy set (shared with genie)."""
-    with open(DEFAULT_EVAL_PROMPTS_PATH, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def _apply_chat_template(prompts: list[str], tokenizer_source: str) -> list[str]:

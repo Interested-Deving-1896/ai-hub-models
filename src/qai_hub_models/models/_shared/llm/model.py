@@ -94,6 +94,7 @@ from qai_hub_models.models._shared.llm.common import (
     LLMIOType,
     cleanup,
 )
+from qai_hub_models.models._shared.llm.grader.grace import PROMPT_TASKS
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
     save_htp_config_for_genie_bundle,
@@ -499,7 +500,7 @@ def _get_evaluator(
         return KLDivEvaluator(context_length, device, tokenizer, verbose=True)
     if "mmmu" in task:
         return MMMUEvaluator(context_length, device, tokenizer)
-    if task in {"prompts", "multimodal_prompts"}:
+    if task in PROMPT_TASKS:
         if "output_dir" not in task_kwargs:
             raise ValueError(
                 f"Task '{task}' requires 'output_dir' to be passed via "
@@ -2341,9 +2342,9 @@ class LLMBase(BaseModel, LLMConfigEditor, ABC):
     @classmethod
     def get_eval_dataset_classes(cls) -> list[type[BaseDataset]]:
         from qai_hub_models.datasets.mmlu import mmmlu_dataset_classes
-        from qai_hub_models.datasets.prompts import TextPrompts
+        from qai_hub_models.datasets.prompts import Grace2
 
-        return [*mmmlu_dataset_classes(), TextPrompts]
+        return [*mmmlu_dataset_classes(), Grace2]
 
     def release(self) -> None:
         if hasattr(self, "model") and self.model is not None:

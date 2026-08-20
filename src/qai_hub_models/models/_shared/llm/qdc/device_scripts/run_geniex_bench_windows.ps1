@@ -159,6 +159,10 @@ if ($RUN_EVAL) {
                     "--mm-data-dir", $MM_CACHE, "--chipset", "{CHIPSET}"
                 ) -NoNewWindow -PassThru -RedirectStandardOutput $tmpOut `
                     -RedirectStandardError $tmpErr
+                # Without -Wait, PS 5.1 hands back a Process with no cached native
+                # handle, so .ExitCode reads $null after exit; touching .Handle keeps
+                # one. Non-fatal: an exe that dies instantly can outrace the open.
+                try { $null = $proc.Handle } catch { }
                 # timeout kills a crashed/hung DSP run so the loop advances.
                 if (-not $proc.WaitForExit({EVAL_TIMEOUT_S} * 1000)) {
                     Write-Host "eval idx $idx timed out after {EVAL_TIMEOUT_S}s; killing"

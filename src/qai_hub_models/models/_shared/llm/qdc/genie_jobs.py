@@ -25,6 +25,11 @@ from qai_hub_models.models._shared.llm.common import (
     JobOutcome,
     get_qdc_job_limit,
 )
+from qai_hub_models.models._shared.llm.grader.grace import (
+    GRACE_TASK_NAME,
+    load_default_eval_prompts,
+    load_eval_prompts,
+)
 from qai_hub_models.models._shared.llm.model import LLMBase
 from qai_hub_models.models._shared.llm.qdc.qdc_jobs import (
     HUB_DEVICE_TO_QDC_DEVICE_MAP,
@@ -44,15 +49,6 @@ logger.setLevel(logging.INFO)
 GENIE_JOB_TIMEOUT = 21600  # 6 hours
 
 DEFAULT_LLM_SYSTEM_PROMPT = LLMBase.default_system_prompt
-
-
-DEFAULT_EVAL_PROMPTS_PATH = os.path.normpath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "eval_prompts.json",
-    )
-)
 
 
 def _write_eval_prompts_to_dir(
@@ -764,7 +760,7 @@ def save_eval_metadata_json(
     precision: str,
     output_path: str,
     path: ScorecardProfilePath,
-    dataset_name: str = "prompts",
+    dataset_name: str = GRACE_TASK_NAME,
 ) -> None:
     """Save a sidecar identifying which (model, chipset, precision, path, dataset) an eval JSON belongs to.
 
@@ -792,8 +788,7 @@ def _resolve_eval_prompts(
     eval_prompts: list[str] | None | object,
 ) -> list[str] | None:
     if eval_prompts is _USE_DEFAULT_PROMPTS:
-        with open(DEFAULT_EVAL_PROMPTS_PATH, encoding="utf-8") as f:
-            return json.load(f)
+        return load_default_eval_prompts()
     if isinstance(eval_prompts, list):
         return eval_prompts
     return None
@@ -989,7 +984,8 @@ def _add_bundle_args(p: argparse.ArgumentParser) -> None:
         "--eval-prompts",
         type=str,
         default=None,
-        help="Path to JSON file with prompts (defaults to built-in eval_prompts.json).",
+        help="Path to a .jsonl prompt set ({idx, category, prompt} per line; "
+        "defaults to the built-in Grace prompt set).",
     )
     p.add_argument("--output-json", type=str, default=None)
     p.add_argument("--num-trials", type=int, default=25)
@@ -999,9 +995,7 @@ def _cmd_run_bundle(args: argparse.Namespace) -> int:
     """One-shot bundle submit-and-wait against a specific device."""
     eval_prompts_val: list[str] | None = None
     if args.eval_prompts:
-        with open(args.eval_prompts, encoding="utf-8") as f:
-            eval_prompts_val = json.load(f)
-        assert eval_prompts_val is not None
+        eval_prompts_val = [p.prompt for p in load_eval_prompts(args.eval_prompts)]
         print(f"Loaded {len(eval_prompts_val)} eval prompts from {args.eval_prompts}")
 
     if not os.path.exists(os.path.join(args.genie_bundle_path, "sample_prompt.txt")):

@@ -8,13 +8,18 @@ r"""CLI for grading LLM responses.
 Reads a JSON file containing a list of items in the form::
 
     [
-      {"idx": 0, "prompt": "What is gravity?", "output": "Gravity is ..."},
+      {"idx": 0, "category": "knowledge", "prompt": "What is gravity?",
+       "output": "Gravity is ..."},
       ...
     ]
 
 The ``prompt`` is passed through to the grader as-is, and ``output`` is the
 generated response to grade. Grading is delegated to
-:mod:`qai_hub_models.models._shared.llm.grader`.
+:mod:`qai_hub_models.models._shared.llm.grader.grader`.
+
+A closing pass sends the rationales back to the grader model and condenses them
+into at most five recurring failure modes, printed last and stored under
+``summary_items`` in ``--output-json``. Pass ``--no-summary`` to skip it.
 
 Example usage::
 
@@ -25,25 +30,69 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter, defaultdict
 from pathlib import Path
 
 import torch
 
-from qai_hub_models.models._shared.llm.grader import (
+from qai_hub_models.models._shared.llm.grader.grace import (
+    GRACE_METRIC_NAME,
+    default_categories_by_idx,
+    default_categories_by_prompt,
+)
+from qai_hub_models.models._shared.llm.grader.grader import (
     DEFAULT_PROMPT_TEMPLATE,
-    DESCRIPTIONS,
-    LETTER_POINTS,
-    LETTERS,
     MAX_POINTS,
+    GradeResult,
     ResponseGrader,
     resolve_device,
 )
 
 
+def _resolve_categories(items: list[dict]) -> list[str | None]:
+    """Category per item, backfilled for response files that record none.
+
+    Device runs write only ``{idx, prompt, output}``, so the category is looked
+    up in the built-in prompt set by prompt text, then by ``idx``. None only for
+    a prompt that is not in the built-in set at all.
+    """
+    by_prompt = default_categories_by_prompt()
+    by_idx = default_categories_by_idx()
+    return [
+        item.get("category")
+        or by_prompt.get(str(item.get("prompt", "")).strip())
+        or by_idx.get(item.get("idx", -1))
+        for item in items
+    ]
+
+
+def _category_scores(
+    categories: list[str | None], results: list[GradeResult]
+) -> dict[str, tuple[float, int, int]]:
+    """Per-category (score_pct, points, num_scored), in first-seen order.
+
+    Mirrors the overall score: an item the grader failed to rate scores 0 and
+    stays in its category's denominator.
+    """
+    points: dict[str, int] = {}
+    scored: dict[str, int] = {}
+    for category, result in zip(categories, results, strict=True):
+        if category is None:
+            continue
+        points[category] = points.get(category, 0) + result.points
+        scored[category] = scored.get(category, 0) + 1
+    return {
+        name: (
+            100.0 * points[name] / (MAX_POINTS * scored[name]),
+            points[name],
+            scored[name],
+        )
+        for name in points
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Grade LLM responses from a JSON file (argmax over A/B/C/D).",
+        description="Grade LLM responses from a JSON file on a 0-10 rubric.",
     )
     parser.add_argument(
         "responses_json",
@@ -96,9 +145,14 @@ def main() -> None:
         help="If set, write a machine-readable summary to this path.",
     )
     parser.add_argument(
+        "--no-summary",
+        action="store_true",
+        help="Skip the closing summary pass over the rationales.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Print the per-item logit table (A/B/C/D logits + runner-up margin).",
+        help="Print the per-item score and the grader's rationale.",
     )
     args = parser.parse_args()
 
@@ -135,68 +189,99 @@ def main() -> None:
         prompt_template=prompt_template,
         allow_cpu=args.allow_cpu,
     )
-    print(
-        f"Letter token ids: {dict(zip(LETTERS, grader.letter_token_ids, strict=True))}"
-    )
 
-    summary = grader.grade(items)
+    summary = grader.grade(items, summary=not args.no_summary)
 
     if args.verbose:
-        # Logits + runner-up margin expose near-ties that flip the argmax label.
         for item, result in zip(items, summary.results, strict=True):
-            ordered = sorted(result.logits.values(), reverse=True)
-            margin = ordered[0] - ordered[1] if len(ordered) > 1 else float("nan")
             print(
-                f"  idx={item['idx']}: {result.label}  "
-                + "  ".join(f"{l}={result.logits[l]:.4f}" for l in LETTERS)
-                + f"  (margin={margin:.4f})"
+                f"  idx={item['idx']}: {result.points:2d} pts"
                 + ("  [skipped: empty response]" if result.skipped else "")
+                + ("  [rating forced after token limit]" if result.forced else "")
+                + ("  [GRADER FAILURE: no rating]" if not result.parsed else "")
             )
-
-    counts = Counter(r.label for r in summary.results)
-    items_by_label: dict[str, list[int]] = defaultdict(list)
-    for item, result in zip(items, summary.results, strict=True):
-        items_by_label[result.label].append(item["idx"])
+            if result.rationale:
+                print(f"      {result.rationale}")
 
     print()
     print("=" * 60)
     print(f"Grader: {args.model}")
     print(f"Responses graded: {len(items)}")
     print("=" * 60)
-    for letter in LETTERS:
-        desc = DESCRIPTIONS[letter]
-        pts = LETTER_POINTS[letter]
-        print(f"  {letter} [{pts:2d} pts] ({desc}): {counts.get(letter, 0)}")
-    print()
     print(
         f"Overall score: {summary.score_pct:.1f}%  "
-        f"({summary.total_points}/{MAX_POINTS * len(summary.results)} pts)"
+        f"({summary.total_points}/{summary.max_points} pts)"
     )
+    if summary.num_forced:
+        print(
+            f"Note: {summary.num_forced} item(s) ran out of tokens before rating; "
+            f"the rating was recovered by a forced second pass."
+        )
+    if summary.num_unparsed:
+        print(
+            f"GRADER FAILURE: {summary.num_unparsed} item(s) produced no readable "
+            f"rating and were scored 0. The score above is a floor, not a "
+            f"measurement — fix the grader and re-run before trusting it."
+        )
     print()
-    for letter in ("A", "B", "C"):
-        if items_by_label[letter]:
-            print(f"Items scoring {letter} ({DESCRIPTIONS[letter]}):")
-            for idx in items_by_label[letter]:
-                print(f"  - idx={idx}")
-            print()
+    flawed = sorted(
+        (result.points, item["idx"], result.rationale)
+        for item, result in zip(items, summary.results, strict=True)
+        if result.points < MAX_POINTS
+    )
+    if flawed:
+        print(f"Items scoring below {MAX_POINTS}, worst first:")
+        for points, idx, rationale in flawed:
+            print(f"  - idx={idx} ({points}/{MAX_POINTS}): {rationale}")
+        print()
+
+    categories = _resolve_categories(items)
+    category_scores = _category_scores(categories, summary.results)
+    if category_scores:
+        print("By category:")
+        for name, (pct, pts, num) in sorted(
+            category_scores.items(), key=lambda kv: kv[1][0]
+        ):
+            print(f"  {name:15s} {pct:5.1f}%  ({pts}/{MAX_POINTS * num} pts, n={num})")
+        print()
+
+    if summary.summary_items:
+        print("=" * 60)
+        print("Summary")
+        print("=" * 60)
+        for number, text in enumerate(summary.summary_items, start=1):
+            print(f"  {number}. {text}")
+        print()
 
     if args.output_json:
         out = {
             "input_file": str(args.responses_json),
+            "metric": GRACE_METRIC_NAME,
             "grader_model": args.model,
             "num_items": len(items),
             "score_pct": summary.score_pct,
             "total_points": summary.total_points,
-            "max_points": MAX_POINTS * len(summary.results),
-            "counts": {letter: counts.get(letter, 0) for letter in LETTERS},
+            "max_points": summary.max_points,
+            "num_unparsed": summary.num_unparsed,
+            "num_forced": summary.num_forced,
+            "summary_items": summary.summary_items,
+            "category_scores": {
+                name: {"score_pct": pct, "points": pts, "num_scored": num}
+                for name, (pct, pts, num) in category_scores.items()
+            },
             "items": [
                 {
                     "idx": item["idx"],
-                    "label": result.label,
+                    "category": category,
                     "points": result.points,
                     "skipped": result.skipped,
+                    "parsed": result.parsed,
+                    "forced": result.forced,
+                    "rationale": result.rationale,
                 }
-                for item, result in zip(items, summary.results, strict=True)
+                for item, category, result in zip(
+                    items, categories, summary.results, strict=True
+                )
             ],
         }
         Path(args.output_json).write_text(json.dumps(out, indent=2))

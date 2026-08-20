@@ -2,12 +2,12 @@
 # model's release-assets.yaml (no compilation here).
 
 name: LLM Performance Collection
-run-name: "LLM Perf (${{ inputs.model || 'all' }}, ${{ inputs.device == 'default' && 'cs_8_elite_qrd' || inputs.device || 'all' }})"
+run-name: "LLM Perf (${{ inputs.model || 'all' }}, ${{ inputs.device == 'default' && 'cs_x_elite' || inputs.device || 'all' }})"
 
 env:
   VENV_PATH: build/ci-envs/qaihm-build
   QAIHM_CI: 1
-  QAIHM_TEST_DEVICES_RESOLVED: ${{ inputs.device == 'default' && 'cs_8_elite_qrd' || inputs.device || 'all' }}
+  QAIHM_TEST_DEVICES_RESOLVED: ${{ inputs.device == 'default' && 'cs_x_elite' || inputs.device || 'all' }}
 
 on:
   # Allows this workflow to be manually triggered.
@@ -41,7 +41,7 @@ on:
           - dev
 
       run_eval:
-        description: 'Run on-device evaluation with default prompts. To use custom prompts, run locally via CLI: python -m qai_hub_models.utils.qdc.genie_jobs --eval-prompts <path-to-json>'
+        description: 'Run on-device evaluation with default prompts. To use custom prompts, run locally via CLI: python -m qai_hub_models.models._shared.llm.qdc.genie_jobs --eval-prompts <path-to-jsonl>'
         default: true
         type: boolean
 

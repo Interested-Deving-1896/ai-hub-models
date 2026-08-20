@@ -73,14 +73,14 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
         pytest.param("DEFAULT_W4A16", "wikitext", 17.24, 0, marks=pytest.mark.nightly),
         ("DEFAULT_W4A16", "mmlu", 0.376, 1000),
         # Prompt-generation + LLM-grader smoke test (5 samples). The grader
-        # label is an argmax over near-valued logits that can flip across hosts
-        # (we've seen 0.88, 0.94, 1.0), so expected_metric is a floor.
-        pytest.param("DEFAULT_W4A16", "prompts", 0.70, 5, marks=pytest.mark.nightly),
+        # label is an argmax over near-valued logits that can flip across hosts,
+        # so expected_metric is a floor. FP PreSplit measures 41/50 on Grace2.
+        pytest.param("DEFAULT_W4A16", "grace2", 0.70, 5, marks=pytest.mark.nightly),
         ("DEFAULT_UNQUANTIZED", "wikitext", 12.14, 0),
         ("DEFAULT_UNQUANTIZED", "mmlu", 0.482, 1000),
         ("DEFAULT_UNQUANTIZED", "tiny_mmlu", 0.41, 0),
         pytest.param(
-            "DEFAULT_UNQUANTIZED", "prompts", 0.70, 5, marks=pytest.mark.nightly
+            "DEFAULT_UNQUANTIZED", "grace2", 0.70, 5, marks=pytest.mark.nightly
         ),
     ],
 )

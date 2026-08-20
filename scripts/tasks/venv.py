@@ -247,7 +247,8 @@ GRADER_REQUIREMENTS_PATH = os.path.join(
     "models",
     "_shared",
     "llm",
-    "requirements-grader.txt",
+    "grader",
+    "requirements.txt",
 )
 
 

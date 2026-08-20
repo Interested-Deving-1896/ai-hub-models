@@ -40,7 +40,7 @@ from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,
 )
-from qai_hub_models.scorecard.device import cs_8_elite_qrd
+from qai_hub_models.scorecard.device import cs_x_elite
 from qai_hub_models.scorecard.utils.testing_export_eval import run_llm_compile
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.checkpoint import CheckpointSpec
@@ -73,15 +73,16 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
         # Validated recipe (SpinQuant R1+R3 -> AdaScale -> Calibration):
-        # QT (w4a16): PPL 17.26, MMLU 56.65%, AutogradedPrompts 97.8%.
+        # QT (w4a16): PPL 17.26, MMLU 56.65%.
         ("DEFAULT_W4A16", "wikitext", 17.26, 0),
         ("DEFAULT_W4A16", "mmlu", 0.5665, 1000),
         # Prompt-generation + LLM-grader smoke test (5 samples). Always runs on
         # the FP PreSplit regardless of checkpoint, so both rows share a floor.
-        ("DEFAULT_W4A16", "prompts", 0.75, 5),
+        # FP PreSplit measures 50/50 on Grace2; the floor absorbs grader jitter.
+        ("DEFAULT_W4A16", "grace2", 0.85, 5),
         ("DEFAULT_UNQUANTIZED", "wikitext", 15.63, 0),
         ("DEFAULT_UNQUANTIZED", "mmlu", 0.5996, 1000),
-        ("DEFAULT_UNQUANTIZED", "prompts", 0.75, 5),
+        ("DEFAULT_UNQUANTIZED", "grace2", 0.85, 5),
     ],
 )
 def test_evaluate(
@@ -195,7 +196,7 @@ def test_demo_default(
 @pytest.mark.parametrize(
     ("precision", "scorecard_path", "device", "checkpoint"),
     [
-        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_8_elite_qrd, "DEFAULT_W4A16"),
+        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_x_elite, "DEFAULT_W4A16"),
     ],
 )
 @pytest.mark.compile_ram_intensive
@@ -250,10 +251,10 @@ def test_compile(
 def _get_llm_perf_params() -> list[tuple[Precision, ScorecardDevice]]:
     params = get_llm_perf_parametrization(
         MODEL_ID,
-        default_devices=[cs_8_elite_qrd],
+        default_devices=[cs_x_elite],
         default_precisions=[Precision.w4a16],
     )
-    return params if params else [(Precision.w4a16, cs_8_elite_qrd)]
+    return params if params else [(Precision.w4a16, cs_x_elite)]
 
 
 @pytest.fixture(scope="session")

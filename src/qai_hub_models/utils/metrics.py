@@ -252,18 +252,31 @@ HOMOGRAPHY_ACCURACY = _register_metric(
     )
 )
 
-LLM_RESPONSE_GRADE = _register_metric(
-    MetricMetadata(
-        name="LLM Response Grade",
-        unit="%",
-        description=(
-            "Percentage score from grading on-device LLM responses against "
-            "reference prompts."
-        ),
-        range=(0.0, 100.0),
-        float_vs_device_threshold=10.0,
+
+def _grace_grade(version: int) -> MetricMetadata:
+    """Register the Grace metric for one version of the prompt set + rubric.
+
+    Grace is "Grading Response Accuracy Evaluation". Superseded versions stay
+    registered: manifest baselines measured under them keep their own label
+    rather than being silently reported as the current one.
+    """
+    return _register_metric(
+        MetricMetadata(
+            name=f"Grace{version}",
+            unit="%",
+            description=(
+                f"Grading Response Accuracy Evaluation: percentage score from "
+                f"grading generated responses to the Grace{version} prompt set "
+                f"with a grader LLM."
+            ),
+            range=(0.0, 100.0),
+            float_vs_device_threshold=10.0,
+        )
     )
-)
+
+
+GRACE1_GRADE = _grace_grade(1)
+GRACE2_GRADE = _grace_grade(2)
 
 RECALL_AT_1 = _register_metric(
     MetricMetadata(

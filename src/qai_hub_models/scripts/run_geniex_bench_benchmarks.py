@@ -26,6 +26,10 @@ from qai_hub_models.models._shared.llm.common import (
     poll_and_retry,
     save_job,
 )
+from qai_hub_models.models._shared.llm.grader.grace import (
+    load_eval_prompts,
+    select_balanced,
+)
 from qai_hub_models.models._shared.llm.perf_collection import (
     load_release_assets_for_model,
     update_perf_yaml,
@@ -33,7 +37,6 @@ from qai_hub_models.models._shared.llm.perf_collection import (
 from qai_hub_models.models._shared.llm.qdc.geniex_jobs import (
     GenieXBenchMetrics,
     collect_geniex_bench_result,
-    load_default_eval_prompts,
     save_eval_metadata_json,
     save_eval_results_json,
     submit_geniex_bench_only,
@@ -68,7 +71,8 @@ ALL_GENIEX_DEVICES = (
 LLAMACPP_DEVICE_ALIASES = ("cpu", "gpu", "npu")
 LLAMACPP_CONTEXT_LENGTHS = [512, 4096]
 
-# Number of accuracy-eval prompts to run (of the built-in 100-prompt set).
+# Number of accuracy-eval prompts to run (of the built-in 100-prompt set). A
+# smaller number is sampled evenly across the 10 categories, not sliced.
 _EVAL_NUM_PROMPTS = 100
 
 
@@ -799,10 +803,10 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _resolve_eval_prompts(run_eval: bool) -> list[str] | None:
-    """Load the eval prompt set, capped to the first _EVAL_NUM_PROMPTS."""
+    """Load the eval prompt set, capped to _EVAL_NUM_PROMPTS across categories."""
     if not run_eval:
         return None
-    return load_default_eval_prompts()[:_EVAL_NUM_PROMPTS]
+    return [p.prompt for p in select_balanced(load_eval_prompts(), _EVAL_NUM_PROMPTS)]
 
 
 def _eval_prompts_for_device(
@@ -812,7 +816,7 @@ def _eval_prompts_for_device(
 
     Mirrors the genie path (see ``_shared/llm/test.py``): eval is expensive
     (~100 prompts x per-prompt DSP attach), so run it only on
-    ``DEFAULT_QDC_DEVICE`` (cs_8_elite_qrd) and leave the other devices
+    ``DEFAULT_QDC_DEVICE`` (cs_x_elite) and leave the other devices
     doing perf only. Eval is disabled entirely for the llama.cpp plugin.
     """
     if plugin == "llama_cpp":

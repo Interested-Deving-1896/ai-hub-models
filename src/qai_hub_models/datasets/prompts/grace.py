@@ -13,14 +13,17 @@ import yaml
 from PIL import Image
 from transformers import PreTrainedTokenizerBase
 
+from qai_hub_models.models._shared.llm.grader.grace import (
+    GRACE_PROMPTS_PATH,
+    GRACE_TASK_NAME,
+    MULTIMODAL_TASK_NAME,
+    load_eval_prompts,
+    select_balanced,
+)
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetSplit
 
-PROMPTS_DATASET_ID = "prompts"
-PROMPTS_VERSION = 1
-TEXT_PROMPTS_FILENAME = "prompts.yaml"
-
-MULTIMODAL_DATASET_ID = "multimodal_prompts"
+MULTIMODAL_DATASET_ID = MULTIMODAL_TASK_NAME
 MULTIMODAL_VERSION = 1
 MULTIMODAL_PROMPTS_FILENAME = "multimodal_prompts.yaml"
 SAMPLE_IMAGES_SUBDIR = "sample_images"
@@ -37,6 +40,7 @@ class PromptLabel:
     index: int
     prompt: str
     image_path: str | None = None
+    category: str | None = None
 
 
 def _format_text_prompt(
@@ -44,7 +48,13 @@ def _format_text_prompt(
     prompt: str,
     is_vlm: bool,
 ) -> str:
-    """Apply the model's chat template to a raw user prompt."""
+    """Apply the model's chat template to a raw user prompt.
+
+    Thinking is disabled to match the on-device Genie path and the FP baselines.
+    A thinking model otherwise spends its whole token budget on a reasoning
+    trace, so the graded response is the trace rather than an answer.
+    Non-thinking templates ignore the unused variable.
+    """
     content: Any = prompt
     if is_vlm:
         # VLM processors (Qwen2.5-VL) require a list-of-content-parts. This form
@@ -55,14 +65,17 @@ def _format_text_prompt(
         content = [{"type": "text", "text": prompt}]
     messages = [{"role": "user", "content": content}]
     formatted_prompt = tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
     )
     assert isinstance(formatted_prompt, str)
     return formatted_prompt
 
 
-class TextPrompts(BaseDataset):
-    """Text-only prompts spanning factual, math, reasoning, code, etc.
+class Grace2(BaseDataset):
+    """The Grace2 prompt set: 10 categories x 10 text-only prompts.
 
     Yields items shaped like the other LLM eval datasets so they collate the
     same way and the evaluator can drop them straight into the generator.
@@ -79,22 +92,20 @@ class TextPrompts(BaseDataset):
         image_size: tuple[int, int] | None = None,
     ) -> None:
         if split != DatasetSplit.TEST:
-            raise ValueError("TextPrompts only supports the `test` split")
+            raise ValueError("Grace2 only supports the `test` split")
         if tokenizer is None:
-            raise ValueError("TextPrompts requires a tokenizer.")
+            raise ValueError("Grace2 requires a tokenizer.")
         self.tokenizer = tokenizer
         self.context_length = context_length
         self.num_samples = num_samples
         self.is_vlm = processor is not None
 
-        self._yaml_asset = CachedWebDatasetAsset.from_asset_store(
-            PROMPTS_DATASET_ID, PROMPTS_VERSION, TEXT_PROMPTS_FILENAME
-        )
-        super().__init__(self._yaml_asset.path, split)
-        with open(self._yaml_asset.path) as f:
-            prompts = yaml.safe_load(f)
-        assert isinstance(prompts, list)
-        self.prompts: list[str] = prompts
+        super().__init__(GRACE_PROMPTS_PATH, split)
+        self.eval_prompts = load_eval_prompts()
+        if num_samples and num_samples > 0:
+            # Records are grouped by category, so a prefix slice would leave a
+            # short smoke run reporting only the first category or two.
+            self.eval_prompts = select_balanced(self.eval_prompts, num_samples)
 
     @staticmethod
     def collate_fn(batch: list[dict[str, Any]]) -> tuple[Any, ...]:
@@ -102,12 +113,11 @@ class TextPrompts(BaseDataset):
         return item["input_ids"], item["attention_mask"], item["label"]
 
     def __len__(self) -> int:
-        if self.num_samples and self.num_samples > 0:
-            return min(self.num_samples, len(self.prompts))
-        return len(self.prompts)
+        return len(self.eval_prompts)
 
     def __getitem__(self, idx: int) -> dict[str, Any]:
-        prompt = self.prompts[idx]
+        entry = self.eval_prompts[idx]
+        prompt = entry.prompt
         formatted = _format_text_prompt(self.tokenizer, prompt, self.is_vlm)
         tokenized = self.tokenizer(
             formatted,
@@ -120,11 +130,16 @@ class TextPrompts(BaseDataset):
         return {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
-            "label": PromptLabel(index=idx, prompt=prompt),
+            # index is the prompt's own idx, not its position in a subset, so a
+            # truncated run's responses still join against the full set.
+            "label": PromptLabel(
+                index=entry.idx, prompt=prompt, category=entry.category
+            ),
         }
 
     def _download_data(self) -> None:
-        self._yaml_asset.fetch()
+        # The prompt set ships with the repo; nothing to download.
+        pass
 
     @staticmethod
     def default_samples_per_job() -> int:
@@ -132,7 +147,7 @@ class TextPrompts(BaseDataset):
 
     @classmethod
     def dataset_name(cls) -> str:
-        return "prompts"
+        return GRACE_TASK_NAME
 
 
 def _multimodal_image_asset(filename: str) -> CachedWebDatasetAsset:
@@ -267,11 +282,11 @@ class MultimodalPrompts(BaseDataset):
 
     @classmethod
     def dataset_name(cls) -> str:
-        return "multimodal_prompts"
+        return MULTIMODAL_TASK_NAME
 
 
 __all__ = [
+    "Grace2",
     "MultimodalPrompts",
     "PromptLabel",
-    "TextPrompts",
 ]

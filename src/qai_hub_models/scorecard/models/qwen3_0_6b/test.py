@@ -40,7 +40,7 @@ from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,
 )
-from qai_hub_models.scorecard.device import cs_8_elite_qrd
+from qai_hub_models.scorecard.device import cs_x_elite
 from qai_hub_models.scorecard.utils.testing_export_eval import run_llm_compile
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.checkpoint import CheckpointSpec
@@ -83,11 +83,12 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
         pytest.param(
             "DEFAULT_W4A16", "mmlu", 0.426, 1000, 0.04, marks=pytest.mark.nightly
         ),
-        ("DEFAULT_W4A16", "prompts", 0.75, 5, 0.03),
+        # FP PreSplit measures 41/50 on Grace2; the floor absorbs grader jitter.
+        ("DEFAULT_W4A16", "grace2", 0.70, 5, 0.03),
         # FP (unquantized): PPL 19.15, MMLU 47.07%.
         ("DEFAULT_UNQUANTIZED", "wikitext", 19.15, 0, 0.03),
         ("DEFAULT_UNQUANTIZED", "mmlu", 0.4707, 1000, 0.03),
-        ("DEFAULT_UNQUANTIZED", "prompts", 0.75, 5, 0.03),
+        ("DEFAULT_UNQUANTIZED", "grace2", 0.70, 5, 0.03),
     ],
 )
 def test_evaluate(
@@ -158,7 +159,7 @@ def test_demo_default(
 @pytest.mark.parametrize(
     ("precision", "scorecard_path", "device", "checkpoint"),
     [
-        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_8_elite_qrd, "DEFAULT_W4A16"),
+        (Precision.w4a16, ScorecardCompilePath.GENIE, cs_x_elite, "DEFAULT_W4A16"),
     ],
 )
 @pytest.mark.compile_ram_intensive
@@ -213,10 +214,10 @@ def test_compile(
 def _get_llm_perf_params() -> list[tuple[Precision, ScorecardDevice]]:
     params = get_llm_perf_parametrization(
         MODEL_ID,
-        default_devices=[cs_8_elite_qrd],
+        default_devices=[cs_x_elite],
         default_precisions=[Precision.w4a16],
     )
-    return params if params else [(Precision.w4a16, cs_8_elite_qrd)]
+    return params if params else [(Precision.w4a16, cs_x_elite)]
 
 
 @pytest.fixture(scope="session")
