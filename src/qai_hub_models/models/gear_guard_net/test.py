@@ -33,8 +33,8 @@ def test_task() -> None:
     image = load_image(INPUT_IMAGE_ADDRESS.fetch())
     boxes, _, class_idx = app.predict_boxes_from_image(image, raw_output=True)
     boxes_pd, class_idx_pd = (
-        boxes[0][1].numpy().astype(int),
-        class_idx[0][1].numpy().astype(int),
+        boxes[0][1].detach().numpy().astype(int),
+        class_idx[0][1].detach().numpy().astype(int),
     )
     gt = np.array(load_raw_file(GROUND_TRUTH_RESULT).split(), dtype=int)
     boxes_gt, class_idx_gt = gt[1:5], gt[0]
@@ -51,8 +51,8 @@ def test_trace() -> None:
     image = load_image(INPUT_IMAGE_ADDRESS.fetch())
     boxes, _, class_idx = app.predict_boxes_from_image(image, raw_output=True)
     boxes_pd, class_idx_pd = (
-        boxes[0][1].numpy().astype(int),
-        class_idx[0][1].numpy().astype(int),
+        boxes[0][1].detach().numpy().astype(int),
+        class_idx[0][1].detach().numpy().astype(int),
     )
     gt = np.array(load_raw_file(GROUND_TRUTH_RESULT).split(), dtype=int)
     boxes_gt, class_idx_gt = gt[1:5], gt[0]

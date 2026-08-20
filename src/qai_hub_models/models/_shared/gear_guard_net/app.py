@@ -12,7 +12,10 @@ import numpy as np
 import torch
 from PIL import Image
 
-from qai_hub_models.utils.bounding_box_processing import batched_nms
+from qai_hub_models.utils.bounding_box_processing import (
+    batched_nms,
+    transform_boxes_to_original_size,
+)
 from qai_hub_models.utils.draw import draw_box_from_xyxy
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
@@ -171,7 +174,7 @@ class BodyDetectionApp:
             pred_class_idx_batch = pred_post_nms_class_idx[batch_idx]
 
             # Transform bounding boxes back to original image size
-            pred_boxes_batch = self._transform_boxes_to_original_size(
+            pred_boxes_batch = transform_boxes_to_original_size(
                 pred_boxes_batch,
                 pad,
                 scale,
@@ -213,53 +216,3 @@ class BodyDetectionApp:
             Subclasses can override this method to provide custom labels.
         """
         return None
-
-    @staticmethod
-    def _transform_boxes_to_original_size(
-        boxes: torch.Tensor,
-        pad: tuple[int, int],
-        scale: float,
-        original_height: int,
-        original_width: int,
-    ) -> torch.Tensor:
-        """
-        Transform bounding boxes back to original image size.
-
-        Parameters
-        ----------
-        boxes
-            Bounding boxes tensors, shape (num_detections, 4).
-            Each box represented by (x1, y1, x2, y2) coordinates.
-
-        pad
-            Padding applied during resizing (x_pad, y_pad).
-
-        scale
-            Scale factor applied during resizing.
-
-        original_height
-            Original image height.
-
-        original_width
-            Original image width.
-
-        Returns
-        -------
-        torch.Tensor
-            Bounding boxes tensors, shape (num_detections, 4).
-            Each box represented by (x1, y1, x2, y2) coordinates.
-        """
-        if len(boxes) > 0:
-            # Adjust for padding (subtract padding) and scale
-            boxes[:, 0] = (boxes[:, 0] - pad[0]) / scale  # x1
-            boxes[:, 1] = (boxes[:, 1] - pad[1]) / scale  # y1
-            boxes[:, 2] = (boxes[:, 2] - pad[0]) / scale  # x2
-            boxes[:, 3] = (boxes[:, 3] - pad[1]) / scale  # y2
-
-            # Ensure boxes are within image boundaries
-            boxes[:, 0] = torch.clamp(boxes[:, 0], min=0)
-            boxes[:, 1] = torch.clamp(boxes[:, 1], min=0)
-            boxes[:, 2] = torch.clamp(boxes[:, 2], max=original_width)
-            boxes[:, 3] = torch.clamp(boxes[:, 3], max=original_height)
-
-        return boxes

@@ -1,0 +1,102 @@
+--- a/config/wedetect_tiny.py
++++ b/config/wedetect_tiny.py
+@@ -33,7 +33,7 @@
+ # and mmdet, we're going to divide loss_weight by 4.
+ loss_dfl_weight = 1.5 / 4
+
+-custom_imports = dict(imports=["wedetect"], allow_failed_imports=False)
++custom_imports = dict(imports=["qai_hub_models.models.wedetect.external_repos.wedetect.wedetect"], allow_failed_imports=False)
+ # model settings
+ model = dict(
+     type="YOLOWorldDetector",
+@@ -72,6 +72,7 @@ model = dict(
+             num_classes=num_training_classes,
+             model_size = 'tiny',
+             in_channels=[256, 512, 1024],
++             use_einsum=False,
+         ),
+         prior_generator=dict(
+             type='MlvlPointGenerator', offset=0.5, strides=[8, 16, 32]),
+--- a/config/wedetect_base.py
++++ b/config/wedetect_base.py
+@@ -34,7 +34,7 @@
+ # and mmdet, we're going to divide loss_weight by 4.
+ loss_dfl_weight = 1.5 / 4
+
+-custom_imports = dict(imports=["wedetect"], allow_failed_imports=False)
++custom_imports = dict(imports=["qai_hub_models.models.wedetect.external_repos.wedetect.wedetect"], allow_failed_imports=False)
+ # model settings
+ model = dict(
+     type="YOLOWorldDetector",
+@@ -74,6 +74,7 @@ model = dict(
+             num_classes=num_training_classes,
+             model_size = 'base',
+             in_channels=[256, 512, 1024],
++             use_einsum=False,
+         ),
+         prior_generator=dict(
+             type='MlvlPointGenerator', offset=0.5, strides=[8, 16, 32]),
+--- a/config/wedetect_large.py
++++ b/config/wedetect_large.py
+@@ -33,7 +33,7 @@
+ # and mmdet, we're going to divide loss_weight by 4.
+ loss_dfl_weight = 1.5 / 4
+
+-custom_imports = dict(imports=["wedetect"], allow_failed_imports=False)
++custom_imports = dict(imports=["qai_hub_models.models.wedetect.external_repos.wedetect.wedetect"], allow_failed_imports=False)
+ # model settings
+ model = dict(
+     type="YOLOWorldDetector",
+@@ -73,6 +73,7 @@ model = dict(
+             num_classes=num_training_classes,
+             model_size = 'large',
+             in_channels=[256, 512, 1024],
++             use_einsum=False,
+         ),
+         prior_generator=dict(
+             type='MlvlPointGenerator', offset=0.5, strides=[8, 16, 32]),
+--- a/wedetect/models/backbones/mm_backbone.py
++++ b/wedetect/models/backbones/mm_backbone.py
+@@ -148,10 +148,18 @@ class LayerNorm(nn.Module):
+                 x, self.normalized_shape, self.weight, self.bias, self.eps
+             )
+         elif self.data_format == "channels_first":
+-            u = x.mean(1, keepdim=True)
+-            s = (x - u).pow(2).mean(1, keepdim=True)
+-            x = (x - u) / torch.sqrt(s + self.eps)
+-            x = self.weight[:, None, None] * x + self.bias[:, None, None]
++            # Begin Qualcomm modification
++            # Replace custom LayerNorm (manual mean/var) with F.layer_norm for QNN/QAIRT compatibility.
++            # The original weight multiplication (self.weight[:, None, None] * x) caused a Gamma parameter
++            # shape mismatch, resulting in QNN validation failure:
++            # "validateQnnOpConfig: Failed QNN validation for node_LayerNormalization_61".
++            # Permute NCHW -> NHWC so normalization applies over the last dim, then restore layout.
++            x = x.permute(0, 2, 3, 1)
++            x = F.layer_norm(
++                x, self.normalized_shape, self.weight, self.bias, self.eps
++            )
++            x = x.permute(0, 3, 1, 2)
++            # End Qualcomm modification
+             return x
+
+
+--- a/wedetect/models/detectors/yolo_world.py
++++ b/wedetect/models/detectors/yolo_world.py
+@@ -69,8 +69,6 @@ class YOLOWorldDetector(YOLODetector):
+         """Network forward process. Usually includes backbone, neck and head
+         forward without any post-processing.
+         """
+-
+-        print('EXPORT ONNX MODEL HERE!!!!')
+         img_feats, txt_feats = self.extract_feat(batch_inputs,
+                                                  text_feats)
+
+@@ -226,8 +224,6 @@ class SimpleYOLOWorldDetector(YOLODetector):
+         """Network forward process. Usually includes backbone, neck and head
+         forward without any post-processing.
+         """
+-
+-        print('EXPORT ONNX MODEL HERE!!!!')
+         img_feats, txt_feats = self.extract_feat(batch_inputs,
+                                                  batch_data_samples)
+         if self.reparameterized:

@@ -588,3 +588,52 @@ def _greedy_probiou(
         if iou.max().item() < iou_thr:
             keep.append(idx)
     return torch.tensor(keep, dtype=torch.long)
+
+
+def transform_boxes_to_original_size(
+    boxes: torch.Tensor,
+    pad: tuple[int, int],
+    scale: float,
+    original_height: int,
+    original_width: int,
+) -> torch.Tensor:
+    """
+    Transform bounding boxes back to original image size.
+
+    Parameters
+    ----------
+    boxes
+        Bounding boxes tensors, shape (num_detections, 4).
+        Each box represented by (x1, y1, x2, y2) coordinates.
+
+    pad
+        Padding applied during resizing (x_pad, y_pad).
+
+    scale
+        Scale factor applied during resizing.
+
+    original_height
+        Original image height.
+
+    original_width
+        Original image width.
+
+    Returns
+    -------
+    torch.Tensor
+        Bounding boxes tensors, shape (num_detections, 4).
+        Each box represented by (x1, y1, x2, y2) coordinates.
+    """
+    if len(boxes) > 0:
+        # Adjust for padding (subtract padding) and scale
+        boxes = boxes.clone().float()
+        boxes[:, 0] = (boxes[:, 0] - pad[0]) / scale
+        boxes[:, 1] = (boxes[:, 1] - pad[1]) / scale
+        boxes[:, 2] = (boxes[:, 2] - pad[0]) / scale
+        boxes[:, 3] = (boxes[:, 3] - pad[1]) / scale
+        # Ensure boxes are within image boundaries
+        boxes[:, 0] = torch.clamp(boxes[:, 0], min=0)
+        boxes[:, 1] = torch.clamp(boxes[:, 1], min=0)
+        boxes[:, 2] = torch.clamp(boxes[:, 2], max=original_width)
+        boxes[:, 3] = torch.clamp(boxes[:, 3], max=original_height)
+    return boxes
