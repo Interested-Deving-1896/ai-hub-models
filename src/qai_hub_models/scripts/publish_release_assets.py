@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 import argparse
+import json
 import os
 import sys
 import threading
@@ -26,12 +27,13 @@ from qai_hub_models.utils.aws import (
     QAIHM_PUBLIC_S3_BUCKET,
     attempt_with_s3_credentials_warning,
     get_qaihm_s3,
+    list_s3_files_in_folder_recursive,
     s3_copy,
     s3_file_exists,
 )
 from qai_hub_models.utils.version_helpers import QAIHMVersion
 
-LATEST_VERSION_S3_KEY = "qai-hub-models/releases/latest.txt"
+LATEST_MIRROR_PREFIX = "qai-hub-models/releases/latest/"
 OVERWRITE_ASSETS_ENVVAR = "QAIHM_ALLOW_ASSET_OVERWRITE"
 
 
@@ -87,40 +89,68 @@ def main() -> None:
         except Exception as e:  # noqa: PERF203
             print(f"Unable to upload results for {model_id}: {e}")
 
-    publish_latest_version_pointer(public_s3, args.version)
+    publish_latest_mirror(public_s3, args.version)
 
 
-def publish_latest_version_pointer(public_s3: Bucket, version: str) -> None:
-    """Write releases/latest.txt so GenieX can discover the latest release without the CLI.
+def publish_latest_mirror(public_s3: Bucket, version: str) -> None:
+    """Mirror releases/v{version}/ -> releases/latest/ so consumers get stable URLs.
 
-    Written last so the pointer only flips once every model's assets are uploaded.
-    Skips if the pointer already names a newer release (avoids regressing on a
-    patched older version).
+    Runs last so the mirror only flips after every model asset is uploaded.
+    Skips if latest/manifest.json already names a newer release (avoids
+    regressing on a patched older version). Not atomic across N objects --
+    consumers must tolerate a brief empty/partial window during the mirror
+    step.
     """
+    source_prefix = ASSET_CONFIG.get_global_release_s3_folder(version)
     new_version = Version(version.lstrip("v"))
+
     try:
-        current = attempt_with_s3_credentials_warning(
-            lambda: public_s3.Object(LATEST_VERSION_S3_KEY)
+        manifest_bytes = attempt_with_s3_credentials_warning(
+            lambda: public_s3.Object(f"{LATEST_MIRROR_PREFIX}manifest.json")
             .get()["Body"]
             .read()
-            .decode()
-            .strip()
         )
-        if Version(current.lstrip("v")) > new_version:
-            print(f"SKIPPED latest.txt: existing {current} is newer than {new_version}")
+        current = Version(
+            str(json.loads(manifest_bytes).get("version", "0")).lstrip("v")
+        )
+        if current > new_version:
+            print(
+                f"SKIPPED latest/ mirror: existing {current} is newer than {new_version}"
+            )
             return
     except ClientError as e:
-        if e.response.get("Error", {}).get("Code") != "NoSuchKey":
+        if e.response.get("Error", {}).get("Code") not in ("NoSuchKey", "404"):
             raise
 
-    attempt_with_s3_credentials_warning(
-        lambda: public_s3.Object(LATEST_VERSION_S3_KEY).put(
-            Body=f"{new_version}\n".encode(),
-            ACL="public-read",
-            ContentType="text/plain",
+    stale_keys = [
+        obj.key
+        for obj in list_s3_files_in_folder_recursive(public_s3, LATEST_MIRROR_PREFIX)
+    ]
+    # delete_objects caps at 1000 keys per call.
+    for i in range(0, len(stale_keys), 1000):
+        batch = stale_keys[i : i + 1000]
+        attempt_with_s3_credentials_warning(
+            lambda batch=batch: public_s3.delete_objects(
+                Delete={"Objects": [{"Key": k} for k in batch]}
+            )
         )
+
+    source_keys = [
+        obj.key for obj in list_s3_files_in_folder_recursive(public_s3, source_prefix)
+    ]
+    for src_key in source_keys:
+        dst_key = LATEST_MIRROR_PREFIX + src_key[len(source_prefix) :]
+        s3_copy(
+            src_bucket=public_s3,
+            src_key=src_key,
+            dst_bucket=public_s3,
+            dst_key=dst_key,
+            make_dst_public=True,
+        )
+    print(
+        f"MIRRORED s3://{public_s3.name}/{source_prefix} -> {LATEST_MIRROR_PREFIX} "
+        f"({len(source_keys)} objects, {len(stale_keys)} stale deleted)"
     )
-    print(f"WROTE s3://{public_s3.name}/{LATEST_VERSION_S3_KEY} = {new_version}")
 
 
 def release_asset(
