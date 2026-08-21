@@ -28,6 +28,11 @@ GRACE_TASK_NAME = f"grace{GRACE_VERSION}"
 GRACE_METRIC_NAME = f"Grace{GRACE_VERSION}"
 # Convenience alias on the command line: always the latest version.
 GRACE_TASK_ALIAS = "grace"
+# Public documentation for the prompt set, the grader rubric, and how the score
+# is computed. Published alongside the score as the metric's dataset link.
+GRACE_DOC_URL = (
+    "https://github.com/qualcomm/ai-hub-models/blob/main/tutorials/llm/grace.md"
+)
 
 GRACE_PROMPTS_PATH = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{GRACE_TASK_NAME}.jsonl")

@@ -278,6 +278,9 @@ def _grace_grade(version: int) -> MetricMetadata:
 GRACE1_GRADE = _grace_grade(1)
 GRACE2_GRADE = _grace_grade(2)
 
+# The current Grace version
+GRACE_GRADE = GRACE2_GRADE
+
 RECALL_AT_1 = _register_metric(
     MetricMetadata(
         name="Recall@1",

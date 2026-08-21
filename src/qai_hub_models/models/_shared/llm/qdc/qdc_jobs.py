@@ -4,9 +4,11 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import json
 import os
 import random
 import shutil
+import sys
 import time
 import uuid
 import zipfile
@@ -52,6 +54,12 @@ HUB_DEVICE_TO_QDC_DEVICE_MAP = {
 }
 
 QDC_REST_BASE_URL = "https://api.qualcomm.com/deviceloud/v1"
+# The SDK builds its httpx client with timeout=None, i.e. wait forever; a stalled
+# download would then block until the job timeout. read/write are per-chunk and
+# generous because log archives reach ~90MB (screen recordings).
+QDC_HTTP_TIMEOUT = httpx.Timeout(connect=30.0, read=300.0, write=300.0, pool=60.0)
+# Ceiling for the REST calls made through ``requests`` rather than the SDK.
+QDC_REST_TIMEOUT = 120
 # Default client-side cap on concurrent QDC jobs. The shared QDC pool
 # enforces 3 server-side; dedicated pools allow more (see get_qdc_job_limit
 # in llm/common.py) and pass an override via QDCJobs(job_limit=...).
@@ -74,6 +82,13 @@ QDC_JOB_NAME_LIMIT = 32
 # ~30 minutes — long enough to absorb a ~30-min QDC API outage while still
 # probing quickly during the first few seconds.
 STATUS_POLL_MAX_RETRIES = 10
+# Retry budget when the SDK discarded the status code (_opaque_sdk_parse_error).
+# Shorter than STATUS_POLL_MAX_RETRIES: a transient 502 is indistinguishable from
+# a permanent 404, so (5, 10, 20, 40) absorbs a blip without a 30-min burn.
+OPAQUE_ERROR_MAX_RETRIES = 5
+# Log files dropped from every listing: QDC attaches a ~90MB screen recording to
+# each job, which no metric/eval parser reads but dominates a collection's bytes.
+_UNPARSED_LOG_SUFFIXES = (".mp4",)
 # Number of times to re-list job log files when the listing returns empty.
 # QDC exposes log-upload-status and the file listing as two independently
 # eventually-consistent signals: get_job_log_upload_status can report
@@ -160,6 +175,25 @@ def _transient_network_error_name(err: Exception) -> str | None:
     return None
 
 
+def _opaque_sdk_parse_error(err: Exception) -> str | None:
+    """Return the decode error's type name when the SDK lost the status code.
+
+    ``try_call`` builds its error message by ``json.loads``-ing the body of any
+    non-200, outside its own try/except, so a gateway answering with an empty or
+    HTML body raises a bare ``JSONDecodeError``/``UnicodeDecodeError`` carrying
+    neither the status code nor a network cause. That decode failure is then the
+    only evidence the call failed server-side (observed on ``/jobs/downloadLogs``,
+    which stalled ~60s then answered non-JSON). Everything ``_call_with_retry``
+    wraps is idempotent, so retrying an unattributable failure is safe.
+
+    We return only the type name, matching the redaction policy of the siblings.
+    """
+    for cause in _unwrap_causes(err):
+        if isinstance(cause, (json.JSONDecodeError, UnicodeDecodeError)):
+            return type(cause).__name__
+    return None
+
+
 def _backoff_seconds(attempt: int) -> int:
     """Exponential backoff (capped) for the given zero-based retry attempt."""
     return min(RETRY_BACKOFF_BASE * (2**attempt), RETRY_BACKOFF_MAX)
@@ -173,12 +207,14 @@ def _call_with_retry(
     """Call ``func()``, retrying through transient QDC errors.
 
     Covers transient network blips (DNS resolution failures, dropped
-    connections) as well as transient HTTP status errors the QDC SDK raises
-    as a bare Exception (the global ``_RETRYABLE_STATUS_CODES`` plus any
-    callsite-specific codes passed via ``extra_retryable_codes``). A
-    genuinely fatal error still surfaces after STATUS_POLL_MAX_RETRIES
-    attempts. Delays between attempts use capped exponential backoff (see
-    ``_backoff_seconds``) so we don't hammer a rate-limited or overloaded
+    connections), transient HTTP status errors the QDC SDK raises as a bare
+    Exception (the global ``_RETRYABLE_STATUS_CODES`` plus any callsite-specific
+    codes passed via ``extra_retryable_codes``), and failures whose status code
+    the SDK discarded while decoding the error body (see
+    ``_opaque_sdk_parse_error``, held to the shorter
+    ``OPAQUE_ERROR_MAX_RETRIES``). A genuinely fatal error still surfaces once
+    the budget is spent. Delays between attempts use capped exponential backoff
+    (see ``_backoff_seconds``) so we don't hammer a rate-limited or overloaded
     endpoint.
 
     Used to wrap QDC SDK calls that talk to the network and are safe to repeat:
@@ -211,21 +247,32 @@ def _call_with_retry(
             # DNS gaierror) and the message (embedded retryable status codes).
             net_err = _transient_network_error_name(err)
             code = _matched_retryable_status_code(err, extra_retryable_codes)
-            if (net_err is None and code is None) or (
-                attempt == STATUS_POLL_MAX_RETRIES - 1
+            parse_err = (
+                _opaque_sdk_parse_error(err)
+                if net_err is None and code is None
+                else None
+            )
+            budget = (
+                OPAQUE_ERROR_MAX_RETRIES
+                if parse_err is not None
+                else STATUS_POLL_MAX_RETRIES
+            )
+            if (net_err is None and code is None and parse_err is None) or (
+                attempt == budget - 1
             ):
                 raise
             delay = _backoff_seconds(attempt)
             # Log only the matched type/status code, never the raw message,
             # which the SDK may populate with credential fragments or secrets.
-            reason = (
-                f"transient network error ({net_err})"
-                if net_err is not None
-                else f"transient status code {code}"
-            )
+            if net_err is not None:
+                reason = f"transient network error ({net_err})"
+            elif code is not None:
+                reason = f"transient status code {code}"
+            else:
+                reason = f"undecodable error body ({parse_err}), status unknown"
             print(
                 f"[QDC retry] {description} failed with {reason}; attempt "
-                f"{attempt + 1}/{STATUS_POLL_MAX_RETRIES}, retrying in {delay}s."
+                f"{attempt + 1}/{budget}, retrying in {delay}s."
             )
             time.sleep(delay)
     raise AssertionError("unreachable")  # loop either returns or raises
@@ -342,7 +389,7 @@ class QDCJobs:
             app_name_header=app_name_header,
             on_behalf_of_header="ai_hub_models",
             client_type_header="Python",
-        )
+        ).with_timeout(QDC_HTTP_TIMEOUT)
         self._api_key = api_key
         self._app_name_header = app_name_header
         self.job_limit = job_limit
@@ -381,6 +428,7 @@ class QDCJobs:
         response = self._session.get(
             f"{QDC_REST_BASE_URL}/jobs/{job_id}",
             headers={"X-QCOM-TracingId": str(uuid.uuid4())},
+            timeout=QDC_REST_TIMEOUT,
         )
         response.raise_for_status()
         return Job.from_dict(response.json())
@@ -605,11 +653,15 @@ class QDCJobs:
         Returns
         -------
         job_log_files: list
-            List of job log files.
+            List of job log files, minus ``_UNPARSED_LOG_SUFFIXES``.
         """
         for attempt in range(LOG_LISTING_MAX_RETRIES):
             job_log_files = _call_with_retry(
-                lambda: qdc_api.get_job_log_files(self.client, job_id),
+                lambda: [
+                    f
+                    for f in qdc_api.get_job_log_files(self.client, job_id)
+                    if not f.filename.endswith(_UNPARSED_LOG_SUFFIXES)
+                ],
                 f"get_job_log_files({job_id})",
             )
             if job_log_files or not wait_for_logs:
@@ -642,6 +694,26 @@ class QDCJobs:
             lambda: qdc_api.download_job_log_files(self.client, filename, target_path),
             f"download_job_log_files({filename})",
         )
+
+    def try_download_job_log_files(self, filename: str, target_path: str) -> bool:
+        """Best-effort ``download_job_log_files``; return False if it never landed.
+
+        One unreadable log file shouldn't discard a whole collection: a run was
+        lost on ``test_dbg.stdout``, which no metric parser reads, after its
+        device job had already succeeded. Callers skip the file and parse what
+        did arrive; a missing results file still shows up as absent metrics.
+        """
+        try:
+            self.download_job_log_files(filename, target_path)
+            return True
+        except Exception as err:
+            # Type only, never the message (see _matched_retryable_status_code).
+            print(
+                f"[QDC] giving up on log file {filename} after retries "
+                f"({type(err).__name__}); continuing with the rest.",
+                file=sys.stderr,
+            )
+            return False
 
     def upload_file(self, file_path: str, artifact_type: ArtifactType) -> str:
         """Upload a file to QDC.

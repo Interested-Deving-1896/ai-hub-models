@@ -22,11 +22,14 @@ from pathlib import Path
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.models._shared.llm.grader.grace import GRACE_TASK_NAME
+from qai_hub_models.models._shared.llm.grader.grace import (
+    GRACE_DOC_URL,
+    GRACE_TASK_NAME,
+)
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.utils.testing_async_utils import write_accuracy
 from qai_hub_models.utils.base_dataset import DatasetMetadata
-from qai_hub_models.utils.metrics import GRACE2_GRADE
+from qai_hub_models.utils.metrics import GRACE_GRADE
 
 GRADE_SUFFIX = "_grade.json"
 META_SUFFIX = ".meta.json"
@@ -40,6 +43,12 @@ def _meta_path_for(grade_path: str) -> str:
 def _grace_metric_name(dataset_name: str) -> str:
     """The label a Grace dataset's score is reported under (``grace2`` -> ``Grace2``)."""
     return dataset_name.replace("grace", "Grace", 1)
+
+
+# Ensure Grace dataset and metric are coupled
+assert GRACE_GRADE.name == _grace_metric_name(GRACE_TASK_NAME), (
+    f"Grace dataset/metric mismatch: dataset {GRACE_TASK_NAME!r} vs {GRACE_GRADE.name} metric"
+)
 
 
 def _reference_grade(model_id: str, dataset_name: str) -> float | None:
@@ -97,6 +106,7 @@ def collect(directory: str) -> int:
         chipset = meta["chipset"]
         precision = meta["precision"]
         dataset_name = meta.get("dataset_name", GRACE_TASK_NAME)
+        assert dataset_name.startswith("grace")
         # The sidecar records the scorecard runtime; older/genie sidecars omit
         # it and fall back to GENIE.
         path_value = meta.get("path")
@@ -126,9 +136,9 @@ def collect(directory: str) -> int:
             device_accuracy=float(score_pct),
             dataset_name=dataset_name,
             dataset_metadata=DatasetMetadata(
-                link="", split_description="on-device prompt eval set"
+                link=GRACE_DOC_URL, split_description="on-device prompt eval set"
             ),
-            metric_metadata=GRACE2_GRADE,
+            metric_metadata=GRACE_GRADE,
             num_samples=grade.get("num_items"),
         )
         rows_written += 1

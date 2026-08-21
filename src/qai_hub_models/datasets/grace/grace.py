@@ -14,6 +14,7 @@ from PIL import Image
 from transformers import PreTrainedTokenizerBase
 
 from qai_hub_models.models._shared.llm.grader.grace import (
+    GRACE_DOC_URL,
     GRACE_PROMPTS_PATH,
     GRACE_TASK_NAME,
     MULTIMODAL_TASK_NAME,
@@ -21,7 +22,11 @@ from qai_hub_models.models._shared.llm.grader.grace import (
     select_balanced,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebDatasetAsset
-from qai_hub_models.utils.base_dataset import BaseDataset, DatasetSplit
+from qai_hub_models.utils.base_dataset import (
+    BaseDataset,
+    DatasetMetadata,
+    DatasetSplit,
+)
 
 MULTIMODAL_DATASET_ID = MULTIMODAL_TASK_NAME
 MULTIMODAL_VERSION = 1
@@ -144,6 +149,13 @@ class Grace2(BaseDataset):
     @staticmethod
     def default_samples_per_job() -> int:
         return 1
+
+    @staticmethod
+    def get_dataset_metadata() -> DatasetMetadata:
+        return DatasetMetadata(
+            link=GRACE_DOC_URL,
+            split_description="test split (10 categories x 10 prompts)",
+        )
 
     @classmethod
     def dataset_name(cls) -> str:

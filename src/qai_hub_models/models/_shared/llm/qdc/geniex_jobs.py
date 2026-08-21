@@ -460,7 +460,8 @@ class GenieXBenchQDCJobs(QDCJobs):
             for job_log in job_log_files:
                 target = os.path.join(tmpdir, "logs", f"{job_log.filename}.zip")
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                self.download_job_log_files(job_log.filename, target)
+                if not self.try_download_job_log_files(job_log.filename, target):
+                    continue
                 if save_logs_dir:
                     safe_name = os.path.basename(job_log.filename)
                     shutil.copy(target, os.path.join(save_logs_dir, f"{safe_name}.zip"))
@@ -560,7 +561,8 @@ class GenieXBenchQDCJobs(QDCJobs):
                     continue
                 target = os.path.join(tmpdir, "logs", f"{job_log.filename}.zip")
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                self.download_job_log_files(job_log.filename, target)
+                if not self.try_download_job_log_files(job_log.filename, target):
+                    continue
                 if save_logs_dir:
                     safe_name = os.path.basename(job_log.filename)
                     dest = os.path.join(save_logs_dir, f"{safe_name}.zip")

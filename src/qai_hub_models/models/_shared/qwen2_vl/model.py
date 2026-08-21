@@ -78,8 +78,8 @@ VISION_PLACEHOLDER = "<|vision_start|><|image_pad|><|vision_end|>"
 
 def _vlm_eval_dataset_classes() -> list[type[BaseDataset]]:
     """Eval datasets for VLM models: the text-only LLM tasks plus MMMU and multimodal prompts."""
+    from qai_hub_models.datasets.grace import MultimodalPrompts
     from qai_hub_models.datasets.mmmu import MMMU
-    from qai_hub_models.datasets.prompts import MultimodalPrompts
     from qai_hub_models.models._shared.llm.model import LLMBase
 
     return [*LLMBase.get_eval_dataset_classes(), MMMU, MultimodalPrompts]

@@ -528,7 +528,10 @@ class GenieQDCJobs(QDCJobs):
                         tmpdirname, "logs", f"{job_log.filename}.zip"
                     )
                     os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                    self.download_job_log_files(job_log.filename, target_path)
+                    if not self.try_download_job_log_files(
+                        job_log.filename, target_path
+                    ):
+                        continue
 
                     if "genie" in job_log.filename:
                         shutil.unpack_archive(target_path, tmpdirname, "zip")
@@ -689,7 +692,8 @@ class GenieQDCJobs(QDCJobs):
                     tmpdirname, "logs", f"{job_log.filename}.zip"
                 )
                 os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                self.download_job_log_files(job_log.filename, target_path)
+                if not self.try_download_job_log_files(job_log.filename, target_path):
+                    continue
 
                 safe_root = pathlib.Path(tmpdirname).resolve()
                 with zipfile.ZipFile(target_path) as zf:
