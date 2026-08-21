@@ -22,7 +22,7 @@ from qai_hub_models.models.movenet.external_repos.movenet_pytorch.movenet.models
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import (
     ColorFormat,
     ImageMetadata,
@@ -43,7 +43,7 @@ OUTPUT_STRIDE = 16
 
 class Movenet(BaseModel):
     def __init__(self, model: torch.nn.Module) -> None:
-        super().__init__(model, SerializationSettings(use_pt2=False))
+        super().__init__(model)
 
     @classmethod
     def from_pretrained(

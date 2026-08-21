@@ -25,7 +25,6 @@ from qai_hub_models.models._shared.detectron2.model import Detectron2
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.export.result import ComponentGroup
 from qai_hub_models.utils.input_spec import (
     BboxFormat,
@@ -45,9 +44,7 @@ DEFAULT_CONFIG = "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml"
 
 class Detectron2ProposalGenerator(Detectron2):
     def __init__(self, model: GeneralizedRCNN) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.model = model
         self.pixel_mean = model.pixel_mean
         self.pixel_std = model.pixel_std
@@ -130,9 +127,7 @@ class Detectron2ProposalGenerator(Detectron2):
 
 class Detectron2ROIHead(Detectron2):
     def __init__(self, model: GeneralizedRCNN) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.model = model
         self.roi_heads = model.roi_heads
         self.box_predictor = model.roi_heads.box_predictor

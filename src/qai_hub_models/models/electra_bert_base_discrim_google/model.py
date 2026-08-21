@@ -21,7 +21,6 @@ from qai_hub_models.models.electra_bert_base_discrim_google.evaluator import (
 )
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.input_spec import InputSpec, IoType, OutputSpec, TensorSpec
 
 MODEL_ID = __name__.split(".")[-2]
@@ -34,7 +33,6 @@ class ElectraBertBaseDiscrimGoogle(BertModelBase):
 
     def __init__(self, model: torch.nn.Module, tokenizer: Any) -> None:
         super().__init__(model, tokenizer)
-        self.serialization_settings = SerializationSettings(use_pt2=False)
 
     @staticmethod
     def default_weights() -> str:
