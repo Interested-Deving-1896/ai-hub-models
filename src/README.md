@@ -262,6 +262,7 @@ and many more.
 | [First-Order-Motion-Model](https://aihub.qualcomm.com/models/fomm) | `qai_hub_models.models.fomm` |
 | | |
 | **Video Object Tracking**
+| [OSNet](https://aihub.qualcomm.com/models/osnet) | `qai_hub_models.models.osnet` |
 | [Track-Anything](https://aihub.qualcomm.com/models/track_anything) | `qai_hub_models.models.track_anything` |
 | | |
 | **Object Detection**
@@ -280,6 +281,7 @@ and many more.
 | [MediaPipe-Face-Detection](https://aihub.qualcomm.com/models/mediapipe_face) | `qai_hub_models.models.mediapipe_face` |
 | [MediaPipe-Hand-Detection](https://aihub.qualcomm.com/models/mediapipe_hand) | `qai_hub_models.models.mediapipe_hand` |
 | [MediaPipe-Hand-Gesture-Recognition](https://aihub.qualcomm.com/models/mediapipe_hand_gesture) | `qai_hub_models.models.mediapipe_hand_gesture` |
+| [OWL-V2](https://aihub.qualcomm.com/models/owlv2) | `qai_hub_models.models.owlv2` |
 | [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit) | `qai_hub_models.models.owl_vit` |
 | [PPE-Detection](https://aihub.qualcomm.com/models/gear_guard_net) | `qai_hub_models.models.gear_guard_net` |
 | [Person-Foot-Detection](https://aihub.qualcomm.com/models/foot_track_net) | `qai_hub_models.models.foot_track_net` |

@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [OWL-V2: Open-Vocabulary Object Detection with Vision Transformers](https://aihub.qualcomm.com/models/owlv2)
 
 OWL-V2 (Open-World Localization with Vision Transformers) is an open-vocabulary object detector that uses a CLIP-based ViT-B/16 backbone. Given an image and one or more free-form text queries, the model predicts bounding boxes and confidence scores for each query.

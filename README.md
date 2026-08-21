@@ -262,6 +262,7 @@ and many more.
 | [First-Order-Motion-Model](https://aihub.qualcomm.com/models/fomm) | [qai_hub_models.models.fomm](src/qai_hub_models/models/fomm/README.md) |
 | | |
 | **Video Object Tracking**
+| [OSNet](https://aihub.qualcomm.com/models/osnet) | [qai_hub_models.models.osnet](src/qai_hub_models/models/osnet/README.md) |
 | [Track-Anything](https://aihub.qualcomm.com/models/track_anything) | [qai_hub_models.models.track_anything](src/qai_hub_models/models/track_anything/README.md) |
 | | |
 | **Object Detection**
@@ -280,6 +281,7 @@ and many more.
 | [MediaPipe-Face-Detection](https://aihub.qualcomm.com/models/mediapipe_face) | [qai_hub_models.models.mediapipe_face](src/qai_hub_models/models/mediapipe_face/README.md) |
 | [MediaPipe-Hand-Detection](https://aihub.qualcomm.com/models/mediapipe_hand) | [qai_hub_models.models.mediapipe_hand](src/qai_hub_models/models/mediapipe_hand/README.md) |
 | [MediaPipe-Hand-Gesture-Recognition](https://aihub.qualcomm.com/models/mediapipe_hand_gesture) | [qai_hub_models.models.mediapipe_hand_gesture](src/qai_hub_models/models/mediapipe_hand_gesture/README.md) |
+| [OWL-V2](https://aihub.qualcomm.com/models/owlv2) | [qai_hub_models.models.owlv2](src/qai_hub_models/models/owlv2/README.md) |
 | [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit) | [qai_hub_models.models.owl_vit](src/qai_hub_models/models/owl_vit/README.md) |
 | [PPE-Detection](https://aihub.qualcomm.com/models/gear_guard_net) | [qai_hub_models.models.gear_guard_net](src/qai_hub_models/models/gear_guard_net/README.md) |
 | [Person-Foot-Detection](https://aihub.qualcomm.com/models/foot_track_net) | [qai_hub_models.models.foot_track_net](src/qai_hub_models/models/foot_track_net/README.md) |
