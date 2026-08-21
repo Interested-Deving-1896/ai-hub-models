@@ -181,11 +181,13 @@ if ($RUN_EVAL) {
             }
         }
         # Emit the marker + accepted attempt's output only once, then clean up.
+        # -Encoding utf8 on every write: Add-Content defaults to the ANSI
+        # codepage on PS 5.1, which mangles non-ASCII generations into CP1252.
         try {
-            Add-Content -Path $EVAL_OUT -Value "===EVAL_IDX_$idx==="
-            Add-Content -Path $EVAL_ERR -Value "===EVAL_IDX_$idx==="
-            if (Test-Path $tmpOut) { Get-Content $tmpOut -Encoding UTF8 | Add-Content $EVAL_OUT }
-            if (Test-Path $tmpErr) { Get-Content $tmpErr -Encoding UTF8 | Add-Content $EVAL_ERR }
+            Add-Content -Path $EVAL_OUT -Value "===EVAL_IDX_$idx===" -Encoding utf8
+            Add-Content -Path $EVAL_ERR -Value "===EVAL_IDX_$idx===" -Encoding utf8
+            if (Test-Path $tmpOut) { Get-Content $tmpOut -Encoding UTF8 | Add-Content $EVAL_OUT -Encoding utf8 }
+            if (Test-Path $tmpErr) { Get-Content $tmpErr -Encoding UTF8 | Add-Content $EVAL_ERR -Encoding utf8 }
         } finally {
             Remove-Item $tmpOut, $tmpErr -ErrorAction SilentlyContinue
         }

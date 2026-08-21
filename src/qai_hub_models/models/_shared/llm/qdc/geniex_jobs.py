@@ -578,10 +578,10 @@ class GenieXBenchQDCJobs(QDCJobs):
                 for fn in files:
                     if "geniex_eval_outputs" not in fn or fn.endswith(".zip"):
                         continue
-                    with open(
-                        os.path.join(root, fn), encoding="utf-8", errors="replace"
-                    ) as f:
-                        outputs.update(_parse_eval_outputs(f.read()))
+                    with open(os.path.join(root, fn), "rb") as f:
+                        outputs.update(
+                            _parse_eval_outputs(_decode_device_log(f.read()))
+                        )
 
         return [
             {
@@ -591,6 +591,20 @@ class GenieXBenchQDCJobs(QDCJobs):
             }
             for idx in sorted(outputs.keys())
         ]
+
+
+def _decode_device_log(data: bytes) -> str:
+    """Decode a device eval log, tolerating CP1252 from older Windows runs.
+
+    PS 5.1's Add-Content defaulted to the ANSI codepage, so logs collected
+    before that was pinned to utf8 hold lone high bytes that strict UTF-8
+    rejects. Decoding those as CP1252 recovers the original text instead of
+    replacing every accented character with U+FFFD.
+    """
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("cp1252", errors="replace")
 
 
 def _parse_eval_outputs(content: str) -> dict[int, str]:
