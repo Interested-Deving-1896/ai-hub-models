@@ -139,8 +139,11 @@ class KittiDataset(BaseDataset):
 
     def __getitem__(
         self, index: int
-    ) -> tuple[torch.Tensor, tuple[int, np.ndarray, np.ndarray, np.ndarray, str]]:
+    ) -> tuple[torch.Tensor, tuple[int, np.ndarray, np.ndarray, np.ndarray]]:
         """
+        Every ground truth element must be a numeric array; ground truth is
+        uploaded to AI Hub as dataset entries for on-device accuracy validation.
+
         Parameters
         ----------
         index
@@ -153,7 +156,7 @@ class KittiDataset(BaseDataset):
             the image is returned at its original resolution without any
             affine transform; otherwise it is warped to (input_height, input_width).
 
-        gt_data : tuple[int, np.ndarray, np.ndarray, np.ndarray, str]
+        gt_data : tuple[int, np.ndarray, np.ndarray, np.ndarray]
             img_id
                 image id
             center
@@ -162,8 +165,6 @@ class KittiDataset(BaseDataset):
                 scale of the image with shape (2,)
             calib
                 camera calibration matrix with shape (3, 4)
-            img_path
-                path to the original image file
         """
         image_path: str = self.sample[index]["img_path"]
         img_id: int = self.sample[index]["img_id"]
@@ -186,7 +187,7 @@ class KittiDataset(BaseDataset):
                 image, c, s, 0, (self.input_height, self.input_width)
             ).squeeze(0)
 
-        return image_tensor, (img_id, c, s, calib, str(image_path))
+        return image_tensor, (img_id, c, s, calib)
 
     def __len__(self) -> int:
         return len(self.sample)

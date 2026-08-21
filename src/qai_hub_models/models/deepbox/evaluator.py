@@ -40,7 +40,7 @@ class Kitti3DDetectionEvaluator(BaseEvaluator):
     def add_batch(
         self,
         output: tuple[list[dict]],
-        gt: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, list[str]],
+        gt: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
     ) -> None:
         """
         Add a batch of predictions and ground truth for evaluation.
@@ -73,11 +73,9 @@ class Kitti3DDetectionEvaluator(BaseEvaluator):
                 Original image scale (width, height) with shape [B, 2].
             calib
                 Camera calibration matrix with shape [B, 3, 4].
-            img_paths
-                List of original image file paths, length B.
         """
         (per_image_detections,) = output
-        img_id_gt, c_gt, s_gt, _, _img_paths = gt
+        img_id_gt, c_gt, s_gt, _ = gt
 
         for b, detections in enumerate(per_image_detections):
             img_id = int(img_id_gt[b].item())
