@@ -247,6 +247,15 @@ def export_model(
                 "For a full tutorial, please follow the instructions here: "
                 "https://github.com/quic/ai-hub-apps/tree/main/tutorials/llm_on_genie."
             )
+        if target_runtime == TargetRuntime.GENIE:
+            min_qnn_sdk = manifest.runtime_technical_details.get(
+                target_runtime, {}
+            ).get("Minimum QNN SDK version required")
+            if min_qnn_sdk is not None:
+                print(
+                    f"\nThis bundle requires QAIRT/QNN SDK {min_qnn_sdk} or newer. "
+                    "Older versions may load the assets but produce incorrect output."
+                )
 
     return MultiGraphCollectionExportResult(
         compile_jobs=compile_jobs,

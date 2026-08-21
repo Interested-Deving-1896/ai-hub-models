@@ -42,6 +42,7 @@ from transformers.models.gemma4 import modeling_gemma4
 from typing_extensions import Self
 
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.datasets import instantiate_dataset
 from qai_hub_models.datasets.wikitext import WikiText, WikiTextChat
 from qai_hub_models.datasets.wikitext.wikitext_chat import (
@@ -120,10 +121,10 @@ class Gemma4RopeEmbedding(Embedding):
     - Global layers: partial rotation (25%), theta=1000000, dim=global_head_dim*partial_factor (128)
 
     Both are precomputed and stored. At runtime, the model receives:
-    - position_ids_cos: (1, 1, seq_len, swa_embed_dim) for SWA layers
-    - position_ids_sin: (1, 1, seq_len, swa_embed_dim)
-    - position_ids_global_cos: (1, 1, seq_len, global_embed_dim) for Global layers
-    - position_ids_global_sin: (1, 1, seq_len, global_embed_dim)
+    - swa_position_ids_cos: (1, 1, seq_len, swa_embed_dim) for SWA layers
+    - swa_position_ids_sin: (1, 1, seq_len, swa_embed_dim)
+    - position_ids_cos: (1, 1, seq_len, global_embed_dim) for Global layers
+    - position_ids_sin: (1, 1, seq_len, global_embed_dim)
 
     Where embed_dim = rope_dim / 2 (because _apply_rope_single splits into first/second halves).
     """
@@ -300,24 +301,26 @@ def kv_prefix(layer_type: str) -> str:
 # Gemma4 host-side embedding LUT export (Genie bundle)
 # ---------------------------------------------------------------------------
 # Gemma4 takes inputs_embeds + per_layer_inputs as graph inputs, so both
-# embedding tables live host-side; Genie loads them from ufixed16 LUT .bin files
-# and dequantizes with the scale/offset written into genie_config.json.
+# embedding tables live host-side; Genie loads them from ufixed8/ufixed16 LUT .bin
+# files and dequantizes with the scale/offset written into genie_config.json.
 
 
-def _global_uint16_encoding(fp: np.ndarray) -> dict[str, Any]:
-    """Single asymmetric ufixed16 encoding (scale/offset) for a whole table."""
+def _global_uint16_encoding(fp: np.ndarray, bw: int = 16) -> dict[str, Any]:
+    """Single asymmetric ufixed{bw} encoding (scale/offset) for a whole table."""
     fmin = float(fp.min())
     fmax = float(fp.max())
-    qmax = 65535
+    qmax = (1 << bw) - 1
     scale = (fmax - fmin) / qmax
     offset = round(fmin / scale)
-    return {"bw": 16, "scale": scale, "offset": offset}
+    return {"bw": bw, "scale": scale, "offset": offset}
 
 
-def _quantize_uint16(fp: np.ndarray, scale: float, offset: int) -> np.ndarray:
+def _quantize_uint16(
+    fp: np.ndarray, scale: float, offset: int, bw: int = 16
+) -> np.ndarray:
     shifted = fp / scale - offset
     q = np.floor(np.abs(shifted) + 0.5) * np.where(shifted < 0, -1, 1)
-    return np.clip(q, 0, 65535).astype(np.uint16)
+    return np.clip(q, 0, (1 << bw) - 1).astype(np.uint16 if bw == 16 else np.uint8)
 
 
 # Rows per quantization block. The expression in _quantize_uint16 promotes to
@@ -328,8 +331,10 @@ def _quantize_uint16(fp: np.ndarray, scale: float, offset: int) -> np.ndarray:
 _LUT_QUANT_ROWS = 8192
 
 
-def _write_uint16_lut(fp: np.ndarray, scale: float, offset: int, path: Path) -> None:
-    """Quantize ``fp`` to ufixed16 and stream it to ``path`` in row blocks.
+def _write_uint16_lut(
+    fp: np.ndarray, scale: float, offset: int, path: Path, bw: int = 16
+) -> None:
+    """Quantize ``fp`` to ufixed{bw} and stream it to ``path`` in row blocks.
 
     Bit-identical to ``_quantize_uint16(fp, ...).tofile(path)`` -- the same
     expression is evaluated per block -- but never materializes a whole-table
@@ -337,9 +342,9 @@ def _write_uint16_lut(fp: np.ndarray, scale: float, offset: int, path: Path) -> 
     """
     with open(path, "wb") as f:
         for start in range(0, fp.shape[0], _LUT_QUANT_ROWS):
-            _quantize_uint16(fp[start : start + _LUT_QUANT_ROWS], scale, offset).tofile(
-                f
-            )
+            _quantize_uint16(
+                fp[start : start + _LUT_QUANT_ROWS], scale, offset, bw
+            ).tofile(f)
 
 
 def export_gemma4_embeddings(
@@ -349,13 +354,16 @@ def export_gemma4_embeddings(
     num_layers: int,
     ple_dim: int,
     hf_repo_name: str | None = None,
+    perlayer_bitwidth: int = 16,
 ) -> dict[str, dict[str, Any]]:
-    """Export Gemma4 token + per-layer embedding tables as host-side ufixed16 LUTs.
+    """Export Gemma4 token + per-layer embedding tables as host-side LUTs.
 
     Loads the original float tables as FP32, folds in embed_scale (sqrt(dim)),
-    computes a global asymmetric ufixed16 encoding, and writes the .bin LUTs +
-    encoding JSONs. Returns embedding / perlayer_embedding dicts (lut-path, size,
+    computes a global asymmetric encoding, and writes the .bin LUTs + encoding
+    JSONs. Returns embedding / perlayer_embedding dicts (lut-path, size, bw,
     scale, offset) for injection into genie_config.json.
+
+    The token table is always ufixed16; ``perlayer_bitwidth`` sets the PLE width.
     """
     checkpoint = Path(checkpoint)
     output_dir = Path(output_dir)
@@ -426,6 +434,7 @@ def export_gemma4_embeddings(
         result["embedding"] = {
             "lut-path": "embedding_int16_lut.bin",
             "size": hidden_size,
+            "bw": emb_enc["bw"],
             "scale": emb_enc["scale"],
             "offset": emb_enc["offset"],
         }
@@ -436,18 +445,21 @@ def export_gemma4_embeddings(
         # Per-layer (PLE) embedding: embed_scale = sqrt(ple_dim).
         ple = _dequant_embedding(f, "model.language_model.embed_tokens_per_layer")
         ple *= float(ple_dim) ** 0.5
-        ple_enc = _global_uint16_encoding(ple)
+        ple_enc = _global_uint16_encoding(ple, perlayer_bitwidth)
+        ple_lut_name = f"embed_token_int{perlayer_bitwidth}_lut.bin"
         _write_uint16_lut(
             ple,
             ple_enc["scale"],
             ple_enc["offset"],
-            output_dir / "embed_token_int16_lut.bin",
+            output_dir / ple_lut_name,
+            perlayer_bitwidth,
         )
         with open(output_dir / "embed_tokens_encodings.json", "w") as jf:
             json.dump({"lut_enc": ple_enc, "size": ple_total}, jf, indent=4)
         result["perlayer_embedding"] = {
-            "lut-path": "embed_token_int16_lut.bin",
+            "lut-path": ple_lut_name,
             "size": ple_total,
+            "bw": ple_enc["bw"],
             "scale": ple_enc["scale"],
             "offset": ple_enc["offset"],
         }
@@ -660,11 +672,11 @@ class Gemma4Base(LLMBase):
             # global_head_dim//2 width even though only the first
             # (global_head_dim*partial_factor)//2 frequencies are real.
             global_embed_dim = global_head_dim // 2
-            input_spec["position_ids_global_cos"] = (
+            input_spec["position_ids_cos"] = (
                 (1, 1, sequence_length, global_embed_dim),
                 "float32",
             )
-            input_spec["position_ids_global_sin"] = (
+            input_spec["position_ids_sin"] = (
                 (1, 1, sequence_length, global_embed_dim),
                 "float32",
             )
@@ -741,10 +753,10 @@ class Gemma4Base(LLMBase):
             per_layer_inputs:    (1, seq, num_layers, ple_dim) float32
             attention_mask:      (1, 1, seq, ctx) float32  (global, full causal)
             swa_attention_mask:  (1, 1, seq, ctx) float32  (sliding-window causal)
-            position_ids_cos:        (1, 1, seq, swa_embed_dim)    - SWA RoPE
-            position_ids_sin:        (1, 1, seq, swa_embed_dim)
-            position_ids_global_cos: (1, 1, seq, global_embed_dim) - Global RoPE
-            position_ids_global_sin: (1, 1, seq, global_embed_dim)
+            swa_position_ids_cos:    (1, 1, seq, swa_embed_dim)    - SWA RoPE
+            swa_position_ids_sin:    (1, 1, seq, swa_embed_dim)
+            position_ids_cos:        (1, 1, seq, global_embed_dim) - Global RoPE
+            position_ids_sin:        (1, 1, seq, global_embed_dim)
             past_key/value pairs for non-shared layers only
 
         genie_input_ids mode (legacy): input_ids replaces
@@ -779,14 +791,14 @@ class Gemma4Base(LLMBase):
             # Precomputed RoPE cos/sin
             position_ids_cos_swa = rope_and_kv[0]
             position_ids_sin_swa = rope_and_kv[1]
-            position_ids_global_cos = rope_and_kv[2]
-            position_ids_global_sin = rope_and_kv[3]
+            position_ids_cos = rope_and_kv[2]
+            position_ids_sin = rope_and_kv[3]
             past_key_values_flat = rope_and_kv[4:]
             position_ids = None  # Will be derived from attention_mask
             position_embeddings_swa = (position_ids_cos_swa, position_ids_sin_swa)
             position_embeddings_global = (
-                position_ids_global_cos,
-                position_ids_global_sin,
+                position_ids_cos,
+                position_ids_sin,
             )
 
         num_layers = self.llm_config.num_hidden_layers
@@ -1100,8 +1112,8 @@ def build_gemma4_genie_inputs(
         "swa_attention_mask": swa_attention_mask.to(torch.float32),
         "swa_position_ids_cos": swa_cos.to(torch.float32),
         "swa_position_ids_sin": swa_sin.to(torch.float32),
-        "position_ids_global_cos": global_cos.to(torch.float32),
-        "position_ids_global_sin": global_sin.to(torch.float32),
+        "position_ids_cos": global_cos.to(torch.float32),
+        "position_ids_sin": global_sin.to(torch.float32),
     }
     # KV cache inputs, in the same (layer, head, key/value) order the model's
     # get_output_spec emits them, so a prior step's outputs feed straight back in.
@@ -1851,8 +1863,8 @@ class Gemma4QuantizablePreSplitBase(  # type: ignore[misc]
                 "swa_attention_mask": swa_attention_mask.to(torch.float32),
                 "swa_position_ids_cos": swa_cos.to(torch.float32),
                 "swa_position_ids_sin": swa_sin.to(torch.float32),
-                "position_ids_global_cos": global_cos.to(torch.float32),
-                "position_ids_global_sin": global_sin.to(torch.float32),
+                "position_ids_cos": global_cos.to(torch.float32),
+                "position_ids_sin": global_sin.to(torch.float32),
             }
             # Zero KV cache for non-shared layers, one tensor per head. Shared
             # per shape via _zeros: allocating fresh would hold ~78 MiB per
@@ -2000,8 +2012,8 @@ class Gemma4PartBase(DynamicSplitPartBase):
     Overrides get_graph_input_spec to handle Gemma4's non-uniform KV shapes:
     - SWA layers use head_dim=256, global layers use global_head_dim=512
     - Only non-shared layers (0 to first_shared-1) have KV I/O
-    - Dual RoPE: position_ids_cos/sin (SWA, embed_dim=128) and
-      position_ids_global_cos/sin_global (Global, embed_dim=64)
+    - Dual RoPE: swa_position_ids_cos/sin (SWA, embed_dim=128) and
+      position_ids_cos/sin (Global, embed_dim=64)
     """
 
     # Override in subclass
@@ -2116,10 +2128,10 @@ class Gemma4PartBase(DynamicSplitPartBase):
                     (1, 1, sequence_length, swa_kv_len + sequence_length),
                     "float32",
                 )
-            elif "position_ids_global_cos" in name or "position_ids_global_sin" in name:
-                spec[name] = ((1, 1, sequence_length, global_embed_dim), "float32")
-            elif "swa_position_ids_cos" in name or "swa_position_ids_sin" in name:
+            elif name in ("swa_position_ids_cos", "swa_position_ids_sin"):
                 spec[name] = ((1, 1, sequence_length, swa_embed_dim), "float32")
+            elif name in ("position_ids_cos", "position_ids_sin"):
+                spec[name] = ((1, 1, sequence_length, global_embed_dim), "float32")
             else:
                 # Intermediate cross-part tensor (incoming hidden state, or a
                 # PLE-derived (1, 1, hidden) tensor). Use the ACTUAL ONNX shape,
@@ -2170,6 +2182,7 @@ def _fix_gemma4_genie_config(
     llm_config: Any,
     fp: type[Gemma4PreSplitBase],
     bundle_dir: Path,
+    runtime: TargetRuntime,
 ) -> None:
     """Correct the genie_config.json fields the shared generator mis-emits.
 
@@ -2201,6 +2214,8 @@ def _fix_gemma4_genie_config(
         FP PreSplit class, source of the head dims and sliding-window size.
     bundle_dir
         Bundle directory, loaded as a tokenizer to resolve the stop-token ids.
+    runtime
+        Target runtime, which selects the dual-RoPE schema.
     """
     rope_params = getattr(llm_config, "rope_parameters", None) or {}
     glb = rope_params.get("full_attention") or {}
@@ -2230,14 +2245,19 @@ def _fix_gemma4_genie_config(
             "rope-type": glb.get("rope_type", "proportional"),
             "partial-rotary-factor": partial,
         }
-    local_rope = {
-        "prefix": "swa_",
+    local_rope: dict[str, Any] = {
         "type": "rope",
         "rope-dim": fp.head_dim // 2,
         "rope-theta": loc["rope_theta"],
     }
     binary = model.pop("binary")
-    model["positional-encoding"] = [global_rope, local_rope]
+    # Incompatible schemas: Genie 2.48+ takes a list keyed by "prefix" and
+    # rejects local-positional-encoding; geniex-qairt wants the two keys.
+    if runtime == TargetRuntime.GENIEX_QAIRT:
+        model["positional-encoding"] = global_rope
+        model["local-positional-encoding"] = local_rope
+    else:
+        model["positional-encoding"] = [global_rope, {"prefix": "swa_", **local_rope}]
     model["binary"] = binary
 
     # Per-family KV caches. Prefixes/tensor names match the exported ONNX I/O.
@@ -2468,14 +2488,14 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
     def write_supplementary_files(
         self,
         output_dir: str | os.PathLike,
-        metadata: Any,
+        metadata: ModelMetadata,
     ) -> None:
         """Write the Genie bundle, adding Gemma4's host-side embedding LUTs.
 
         Delegates the standard artifacts (genie_config.json, tokenizer/config,
         htp_backend_ext_config.json, sample_prompt.txt) to the base, then
-        exports the token + per-layer (PLE) embedding tables as ufixed16 LUTs
-        and injects the ``embedding`` / ``perlayer-embedding`` sections into
+        exports the token + per-layer (PLE) embedding tables as LUTs and injects
+        the ``embedding`` / ``perlayer-embedding`` sections into
         genie_config.json (the shared create_genie_config emits neither for
         Gemma4).
 
@@ -2507,6 +2527,9 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
         llm_config = getattr(llm_config, "text_config", llm_config)
 
         fp = self.fp_presplit_cls
+        # Genie reads the LUT file size into a uint32 (LUT.cpp:89), so E4B's
+        # 5.3 GB PLE table wraps; 8-bit halves it under the 4 GiB limit.
+        perlayer_bitwidth = 8 if metadata.runtime == TargetRuntime.GENIE else 16
         embed_luts = export_gemma4_embeddings(
             checkpoint=_ckpt,
             output_dir=output_path,
@@ -2514,6 +2537,7 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
             num_layers=llm_config.num_hidden_layers,
             ple_dim=fp.hidden_size_per_layer_input,
             hf_repo_name=self.hf_repo_name,
+            perlayer_bitwidth=perlayer_bitwidth,
         )
 
         # Inject embedding / perlayer-embedding sections into genie_config.json.
@@ -2530,7 +2554,7 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
                     "type": "lut",
                     "lut-path": lut["lut-path"],
                     "size": lut["size"],
-                    "datatype": "ufixed16",
+                    "datatype": f"ufixed{lut['bw']}",
                     "quant-param": {
                         "scale": lut["scale"],
                         "offset": lut["offset"],
@@ -2555,7 +2579,9 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
 
             # Runs after the ctx-bins filter: it pops and re-inserts "binary" to
             # order the RoPE keys ahead of it, preserving the filtered list.
-            _fix_gemma4_genie_config(inner, llm_config, fp, output_path)
+            _fix_gemma4_genie_config(
+                inner, llm_config, fp, output_path, metadata.runtime
+            )
             with open(genie_path, "w") as f:
                 json.dump(genie_config, f, indent=4)
 
@@ -2563,13 +2589,16 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
 
         # Genie needs to know the bundle carries an image encoder. The base
         # hardcodes supports_vision=False since most LLMs are text-only.
-        if self.vision_encoder_cls is not None and getattr(metadata, "genie", None):
+        if self.vision_encoder_cls is not None and metadata.genie is not None:
             metadata.genie.supports_vision = True
 
         if hasattr(metadata, "supplementary_files"):
-            metadata.supplementary_files["embedding_int16_lut.bin"] = (
-                "Host-side token embedding table (ufixed16 LUT) for Genie."
+            emb_lut = embed_luts["embedding"]
+            ple_lut = embed_luts["perlayer_embedding"]
+            metadata.supplementary_files[emb_lut["lut-path"]] = (
+                f"Host-side token embedding table (ufixed{emb_lut['bw']} LUT) for Genie."
             )
-            metadata.supplementary_files["embed_token_int16_lut.bin"] = (
-                "Host-side per-layer (PLE) embedding table (ufixed16 LUT) for Genie."
+            metadata.supplementary_files[ple_lut["lut-path"]] = (
+                "Host-side per-layer (PLE) embedding table "
+                f"(ufixed{ple_lut['bw']} LUT) for Genie."
             )

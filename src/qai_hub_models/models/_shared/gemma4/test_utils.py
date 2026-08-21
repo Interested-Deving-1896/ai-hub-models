@@ -24,13 +24,18 @@ import re
 import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 
+from qai_hub_models import TargetRuntime
 from qai_hub_models.models._shared.gemma4 import model
 from qai_hub_models.models._shared.gemma4.model import (
     _LUT_QUANT_ROWS,
     Gemma4Base,
+    Gemma4PreSplitBase,
+    _fix_gemma4_genie_config,
     _global_uint16_encoding,
     _quantize_uint16,
     _write_uint16_lut,
@@ -215,14 +220,18 @@ def assert_embedding_lut_is_written_blockwise() -> None:
     rng = np.random.default_rng(0)
     for rows in (_LUT_QUANT_ROWS, _LUT_QUANT_ROWS + 1, 3):
         fp = (rng.standard_normal((rows, 8), dtype=np.float32) * 4.0).astype(np.float32)
-        enc = _global_uint16_encoding(fp)
-        expected = _quantize_uint16(fp, enc["scale"], enc["offset"]).tobytes()
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "lut.bin"
-            _write_uint16_lut(fp, enc["scale"], enc["offset"], path)
-            assert path.read_bytes() == expected, (
-                f"blocked LUT write differs from the one-shot path at {rows} rows"
-            )
+        for bw in (16, 8):
+            enc = _global_uint16_encoding(fp, bw)
+            assert enc["bw"] == bw
+            expected = _quantize_uint16(fp, enc["scale"], enc["offset"], bw).tobytes()
+            assert len(expected) == rows * 8 * (bw // 8)
+            with tempfile.TemporaryDirectory() as td:
+                path = Path(td) / "lut.bin"
+                _write_uint16_lut(fp, enc["scale"], enc["offset"], path, bw)
+                assert path.read_bytes() == expected, (
+                    f"blocked ufixed{bw} LUT write differs from the one-shot "
+                    f"path at {rows} rows"
+                )
 
     # The bound that actually matters: no single quantize call ever sees more
     # than one block, so peak memory is independent of table height. Asserted
@@ -233,10 +242,10 @@ def assert_embedding_lut_is_written_blockwise() -> None:
     widest = 0
     real_quantize = model._quantize_uint16
 
-    def _spy(block: np.ndarray, scale: float, offset: int) -> np.ndarray:
+    def _spy(block: np.ndarray, scale: float, offset: int, bw: int = 16) -> np.ndarray:
         nonlocal widest
         widest = max(widest, block.shape[0])
-        return real_quantize(block, scale, offset)
+        return real_quantize(block, scale, offset, bw)
 
     model._quantize_uint16 = _spy  # type: ignore[assignment]
     try:
@@ -249,3 +258,83 @@ def assert_embedding_lut_is_written_blockwise() -> None:
         f"quantized {widest} rows at once (block size is {_LUT_QUANT_ROWS}); the "
         f"whole-table float64 temporary is back"
     )
+
+
+def assert_dual_rope_schema_matches_runtime(fp: type[Gemma4PreSplitBase]) -> None:
+    """The two runtimes need incompatible dual-RoPE shapes for the same field.
+
+    Genie 2.48+ takes ``positional-encoding`` as a list disambiguated by
+    ``prefix`` and rejects ``local-positional-encoding`` as an unknown model key
+    (older Genie accepts only a single object, so dual RoPE needs 2.48+).
+    geniex-qairt instead reads the SWA block from ``local-positional-encoding``
+    and treats ``positional-encoding`` as one object. Emitting either shape to
+    the other runtime is silent: geniex degenerates and Genie fails to load.
+
+    Parameters
+    ----------
+    fp
+        FP PreSplit class, source of the head dims and sliding-window size.
+    """
+    llm_config = SimpleNamespace(
+        rope_parameters={
+            "full_attention": {
+                "rope_theta": 1000000.0,
+                "rope_type": "proportional",
+                "partial_rotary_factor": 0.25,
+            },
+            "sliding_attention": {"rope_theta": 10000.0},
+        },
+        pad_token_id=0,
+    )
+
+    class _Tokenizer:
+        eos_token_id = 1
+
+        def convert_tokens_to_ids(self, token: str) -> int:
+            return 106
+
+    class _AutoTokenizer:
+        @staticmethod
+        def from_pretrained(path: str) -> _Tokenizer:
+            return _Tokenizer()
+
+    emitted = {}
+    with patch.object(model, "AutoTokenizer", _AutoTokenizer):
+        for runtime in (TargetRuntime.GENIE, TargetRuntime.GENIEX_QAIRT):
+            inner: dict = {
+                "context": {},
+                "engine": {
+                    "backend": {"QnnHtp": {"pos-id-dim": 128, "rope-theta": 10000}},
+                    "model": {"binary": {"ctx-bins": []}},
+                },
+            }
+            _fix_gemma4_genie_config(inner, llm_config, fp, Path("."), runtime)
+            emitted[runtime] = inner["engine"]["model"]
+
+    genie = emitted[TargetRuntime.GENIE]
+    pe = genie["positional-encoding"]
+    assert isinstance(pe, list) and len(pe) == 2, (
+        f"genie needs a 2-element positional-encoding list, got {pe!r}"
+    )
+    assert "local-positional-encoding" not in genie, (
+        "genie rejects local-positional-encoding as an unknown model config key"
+    )
+    assert pe[0]["rope-theta"] == 1000000.0, "first list entry must be global RoPE"
+    assert pe[1]["prefix"] == "swa_", "SWA entry needs a prefix to be distinguishable"
+    assert pe[1]["rope-theta"] == 10000.0
+
+    geniex = emitted[TargetRuntime.GENIEX_QAIRT]
+    assert isinstance(geniex["positional-encoding"], dict), (
+        "geniex-qairt treats positional-encoding as a single object; given a list "
+        "it takes the last entry as global, so every layer gets the SWA theta"
+    )
+    assert geniex["positional-encoding"]["rope-theta"] == 1000000.0
+    assert geniex["local-positional-encoding"]["rope-theta"] == 10000.0
+    assert "prefix" not in geniex["local-positional-encoding"], (
+        "prefix only disambiguates list entries; it has no meaning in the two-key form"
+    )
+
+    for runtime, model_cfg in emitted.items():
+        assert list(model_cfg)[-1] == "binary", (
+            f"{runtime.value}: binary must stay last for Genie's read order"
+        )

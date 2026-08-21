@@ -17,6 +17,7 @@ from transformers import AutoConfig
 
 from qai_hub_models.models._shared.gemma4.test_utils import (
     KVLayoutConfig,
+    assert_dual_rope_schema_matches_runtime,
     assert_embedding_lut_is_written_blockwise,
     assert_gqa_emits_twice_the_kv_tensors_of_mqa,
     assert_kv_input_tensors_have_batch_dim_one,
@@ -36,6 +37,7 @@ from qai_hub_models.models.gemma_4_e4b_it.model import (
     NUM_LAYERS,
     NUM_SPLITS,
     SLIDING_WINDOW_PATTERN,
+    Gemma4_E4B_PreSplit,
 )
 
 KV_LAYOUT_CFG = KVLayoutConfig(
@@ -72,6 +74,10 @@ def test_kv_key_value_inner_shapes() -> None:
 
 def test_embedding_lut_is_written_blockwise() -> None:
     assert_embedding_lut_is_written_blockwise()
+
+
+def test_dual_rope_schema_matches_runtime() -> None:
+    assert_dual_rope_schema_matches_runtime(Gemma4_E4B_PreSplit)
 
 
 @pytest.mark.unmarked
