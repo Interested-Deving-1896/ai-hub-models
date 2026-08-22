@@ -937,11 +937,11 @@ def submit_genie_bundle_to_qdc_device(
 
     Composed wrapper over ``submit_genie_bundle_only`` +
     ``collect_genie_bundle_result``. Retries retryable outcomes up to
-    ``DEFAULT_ATTEMPTS`` times; the CI submit/collect split owns retries
+    ``DEFAULT_RETRIES`` times; the CI submit/collect split owns retries
     independently via the jobs_file.
     """
     from qai_hub_models.models._shared.llm.common import (
-        DEFAULT_ATTEMPTS,
+        DEFAULT_RETRIES,
         poll_and_retry,
     )
 
@@ -966,7 +966,7 @@ def submit_genie_bundle_to_qdc_device(
 
     return poll_and_retry(
         initial_job_id=_submit(),
-        attempts_left=DEFAULT_ATTEMPTS - 1,
+        attempts_left=DEFAULT_RETRIES,
         collect_fn=_collect,
         resubmit_fn=_submit,
     )

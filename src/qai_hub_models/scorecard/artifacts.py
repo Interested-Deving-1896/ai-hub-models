@@ -14,7 +14,7 @@ import ruamel.yaml
 from typing_extensions import Self
 
 from qai_hub_models.scorecard.envvars import ArtifactsDirEnvvar
-from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
+from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_PACKAGE_ROOT
 
 ValT = TypeVar("ValT")
 
@@ -135,17 +135,40 @@ class ScorecardYamlFile(Generic[ValT]):
     def from_test_artifacts(cls) -> Self:
         return cls.from_file(cls.ARTIFACT_TYPE.path, create_empty_if_no_file=True)
 
+    def _model_keys(self, model_id: str) -> list[str]:
+        """Keys belonging to ``model_id``.
+
+        Keys are ``<model>`` or ``<model>_<component>``, and model ids contain
+        ``_`` -- 12 ids are a prefix of another (llama_v3_2_3b_instruct vs
+        llama_v3_2_3b_instruct_ssd, qwen3_4b vs qwen3_4b_instruct_2507). A bare
+        prefix test lets the shorter id claim its sibling's keys, so the longest
+        matching model id owns the key.
+        """
+        siblings = [
+            m
+            for m in MODEL_IDS
+            if len(m) > len(model_id) and m.startswith(f"{model_id}_")
+        ]
+        return [
+            key
+            for key in self.mapping
+            if key == model_id
+            or (
+                key.startswith(f"{model_id}_")
+                and not any(key == s or key.startswith(f"{s}_") for s in siblings)
+            )
+        ]
+
     def clear(self, model_id: str | None = None) -> None:
         if not model_id:
             self.mapping.clear()
-        else:
-            keys_to_delete = [
-                key
-                for key in self.mapping
-                if key == model_id or key.startswith(f"{model_id}_")
-            ]
-            for key in keys_to_delete:
-                del self.mapping[key]
+            return
+        for key in self._model_keys(model_id):
+            del self.mapping[key]
+
+    def has_model(self, model_id: str) -> bool:
+        """Whether any key belongs to this model. Matches ``clear``'s key rule."""
+        return bool(self._model_keys(model_id))
 
     def to_file(self, path: str | Path | None = None) -> None:
         path = path or self.path

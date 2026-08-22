@@ -17,7 +17,7 @@ from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.models._shared.llm.common import (
-    DEFAULT_ATTEMPTS,
+    DEFAULT_RETRIES,
     JobOutcome,
     JobRecord,
     get_qdc_api_token,
@@ -32,6 +32,7 @@ from qai_hub_models.models._shared.llm.grader.grace import (
 )
 from qai_hub_models.models._shared.llm.perf_collection import (
     load_release_assets_for_model,
+    record_perf_scope,
     update_perf_yaml,
 )
 from qai_hub_models.models._shared.llm.qdc.geniex_jobs import (
@@ -351,7 +352,7 @@ def run_geniex_bench_job(
 
     return poll_and_retry(
         initial_job_id=_submit(),
-        attempts_left=DEFAULT_ATTEMPTS - 1,
+        attempts_left=DEFAULT_RETRIES,
         collect_fn=_collect,
         resubmit_fn=_submit,
     )
@@ -433,7 +434,7 @@ def _submit_one(
     )
     runtime = "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
     key = make_key(model_id, str(precision), runtime, sd.name)
-    save_job(jobs_file, key, job_id, attempts_left=DEFAULT_ATTEMPTS)
+    save_job(jobs_file, key, job_id, attempts_left=DEFAULT_RETRIES)
     return job_id
 
 
@@ -948,6 +949,20 @@ def _cmd_collect(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             continue
+
+        # Recorded before collection so a bucket that fails below is still
+        # dropped by apply_llm_perf_updates rather than keeping stale numbers.
+        if args.run_perf:
+            record_perf_scope(
+                model_id=model_id,
+                profile_path=(
+                    ScorecardProfilePath.GENIEX_QAIRT
+                    if plugin == "qairt"
+                    else ScorecardProfilePath.GENIEX_LLAMACPP
+                ),
+                device_name=sd.reference_device_name,
+                precision=precision,
+            )
 
         llamacpp_urls: dict[Precision, str] | None = None
         if plugin == "llama_cpp":

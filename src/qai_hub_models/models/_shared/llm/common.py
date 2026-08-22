@@ -107,7 +107,8 @@ class LLMIOType(Enum):
 
 _JobRecordRetT = TypeVar("_JobRecordRetT")
 
-DEFAULT_ATTEMPTS = 2
+# Resubmits allowed after the first job, so total tries is this + 1.
+DEFAULT_RETRIES = 1
 
 
 class JobOutcome(str, Enum):
@@ -120,7 +121,7 @@ class JobOutcome(str, Enum):
 @dataclass
 class JobRecord:
     job_id: str
-    attempts_left: int = 2
+    attempts_left: int = DEFAULT_RETRIES
 
 
 def make_key(model_id: str, precision: str, runtime: str, device_name: str) -> str:
@@ -136,7 +137,7 @@ def load_jobs(jobs_file: str | Path) -> dict[str, JobRecord]:
     return {
         k: JobRecord(
             job_id=str(v["job_id"]),
-            attempts_left=int(v.get("attempts_left", DEFAULT_ATTEMPTS)),
+            attempts_left=int(v.get("attempts_left", DEFAULT_RETRIES)),
         )
         for k, v in raw.items()
         if isinstance(v, dict) and "job_id" in v
@@ -172,7 +173,7 @@ def save_job(
     jobs_file: str | Path,
     key: str,
     job_id: str,
-    attempts_left: int = DEFAULT_ATTEMPTS,
+    attempts_left: int = DEFAULT_RETRIES,
 ) -> None:
     """Upsert one row into ``jobs_file``. fcntl.LOCK_EX-guarded for parallel submitters."""
     p = Path(jobs_file)

@@ -15,6 +15,7 @@ import shutil
 import sys
 import tempfile
 import traceback
+from collections.abc import Iterable
 from itertools import cycle
 from pathlib import Path
 
@@ -92,6 +93,27 @@ from qai_hub_models.utils.path_helpers import MODEL_IDS
 # If the precision is any one of these two values, add it to the branch column
 # to allow tableau to differentiate different types of scorecards
 SPECIAL_PRECISIONS = ["bench", "default_quantized"]
+
+
+def drop_names_with_replacements(
+    component_names_yaml: ComponentNamesYaml,
+    graph_names_yaml: GraphNamesYaml,
+    fresh_component_names: ComponentNamesYaml,
+    fresh_graph_names: GraphNamesYaml,
+    models: Iterable[str],
+) -> None:
+    """Drop committed component/graph names only where this run has replacements.
+
+    Names are recipe-derived, and nothing regenerates them for a model this run
+    did not exercise, so clearing unconditionally loses them permanently. The
+    per-model clear is still needed where a replacement exists, so a dropped
+    component leaves no stale ``<model>_<component>`` graph-name key.
+    """
+    for model in models:
+        if fresh_component_names.get(model) is not None:
+            component_names_yaml.clear(model)
+        if fresh_graph_names.has_model(model):
+            graph_names_yaml.clear(model)
 
 
 def _resolve_test_params(
@@ -675,9 +697,19 @@ if __name__ == "__main__":
 
         # Erase jobs for models we're collecting results for, if applicable
         if args.ignore_existing_intermediate_jobs:
+            # Fresh names needed to build the scoped export-params list.
+            fresh_component_names = ComponentNamesYaml.from_test_artifacts()
+            fresh_graph_names = GraphNamesYaml.from_test_artifacts()
+
+            drop_names_with_replacements(
+                component_names_yaml,
+                graph_names_yaml,
+                fresh_component_names,
+                fresh_graph_names,
+                model_list,
+            )
+
             if all_models:
-                component_names_yaml.clear()
-                graph_names_yaml.clear()
                 pre_qdq_job_yamls.clear()
                 quantize_job_yamls.clear()
                 compile_job_yamls.clear()
@@ -685,12 +717,7 @@ if __name__ == "__main__":
                 profile_job_yamls.clear()
                 inference_job_yamls.clear()
             else:
-                # Fresh names needed to build the scoped export-params list.
-                fresh_component_names = ComponentNamesYaml.from_test_artifacts()
-                fresh_graph_names = GraphNamesYaml.from_test_artifacts()
                 for model in model_list:
-                    component_names_yaml.clear(model)
-                    graph_names_yaml.clear(model)
                     # Job yamls: scoped drop preserves out-of-scope committed IDs.
                     try:
                         manifest = QAIHMModelManifest.from_model(model)

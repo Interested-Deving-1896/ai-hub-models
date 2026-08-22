@@ -201,6 +201,30 @@ def _record_perf_update(entry: dict) -> None:
         f.write(json.dumps(entry) + "\n")
 
 
+def record_perf_scope(
+    model_id: str,
+    profile_path: ScorecardProfilePath,
+    device_name: str,
+    precision: Precision,
+) -> None:
+    """Log that this run intends to measure one (model, path, device, precision).
+
+    Call before the work that can fail. apply_llm_perf_updates clears every
+    logged bucket and re-adds only the ones that reported metrics, so a device
+    that failed loses its committed row instead of keeping stale numbers -- the
+    same semantics the non-LLM writer gets from drop_entries_in_scope.
+    """
+    _record_perf_update(
+        dict(
+            kind="scope",
+            model_id=model_id,
+            profile_path=profile_path.value,
+            device_name=device_name,
+            precision=str(precision),
+        )
+    )
+
+
 def update_perf_yaml(
     model_id: str,
     device_name: str,
@@ -228,6 +252,7 @@ def update_perf_yaml(
     """
     _record_perf_update(
         dict(
+            kind="metric",
             model_id=model_id,
             device_name=device_name,
             precision=str(precision),

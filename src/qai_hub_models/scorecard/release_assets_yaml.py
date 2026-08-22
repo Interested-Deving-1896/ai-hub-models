@@ -19,6 +19,10 @@ from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
 from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT
 
+# llama.cpp assets are GGUF urls a human types in; nothing regenerates them, so
+# a scoped drop that removed one would lose it permanently (see bc87e013f4).
+NEVER_DROPPED = frozenset({ScorecardProfilePath.GENIEX_LLAMACPP})
+
 
 class QAIHMModelReleaseAssets(BaseQAIHMConfig):
     """Schema for model release_assets.yaml files."""
@@ -97,11 +101,17 @@ class QAIHMModelReleaseAssets(BaseQAIHMConfig):
         self,
         scope: set[tuple[Precision, str | None, ScorecardProfilePath]],
     ) -> None:
-        """Delete every asset whose (precision, chipset, path) key is in scope."""
+        """Delete every asset whose (precision, chipset, path) key is in scope.
+
+        Paths in NEVER_DROPPED are exempt: they are hand-authored source data
+        living in a generated file, so no run may delete one.
+        """
         empty_precisions: list[Precision] = []
         for precision, prec_details in self.precisions.items():
             in_scope = {
-                (chipset, path) for (p, chipset, path) in scope if p == precision
+                (chipset, path)
+                for (p, chipset, path) in scope
+                if p == precision and path not in NEVER_DROPPED
             }
             if not in_scope:
                 continue

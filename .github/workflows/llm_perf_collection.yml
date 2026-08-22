@@ -321,16 +321,18 @@ jobs:
         python3 -m qai_hub_models.scripts.apply_llm_perf_updates \
           "$GITHUB_WORKSPACE/llm-perf-updates"
 
-    - name: Check for perf.yaml changes
+    # release-assets.yaml is in scope because a genie failure on the default
+    # QDC device removes that precision's genie bundles.
+    - name: Check for perf.yaml / release-assets.yaml changes
       id: check_changes
       run: |
-        has_modified=$(git diff --quiet src/qai_hub_models/models/*/perf.yaml 2>/dev/null && echo "false" || echo "true")
-        has_untracked=$(git ls-files --others --exclude-standard | grep -q 'perf\.yaml$' && echo "true" || echo "false")
+        has_modified=$(git diff --quiet src/qai_hub_models/models/*/perf.yaml src/qai_hub_models/models/*/release-assets.yaml 2>/dev/null && echo "false" || echo "true")
+        has_untracked=$(git ls-files --others --exclude-standard | grep -qE '(perf|release-assets)\.yaml$' && echo "true" || echo "false")
         if [ "$has_modified" = "true" ] || [ "$has_untracked" = "true" ]; then
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
         else
           echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          echo "No perf.yaml changes detected"
+          echo "No perf.yaml or release-assets.yaml changes detected"
         fi
 
     - name: Commit & push
@@ -345,7 +347,7 @@ jobs:
           git config user.name 'github-actions[bot]' && \
           git config user.email 'github-actions[bot]@users.noreply.github.com' && \
           git checkout -b $branch_name && \
-          git ls-files -co --exclude-standard | grep 'perf.yaml' | xargs git add && \
+          git ls-files -co --exclude-standard | grep -E '(perf|release-assets)\.yaml$' | xargs git add && \
           git commit -m "Add LLM performance numbers
 
         Models: $QAIHM_TEST_MODELS

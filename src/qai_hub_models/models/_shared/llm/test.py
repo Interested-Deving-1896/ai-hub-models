@@ -25,7 +25,7 @@ from qai_hub_models import Precision, QAIRTVersion, TargetRuntime
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.models._shared.llm.common import (
-    DEFAULT_ATTEMPTS,
+    DEFAULT_RETRIES,
     JobOutcome,
     JobRecord,
     cleanup,
@@ -47,6 +47,7 @@ from qai_hub_models.models._shared.llm.model import (
 )
 from qai_hub_models.models._shared.llm.perf_collection import (
     load_release_assets_for_model,
+    record_perf_scope,
     update_perf_yaml,
 )
 from qai_hub_models.models._shared.llm.quantize import (
@@ -1061,7 +1062,7 @@ def submit_llm_perf_job(
     )
 
     key = make_key(model_id, str(precision), "GENIE", device.name)
-    save_job(jobs_file, key, job_id, attempts_left=DEFAULT_ATTEMPTS)
+    save_job(jobs_file, key, job_id, attempts_left=DEFAULT_RETRIES)
     return job_id
 
 
@@ -1092,6 +1093,14 @@ def collect_llm_perf_job(
         save_eval_results_json,
         submit_genie_bundle_only,
     )
+
+    if not skip_perf_update:
+        record_perf_scope(
+            model_id=model_id,
+            profile_path=ScorecardProfilePath.GENIE,
+            device_name=device.reference_device_name,
+            precision=precision,
+        )
 
     api_token = get_qdc_api_token(device)
     run_eval = (

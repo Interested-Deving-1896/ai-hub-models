@@ -15,7 +15,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 
+from qai_hub_models import Precision
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import DevicesAndChipsetsYaml
+from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
+from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
 from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
 from qai_hub_models.utils.aws import (
     QAIHM_PRIVATE_S3_BUCKET,
@@ -27,6 +30,13 @@ from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_MODELS_ROOT
 
 # S3 keys with this prefix are created by automated CI and assumed to exist
 AUTOMATED_S3_KEY_PREFIX = "pre_release_assets/gh_actions/"
+
+# Runtimes whose perf numbers come from a release asset rather than a Hub job.
+LLM_PROFILE_PATHS = (
+    ScorecardProfilePath.GENIE,
+    ScorecardProfilePath.GENIEX_QAIRT,
+    ScorecardProfilePath.GENIEX_LLAMACPP,
+)
 
 
 def get_all_s3_keys_from_release_assets(
@@ -84,6 +94,59 @@ def test_release_assets_yaml_schema() -> None:
             raise AssertionError(
                 f"{model_id} release-assets.yaml validation failed: {err!s}"
             ) from err
+
+
+def test_llm_perf_rows_have_a_release_asset() -> None:
+    """Every LLM runtime with perf numbers must still have the asset behind them.
+
+    A missing asset goes unnoticed in the committed data: geniex discovery drops
+    an asset-less model from the matrix (discover_llamacpp_models), while genie
+    stays in the matrix and only fails once a run reaches
+    fetch_genie_bundle_for_perf. Either way perf.yaml keeps publishing numbers
+    with nothing behind them. Granularity is (precision, runtime), not per
+    chipset -- apply_similar_devices republishes one measurement under sibling
+    device names that never had their own asset.
+    """
+    violations: list[str] = []
+    for model_id in MODEL_IDS:
+        perf = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
+        if perf.empty:
+            continue
+
+        measured: set[tuple[Precision, ScorecardProfilePath]] = set()
+        for precision, precision_details in perf.precisions.items():
+            for component_details in precision_details.components.values():
+                for device_metrics in component_details.performance_metrics.values():
+                    for path in LLM_PROFILE_PATHS:
+                        metrics = device_metrics.get(path)
+                        if metrics is not None and metrics.llm_metrics:
+                            measured.add((precision, path))
+        if not measured:
+            continue
+
+        assets = QAIHMModelReleaseAssets.from_model(model_id, not_exists_ok=True)
+        available: set[tuple[Precision, ScorecardProfilePath]] = set()
+        for precision, asset_details in assets.precisions.items():
+            for path in asset_details.universal_assets:
+                available.add((precision, path))
+            for chipset_paths in asset_details.chipset_assets.values():
+                for path in chipset_paths:
+                    available.add((precision, path))
+
+        for precision, path in sorted(measured, key=lambda k: (str(k[0]), k[1].name)):
+            if (precision, path) in available:
+                continue
+            violations.append(
+                f"  {model_id}: perf.yaml has {path.name} rows at {precision}, "
+                f"but release-assets.yaml has no {path.name} asset at {precision}"
+            )
+
+    if violations:
+        pytest.fail(
+            f"Found {len(violations)} LLM perf entries with no backing release "
+            "asset. Recover the asset from git history rather than guessing a "
+            "replacement:\n" + "\n".join(violations)
+        )
 
 
 @pytest.mark.skipif(

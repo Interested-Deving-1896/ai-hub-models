@@ -70,6 +70,12 @@ _EVAL_N_GEN = 4096
 _EVAL_TIMEOUT_S = 600
 _EVAL_SLEEP_S = 10
 
+# geniex-bench result schemas this parser reads. 4 kept the fields 3 exposed and
+# only added some, so both parse identically. An unlisted version is reported by
+# compute_metrics rather than dropped, because a silent skip reads as "the device
+# produced nothing" and now costs the committed perf rows.
+_SUPPORTED_BENCH_SCHEMAS = frozenset({"3", "4"})
+
 
 @dataclass
 class GenieXBenchMetrics:
@@ -470,6 +476,7 @@ class GenieXBenchQDCJobs(QDCJobs):
                 except zipfile.BadZipFile:
                     continue
 
+            unreadable_schemas: dict[str, str] = {}
             for root, _, files in os.walk(tmpdir):
                 for fn in sorted(files):
                     if not fn.endswith(".json"):
@@ -477,6 +484,8 @@ class GenieXBenchQDCJobs(QDCJobs):
                     path = os.path.join(root, fn)
                     parsed = self._parse_cell_metrics(path)
                     if parsed is None:
+                        if version := self._unreadable_cell_schema(path):
+                            unreadable_schemas[fn] = version
                         continue
                     metrics.append(parsed)
                     if save_results_dir:
@@ -493,10 +502,41 @@ class GenieXBenchQDCJobs(QDCJobs):
                     f"decode={m.decode_tps:.2f} tok/s, prefill={m.prefill_tps:.2f} tok/s, "
                     f"TTFT={m.ttft_ms:.1f} ms"
                 )
+        elif unreadable_schemas:
+            seen = sorted(set(unreadable_schemas.values()))
+            raise RuntimeError(
+                f"geniex-bench produced results this parser cannot read: schema "
+                f"version(s) {', '.join(seen)}, supported "
+                f"{', '.join(sorted(_SUPPORTED_BENCH_SCHEMAS))}. Add the version to "
+                "_SUPPORTED_BENCH_SCHEMAS once its fields are confirmed compatible. "
+                "Failing rather than reporting no metrics, so a schema bump can't be "
+                "replayed as a measurement that never happened.\n"
+                + "\n".join(
+                    f"  {fn}: schema_version={v}"
+                    for fn, v in sorted(unreadable_schemas.items())
+                )
+            )
         else:
-            print("Warning: no geniex-bench schema_v3 results found in logs.")
+            print("Warning: no geniex-bench results found in logs.")
 
         return metrics
+
+    @staticmethod
+    def _unreadable_cell_schema(path: str) -> str | None:
+        """Schema version of a bench cell this parser rejected, else None.
+
+        The log bundle also carries the model's own config/tokenizer JSON, so a
+        file only counts as a bench cell if it has cell_id and agg.
+        """
+        try:
+            with open(path, encoding="utf-8") as f:
+                cell = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(cell, dict) or "cell_id" not in cell or "agg" not in cell:
+            return None
+        version = str(cell.get("schema_version"))
+        return None if version in _SUPPORTED_BENCH_SCHEMAS else version
 
     @staticmethod
     def _parse_cell_metrics(path: str) -> GenieXBenchMetrics | None:
@@ -505,7 +545,9 @@ class GenieXBenchQDCJobs(QDCJobs):
                 cell = json.load(f)
         except (OSError, json.JSONDecodeError):
             return None
-        if not isinstance(cell, dict) or cell.get("schema_version") != "3":
+        if not isinstance(cell, dict):
+            return None
+        if str(cell.get("schema_version")) not in _SUPPORTED_BENCH_SCHEMAS:
             return None
         agg = cell.get("agg") or {}
         params = cell.get("params") or {}
