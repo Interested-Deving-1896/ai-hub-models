@@ -1,63 +1,64 @@
-name: Llama-SEA-LION-v3.5-8B-R
-id: llama_v3_1_sea_lion_3_5_8b_r
-status: published
-headline: Llama-SEA-LION-v3.5-8B-R is a hybrid model offering versatile functionality, handling both complex reasoning tasks and general text generation, with mode selection managed through the tokenizer's chat template.
-domain: Generative AI
-description: SEA-LION is a collection of Large Language Models (LLMs) which have been pretrained and instruct-tuned for the Southeast Asia (SEA) region. The model is quantized to w4a16 (4-bit weights and 16-bit activations) and part of the model is quantized to w8a16 (8-bit weights and 16-bit activations) making it suitable for on-device deployment. For Prompt and output length specified below, the time to first token is Llama-PromptProcessor-Quantized's latency and average time per addition token is Llama-TokenGenerator-Quantized's latency.
-use_case: Text Generation
-tags:
-- llm
-- generative-ai
 applicable_scenarios:
 - Dialogue
 - Content Generation
 - Customer Support
-related_models:
-- llama_v3_1_8b_instruct
-- llama_v3_8b_instruct
-- llama_v3_2_3b_instruct
+description: SEA-LION is a collection of Large Language Models (LLMs) which have been pretrained and instruct-tuned for the Southeast Asia (SEA) region. The model is quantized to w4a16 (4-bit weights and 16-bit activations) and part of the model is quantized to w8a16 (8-bit weights and 16-bit activations) making it suitable for on-device deployment. For Prompt and output length specified below, the time to first token is Llama-PromptProcessor-Quantized's latency and average time per addition token is Llama-TokenGenerator-Quantized's latency.
+domain: Generative AI
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
-dataset: []
-technical_details:
-  Language(s) supported: Burmese, Chinese, English, Filipino, Indonesia, Javanese, Khmer, Lao, Malay, Sundanese, Tamil, Thai, Vietnamese.
-  TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt. The lower bound is for a short prompt (up to 128 tokens, i.e., one iteration of the prompt processor) and the upper bound is for a prompt using the full context length (4096 tokens).
-  Response Rate: Rate of response generation after the first response token.
-license_type: llama3
-source_repo: https://github.com/aisingapore/sealion/blob/main/models/sea-lion-v3.5/llama-sea-lion-v3.5-8B.md
+has_multi_graph: true
+has_static_banner: true
+headline: Llama-SEA-LION-v3.5-8B-R is a hybrid model offering versatile functionality, handling both complex reasoning tasks and general text generation, with mode selection managed through the tokenizer's chat template.
+id: llama_v3_1_sea_lion_3_5_8b_r
+is_aimet: true
+is_collection_model: true
 license: https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct/blob/main/LICENSE
-restrict_model_sharing: true
-model_type_llm: true
+license_type: llama3
 llm_details:
   call_to_action: View Readme
-  genie_compatible: true
   devices: {}
+  genie_compatible: true
 lm_quantization_details:
   w4a16:
-    precision:
-      blocks:
-        qtype: int4
-        granularity: PCQ
-      lm_head:
-        qtype: int8
-        granularity: PCQ
-      kv_cache: int8
-      activations: int16
     recipe:
-      - name: SeqMSE
-        num_iterations: 20
-        dataset:
+      backbone:
+      - dataset:
           name: Wikitext
           split: train
-      - name: Calibration
+        name: SeqMSE
         num_iterations: 20
-        dataset:
+      - dataset:
           name: Wikitext
           split: train
+        name: Calibration
+        num_iterations: 20
+local_device_deployment: true
+model_type_llm: true
+name: Llama-SEA-LION-v3.5-8B-R
+numerics_benchmark:
+  dataset_name: grace2
+  metric_name: Grace2
+  source: AI Hub Models Reference Eval
+  unit: '%'
+  value: 92.9
+only_allow_orchestrator_runtimes: true
+orchestrator_runtimes:
+- geniex_qairt
+- genie
+post_pip_install_commands:
+- command: pip uninstall -y onnxruntime
+  machine: gpu
+- command: pip install onnxruntime-gpu==1.23.2 aimet-onnx==2.28.0
+  machine: gpu
+related_models:
+- llama_v3_1_8b_instruct
+- llama_v3_8b_instruct
+- llama_v3_2_3b_instruct
+requires_aot_prepare: true
+restrict_model_sharing: true
 runtime_technical_details:
   geniex_qairt:
     Input sequence length for Prompt Processor: '128'
@@ -65,30 +66,20 @@ runtime_technical_details:
     Quantization Type: w4a16 + w8a16 (few layers)
     Supported Input Modalities: text
     Supported Output Modalities: text
-numerics_benchmark:
-  dataset_name: grace2
-  metric_name: Grace2
-  value: 92.9
-  unit: '%'
-  source: AI Hub Models Reference Eval
-is_aimet: true
+separate_quantize_script: true
+source_repo: https://github.com/aisingapore/sealion/blob/main/models/sea-lion-v3.5/llama-sea-lion-v3.5-8B.md
+status: published
 supported_precisions:
 - w4a16
-is_collection_model: true
-requires_aot_prepare: true
-orchestrator_runtimes:
-- geniex_qairt
-- genie
-only_allow_orchestrator_runtimes: true
-local_device_deployment: true
-has_multi_graph: true
-separate_quantize_script: true
+tags:
+- llm
+- generative-ai
+technical_details:
+  Language(s) supported: Burmese, Chinese, English, Filipino, Indonesia, Javanese, Khmer, Lao, Malay, Sundanese, Tamil, Thai, Vietnamese.
+  Response Rate: Rate of response generation after the first response token.
+  TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt. The lower bound is for a short prompt (up to 128 tokens, i.e., one iteration of the prompt processor) and the upper bound is for a prompt using the full context length (4096 tokens).
 templates:
 - llama3
 - llm
 - lm_driver
-post_pip_install_commands:
-- command: pip uninstall -y onnxruntime
-  machine: gpu
-- command: pip install onnxruntime-gpu==1.23.2 aimet-onnx==2.28.0
-  machine: gpu
+use_case: Text Generation

@@ -1,48 +1,51 @@
-name: FunASR-Conformer-EN
-id: funasr_conformer_en
-status: pending
-headline: English speech recognition with Conformer encoder and CTC decoder.
-domain: Audio
-description: FunASR Conformer-EN is a large-scale English ASR model from Alibaba DAMO Academy, trained on ~50,000 hours of English speech. It uses a 32-block Conformer encoder(512 hidden dim, 16 attention heads) with a CTC head for decoding. The model accepts raw 16kHz audio and outputs transcribed text via CTC greedy decoding.
-use_case: Speech Recognition
-tags:
-  - real-time
 applicable_scenarios:
-  - Smart Home
-  - Accessibility
-  - Transcription
-related_models:
-  - whisper_small
-  - distil_whisper
-  - huggingface_wavlm_base_plus
-form_factors:
-  - Phone
-  - Tablet
-  - IoT
-has_static_banner: true
-has_animated_banner: false
+- Smart Home
+- Accessibility
+- Transcription
 datasets:
 - librispeech
-technical_details:
-  Model checkpoint: funasr/conformer-en
-  Input resolution: 1x160000 (10s at 16kHz)
-  Number of parameters: 220M
-  Model size (float): ~840 MB
-license_type: mit
-research_paper: https://arxiv.org/abs/2005.08100
-research_paper_title: "Conformer: Convolution-augmented Transformer for Speech Recognition"
-source_repo: https://huggingface.co/funasr/conformer-en
+description: FunASR Conformer-EN is a large-scale English ASR model from Alibaba DAMO Academy, trained on ~50,000 hours of English speech. It uses a 32-block Conformer encoder(512 hidden dim, 16 attention heads) with a CTC head for decoding. The model accepts raw 16kHz audio and outputs transcribed text via CTC greedy decoding.
+domain: Audio
+form_factors:
+- Phone
+- Tablet
+- IoT
+has_on_target_demo: true
+has_static_banner: true
+headline: English speech recognition with Conformer encoder and CTC decoder.
+id: funasr_conformer_en
 license: https://github.com/modelscope/FunASR?tab=MIT-1-ov-file
-# No official benchmark for funasr/conformer-en on HuggingFace; LibriSpeech used as
-# the standard English ASR reference and evaluated internally (AI Hub Models Reference Eval).
+license_type: mit
+name: FunASR-Conformer-EN
 numerics_benchmark:
   dataset_name: libri_speech
   metric_name: Word Error Rate
-  value: 16.634
-  unit: WER
   source: AI Hub Models Reference Eval
-has_on_target_demo: true
-supported_precisions:
-  - float
-readme_install_system_deps: "#### Linux\n```bash\nsudo apt install ffmpeg\n```\n\n
-#### Windows\n```\nwinget install ffmpeg\n```\n"
+  unit: WER
+  value: 16.634
+readme_install_system_deps: |
+  #### Linux
+  ```bash
+  sudo apt install ffmpeg
+  ```
+
+   #### Windows
+  ```
+  winget install ffmpeg
+  ```
+related_models:
+- whisper_small
+- distil_whisper
+- huggingface_wavlm_base_plus
+research_paper: https://arxiv.org/abs/2005.08100
+research_paper_title: 'Conformer: Convolution-augmented Transformer for Speech Recognition'
+source_repo: https://huggingface.co/funasr/conformer-en
+status: pending
+tags:
+- real-time
+technical_details:
+  Input resolution: 1x160000 (10s at 16kHz)
+  Model checkpoint: funasr/conformer-en
+  Model size (float): ~840 MB
+  Number of parameters: 220M
+use_case: Speech Recognition

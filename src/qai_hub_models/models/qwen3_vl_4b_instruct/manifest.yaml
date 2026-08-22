@@ -1,121 +1,107 @@
-name: Qwen3-VL-4B-Instruct
-id: qwen3_vl_4b_instruct
-status: published
-headline: Multimodal 4B vision-language model with enhanced visual reasoning capabilities.
-domain: Generative AI
-description: Qwen3-VL is a vision-language model from Alibaba Cloud capable of understanding both text and images for multimodal reasoning tasks such as visual question answering and image captioning.
-use_case: Text Generation
-tags:
-- llm
-- vlm
-- generative-ai
-research_paper: https://arxiv.org/abs/2505.09388
-research_paper_title: Qwen3 Technical Report
-license: https://www.apache.org/licenses/LICENSE-2.0
-source_repo: https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct
-technical_details:
-  Model architecture: Transformer with ViT Vision Encoder, Grouped Query Attention (GQA), and SwiGLU activation.
-  Supported languages: 100+ languages and dialects
-  TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt.
-  Response Rate: Rate of response generation after the first response token.
 applicable_scenarios:
 - Dialogue
 - Content Generation
-related_models:
-- qwen3_vl_2b_instruct
-- qwen2_5_vl_7b_instruct
+description: Qwen3-VL is a vision-language model from Alibaba Cloud capable of understanding both text and images for multimodal reasoning tasks such as visual question answering and image captioning.
+domain: Generative AI
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
+has_multi_graph: true
+has_static_banner: true
+headline: Multimodal 4B vision-language model with enhanced visual reasoning capabilities.
+id: qwen3_vl_4b_instruct
+is_aimet: true
+is_collection_model: true
+license: https://www.apache.org/licenses/LICENSE-2.0
 license_type: apache-2.0
-dataset: []
-restrict_model_sharing: false
-model_type_llm: true
 llm_details:
   call_to_action: Download and View Readme
-  geniex_llamacpp_compatible: true
   genie_compatible: true
+  geniex_llamacpp_compatible: true
 lm_quantization_details:
   w4a16:
     precision:
-      blocks:
-        qtype: int4
-        granularity: PCQ
-      lm_head:
-        qtype: int8
-        granularity: PCQ
-      kv_cache: int8
-      activations: int16
-      visual:
-        weight:
-          qtype: int8
-          granularity: PCQ
-        activations: int16
+      visual: {}
     recipe:
       backbone:
-        - name: AdaScale
-          num_batches: 128
-          num_iterations: 2048
-          dataset:
-            name: Wikitext
+      - dataset:
+          name: Wikitext
+          split: train
+        name: AdaScale
+        num_batches: 128
+        num_iterations: 2048
+      - dataset:
+          name: Interleaved
+          source_datasets:
+          - name: AOKVQA
             split: train
-        - name: Calibration
-          num_iterations: 20
-          dataset:
-            name: Interleaved
-            source_datasets:
-              - name: AOKVQA
-                split: train
-              - name: Wikitext
-                split: train
+          - name: Wikitext
+            split: train
+        name: Calibration
+        num_iterations: 20
       visual:
-        - name: Calibration
-          num_iterations: 64
-          dataset:
-            name: Imagenette
-            split: train
-runtime_technical_details:
-  geniex_qairt:
-    model_infer_id: ai-hub-models/Qwen3-VL-4B-Instruct
-    Input sequence length for Prompt Processor: '128'
-    Context lengths: 512, 1024, 2048, 3072, 4096
-    Minimum QNN SDK version required: 2.45.0
-    Supported Input Modalities: image, text
-    Supported Output Modalities: text
-  geniex_llamacpp:
-    model_infer_id: unsloth/Qwen3-VL-4B-Instruct-GGUF
-    Quantization Type: Q4_0 (GGUF)
-    Model Size: 2.38 GB
-    Supported Input Modalities: image, text
-    Supported Output Modalities: text
+      - dataset:
+          name: Imagenette
+          split: train
+        name: Calibration
+        num_iterations: 64
+model_type_llm: true
+name: Qwen3-VL-4B-Instruct
 numerics_benchmark:
   dataset_name: grace2
   metric_name: Grace2
-  value: 88.5
-  unit: '%'
   source: AI Hub Models Reference Eval
-is_aimet: true
-is_collection_model: true
-has_multi_graph: true
-requires_aot_prepare: true
-supported_precisions:
-- w4a16
-- q4_0
+  unit: '%'
+  value: 88.5
+only_allow_orchestrator_runtimes: true
 orchestrator_runtimes:
 - geniex_qairt
 - geniex_llamacpp
 - genie
-only_allow_orchestrator_runtimes: true
-separate_quantize_script: true
-templates:
-- llm
-- qwen3_vl
-- vlm
 post_pip_install_commands:
 - command: pip uninstall -y onnxruntime
   machine: gpu
 - command: pip install onnxruntime-gpu==1.23.2 aimet-onnx==2.33.0
   machine: gpu
+related_models:
+- qwen3_vl_2b_instruct
+- qwen2_5_vl_7b_instruct
+requires_aot_prepare: true
+research_paper: https://arxiv.org/abs/2505.09388
+research_paper_title: Qwen3 Technical Report
+runtime_technical_details:
+  geniex_llamacpp:
+    Model Size: 2.38 GB
+    Quantization Type: Q4_0 (GGUF)
+    Supported Input Modalities: image, text
+    Supported Output Modalities: text
+    model_infer_id: unsloth/Qwen3-VL-4B-Instruct-GGUF
+  geniex_qairt:
+    Context lengths: 512, 1024, 2048, 3072, 4096
+    Input sequence length for Prompt Processor: '128'
+    Minimum QNN SDK version required: 2.45.0
+    Supported Input Modalities: image, text
+    Supported Output Modalities: text
+    model_infer_id: ai-hub-models/Qwen3-VL-4B-Instruct
+separate_quantize_script: true
+source_repo: https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct
+status: published
+supported_precisions:
+- w4a16
+- q4_0
+tags:
+- llm
+- vlm
+- generative-ai
+technical_details:
+  Model architecture: Transformer with ViT Vision Encoder, Grouped Query Attention (GQA), and SwiGLU activation.
+  Response Rate: Rate of response generation after the first response token.
+  Supported languages: 100+ languages and dialects
+  TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt.
+templates:
+- llm
+- qwen3_vl
+- vlm
+use_case: Text Generation

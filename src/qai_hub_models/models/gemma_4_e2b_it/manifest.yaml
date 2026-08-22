@@ -1,93 +1,82 @@
-name: Gemma-4-E2B-it
-id: gemma_4_e2b_it
-status: published
-headline: Lightweight multimodal model from Google DeepMind handling text and image input.
-domain: Generative AI
-description: Gemma is a family of open models built by Google DeepMind. Gemma 4 models are multimodal, handling text and image input (with audio supported on small models) and generating text output. This release includes open-weights models in both pre-trained and instruction-tuned variants. Gemma 4 features a context window of up to 256K tokens and maintains multilingual support in over 140 languages.
-use_case: Text Generation
-tags:
-- llm
-- vlm
-- generative-ai
-research_paper: https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/
-research_paper_title: 'Gemma 4'
-license: https://ai.google.dev/gemma/apache_2
-source_repo: https://huggingface.co/google/gemma-4-E2B-it
-technical_details:
-  Model architecture: Transformer with SigLIP-style ViT Vision Encoder, Per-Layer Embeddings (PLE), interleaved sliding-window/global attention with Grouped Query Attention (GQA), and shared KV layers.
-  Input sequence length for Prompt Processor: '128'
-  Use: Initiate conversation with prompt-processor and then token generator for subsequent iterations.
-  Number of parameters: 2B (effective)
-  Precision: w4a16
-  Minimum QNN SDK version required: 2.45.0
-  Supported languages: Multilingual (trained on 140+ languages)
-  TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt.
-  Response Rate: Rate of response generation after the first response token.
 applicable_scenarios:
 - Dialogue
 - Content Generation
-related_models:
-- gemma_4_e4b_it
-- gemma_3n_e4b_it
+description: Gemma is a family of open models built by Google DeepMind. Gemma 4 models are multimodal, handling text and image input (with audio supported on small models) and generating text output. This release includes open-weights models in both pre-trained and instruction-tuned variants. Gemma 4 features a context window of up to 256K tokens and maintains multilingual support in over 140 languages.
+domain: Generative AI
 form_factors:
 - Phone
 - Tablet
 - IoT
-has_static_banner: true
 has_animated_banner: true
+has_multi_graph: true
+has_static_banner: true
+headline: Lightweight multimodal model from Google DeepMind handling text and image input.
+id: gemma_4_e2b_it
+is_aimet: true
+is_collection_model: true
+license: https://ai.google.dev/gemma/apache_2
 license_type: apache-2.0
-dataset: []
-restrict_model_sharing: false
-model_type_llm: true
 llm_details:
   call_to_action: Download and View Readme
   geniex_llamacpp_compatible: true
-  genie_compatible: false
 lm_quantization_details:
   w4a16:
-    precision:
-      blocks:
-        qtype: int4
-        granularity: PCQ
-      lm_head:
-        qtype: int8
-        granularity: PCQ
-      kv_cache: int8
-      activations: int16
     recipe:
-      - name: SeqMSE
-        num_iterations: 20
-        dataset:
+      backbone:
+      - dataset:
           name: Wikitext
           split: train
-      - name: Calibration
+        name: SeqMSE
         num_iterations: 20
-        dataset:
+      - dataset:
           name: Wikitext
           split: train
-runtime_technical_details:
-  geniex_llamacpp:
-    model_infer_id: google/gemma-4-E2B-it-qat-q4_0-gguf
-    Quantization Type: Q4_0 (GGUF)
-    Model Size: 3.04 GB
-    Supported Input Modalities: image, text, audio
-    Supported Output Modalities: text
-is_aimet: true
-supported_precisions:
-- w4a16
-- q4_0
-is_collection_model: true
-requires_aot_prepare: true
+        name: Calibration
+        num_iterations: 20
+model_type_llm: true
+name: Gemma-4-E2B-it
+only_allow_orchestrator_runtimes: true
 orchestrator_runtimes:
 - geniex_llamacpp
-only_allow_orchestrator_runtimes: true
-templates:
-- gemma4
 post_pip_install_commands:
 - command: pip uninstall -y onnxruntime
   machine: gpu
 - command: pip install onnxruntime-gpu==1.23.2 aimet-onnx==2.28.0
   machine: gpu
-skip_example_usage: true
-has_multi_graph: true
+related_models:
+- gemma_4_e4b_it
+- gemma_3n_e4b_it
+requires_aot_prepare: true
+research_paper: https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/
+research_paper_title: Gemma 4
+runtime_technical_details:
+  geniex_llamacpp:
+    Model Size: 3.04 GB
+    Quantization Type: Q4_0 (GGUF)
+    Supported Input Modalities: image, text, audio
+    Supported Output Modalities: text
+    model_infer_id: google/gemma-4-E2B-it-qat-q4_0-gguf
 separate_quantize_script: true
+skip_example_usage: true
+source_repo: https://huggingface.co/google/gemma-4-E2B-it
+status: published
+supported_precisions:
+- w4a16
+- q4_0
+tags:
+- llm
+- vlm
+- generative-ai
+technical_details:
+  Input sequence length for Prompt Processor: '128'
+  Minimum QNN SDK version required: 2.45.0
+  Model architecture: Transformer with SigLIP-style ViT Vision Encoder, Per-Layer Embeddings (PLE), interleaved sliding-window/global attention with Grouped Query Attention (GQA), and shared KV layers.
+  Number of parameters: 2B (effective)
+  Precision: w4a16
+  Response Rate: Rate of response generation after the first response token.
+  Supported languages: Multilingual (trained on 140+ languages)
+  TTFT: Time To First Token is the time it takes to generate the first response token. This is expressed as a range because it varies based on the length of the prompt.
+  Use: Initiate conversation with prompt-processor and then token generator for subsequent iterations.
+templates:
+- gemma4
+use_case: Text Generation
