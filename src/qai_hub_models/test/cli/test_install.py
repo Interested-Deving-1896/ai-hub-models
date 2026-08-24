@@ -15,6 +15,7 @@ from qai_hub_models.cli import install as install_mod
 from qai_hub_models.cli.install import (
     Node,
     NodeKind,
+    _resolve_root,
     build_install_order,
     plan_install,
 )
@@ -196,6 +197,66 @@ class TestBuildInstallOrder:
         assert names.count("a") == 1
         assert names.count("b") == 1
         assert names[-1] == "root_model"
+
+
+class TestResolveRoot:
+    """Target resolution: folder path, model id, or bare cwd folder name.
+
+    The bare-folder-name form exists so ``install`` matches ``export`` /
+    ``evaluate`` / ``generate-files`` / ``validate``, all of which accept it
+    through ``resolve_recipe_dir``.
+    """
+
+    def test_bare_folder_name_in_cwd(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        recipe = fake_tree / "standalone"
+        _write_manifest(recipe, "supported_precisions:\n- float\n")
+        monkeypatch.chdir(fake_tree)
+        node = _resolve_root("standalone")
+        assert node.kind is NodeKind.MODEL
+        assert node.name == "standalone"
+        assert node.folder == recipe.resolve()
+
+    def test_model_id_wins_over_cwd_folder(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A built-in id resolves inside the package even if a cwd folder shadows it."""
+        _write_manifest(fake_tree / "models" / "root_model", "")
+        (fake_tree / "root_model").mkdir()
+        _write_manifest(fake_tree / "root_model", "")
+        monkeypatch.chdir(fake_tree)
+        node = _resolve_root("root_model")
+        assert node.folder_override is None
+        assert node.folder == fake_tree / "models" / "root_model"
+
+    def test_unknown_bare_name_names_both_interpretations(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(fake_tree)
+        with pytest.raises(ValueError, match="not an installed model id"):
+            _resolve_root("nope")
+        with pytest.raises(ValueError, match="no folder of that name exists"):
+            _resolve_root("nope")
+
+    def test_cwd_folder_without_manifest(
+        self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The manifest check must win over the 'not a model id' error."""
+        (fake_tree / "empty").mkdir()
+        monkeypatch.chdir(fake_tree)
+        with pytest.raises(ValueError, match="nothing to install"):
+            _resolve_root("empty")
+
+    def test_explicit_path_still_works(self, fake_tree: Path) -> None:
+        recipe = fake_tree / "bypath"
+        _write_manifest(recipe, "")
+        node = _resolve_root(str(recipe))
+        assert node.folder == recipe.resolve()
+
+    def test_explicit_path_that_is_not_a_directory(self, fake_tree: Path) -> None:
+        with pytest.raises(ValueError, match="is not a directory"):
+            _resolve_root(str(fake_tree / "missing" / "x"))
 
 
 class TestPlanInstall:

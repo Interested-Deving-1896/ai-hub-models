@@ -26,7 +26,7 @@ Do NOT ask about license, task type, input shape, precisions, or multi-component
 - **Input spec** — `preprocessor_config.json` / `config.json` / `weights.transforms()`.
 - **Sample input** — from the card, or a generic one for the task.
 - **Multi-component structure** — obvious encoder/decoder splits, autoregressive / iterative pipelines → CollectionModel (see below).
-- **Similar repo model** — closest sibling to inherit from. Copy its patterns. **The sibling's location is not what you copy — the new recipe still goes in the user's CWD as `./<model_id>/`, not under `src/qai_hub_models/models/`.**
+- **Similar repo model** — closest sibling to inherit from. Copy its patterns. **The sibling's location is not what you copy — the new recipe still goes in the user's CWD as `<model_id>/`, not under `src/qai_hub_models/models/`.**
 - **Precisions** — always `supported_precisions: [float]`. Never declare `w8a8` / `w8a16` here — that's `add-quantization`.
 
 Ask the user only for ambiguous task/architecture or derivations that genuinely failed. Batch questions into one message. Do NOT ask upfront for license acknowledgement — surface any concerns in the closing summary instead.
@@ -259,16 +259,16 @@ Browse before writing preprocessing from scratch. The fastest way to find the ri
 
 ## Workflow
 
-1. Create `./<model_id>/` in the user's CWD. Standalone recipes don't live inside the installed package.
+1. Create `<model_id>/` in the user's CWD. Standalone recipes don't live inside the installed package.
 2. Author `__init__.py`, `model.py`, `app.py`, `demo.py`, `test.py`, `manifest.yaml`.
 3. Add `requirements.txt` if needed.
 4. Declare deps in `manifest.yaml`: `templates:`, `datasets:`, `external_repos:`, pre/post pip commands.
-5. `qai-hub-models generate-files ./<model_id>/` — writes `README.md` and `external_repos/__init__.py`.
-6. `qai-hub-models install ./<model_id>/`, then run `validate` (see below).
+5. `qai-hub-models generate-files <model_id>` — writes `README.md` and `external_repos/__init__.py`.
+6. `qai-hub-models install <model_id>`, then run `validate` (see below).
 
 ## CLI
 
-Every command takes a `<target>`: either a **folder path** (`./my_model/`) or a **bare model id** (installed under `qai_hub_models`). Display names are not accepted. Ids are lowercase snake_case.
+Every command takes a `<target>`: either a **folder name or path** (`my_model`) or a **bare model id** (installed under `qai_hub_models`). Display names are not accepted. Ids are lowercase snake_case.
 
 | Command | What it does |
 |---|---|
@@ -282,7 +282,7 @@ Legacy `python -m qai_hub_models.models.<id>.export` / `.evaluate` paths are bei
 
 ## Authoring correctness — `qai-hub-models validate`
 
-`qai-hub-models validate ./<model_id>/` is the authoring gate. Not "done" until `N passed, 0 failed`. Exits nonzero on any FAIL. WARN rows are informational (missing demo / evaluator etc.) and don't need clearing.
+`qai-hub-models validate <model_id>` is the authoring gate. Not "done" until `N passed, 0 failed`. Exits nonzero on any FAIL. WARN rows are informational (missing demo / evaluator etc.) and don't need clearing.
 
 Categories:
 

@@ -168,7 +168,10 @@ class MODEL_LICENSE(Enum):
         elif self == MODEL_LICENSE.UNLICENSED:
             hf_str = "unknown"
         else:
-            hf_str = str(self)
+            # .value, not str(self) -- the latter is "MODEL_LICENSE.MIT", which
+            # never matches a slug, so every license used to fall through to
+            # "other".
+            hf_str = self.value
         if hf_str in HF_AVAILABLE_LICENSES:
             return hf_str
         return "other"

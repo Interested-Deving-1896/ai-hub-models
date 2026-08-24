@@ -232,8 +232,9 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 {# Header levels shift one deeper when nesting under a single "## Export" parent. #}
 {%- set h_setup = "###" if local_device_deployment else "##" -%}
 {%- set h_step = "####" if local_device_deployment else "###" -%}
-{# Target string used by CLI commands: folder path for external, bare id for internal. #}
-{%- set cli_target = "./" ~ model_id ~ "/" if is_external else model_id -%}
+{# Target string used by CLI commands. A bare name resolves as a folder in the
+   cwd for external recipes, and as an installed model id for in-tree ones. #}
+{%- set cli_target = model_id -%}
 {%- set demo_module = model_id if is_external else model_package -%}
 {% if local_device_deployment %}
 ## Export

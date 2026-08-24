@@ -529,7 +529,7 @@ def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
     if not raw_args or raw_args[0] in ("-h", "--help"):
         sys.exit(
             f"Usage: {CLI_NAME} {script} <target> [args...]\n"
-            f"  <target> — recipe folder path (./my_model/) or model id (yolov8_det).\n"
+            f"  <target> — recipe folder path (my_model) or model id (yolov8_det).\n"
             f"Run `{CLI_NAME} {script} <target> --help` for the target's options."
         )
     target, forwarded = raw_args[0], list(raw_args[1:])
@@ -656,7 +656,7 @@ def add_install_parser(
             f"Run `{CLI_NAME} install <target>` to walk the model's dependency graph "
             "(datasets, shared templates, other models) and install each node's "
             "requirements exactly once. Shared deps between two models install only "
-            "once. <target> is a recipe folder path (./my_model/) or an installed "
+            "once. <target> is a recipe folder path (my_model) or an installed "
             "model id (yolov8_det). Use `--dry-run` to preview the plan."
         ),
         args=[("target", str)],
@@ -680,7 +680,7 @@ def add_validate_parser(
             "additionally enforce Qualcomm-catalog rules (website-facing "
             "manifest fields, canary devices, banner URL reachability). No "
             "AI Hub workbench calls. <target> is a recipe folder path "
-            "(./my_model/) or an installed model id (yolov8_det)."
+            "(my_model) or an installed model id (yolov8_det)."
         ),
         args=[("target", str)],
     )
@@ -698,7 +698,7 @@ def add_generate_files_parser(
             "files (external_repos/__init__.py when applicable, and README.md) "
             "inside a recipe folder from its manifest.yaml. Run this after editing "
             "manifest.yaml so downstream files stay in sync. <target> is a recipe "
-            "folder path (./my_model/) or an installed model id (yolov8_det)."
+            "folder path (my_model) or an installed model id (yolov8_det)."
         ),
         args=[("target", str)],
     )

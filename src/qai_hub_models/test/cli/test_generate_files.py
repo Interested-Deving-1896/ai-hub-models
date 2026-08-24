@@ -76,17 +76,20 @@ class TestExternalReadme:
         assert readme_path == recipe / "README.md"
         assert readme_path.exists()
 
-    def test_uses_folder_path_for_install(self, tmp_path: Path) -> None:
+    def test_uses_bare_folder_name_for_install(self, tmp_path: Path) -> None:
+        """A bare name resolves as a cwd folder, so no ./ prefix is advertised."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
         readme = _write_readme(recipe, manifest).read_text()
-        assert "qai-hub-models install ./my_model/" in readme
+        assert "qai-hub-models install my_model" in readme
+        assert "./my_model/" not in readme
 
-    def test_uses_folder_path_for_export(self, tmp_path: Path) -> None:
+    def test_uses_bare_folder_name_for_export(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
         readme = _write_readme(recipe, manifest).read_text()
-        assert "qai-hub-models export ./my_model/" in readme
+        assert "qai-hub-models export my_model" in readme
+        assert "./my_model/" not in readme
 
     def test_demo_uses_folder_module(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"

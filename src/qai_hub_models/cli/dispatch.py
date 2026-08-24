@@ -82,8 +82,8 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
     Parameters
     ----------
     model_id
-        A recipe target — either a folder path (``./my_model/``, ``Path``,
-        or path string) or a bare installed model id (``"yolov8_det"``).
+        A recipe target — either a folder path (``my_model``, ``Path``, or
+        path string) or a bare installed model id (``"yolov8_det"``).
         Kept named ``model_id`` for call-site compatibility. The lean CLI
         rejects ``script="install"``/``"generate-files"``/``"validate"``
         with a folder before this is called.

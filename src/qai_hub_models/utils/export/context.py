@@ -56,7 +56,7 @@ def resolve_recipe_dir(target: str | Path) -> Path:
                 f"{target_str!r} is not an installed model id and no folder "
                 f"of that name exists in the current directory. Either use a "
                 "known model id (see `qai-hub-models models` for the list) "
-                "or pass a folder path (e.g. ./my_model/)."
+                "or pass a folder path (e.g. my_model)."
             )
     if not (source_dir / "manifest.yaml").exists():
         raise ValueError(

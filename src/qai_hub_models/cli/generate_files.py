@@ -16,7 +16,7 @@ of the internal ``run_codegen.py`` script (which additionally generates
 ``export.py``, ``evaluate.py``, ``conftest.py``, and
 ``test_generated.py`` — none of which ship with a standalone recipe).
 
-The target is a folder path (``./my_model/``) or an installed model id
+The target is a folder path (``my_model``) or an installed model id
 (``yolov8_det``). Both must contain a ``manifest.yaml`` at the root.
 """
 
@@ -81,9 +81,9 @@ def _write_readme(folder: Path, manifest: QAIHMModelManifest) -> Path:
     """Render the model README from the manifest into ``<folder>/README.md``.
 
     Standalone / external recipes (``status: unset``) get an external-flavored
-    README whose commands take the folder path (``qai-hub-models install
-    ./<folder>/``, ``python -m <folder>.demo``, ``qai-hub-models export
-    ./<folder>/``) and which drops the catalog-only Quick Start block, the
+    README whose commands take the folder name (``qai-hub-models install
+    <folder>``, ``python -m <folder>.demo``, ``qai-hub-models export
+    <folder>``) and which drops the catalog-only Quick Start block, the
     workbench.aihub.qualcomm.com model-page link, and the unpublished
     warning banner. In-tree recipes get the existing catalog-flavored
     README.
@@ -147,7 +147,7 @@ def generate_files(target: str) -> list[Path]:
     Parameters
     ----------
     target
-        Folder path (``./my_model/``) or an installed model id
+        Folder path (``my_model``) or an installed model id
         (``yolov8_det``).
 
     Returns
@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "target",
         help=(
-            "Recipe folder path (e.g. ./my_model/) or an installed model id "
+            "Recipe folder path (e.g. my_model) or an installed model id "
             "(e.g. yolov8_det). The folder must contain a manifest.yaml."
         ),
     )

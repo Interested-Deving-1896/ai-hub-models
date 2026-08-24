@@ -1543,7 +1543,7 @@ def build_parser(prog: str = "qai-hub-models validate") -> argparse.ArgumentPars
     parser.add_argument(
         "target",
         help=(
-            "Recipe folder path (./my_model/) or an installed model id "
+            "Recipe folder path (my_model) or an installed model id "
             "(e.g. mobilenet_v2)."
         ),
     )

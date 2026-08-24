@@ -60,7 +60,7 @@ class Node:
     ``qai_hub_models`` package (they're shared library code). Models
     normally resolve to ``MODELS_ROOT / name`` — but the DFS root can be
     an arbitrary folder outside the package, passed via
-    ``folder_override``. That lets ``qai-hub-models install ./my_model/``
+    ``folder_override``. That lets ``qai-hub-models install my_model``
     walk a standalone recipe's dependency graph.
     """
 
@@ -288,12 +288,22 @@ def _node_install_commands(node: Node, on_gpu: bool) -> list[list[str]]:
     return commands
 
 
+def _folder_root(folder: Path) -> Node:
+    """Build the root Node for a recipe folder, validating it holds a manifest."""
+    if not (folder / "manifest.yaml").exists():
+        raise ValueError(f"{folder} has no manifest.yaml — nothing to install.")
+    return Node(NodeKind.MODEL, folder.name, folder_override=folder)
+
+
 def _resolve_root(target: str) -> Node:
     """Build the root Node for ``qai-hub-models install <target>``.
 
-    Accepts either a folder path (external recipe not necessarily under
-    the installed package) or a bare model id (resolved to
-    ``MODELS_ROOT / <id>``). Display names are not accepted.
+    Accepts a folder path (external recipe not necessarily under the
+    installed package), a bare model id (resolved to ``MODELS_ROOT /
+    <id>``), or a bare folder name matching a directory in the current
+    working directory. Installed model ids win over cwd folders of the
+    same name, matching :func:`resolve_recipe_dir`. Display names are not
+    accepted.
     """
     if looks_like_path(target):
         folder = Path(target).resolve()
@@ -302,15 +312,15 @@ def _resolve_root(target: str) -> Node:
                 f"{target!r} is not a directory. Point at a recipe folder "
                 "that contains manifest.yaml."
             )
-        if not (folder / "manifest.yaml").exists():
-            raise ValueError(f"{folder} has no manifest.yaml — nothing to install.")
-        return Node(NodeKind.MODEL, folder.name, folder_override=folder)
+        return _folder_root(folder)
 
     if target not in MODEL_IDS:
+        if (cwd_folder := Path(target)).is_dir():
+            return _folder_root(cwd_folder.resolve())
         raise ValueError(
-            f"{target!r} is not an installed model id and is not a folder "
-            "path. Either use a known model id or pass a recipe folder path "
-            "(e.g. ./my_model/)."
+            f"{target!r} is not an installed model id and no folder of that "
+            "name exists in the current directory. Either use a known model "
+            "id or pass a recipe folder path (e.g. my_model)."
         )
     return Node(NodeKind.MODEL, target)
 
@@ -324,9 +334,9 @@ def plan_install(target: str) -> list[tuple[Node, list[list[str]]]]:
     Parameters
     ----------
     target
-        Either a recipe folder path (``./my_model/``) or a bare model id
-        (``yolov8_det``). Templates and datasets always resolve inside
-        the installed package.
+        A recipe folder path (``my_model``), a bare model id
+        (``yolov8_det``), or a bare folder name in the current directory.
+        Templates and datasets always resolve inside the installed package.
 
     Returns
     -------
@@ -374,9 +384,9 @@ def install_model(target: str, dry_run: bool = False, assume_yes: bool = False) 
     Parameters
     ----------
     target
-        A recipe folder path (``./my_model/``) or a bare model id
-        (``yolov8_det``). Templates and datasets always resolve inside
-        the installed package.
+        A recipe folder path (``my_model``), a bare model id
+        (``yolov8_det``), or a bare folder name in the current directory.
+        Templates and datasets always resolve inside the installed package.
     dry_run
         If True, print each command that would run instead of executing it.
         Useful for previewing the plan.
@@ -420,8 +430,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "target",
         help=(
-            "Recipe folder path (e.g. ./my_model/) or an installed model id "
-            "(e.g. yolov8_det). The folder must contain a manifest.yaml."
+            "Recipe folder path (e.g. my_model), an installed model id "
+            "(e.g. yolov8_det), or a folder name in the current directory. "
+            "The folder must contain a manifest.yaml."
         ),
     )
     parser.add_argument(
