@@ -764,17 +764,44 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         return details
 
     def check_geniex_runtime_technical_details(self) -> None:
+        geniex_runtimes = (TargetRuntime.GENIEX_QAIRT, TargetRuntime.GENIEX_LLAMACPP)
+        errors: list[str] = []
+
         missing = [
             rt.value
-            for rt in (TargetRuntime.GENIEX_QAIRT, TargetRuntime.GENIEX_LLAMACPP)
+            for rt in geniex_runtimes
             if rt in self.orchestrator_runtimes
             and rt not in self.runtime_technical_details
         ]
         if missing:
+            errors.append(
+                "manifest.yaml must define runtime_technical_details for GenieX "
+                f"runtimes listed in orchestrator_runtimes: {', '.join(missing)}."
+            )
+
+        # model_infer_id points the website at a HuggingFace repo to download, so it
+        # is required exactly when we're allowed to redistribute the model's weights.
+        for rt in geniex_runtimes:
+            details = self.runtime_technical_details.get(rt)
+            if details is None:
+                continue
+            has_infer_id = "model_infer_id" in details
+            if self.restrict_model_sharing and has_infer_id:
+                errors.append(
+                    f"runtime_technical_details.{rt.value} must not define "
+                    "model_infer_id when restrict_model_sharing is true; these "
+                    "weights cannot be redistributed."
+                )
+            elif not self.restrict_model_sharing and not has_infer_id:
+                errors.append(
+                    f"runtime_technical_details.{rt.value} must define "
+                    "model_infer_id (the HuggingFace repo the website links for "
+                    "deployment), or set restrict_model_sharing: true."
+                )
+
+        if errors:
             raise ValueError(
-                f"{self.id}: manifest.yaml must define runtime_technical_details for "
-                f"GenieX runtimes listed in orchestrator_runtimes: "
-                f"{', '.join(missing)}."
+                f"{self.id}:\n" + "\n".join(f"  - {err}" for err in errors)
             )
 
     def get_perf_yaml_path(self, root: Path = QAIHM_PACKAGE_ROOT) -> Path:

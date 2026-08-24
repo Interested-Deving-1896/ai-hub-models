@@ -20,6 +20,7 @@ from qai_hub_models.configs.manifest_yaml import (
     MODEL_USE_CASE,
     LMQuantizationDetails,
     QAIHMModelManifest,
+    TechnicalDetails,
 )
 from qai_hub_models.models._shared.lm_schema import Recipe
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG, QAIHM_WEB_ASSET
@@ -358,3 +359,60 @@ class TestLMQuantizationDetailsValidation:
             supported_precisions=[Precision.float],
         )
         assert manifest.lm_quantization_details == {}
+
+
+# ---------------------------------------------------------------------------
+# check_geniex_runtime_technical_details, model_infer_id half: model_infer_id
+# points the website at a HuggingFace repo to download, so it is required
+# exactly when we may redistribute weights (restrict_model_sharing=False).
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "runtime", [TargetRuntime.GENIEX_QAIRT, TargetRuntime.GENIEX_LLAMACPP]
+)
+@pytest.mark.parametrize(
+    ("restricted", "infer_id", "expected_error"),
+    [
+        (False, "ai-hub-models/Test-Model", None),
+        (False, None, "must define model_infer_id"),
+        (True, "ai-hub-models/Test-Model", "must not define model_infer_id"),
+        (True, None, None),
+    ],
+)
+def test_geniex_model_infer_id(
+    runtime: TargetRuntime,
+    restricted: bool,
+    infer_id: str | None,
+    expected_error: str | None,
+) -> None:
+    details: TechnicalDetails = {"Supported Input Modalities": "text"}
+    if infer_id is not None:
+        details["model_infer_id"] = infer_id
+    manifest = QAIHMModelManifest(
+        id="test_model",
+        restrict_model_sharing=restricted,
+        runtime_technical_details={runtime: details},
+    )
+
+    if expected_error is None:
+        manifest.check_geniex_runtime_technical_details()
+    else:
+        with pytest.raises(ValueError, match=expected_error):
+            manifest.check_geniex_runtime_technical_details()
+
+
+def test_geniex_model_infer_id_skipped_without_geniex_details() -> None:
+    # Non-GenieX models have no GenieX section; don't force one into existence.
+    QAIHMModelManifest(id="test_model").check_geniex_runtime_technical_details()
+
+
+def test_geniex_runtime_technical_details_reports_all_errors() -> None:
+    # A manifest that trips both halves must surface both, not just the first.
+    manifest = QAIHMModelManifest(
+        id="test_model",
+        restrict_model_sharing=False,
+        orchestrator_runtimes=[TargetRuntime.GENIEX_LLAMACPP],
+        runtime_technical_details={TargetRuntime.GENIEX_QAIRT: {}},
+    )
+    with pytest.raises(ValueError, match="geniex_llamacpp") as excinfo:
+        manifest.check_geniex_runtime_technical_details()
+    assert "must define model_infer_id" in str(excinfo.value)
