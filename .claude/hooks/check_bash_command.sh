@@ -186,16 +186,75 @@ EOF
     exit 2
 fi
 
-# If the resolver rewrote the command, emit the resolved form so the permission
-# matcher sees literal paths instead of ${VAR} expansions. Silent no-op when
-# there was nothing to expand — keeps the transcript clean for the common case.
-if [ "$RESOLVED" != "$(echo "$INPUT" | jq -r '.tool_input.command // ""')" ]; then
-    jq -n --arg cmd "$RESOLVED" '{
-        hookSpecificOutput: {
-            hookEventName: "PreToolUse",
-            updatedInput: { command: $cmd }
-        }
-    }'
+# ----------------------------------------------------------------------
+# Env-var prefixes: the matcher treats `VAR=1 cmd ...` as its own command
+# string, so an allowlisted `cmd` rule does not cover it. Strip assignment
+# prefixes into a scratch copy; if what remains is an allowlisted base
+# command, decide "allow" here. The command itself runs unmodified.
+#
+# Only these names may be stripped. Never PATH/LD_*/PYTHONPATH/BASH_ENV/IFS
+# — those change which binary runs, so stripping them would turn an
+# allowlisted base command into an arbitrary-code allow.
+# ----------------------------------------------------------------------
+STRIPPABLE_VAR='^(QAIHM_[A-Z0-9_]+|RUN_SLOW_TESTS|SKIP)=[^[:space:]"'"'"'`$;&|]*$'
+
+ALLOWED_BASE="qai-hub-models qai-hub python python3 pytest pre-commit"
+
+strip_env_prefixes() {
+    local cmd="$1"
+    local tok
+    while :; do
+        cmd="${cmd#"${cmd%%[![:space:]]*}"}"   # drop leading whitespace
+        tok="${cmd%% *}"
+        [ "$tok" = "$cmd" ] && break            # single token left
+        case "$tok" in
+            *=*)
+                if echo "$tok" | grep -qE "$STRIPPABLE_VAR"; then
+                    cmd="${cmd#* }"
+                else
+                    break
+                fi
+                ;;
+            env)
+                cmd="${cmd#* }"                 # `env VAR=1 cmd` form
+                ;;
+            *) break ;;
+        esac
+    done
+    printf '%s' "$cmd"
+}
+
+STRIPPED=$(strip_env_prefixes "$CMD")
+DECIDE_ALLOW=0
+BASE_CMD=""
+if [ "$STRIPPED" != "$CMD" ]; then
+    BASE_CMD="${STRIPPED%% *}"
+    for allowed in $ALLOWED_BASE; do
+        if [ "$BASE_CMD" = "$allowed" ]; then
+            DECIDE_ALLOW=1
+            break
+        fi
+    done
+fi
+
+# Emit one combined hookSpecificOutput: the resolved command (so the matcher
+# sees literal paths instead of ${VAR} expansions) and/or the allow decision.
+# Silent no-op when there is nothing to say — keeps the transcript clean.
+ORIG_CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
+FILTER='{hookSpecificOutput: ({hookEventName: "PreToolUse"}'
+ARGS=()
+if [ "$DECIDE_ALLOW" = "1" ]; then
+    FILTER="$FILTER + {permissionDecision: \"allow\", permissionDecisionReason: \$reason}"
+    ARGS+=(--arg reason "env-var prefix stripped; base command '$BASE_CMD' is allowlisted")
+fi
+if [ "$RESOLVED" != "$ORIG_CMD" ]; then
+    FILTER="$FILTER + {updatedInput: {command: \$cmd}}"
+    ARGS+=(--arg cmd "$RESOLVED")
+fi
+FILTER="$FILTER)}"
+
+if [ ${#ARGS[@]} -gt 0 ]; then
+    jq -n "${ARGS[@]}" "$FILTER"
 fi
 
 exit 0
