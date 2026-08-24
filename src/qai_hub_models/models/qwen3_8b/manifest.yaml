@@ -51,7 +51,7 @@ orchestrator_runtimes:
 post_pip_install_commands:
 - command: pip uninstall -y onnxruntime
   machine: gpu
-- command: pip install onnxruntime-gpu==1.23.2 aimet-onnx==2.28.0
+- command: pip install --force-reinstall --no-deps onnxruntime-gpu==1.23.2
   machine: gpu
 related_models:
 - qwen3_4b

@@ -15,11 +15,13 @@ license: https://github.com/Physical-Intelligence/openpi/blob/main/LICENSE
 license_type: apache-2.0
 name: Pi0.5
 post_pip_install_commands:
-- command: pip uninstall -y onnxruntime
-  machine: gpu
 - command: pip install git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi
   machine: cpu
-- command: pip install git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi onnxruntime-gpu==1.23.2 aimet-onnx==2.28.0
+- command: pip install git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi
+  machine: gpu
+- command: pip uninstall -y onnxruntime
+  machine: gpu
+- command: pip install --force-reinstall --no-deps onnxruntime-gpu==1.23.2
   machine: gpu
 requires_aot_prepare: true
 research_paper: https://www.physicalintelligence.company/download/pi05.pdf
