@@ -193,6 +193,9 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers", "llm_perf: Run LLM performance collection tests."
     )
+    config.addinivalue_line(
+        "markers", "nightly: Run only in nightly (opt-in via -m nightly)."
+    )
 
 
 def pytest_collection_modifyitems(

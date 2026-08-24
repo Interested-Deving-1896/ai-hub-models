@@ -538,6 +538,7 @@ class TaskLibrary:
             use_shared_cache=True,
             run_general=True,
             run_export_compile=enable_compile,
+            run_nightly=get_env_bool("QAIHM_TEST_RUN_NIGHTLY") or False,
             exit_after_single_model_failure=False,
             test_trace=False,
             qaihm_wheel_dir=get_test_venv_wheel_dir(),

@@ -259,6 +259,7 @@ class PyTestModelTask(CompositeTask):
         run_compute_device_accuracy: bool = False,
         run_export: bool = False,
         run_llm_export: bool = False,
+        run_nightly: bool = False,
         run_trace: bool = True,
         install_deps: bool = True,
         raise_on_failure: bool = False,
@@ -372,6 +373,8 @@ class PyTestModelTask(CompositeTask):
                     test_flags.append("export")
                 if run_llm_export:
                     test_flags.append("llm_export")
+                if run_nightly:
+                    test_flags.append("nightly")
                 if test_flags:
                     extras_args += ["-m", f'"{" or ".join(test_flags)}"']
 
@@ -479,6 +482,7 @@ class PyTestModelsTask(CompositeTask):
         run_compute_device_accuracy: bool = False,
         run_full_export: bool = False,
         run_llm_export: bool = False,
+        run_nightly: bool = False,
         exit_after_single_model_failure: bool = False,
         raise_on_failure: bool = True,
         qaihm_wheel_dir: str | os.PathLike | None = None,
@@ -596,6 +600,7 @@ class PyTestModelsTask(CompositeTask):
                     and model_name in export_models,
                     run_export=run_full_export and model_name in export_models,
                     run_llm_export=run_llm_export and model_name in export_models,
+                    run_nightly=run_nightly,
                     # Do not raise on failure; let PyTestModelsTask::run_tasks handle this
                     raise_on_failure=False,
                     qaihm_wheel_dir=qaihm_wheel_dir,

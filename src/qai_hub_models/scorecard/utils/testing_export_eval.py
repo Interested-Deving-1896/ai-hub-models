@@ -1674,6 +1674,33 @@ def torch_inference_for_accuracy_validation(
     )
 
 
+def torch_eval_smoke_on_one_sample(
+    model: QAIHMModelT, dataset_cls: type[BaseDataset], model_id: str
+) -> None:
+    """
+    Smoke-test the dataset + evaluator plumbing on a single sample via torch.
+
+    No accuracy threshold — this only proves the (dataset -> torch forward ->
+    evaluator) chain runs end-to-end so nightly catches evaluator or dataset
+    regressions cheaply.
+    """
+    assert isinstance(model, WorkbenchModel), (
+        "This function is not yet supported for CollectionModel."
+    )
+    result = evaluate_on_dataset(
+        evaluator_func=model.get_evaluator,
+        model_executors={"torch": model},
+        input_spec=model.get_input_spec(),
+        dataset_cls=dataset_cls,
+        num_samples=1,
+        samples_per_job=1,
+        use_cache=False,
+    )
+    assert result.torch_accuracy is not None, (
+        f"Torch smoke eval for {model_id} did not produce an accuracy score."
+    )
+
+
 def _pad_and_concatenate(tensor_list: list[np.ndarray]) -> np.ndarray:
     """Concatenate arrays along axis 0, padding other dims if shapes differ.
 

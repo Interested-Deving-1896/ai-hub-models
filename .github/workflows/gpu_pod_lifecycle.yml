@@ -65,6 +65,10 @@ on:
       disable_override_workbench_job_timeout:
         type: boolean
         default: false
+      run_nightly_tests:
+        description: Also collect tests marked @pytest.mark.nightly (in addition to unmarked + compile).
+        type: boolean
+        default: false
       use_per_model_venv:
         description: Install each model into a fresh venv rather than the fused global_requirements.txt venv. Set true for nightly to catch manifest-completeness bugs.
         type: boolean
@@ -118,6 +122,7 @@ jobs:
       sync_assets_branch: ${{ inputs.sync_assets_branch }}
       python_version: ${{ inputs.python_version }}
       disable_override_workbench_job_timeout: ${{ inputs.disable_override_workbench_job_timeout }}
+      run_nightly_tests: ${{ inputs.run_nightly_tests }}
       use_per_model_venv: ${{ inputs.use_per_model_venv }}
 
   run_gpu_tests:

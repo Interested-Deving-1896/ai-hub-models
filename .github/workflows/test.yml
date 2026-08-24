@@ -47,6 +47,11 @@ on:
         default: false
         type: boolean
 
+      run_nightly_tests:
+        description: Also collect tests marked @pytest.mark.nightly (in addition to unmarked + compile).
+        default: false
+        type: boolean
+
       use_public_wheel:
         description: Whether to build and test against a public wheel instead of installing the repo directly from source.
         default: false
@@ -335,6 +340,7 @@ jobs:
       python_version: ${{ inputs.python_version }}
       disable_override_workbench_job_timeout: ${{ inputs.disable_override_workbench_job_timeout }}
       force_kube: ${{ inputs.force_kube }}
+      run_nightly_tests: ${{ inputs.run_nightly_tests }}
       use_per_model_venv: ${{ inputs.use_per_model_venv }}
 
   verify_model_tests:

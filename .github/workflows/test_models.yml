@@ -73,6 +73,11 @@ on:
         type: boolean
         default: false
 
+      run_nightly_tests:
+        description: Also collect tests marked @pytest.mark.nightly (in addition to unmarked + compile).
+        type: boolean
+        default: false
+
       use_per_model_venv:
         description: Install each model into a fresh venv rather than the fused global_requirements.txt venv. Set true for nightly to catch manifest-completeness bugs.
         type: boolean
@@ -239,6 +244,7 @@ jobs:
         if: ${{ !cancelled() && inputs.test_scope == 'unit' }}
         env:
           QAIHM_JUNIT_XML_PATH: ${{ github.workspace }}/build/test-results/models-junit.xml
+          QAIHM_TEST_RUN_NIGHTLY: ${{ inputs.run_nightly_tests && '1' || '0' }}
         run: |
           python3 scripts/build_and_test.py \
             --venv="${{ env.VENV_PATH }}" \
@@ -279,6 +285,7 @@ jobs:
         if: ${{ !cancelled() && env.COMPILE_JOBS_URL == 'NONE' && inputs.test_scope != 'unit' }}
         env:
           QAIHM_JUNIT_XML_PATH: ${{ github.workspace }}/build/test-results/compile-junit.xml
+          QAIHM_TEST_RUN_NIGHTLY: ${{ inputs.run_nightly_tests && '1' || '0' }}
         run: |
           if [[ "${{ inputs.test_scope }}" == "unit_and_compile" ]]; then
             COMPILE_TASK="test_unit_and_compile_all_models"
