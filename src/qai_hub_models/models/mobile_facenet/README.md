@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [MobileFaceNet: Lightweight real-time face verification on-device](https://aihub.qualcomm.com/models/mobile_facenet)
 
 MobileFaceNet is an efficient CNN that maps a 112x112 face image to a compact 128-dimensional embedding. Two embeddings are compared via cosine similarity to determine whether they belong to the same person, achieving 99.48% accuracy on the LFW benchmark. The model uses depthwise-separable convolutions and inverted residual blocks (MobileNetV2-style) to stay under 1M parameters, making it well-suited for real-time face verification on mobile and edge devices. Trained with ArcFace loss on MS-Celeb-1M.

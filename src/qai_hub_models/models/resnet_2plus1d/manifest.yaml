@@ -2,6 +2,12 @@ applicable_scenarios:
 - Camera
 - Action Recognition
 description: ResNet (2+1)D Convolutions is a network which explicitly factorizes 3D convolution into two separate and successive operations, a 2D spatial convolution and a 1D temporal convolution. It used for video understanding applications.
+disabled_paths:
+  w8a8:
+    onnx:
+      scorecard_accuracy_failure: 'Device accuracy (77.5 %) deviates from benchmark (67.5 %) by 10.000 %, threshold: 10.0 %'
+    qnn_dlc:
+      scorecard_accuracy_failure: 'Device accuracy (77.5 %) deviates from benchmark (67.5 %) by 10.000 %, threshold: 10.0 %'
 domain: Computer Vision
 form_factors:
 - Phone

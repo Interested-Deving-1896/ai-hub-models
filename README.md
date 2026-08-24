@@ -186,6 +186,7 @@ and many more.
 | [NASNet](https://aihub.qualcomm.com/models/nasnet) | [qai_hub_models.models.nasnet](src/qai_hub_models/models/nasnet/README.md) |
 | [RegNet](https://aihub.qualcomm.com/models/regnet) | [qai_hub_models.models.regnet](src/qai_hub_models/models/regnet/README.md) |
 | [RegNet-Y-800MF](https://aihub.qualcomm.com/models/regnet_y_800mf) | [qai_hub_models.models.regnet_y_800mf](src/qai_hub_models/models/regnet_y_800mf/README.md) |
+| [RepViT](https://aihub.qualcomm.com/models/repvit) | [qai_hub_models.models.repvit](src/qai_hub_models/models/repvit/README.md) |
 | [ResNeXt101](https://aihub.qualcomm.com/models/resnext101) | [qai_hub_models.models.resnext101](src/qai_hub_models/models/resnext101/README.md) |
 | [ResNeXt50](https://aihub.qualcomm.com/models/resnext50) | [qai_hub_models.models.resnext50](src/qai_hub_models/models/resnext50/README.md) |
 | [ResNet101](https://aihub.qualcomm.com/models/resnet101) | [qai_hub_models.models.resnet101](src/qai_hub_models/models/resnet101/README.md) |
@@ -281,6 +282,7 @@ and many more.
 | [MediaPipe-Face-Detection](https://aihub.qualcomm.com/models/mediapipe_face) | [qai_hub_models.models.mediapipe_face](src/qai_hub_models/models/mediapipe_face/README.md) |
 | [MediaPipe-Hand-Detection](https://aihub.qualcomm.com/models/mediapipe_hand) | [qai_hub_models.models.mediapipe_hand](src/qai_hub_models/models/mediapipe_hand/README.md) |
 | [MediaPipe-Hand-Gesture-Recognition](https://aihub.qualcomm.com/models/mediapipe_hand_gesture) | [qai_hub_models.models.mediapipe_hand_gesture](src/qai_hub_models/models/mediapipe_hand_gesture/README.md) |
+| [MobileFaceNet](https://aihub.qualcomm.com/models/mobile_facenet) | [qai_hub_models.models.mobile_facenet](src/qai_hub_models/models/mobile_facenet/README.md) |
 | [OWL-V2](https://aihub.qualcomm.com/models/owlv2) | [qai_hub_models.models.owlv2](src/qai_hub_models/models/owlv2/README.md) |
 | [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit) | [qai_hub_models.models.owl_vit](src/qai_hub_models/models/owl_vit/README.md) |
 | [PPE-Detection](https://aihub.qualcomm.com/models/gear_guard_net) | [qai_hub_models.models.gear_guard_net](src/qai_hub_models/models/gear_guard_net/README.md) |
@@ -288,6 +290,7 @@ and many more.
 | [RF-DETR](https://aihub.qualcomm.com/models/rf_detr) | [qai_hub_models.models.rf_detr](src/qai_hub_models/models/rf_detr/README.md) |
 | [RTMDet](https://aihub.qualcomm.com/models/rtmdet) | [qai_hub_models.models.rtmdet](src/qai_hub_models/models/rtmdet/README.md) |
 | [ResNet34-SSD](https://aihub.qualcomm.com/models/resnet34_ssd1200) | [qai_hub_models.models.resnet34_ssd1200](src/qai_hub_models/models/resnet34_ssd1200/README.md) |
+| [WeDetect](https://aihub.qualcomm.com/models/wedetect) | [qai_hub_models.models.wedetect](src/qai_hub_models/models/wedetect/README.md) |
 | [YOLO-WORLD](https://aihub.qualcomm.com/models/yolo_world) | [qai_hub_models.models.yolo_world](src/qai_hub_models/models/yolo_world/README.md) |
 | [YOLO26-Detection](https://aihub.qualcomm.com/models/yolo26_det) | [qai_hub_models.models.yolo26_det](src/qai_hub_models/models/yolo26_det/README.md) |
 | [YOLOv10-Detection](https://aihub.qualcomm.com/models/yolov10_det) | [qai_hub_models.models.yolov10_det](src/qai_hub_models/models/yolov10_det/README.md) |
@@ -354,6 +357,7 @@ and many more.
 | [OpusMT-Es-En](https://aihub.qualcomm.com/models/opus_mt_es_en) | [qai_hub_models.models.opus_mt_es_en](src/qai_hub_models/models/opus_mt_es_en/README.md) |
 | [OpusMT-Zh-En](https://aihub.qualcomm.com/models/opus_mt_zh_en) | [qai_hub_models.models.opus_mt_zh_en](src/qai_hub_models/models/opus_mt_zh_en/README.md) |
 | [Pi0.5](https://aihub.qualcomm.com/models/pi05) | [qai_hub_models.models.pi05](src/qai_hub_models/models/pi05/README.md) |
+| [SigLIP2](https://aihub.qualcomm.com/models/siglip2) | [qai_hub_models.models.siglip2](src/qai_hub_models/models/siglip2/README.md) |
 | [TrOCR](https://aihub.qualcomm.com/models/trocr) | [qai_hub_models.models.trocr](src/qai_hub_models/models/trocr/README.md) |
 
 ### Audio
@@ -364,6 +368,7 @@ and many more.
 | **Speech Recognition**
 | [DeepSpeech2](https://aihub.qualcomm.com/models/deepspeech2) | [qai_hub_models.models.deepspeech2](src/qai_hub_models/models/deepspeech2/README.md) |
 | [Distil-Whisper](https://aihub.qualcomm.com/models/distil_whisper) | [qai_hub_models.models.distil_whisper](src/qai_hub_models/models/distil_whisper/README.md) |
+| [FunASR-Conformer-EN](https://aihub.qualcomm.com/models/funasr_conformer_en) | [qai_hub_models.models.funasr_conformer_en](src/qai_hub_models/models/funasr_conformer_en/README.md) |
 | [Whisper-Base](https://aihub.qualcomm.com/models/whisper_base) | [qai_hub_models.models.whisper_base](src/qai_hub_models/models/whisper_base/README.md) |
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | [qai_hub_models.models.whisper_large_v3_turbo](src/qai_hub_models/models/whisper_large_v3_turbo/README.md) |
 | [Whisper-Large-V3-Turbo-Quantized](https://aihub.qualcomm.com/models/whisper_large_v3_turbo_quantized) | [qai_hub_models.models.whisper_large_v3_turbo_quantized](src/qai_hub_models/models/whisper_large_v3_turbo_quantized/README.md) |

@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [RepViT: Imagenet classifier optimized for mobile devices](https://aihub.qualcomm.com/models/repvit)
 
 RepViT is a lightweight pure CNN model for mobile devices, incorporating efficient architectural designs from Vision Transformers into CNNs. It achieves over 80% top-1 accuracy on ImageNet with 1ms latency on an iPhone 12.

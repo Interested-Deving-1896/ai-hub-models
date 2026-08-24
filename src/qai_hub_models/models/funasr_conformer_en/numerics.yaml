@@ -1,0 +1,22 @@
+metrics:
+- dataset_link: https://www.openslr.org/12
+  dataset_name: conformer_libri_speech
+  dataset_split_description: test split
+  device_metric:
+    Samsung Galaxy S25:
+      float:
+        onnx:
+          partial_metric: 16.5
+        qnn_dlc:
+          partial_metric: 16.5
+        tflite:
+          partial_metric: 16.5
+  metric_description: The percentage of words incorrectly predicted. Lower is better.
+  metric_enablement_threshold: 10.0
+  metric_name: Word Error Rate
+  metric_range:
+    max: 100.0
+    min: 0.0
+  metric_unit: WER
+  num_partial_samples: 500
+  partial_torch_metric: 16.6

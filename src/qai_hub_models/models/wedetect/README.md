@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [WeDetect: Real-time text-conditioned object detection optimized for mobile and edge](https://aihub.qualcomm.com/models/wedetect)
 
 WeDetect is a text-conditioned object detection model that uses a prompt-then-detect strategy. Text class names are reparameterized into the model weights before export, producing a fixed-vocabulary detector that runs efficiently on-device. The model uses LTRB (Left-Top-Right-Bottom) regression with multi-scale feature maps at strides 8, 16, and 32.

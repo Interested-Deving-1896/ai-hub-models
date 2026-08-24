@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [SigLIP2: Zero-shot image-text similarity and classification using SigLIP2](https://aihub.qualcomm.com/models/siglip2)
 
 SigLIP2 (Sigmoid Loss for Language-Image Pre-training 2) is a vision-language model from Google that computes cosine-similarity scores between images and text prompts. It can be used for zero-shot image classification, image search, and content moderation without any task-specific fine-tuning.

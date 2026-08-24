@@ -8,9 +8,14 @@ datasets:
 - reid
 description: OSNet is a compact convolutional architecture for person re-identification. It extracts discriminative embeddings that can be compared with cosine similarity for person matching across camera views.
 disabled_paths:
+  w8a16:
+    onnx:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-78.460 mAP) above threshold (10.0 mAP)
+    qnn_dlc:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-78.540 mAP) above threshold (10.0 mAP)
   w8a8:
     onnx:
-      scorecard_accuracy_failure: Torch and On-device accuracy diff (-27.900 mAP) above threshold (10.0 mAP)
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-33.500 mAP) above threshold (10.0 mAP)
 domain: Computer Vision
 external_repos:
   deep_person_reid:

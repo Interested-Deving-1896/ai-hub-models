@@ -22,7 +22,7 @@ qai-hub-models perf Detectron2-Detection
 qai-hub-models numerics Detectron2-Detection
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Detectron2-Detection --runtime qnn_dlc --precision float
+qai-hub-models fetch Detectron2-Detection --runtime tflite --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
@@ -66,7 +66,7 @@ To run the model on Qualcomm® devices, you must export the model for use with a
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 Use the following command to export the model:
 ```bash
-qai-hub-models export detectron2_detection --target-runtime qnn_dlc --precision float
+qai-hub-models export detectron2_detection --target-runtime tflite --precision float
 ```
 Additional options are documented with the `--help` option.
 
