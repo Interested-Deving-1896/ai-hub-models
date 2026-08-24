@@ -73,7 +73,9 @@ class Detectron2ProposalGenerator(Detectron2):
         """
         # Detectron2 RCNN:
         # https://github.com/facebookresearch/detectron2/blob/fd27788985af0f4ca800bca563acdb700bb890e2/detectron2/modeling/meta_arch/rcnn.py#L178
-        image = (image[:, [2, 1, 0]] - (self.pixel_mean / 255)) / (self.pixel_std / 255)
+        image = (torch.flip(image, dims=[1]) - (self.pixel_mean / 255)) / (
+            self.pixel_std / 255
+        )
         feature = self.backbone(image)
 
         # Detectron2 RPN:
