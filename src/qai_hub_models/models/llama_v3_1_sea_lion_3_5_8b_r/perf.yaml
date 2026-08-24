@@ -3,6 +3,16 @@ precisions:
     components:
       Llama-SEA-LION-v3.5-8B-R:
         performance_metrics:
+          Arduino VENTUNO Q:
+            geniex_qairt:
+              llm_metrics:
+              - context_length: 4096
+                desired_compute_unit: npu
+                prefill_tokens_per_second: 586.424278
+                time_to_first_token_range_milliseconds:
+                  max: 6984.704
+                  min: 218.272
+                tokens_per_second: 9.386412
           Dragonwing IQ-9075 EVK:
             geniex_qairt:
               llm_metrics:
@@ -113,6 +123,7 @@ supported_chipsets:
 - qualcomm-qcs7181
 - qualcomm-qcs8750
 - qualcomm-qcs9075
+- qualcomm-qcs8275
 supported_devices:
 - Snapdragon X Elite CRD
 - Dragonwing IQ-X7181
@@ -124,3 +135,4 @@ supported_devices:
 - Samsung Galaxy S25+
 - Dragonwing Q-8750
 - Dragonwing IQ-9075 EVK
+- Arduino VENTUNO Q
