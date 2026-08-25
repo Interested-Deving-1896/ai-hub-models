@@ -4,9 +4,16 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+from unittest import mock
+
+import pytest
+
 from qai_hub_models import Precision
 from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
+from qai_hub_models.scripts import collect_scorecard_assets_results as mod
 
 
 def _asset(
@@ -143,3 +150,37 @@ def test_scoped_merge_drops_in_scope_when_run_produced_nothing() -> None:
     committed.merge_from(QAIHMModelReleaseAssets())
 
     assert committed.empty
+
+
+@pytest.mark.parametrize("contents", ["", "models: {}\n"])
+def test_empty_release_assets_yaml_updates_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, contents: str
+) -> None:
+    """An empty assets yaml means "no assets this run", not "drop everything".
+
+    combine_split_artifacts always emits release-assets.yaml, so `models: {}`
+    reaches this script whenever a sweep produced no export assets. Treating it
+    as a result set would strip in-scope committed entries and commit that.
+    """
+    assets_yaml = tmp_path / "release-assets.yaml"
+    assets_yaml.write_text(contents)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collect_scorecard_assets_results",
+            "--models",
+            "qwen3_0_6b",
+            "--release-assets-yaml",
+            str(assets_yaml),
+        ],
+    )
+
+    with (
+        mock.patch.object(QAIHMModelReleaseAssets, "drop_entries_in_scope") as drop,
+        mock.patch.object(QAIHMModelReleaseAssets, "to_model_yaml") as write,
+    ):
+        mod.main()
+
+    drop.assert_not_called()
+    write.assert_not_called()

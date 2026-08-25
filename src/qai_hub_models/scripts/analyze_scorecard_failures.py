@@ -229,7 +229,12 @@ def main() -> int:
 
     # Read input CSV
     print(f"Reading input CSV: {args.input_csv}")
-    df = pd.read_csv(args.input_csv)
+    input_csv = Path(args.input_csv)
+    if not input_csv.exists() or input_csv.stat().st_size == 0:
+        # A sweep with no Workbench jobs leaves results.csv empty.
+        print(f"{input_csv} is empty; nothing to analyze.")
+        return 0
+    df = pd.read_csv(input_csv)
     print(f"Loaded {len(df)} rows from CSV")
 
     # Generate failure analysis

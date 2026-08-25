@@ -89,13 +89,19 @@ def main() -> None:
     args = parse_args()
     pytorch_models, _ = validate_and_split_enabled_models(args.models)
 
+    # An absent file and a present-but-empty `models: {}` both mean "this run
+    # produced no assets"; dropping in-scope entries would delete committed ones.
     assets_path = Path(args.release_assets_yaml)
-    if not assets_path.exists() or assets_path.stat().st_size == 0:
+    scorecard_assets = (
+        ScorecardAssetYaml.from_yaml(assets_path)
+        if assets_path.exists() and assets_path.stat().st_size > 0
+        else None
+    )
+    if scorecard_assets is None or not scorecard_assets.models:
         print("No scorecard release assets found. Not updating any files.")
         return
 
     modified_files: list[str] = []
-    scorecard_assets = ScorecardAssetYaml.from_yaml(args.release_assets_yaml)
     component_names_yaml = ComponentNamesYaml.from_intermediates()
     graph_names_yaml = GraphNamesYaml.from_intermediates()
     for model_id in sorted(pytorch_models):

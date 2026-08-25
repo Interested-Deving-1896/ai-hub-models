@@ -54,6 +54,17 @@ def save_yaml(yaml_filepath: Path, data: dict) -> None:
         yaml.dump(data, yaml_file)
 
 
+def write_empty_release_assets(output_dir: Path) -> None:
+    """Write a `models: {}` release-assets.yaml so the file always exists.
+
+    Consumers read an empty ``models`` map as "this run produced no assets" and
+    fall back to the committed per-model copies.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    save_yaml(output_dir / "release-assets.yaml", {"models": {}})
+    print(f"Wrote empty release-assets.yaml to {output_dir}")
+
+
 def combine_split_artifacts(
     input_dirs: list[Path],
     output_dir: Path,
@@ -167,6 +178,7 @@ def main() -> None:
             f"Input directory does not exist: {args.input_dir}. "
             "Nothing to combine — exiting cleanly."
         )
+        write_empty_release_assets(args.output_dir)
         return
 
     # Find all subdirectories in the input directory.
@@ -182,6 +194,8 @@ def main() -> None:
 
     print(f"Found {len(input_dirs)} input directories")
     combine_split_artifacts(input_dirs, args.output_dir, args.models)
+    if not (args.output_dir / "release-assets.yaml").exists():
+        write_empty_release_assets(args.output_dir)
     print(f"\nCombined artifacts written to: {args.output_dir}")
 
 

@@ -308,6 +308,14 @@ def main() -> None:
     )
 
     scorecard_df = prepare_raw_data(scorecard_csv, accuracy_csv)
+    if scorecard_df.empty:
+        # A sweep can have no Workbench jobs at all (e.g. scoped to
+        # geniex_llamacpp, whose assets are static urls). Leave results.csv empty.
+        os.makedirs(results_csv.parent, exist_ok=True)
+        results_csv.touch()
+        print(f"No scorecard rows to aggregate; left {results_csv} empty.")
+        return
+
     scorecard_df = _populate_tflite_compile_failures(scorecard_df)
     scorecard_df["runtime"] = scorecard_df.runtime.replace(
         "precompiled_qnn_onnx", "onnx"

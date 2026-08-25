@@ -61,6 +61,8 @@ def _bench_url(platform_stem: str, ext: str, version: str | None) -> str:
 
 DEFAULT_CONTEXT_LENGTHS = [512, 1024, 4096]
 
+_MIN_RESULT_SCHEMA_VERSION = 3
+
 _N_GEN = 128
 
 # Each accuracy prompt runs as its own geniex-bench process: the timeout kills a
@@ -517,7 +519,10 @@ class GenieXBenchQDCJobs(QDCJobs):
                 )
             )
         else:
-            print("Warning: no geniex-bench results found in logs.")
+            print(
+                "Warning: no geniex-bench results (schema_version >= "
+                f"{_MIN_RESULT_SCHEMA_VERSION}) found in logs."
+            )
 
         return metrics
 
@@ -547,7 +552,12 @@ class GenieXBenchQDCJobs(QDCJobs):
             return None
         if not isinstance(cell, dict):
             return None
-        if str(cell.get("schema_version")) not in _SUPPORTED_BENCH_SCHEMAS:
+        # geniex-bench bumps schema_version for additive changes; the fields we read
+        # below are stable, and missing ones are rejected by the None checks.
+        try:
+            if int(cell.get("schema_version", 0)) < _MIN_RESULT_SCHEMA_VERSION:
+                return None
+        except (TypeError, ValueError):
             return None
         agg = cell.get("agg") or {}
         params = cell.get("params") or {}
