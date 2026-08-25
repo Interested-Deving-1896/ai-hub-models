@@ -13,6 +13,15 @@
 #
 set -e
 
+# Skip in CI (Breeze / GitHub Actions runners). The Breeze sandbox has its
+# own writable-path and permission enforcement; this project hook exists
+# to help interactive Claude Code, and Rule 4's /tmp/claude/ requirement
+# collides with the sandbox's flat /tmp/* allowlist. See tetracode #21004.
+if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    cat > /dev/null
+    exit 0
+fi
+
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 

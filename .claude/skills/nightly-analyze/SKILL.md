@@ -67,17 +67,16 @@ If a failing job has 0 JUnit failures, or summary.md does not name a
 specific failing test/error, you MUST fetch that job's raw log before
 proposing any root cause. Do not skip this and guess from commit history.
 
-For each failing job, use its `databaseId` from Step 1 and fetch the
-per-job log (this endpoint works while the parent workflow is still
-running — unlike `gh run view --log-failed <RUN_ID>`, which does not):
+For each failing job, use its `databaseId` from Step 1 and run the
+`fetch_job_log.py` helper — one Bash call per job, no pipes, no
+compound shell:
 
-    gh api "repos/$REPO/actions/jobs/<JOB_ID>/logs" > /tmp/breeze-<JOB_ID>.log
+    python3 scripts/breeze_nightly/fetch_job_log.py <JOB_ID> --tail 50
 
-Then extract error markers into a hits file and Read a ~50-line window
-around the deepest Traceback in the raw log:
-
-    grep -nE "Traceback|ImportError|ModuleNotFoundError|FileNotFoundError|##\[error\]|FAILED|Error:|failed\." \
-      /tmp/breeze-<JOB_ID>.log > /tmp/breeze-<JOB_ID>-hits.txt
+The helper writes the raw log to `/tmp/breeze-<JOB_ID>.log`, all matches
+to `/tmp/breeze-<JOB_ID>-hits.txt`, and prints the last 50 filtered
+hits to stdout so you can consume them directly. Only Read the raw log
+file when you need more context around a specific hit.
 
 The log names the failing model, the missing binary/module, and the
 exact call site. That is your ground truth. Only after you have a
