@@ -208,10 +208,9 @@ jobs:
         Step 4 (emit classified JSON as base64 for downstream post-to-slack):
           The reusable agent workflow does NOT pass repo secrets through to
           user shell steps, so a separate `post-to-slack` job recovers the
-          file from this job's log. Print the file with markers it can grep
-          for and base64-decode (ONE Bash call, not three):
+          file from this job's log via known markers. Run this ONE Bash call:
 
-          { echo "===DRAFTS_B64_BEGIN==="; base64 < /tmp/cqa/drafts.json; echo "===DRAFTS_B64_END==="; }
+          python3 scripts/breeze_customer_questions/emit_drafts_b64.py /tmp/cqa/drafts.json
 
           That's the entire post-step from your side. The downstream job
           handles channel routing + chat.postMessage.

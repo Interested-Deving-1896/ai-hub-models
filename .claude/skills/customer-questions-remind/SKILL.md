@@ -285,19 +285,15 @@ After writing, print one summary line:
 ## Step 4: Emit the JSON for the downstream post-to-slack job
 
 The reusable agent workflow does NOT propagate `SLACK_NOTIFIER_TOKEN` to
-your shell steps. The downstream `post-to-slack` job recovers the JSON from
-this log via known markers.
+your shell steps. The downstream `post-to-slack` job recovers the JSON
+from this log via known markers.
 
-**Run this as ONE single Bash tool call — do not split into three.** Three
-separate `echo` / `base64` / `echo` calls land in three separate stdout
-fields and recovery fails.
+Run this as ONE Bash call (the Breeze allowlist permits `python3` but
+not `echo` / `base64` / compound shell — the helper wraps both):
 
 ```bash
-{ echo "===DRAFTS_B64_BEGIN==="; base64 < "$DRAFTS_PATH"; echo "===DRAFTS_B64_END==="; }
+python3 scripts/breeze_customer_questions/emit_drafts_b64.py "$DRAFTS_PATH"
 ```
-
-(One Bash call, three commands grouped with `{ ...; }` so they share
-stdout.)
 
 ## Step 5: Done
 
