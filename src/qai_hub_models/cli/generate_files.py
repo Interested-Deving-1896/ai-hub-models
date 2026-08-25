@@ -30,10 +30,6 @@ from jinja2 import Environment, FileSystemLoader
 
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.scripts.generate_model_readme import (
-    _has_machine_gated_entries,
-    get_shared_template_args,
-)
 from qai_hub_models.utils.asset_loaders import UNPUBLISHED_MODEL_WARNING
 from qai_hub_models.utils.export.context import resolve_recipe_dir
 from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
@@ -88,6 +84,13 @@ def _write_readme(folder: Path, manifest: QAIHMModelManifest) -> Path:
     warning banner. In-tree recipes get the existing catalog-flavored
     README.
     """
+    # The scripts package (and its templates) is not available in release
+    # builds, so import here to avoid failures: generate-files is dev-only.
+    from qai_hub_models.scripts.generate_model_readme import (
+        _has_machine_gated_entries,
+        get_shared_template_args,
+    )
+
     if manifest.headline is None:
         raise ValueError(
             f"{folder}/manifest.yaml is missing required field for README "
