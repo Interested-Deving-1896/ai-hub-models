@@ -1,0 +1,37 @@
+--- a/models/yolo.py
++++ b/models/yolo.py
+@@ -26,7 +26,7 @@
+
+ class Detect(nn.Module):
+     stride = None  # strides computed during build
+-    export_cat = False  # onnx export cat output
++    export_cat = True  # onnx export cat output
+
+     def __init__(self, nc=80, anchors=(), ch=()):  # detection layer
+         super(Detect, self).__init__()
+
+--- a/models/experimental.py
++++ b/models/experimental.py
+@@ -4,6 +4,12 @@
+ import torch
+ import torch.nn as nn
+
++import os
++from qai_hub_models.utils.asset_loaders import repo_in_sys_path
++
++_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++
++
+ from models.common import Conv, DWConv
+ from utils.google_utils import attempt_download
+
+@@ -115,7 +121,8 @@
+     model = Ensemble()
+     for w in weights if isinstance(weights, list) else [weights]:
+         attempt_download(w)
+-        model.append(torch.load(w, map_location=map_location)['model'].float().fuse().eval())  # load FP32 model
++        with repo_in_sys_path(_REPO_ROOT):
++            model.append(torch.load(w, map_location=map_location, weights_only=False)['model'].float().fuse().eval())  # load FP32 model
+
+     # Compatibility updates
+     for m in model.modules():

@@ -1,0 +1,52 @@
+name: YoloV5-Face
+id: yolov5_face
+status: pending
+headline: Real-time face detection with 5-point facial landmark estimation on mobile and edge devices.
+domain: Computer Vision
+description: YoloV5-Face-Nano is a lightweight single-class face detector based on the YoloV5 backbone (StemBlock + ShuffleV2Block). Each detected face is accompanied by 5 facial landmark predictions (left eye, right eye, nose, left mouth corner, right mouth corner). Trained on the WiderFace dataset.
+use_case: Object Detection
+tags:
+- real-time
+applicable_scenarios:
+- Camera
+- Face Authentication
+- Augmented Reality
+related_models:
+- mediapipe_face
+- face_det_lite
+- hrnet_face
+form_factors:
+- Phone
+- Tablet
+- IoT
+- XR
+has_static_banner: true
+has_animated_banner: false
+restrict_model_sharing: true
+dataset: []
+technical_details:
+  Model checkpoint: yolov5n-face.pt
+  Input resolution: 640x640
+  Number of parameters: 1.87M
+  Model size (float): 7.21 MB
+  Model size (w8a16): 3.68 MB
+license_type: gpl-3.0
+research_paper: https://arxiv.org/abs/2105.12931
+research_paper_title: 'YOLO5Face: Why Reinventing a Face Detector'
+source_repo: https://github.com/deepcam-cn/yolov5-face
+license: https://github.com/deepcam-cn/yolov5-face/blob/master/LICENSE
+numerics_benchmark:
+  dataset_name: widerface
+  metric_name: Mean Average Precision
+  value: 91.8
+  unit: mAP
+  source: https://github.com/deepcam-cn/yolov5-face
+external_repos:
+  yolov5_face:
+    repo_url: https://github.com/deepcam-cn/yolov5-face
+    commit_sha: 152c688d551aefb973b7b589fb0691c93dab3564
+    patches_filename: yolov5_face_patches.diff
+supported_precisions:
+- float
+- w8a16
+has_on_target_demo: true

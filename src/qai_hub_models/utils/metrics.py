@@ -140,6 +140,16 @@ MEAN_AVERAGE_PRECISION_IOU_5_95 = _register_metric(
     )
 )
 
+MEAN_AVERAGE_PRECISION_IOU_50 = _register_metric(
+    MetricMetadata(
+        name="Mean Average Precision",
+        unit="mAP@0.50",
+        description="Mean Average Precision at IoU threshold 0.50.",
+        range=(0.0, 100.0),
+        float_vs_device_threshold=10.0,
+    )
+)
+
 MEAN_IOU = _register_metric(
     MetricMetadata(
         name="Mean Intersection Over Union",
