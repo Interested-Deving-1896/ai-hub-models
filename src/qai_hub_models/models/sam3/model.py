@@ -34,10 +34,7 @@ from qai_hub_models.models.sam3.model_patches import (
     patch_decoder_rpb_device,
 )
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
-from qai_hub_models.utils.base_model import (
-    BaseModel,
-    SerializationSettings,
-)
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.export.result import ComponentGroup
 from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, TensorSpec
 from qai_hub_models.utils.window_partitioning import (
@@ -138,11 +135,7 @@ class SAM3Head(BaseModel):
         dot_prod_scoring: DotProductScoring,
         vision_pos_enc_2: torch.Tensor,
     ) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(
-                use_pt2=False, check_trace=False
-            )
-        )
+        super().__init__()
         self.language_model = language_model
         self.transformer = transformer
         self.segmentation_head = segmentation_head
@@ -153,6 +146,10 @@ class SAM3Head(BaseModel):
         self._mask_h, self._mask_w = self._fpn_h * 4, self._fpn_w * 4
         self._d_model = int(d_model)
         self._seq_len = int(language_model.context_length)
+
+        # Give the decoder the static feat size; reading it off the traced
+        # spatial_shapes tensor (int(.item())) breaks torch.export.
+        self.transformer.decoder._rpb_feat_size = (self._fpn_h, self._fpn_w)
 
         # vision_pos_enc_2 is deterministic from (d_model, H, W) — bake
         # the flattened form the encoder/decoder both consume as a

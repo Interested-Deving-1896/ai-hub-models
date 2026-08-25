@@ -1,4 +1,5 @@
 # Replaces torch.cartesian_prod with meshgrid and removes einsum for export compatibility.
+# Also replaces data-dependent int(positions.max()) with the static n_tokens bound so torch.export succeeds.
 #
 diff --git a/src/depth_anything_3/cfg.py b/src/depth_anything_3/cfg.py
 index 4607ff8..7c5c34b 100644
@@ -14,7 +15,7 @@ index 4607ff8..7c5c34b 100644
  
  
 diff --git a/src/depth_anything_3/model/dinov2/layers/rope.py b/src/depth_anything_3/model/dinov2/layers/rope.py
-index f75ba37..3d25978 100644
+index f75ba37..0bb027f 100644
 --- a/src/depth_anything_3/model/dinov2/layers/rope.py
 +++ b/src/depth_anything_3/model/dinov2/layers/rope.py
 @@ -53,7 +53,7 @@ class PositionGetter:
@@ -26,6 +27,17 @@ index f75ba37..3d25978 100644
              self.position_cache[height, width] = positions
  
          cached_positions = self.position_cache[height, width]
+@@ -180,7 +180,9 @@ class RotaryPositionEmbedding2D(nn.Module):
+         feature_dim = tokens.size(-1) // 2
+ 
+         # Get frequency components
+-        max_position = int(positions.max()) + 1
++        # n_tokens (H*W) upper-bounds the max grid index, giving a static
++        # frequency-table size instead of data-dependent int(positions.max()).
++        max_position = positions.shape[1]
+         cos_comp, sin_comp = self._compute_frequency_components(
+             feature_dim, max_position, tokens.device, tokens.dtype
+         )
 diff --git a/src/depth_anything_3/utils/geometry.py b/src/depth_anything_3/utils/geometry.py
 index 41a4219..ac9dbec 100644
 --- a/src/depth_anything_3/utils/geometry.py

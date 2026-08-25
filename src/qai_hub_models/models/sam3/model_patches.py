@@ -729,10 +729,13 @@ def patch_decoder_last_layer_only(decoder: TransformerDecoder) -> None:
 
             if self.boxRPB != "none" and reference_boxes is not None:
                 assert spatial_shapes.shape[0] == 1
-                memory_mask = self._get_rpb_matrix(
-                    reference_boxes,
-                    (spatial_shapes[0, 0], spatial_shapes[0, 1]),
+                # Prefer the static feat size stashed by SAM3Head; falling
+                # back to the traced tensor scalars only if it's unset.
+                rpb_feat_size = getattr(self, "_rpb_feat_size", None) or (
+                    spatial_shapes[0, 0],
+                    spatial_shapes[0, 1],
                 )
+                memory_mask = self._get_rpb_matrix(reference_boxes, rpb_feat_size)
                 memory_mask = memory_mask.flatten(0, 1)
 
             output, presence_out = layer(

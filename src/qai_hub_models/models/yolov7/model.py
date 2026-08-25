@@ -19,7 +19,6 @@ from qai_hub_models.models._shared.yolo.utils import detect_postprocess_split_in
 from qai_hub_models.models.yolov7.external_repos.yolov7.models.experimental import (
     attempt_load,
 )
-from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.input_spec import InputSpec, OutputSpec
 from qai_hub_models.utils.set_env import set_temp_env
 
@@ -38,9 +37,7 @@ class YoloV7(Yolo):
         include_postprocessing: bool = True,
         split_output: bool = False,
     ) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.yolov7_feature_extractor = yolov7_feature_extractor
         self.yolov7_detector = yolov7_detector
         self.include_postprocessing = include_postprocessing
@@ -186,7 +183,7 @@ class _YoloV7Detector(torch.nn.Module):  # YoloV7 Detection
         input_shape: tuple[int, int],
     ) -> None:
         super().__init__()
-        self.stride = stride
+        self.strides = [int(s) for s in stride]
         self.na = num_anchors
         self.no = m_out_channel // self.na  # number of outputs per anchor
         self.nc = self.no - 5  # number of classes
@@ -248,7 +245,7 @@ class _YoloV7Detector(torch.nn.Module):  # YoloV7 Detection
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         x = x.sigmoid()
         # bs, _, ny, nx = x.shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
-        stride = int(self.stride[i])
+        stride = self.strides[i]
         nx, ny = self.h // stride, self.w // stride
         x = x.reshape(-1, self.na, self.no, nx, ny).permute(0, 1, 3, 4, 2).contiguous()
         # TODO(13933) Revert once QNN issues with ReduceMax are fixed

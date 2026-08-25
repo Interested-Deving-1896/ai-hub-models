@@ -2,6 +2,24 @@
 # np.linspace produces float64 by default; passing dtype=np.float32 keeps
 # the index constants as float32 so the entire graph stays on float32 and
 # QNN can dispatch all ops to the NPU.
+#
+# Also swap `for i in torch.arange(self.nstack)` for `range(...)` in
+# EyeNet.forward: torch.arange yields a traced tensor index, so indexing the
+# hgs/features/outs ModuleLists with it breaks torch.export
+# (GuardOnDataDependentSymNode). nstack is a static Python int.
+diff --git a/models/eyenet.py b/models/eyenet.py
+index 5a528a9..203a371 100644
+--- a/models/eyenet.py
++++ b/models/eyenet.py
+@@ -76,7 +76,7 @@ class EyeNet(nn.Module):
+         gaze_x = gaze_x.flatten(start_dim=1)
+ 
+         combined_hm_preds = []
+-        for i in torch.arange(self.nstack):
++        for i in range(self.nstack):
+             hg = self.hgs[i](x)
+             feature = self.features[i](hg)
+             preds = self.outs[i](feature)
 diff --git a/util/softargmax.py b/util/softargmax.py
 index 222f8f7..f596ba5 100644
 --- a/util/softargmax.py

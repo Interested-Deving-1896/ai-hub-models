@@ -4,7 +4,9 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 import torch
 from qai_hub.client import Device
@@ -14,6 +16,7 @@ from qai_hub_models import (
     SampleInputsType,
     TargetRuntime,
 )
+from qai_hub_models.datasets.coco import Coco180Dataset
 from qai_hub_models.models._shared.yolo.model import (
     Yolo,
 )
@@ -25,7 +28,7 @@ from qai_hub_models.utils.asset_loaders import (
     load_image,
     load_torch,
 )
-from qai_hub_models.utils.base_model import SerializationSettings
+from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
     normalize_image_torchvision,
@@ -59,10 +62,7 @@ class Resnet34SSD(Yolo):
         include_postprocessing: bool = True,
         split_output: bool = False,
     ) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
-        self.model = model
+        super().__init__(model=model)
         self.include_postprocessing = include_postprocessing
         self.split_output = split_output
 
@@ -125,21 +125,40 @@ class Resnet34SSD(Yolo):
             labels
                 Shape is [batch, num_preds] where each value is an integer class ID in the range [0, 80].
         """
-        boxes, labels, scores = self.model(normalize_image_torchvision(image))
+        # NMS is data-dependent (export-hostile), so it stays out of the graph:
+        # the App / DetectionEvaluator run batched_nms on these raw candidates.
+        ssd = cast(SSD_R34, self.model)
+        layers = ssd.model(normalize_image_torchvision(image))
+        x = layers[-1]
+        additional_results = []
+        for block in ssd.additional_blocks:
+            x = block(x)
+            additional_results.append(x)
+        src = [*layers, *additional_results]
+        locs, confs, _ = ssd.bbox_view(src, ssd.loc, ssd.conf)
 
-        # Shift COCO labels (1-80) down by 1 because SSD uses 81 classes where:
-        #   - class 0 = background
-        #   - classes 180 correspond to COCO classes
-        # COCO annotations do not include a background class, so we subtract 1 to align them.
-        labels = [l - 1 for l in labels]
-        # Handle both tensor and tuple cases
+        # Decode box regressions against default boxes (scale_back_batch),
+        # kept in-graph because it is fixed-shape.
+        enc = ssd.encoder
+        dboxes = enc.dboxes_xywh.to(locs.dtype)
+        locs = locs.permute(0, 2, 1)
+        confs = confs.permute(0, 2, 1)
+        xy = enc.scale_xy * locs[..., :2] * dboxes[..., 2:] + dboxes[..., :2]
+        wh = (enc.scale_wh * locs[..., 2:]).exp() * dboxes[..., 2:]
+        half_wh = 0.5 * wh
+        ltrb = torch.cat([xy - half_wh, xy + half_wh], dim=-1)
+
+        # Scale [0, 1] boxes to absolute pixel coordinates.
         img_h, img_w = image.shape[2], image.shape[3]
-        for box in boxes:
-            box[:, 0] *= img_w  # x1
-            box[:, 2] *= img_w  # x2
-            box[:, 1] *= img_h  # y1
-            box[:, 3] *= img_h  # y2
-        return boxes[0].unsqueeze(0), scores[0].unsqueeze(0), labels[0].unsqueeze(0)
+        scale = torch.tensor(
+            [img_w, img_h, img_w, img_h], dtype=ltrb.dtype, device=ltrb.device
+        )
+        boxes = ltrb * scale
+
+        # Drop background (class 0); class_idx is then already COCO-aligned (0-79).
+        class_probs = confs.softmax(dim=-1)[..., 1:]
+        scores, class_idx = class_probs.max(dim=-1)
+        return boxes, scores, class_idx
 
     def _sample_inputs_impl(
         self, input_spec: InputSpec | None = None
@@ -197,6 +216,14 @@ class Resnet34SSD(Yolo):
             "scores": TensorSpec(io_type=IoType.TENSOR),
             "labels": TensorSpec(io_type=IoType.TENSOR),
         }
+
+    @classmethod
+    def get_eval_dataset_classes(cls) -> Sequence[type[BaseDataset]]:
+        # 180 samples/job keeps each inference job's dataset under the 2GB cap.
+        return [Coco180Dataset]
+
+    def get_calibration_dataset_cls(self) -> type[BaseDataset]:
+        return Coco180Dataset
 
     def get_hub_compile_options(
         self,

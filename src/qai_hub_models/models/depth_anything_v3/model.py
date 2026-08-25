@@ -19,7 +19,6 @@ from qai_hub_models.models.depth_anything_v3.external_repos.depth_anything_3.src
     MODEL_REGISTRY,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
-from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 from qai_hub_models.utils.input_spec import (
     ColorFormat,
@@ -43,10 +42,7 @@ class DepthAnythingV3(DepthEstimationModel):
     """Exportable DepthAnythingV3 Depth Estimation, end-to-end."""
 
     def __init__(self, model: torch.nn.Module | None = None) -> None:
-        super().__init__(
-            model=model,
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__(model=model)
 
     @classmethod
     def from_pretrained(cls, ckpt: str | None = None) -> Self:

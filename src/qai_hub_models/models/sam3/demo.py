@@ -23,7 +23,6 @@ from qai_hub_models.utils.args import (
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.display import display_or_save_image
-from qai_hub_models.utils.evaluate.helpers import EvalMode
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
     MODEL_ID, MODEL_ASSET_VERSION, "input_image.jpg"
@@ -86,22 +85,12 @@ def main(is_test: bool = False) -> None:
     text_prompts = [prompt.strip() for prompt in args.text_prompts.split(",")]
     assert len(text_prompts) >= 1, "--text-prompts must contain at least one prompt"
 
-    # Load model on specified device (cpu or cuda).
-    wrapper = SAM3.from_pretrained(model_device=args.model_device)
+    sam3, (sam3_vision_backbone, sam3_head) = demo_model_components_from_cli_args(
+        SAM3, MODEL_ID, args
+    )
 
-    if args.eval_mode == EvalMode.ON_DEVICE:
-        (
-            sam3_vision_backbone,
-            sam3_head,
-        ) = demo_model_components_from_cli_args(SAM3, MODEL_ID, args)
-    else:
-        sam3_vision_backbone = wrapper.vision_backbone  # type: ignore[assignment]
-        sam3_head = wrapper.head  # type: ignore[assignment]
-
-    image_height, image_width = wrapper.vision_backbone.get_input_spec()["image"][0][
-        -2:
-    ]
-    head: Any = wrapper.head
+    image_height, image_width = sam3.vision_backbone.get_input_spec()["image"][0][-2:]
+    head: Any = sam3.head
     tokenizer = head.language_model.tokenizer
     context_length = int(head.language_model.context_length)
     app = SAM3App(
