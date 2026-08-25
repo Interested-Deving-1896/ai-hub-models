@@ -2,7 +2,7 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-"""Tests for parse_runtime_version.parse and its CLI."""
+"""Tests for parse_options.parse and its CLI."""
 
 from __future__ import annotations
 
@@ -14,43 +14,48 @@ import pytest
 
 _CI_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_CI_DIR))
-from parse_runtime_version import parse  # noqa: E402
+from parse_options import parse  # noqa: E402
 
-_SCRIPT = _CI_DIR / "parse_runtime_version.py"
+_SCRIPT = _CI_DIR / "parse_options.py"
 
 
 @pytest.mark.parametrize(
-    ("raw", "want_qairt", "want_geniex"),
+    ("raw", "want"),
     [
-        ("2.45,geniex_version=0.3.7", "2.45", "0.3.7"),
-        ("qairt_version=2.45,geniex_version=0.3.7", "2.45", "0.3.7"),
-        ("2.45", "2.45", ""),
-        ("qaihm_default", "qaihm_default", ""),
-        ("", "qaihm_default", ""),
-        ("geniex_version=0.3.7", "qaihm_default", "0.3.7"),
-        ("  2.45 , geniex_version = 0.3.7 ", "2.45", "0.3.7"),
-        # Bare value at non-zero index (stray leading comma) still resolves.
-        (",2.45,geniex_version=0.3.7", "2.45", "0.3.7"),
-        ("geniex_version=0.3.7,2.45", "2.45", "0.3.7"),
-        # Reverse key order still works.
-        ("geniex_version=0.3.7,qairt_version=2.45", "2.45", "0.3.7"),
+        ("", {}),
+        ("qairt_version=2.45", {"qairt_version": "2.45"}),
+        (
+            "qairt_version=2.45,geniex_version=0.3.7",
+            {"qairt_version": "2.45", "geniex_version": "0.3.7"},
+        ),
+        ("geniex_version=0.3.7", {"geniex_version": "0.3.7"}),
+        # Order is irrelevant; whitespace and stray commas are tolerated.
+        (
+            "  geniex_version = 0.3.7 , , qairt_version = 2.45 ",
+            {"qairt_version": "2.45", "geniex_version": "0.3.7"},
+        ),
+        # An explicitly empty qairt_version falls back to the default sentinel.
+        ("qairt_version=", {}),
     ],
 )
-def test_parse_ok(raw: str, want_qairt: str, want_geniex: str) -> None:
-    assert parse(raw) == (want_qairt, want_geniex)
+def test_parse_ok(raw: str, want: dict[str, str]) -> None:
+    expected = {"qairt_version": "qaihm_default", "geniex_version": ""}
+    expected.update(want)
+    assert parse(raw) == expected
 
 
 @pytest.mark.parametrize(
     ("raw", "expected_msg"),
     [
-        ("2.45,unknown_key=x", "Unknown override key"),
-        ("2.45,2.50", "Only one bare"),
-        ("qairt_version=2.45,qairt_version=2.50", "Duplicate override key"),
-        ("2.45,qairt_version=2.50", "Duplicate override key"),
-        ("geniex_version=0.3.7,geniex_version=0.3.8", "Duplicate override key"),
+        # Bare (positional) values are not part of the grammar.
+        ("2.45", "bare value"),
+        ("qaihm_default", "bare value"),
+        ("2.45,geniex_version=0.3.7", "bare value"),
+        ("unknown_key=x", "Unknown option key"),
+        ("qairt_version=2.45,qairt_version=2.50", "Duplicate option key"),
+        ("geniex_version=0.3.7,geniex_version=0.3.8", "Duplicate option key"),
         # Bare SemVer required; leading v is rejected.
         ("geniex_version=v0.3.7", "must not start with 'v'"),
-        ("2.45,geniex_version=v0.3.7", "must not start with 'v'"),
     ],
 )
 def test_parse_errors(raw: str, expected_msg: str) -> None:
@@ -65,7 +70,7 @@ def test_cli_writes_github_output(tmp_path: Path) -> None:
             sys.executable,
             str(_SCRIPT),
             "--raw",
-            "2.45,geniex_version=0.3.7",
+            "qairt_version=2.45,geniex_version=0.3.7",
             "--github-output",
             str(out),
         ],
@@ -79,6 +84,20 @@ def test_cli_writes_github_output(tmp_path: Path) -> None:
     assert "geniex_version=0.3.7\n" in text
 
 
+def test_cli_writes_defaults_for_empty_input(tmp_path: Path) -> None:
+    out = tmp_path / "gh_output"
+    res = subprocess.run(
+        [sys.executable, str(_SCRIPT), "--raw", "", "--github-output", str(out)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0, res.stderr
+    text = out.read_text()
+    assert "qairt_version=qaihm_default\n" in text
+    assert "geniex_version=\n" in text
+
+
 def test_cli_emits_env_when_requested(tmp_path: Path) -> None:
     out = tmp_path / "gh_output"
     env_file = tmp_path / "gh_env"
@@ -87,7 +106,7 @@ def test_cli_emits_env_when_requested(tmp_path: Path) -> None:
             sys.executable,
             str(_SCRIPT),
             "--raw",
-            "2.45,geniex_version=0.3.7",
+            "qairt_version=2.45,geniex_version=0.3.7",
             "--github-output",
             str(out),
             "--github-env",
@@ -111,7 +130,7 @@ def test_cli_skips_env_by_default(tmp_path: Path) -> None:
             sys.executable,
             str(_SCRIPT),
             "--raw",
-            "2.45",
+            "qairt_version=2.45",
             "--github-env",
             str(env_file),
         ],
@@ -125,13 +144,13 @@ def test_cli_skips_env_by_default(tmp_path: Path) -> None:
 
 def test_cli_reports_error_and_exits_nonzero() -> None:
     res = subprocess.run(
-        [sys.executable, str(_SCRIPT), "--raw", "2.45,unknown_key=x"],
+        [sys.executable, str(_SCRIPT), "--raw", "unknown_key=x"],
         check=False,
         capture_output=True,
         text=True,
     )
     assert res.returncode == 1
-    assert "Unknown override key" in res.stderr
+    assert "Unknown option key" in res.stderr
 
 
 def test_cli_rejects_newline_injection(tmp_path: Path) -> None:

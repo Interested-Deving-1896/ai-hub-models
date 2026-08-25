@@ -41,9 +41,9 @@ on:
       test_precisions:
         type: string
         default: default
-      runtime_versions:
+      options:
         type: string
-        default: qaihm_default
+        default: ''
       test_scope:
         type: string
         default: perf
@@ -112,7 +112,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      runtime_versions: ${{ inputs.runtime_versions }}
+      options: ${{ inputs.options }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       ignore_known_failures: ${{ inputs.ignore_known_failures }}

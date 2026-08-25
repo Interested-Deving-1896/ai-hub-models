@@ -28,10 +28,10 @@ on:
         default: default
         type: string
 
-      runtime_versions:
-        description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). See scripts/ci/parse_runtime_version.py.'
+      options:
+        description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). See scripts/ci/parse_options.py.'
         type: string
-        default: qaihm_default
+        default: ''
 
       test_scope:
         # Options: unit, unit_and_compile, compile_only, perf, accuracy, perf_and_accuracy
@@ -157,7 +157,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      runtime_versions: ${{ inputs.runtime_versions }}
+      options: ${{ inputs.options }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       ignore_known_failures: ${{ inputs.ignore_known_failures }}
@@ -192,7 +192,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      runtime_versions: ${{ inputs.runtime_versions }}
+      options: ${{ inputs.options }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       ignore_known_failures: ${{ inputs.ignore_known_failures }}

@@ -49,10 +49,10 @@ on:
           type: string
           default: perf_and_accuracy
 
-        runtime_versions:
-          description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). Only geniex_version is consumed here; see scripts/ci/parse_runtime_version.py.'
+        options:
+          description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). Only geniex_version is consumed here; see scripts/ci/parse_options.py.'
           type: string
-          default: qaihm_default
+          default: ''
 
 env:
   PYTHONUNBUFFERED: 1
@@ -71,11 +71,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Parse runtime_versions
+      - name: Parse options
         id: parse_versions
         env:
-          RAW: ${{ inputs.runtime_versions }}
-        run: python3 scripts/ci/parse_runtime_version.py
+          RAW: ${{ inputs.options }}
+        run: python3 scripts/ci/parse_options.py
 
       - name: CI Setup
         uses: ./.github/actions/ci-setup

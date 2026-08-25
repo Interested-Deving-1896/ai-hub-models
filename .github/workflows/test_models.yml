@@ -19,10 +19,10 @@ on:
         default: default
         type: string
 
-      runtime_versions:
-        description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). Only qairt_version is consumed here; see scripts/ci/parse_runtime_version.py.'
+      options:
+        description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). geniex_version is unused here; see scripts/ci/parse_options.py.'
         type: string
-        default: qaihm_default
+        default: ''
 
       models:
         type: string
@@ -175,10 +175,10 @@ jobs:
           git fetch origin ${{ inputs.sync_assets_branch }}
           git checkout origin/${{ inputs.sync_assets_branch }} -- src/qai_hub_models/scorecard/static/models
 
-      - name: Parse runtime_versions
+      - name: Parse options
         env:
-          RAW: ${{ inputs.runtime_versions }}
-        run: python3 scripts/ci/parse_runtime_version.py --emit-env
+          RAW: ${{ inputs.options }}
+        run: python3 scripts/ci/parse_options.py --emit-env
 
       - name: CI Setup
         id: ci_setup

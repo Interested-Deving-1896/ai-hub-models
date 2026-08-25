@@ -31,11 +31,11 @@ on:
           type: string
           default: default
 
-        runtime_versions:
-          description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7"). See scripts/ci/parse_runtime_version.py for grammar.'
+        options:
+          description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). See scripts/ci/parse_options.py for the full key list.'
           required: false
           type: string
-          default: qaihm_default
+          default: ''
 
         delay:
           description: Result Collection Time Delay
@@ -91,10 +91,10 @@ on:
           default: default
           type: string
 
-        runtime_versions:
-          description: 'QAIRT version + optional comma-separated overrides (e.g. "2.45,geniex_version=0.3.7").'
+        options:
+          description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). See scripts/ci/parse_options.py.'
           type: string
-          default: qaihm_default
+          default: ''
 
         models:
           type: string
@@ -180,7 +180,7 @@ jobs:
       test_devices: ${{ inputs.test_devices }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_precisions: ${{ inputs.test_precisions }}
-      runtime_versions: ${{ inputs.runtime_versions }}
+      options: ${{ inputs.options }}
       test_scope: ${{ inputs.test_scope }}
       ignore_job_cache: ${{ inputs.ignore_job_cache }}
       sync_assets_branch: ${{ needs.sync_assets.outputs.branch_name }}
@@ -219,7 +219,7 @@ jobs:
       test_precisions: ${{ inputs.test_precisions }}
       test_runtimes: ${{ inputs.test_runtimes }}
       test_scope: ${{ inputs.test_scope }}
-      runtime_versions: ${{ inputs.runtime_versions }}
+      options: ${{ inputs.options }}
 
   collect_results_split:
     name: Test Export Scripts, Upload Zip Files & Compute Accuracy
