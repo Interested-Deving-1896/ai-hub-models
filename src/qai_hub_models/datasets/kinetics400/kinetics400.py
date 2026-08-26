@@ -253,20 +253,18 @@ class Kinetics400Dataset(BaseDataset):
     ) -> DataLoader:
         """Return a DataLoader over whole videos (all views kept together).
 
-        ``num_samples`` and ``samples_per_job`` count **views** and must be
-        multiples of ``num_views`` so a video's views are never split across
-        jobs. Videos are strided evenly across the split; ``num_samples=-1``
+        ``num_samples`` and ``samples_per_job`` count **views**. Values that
+        are not already a multiple of ``num_views`` are rounded up so a
+        video's views are never split across jobs. ``num_samples=-1``
         (full eval) maps to all videos.
         """
-        views_per_job = samples_per_job or self.default_samples_per_job()
-        assert views_per_job % self.num_views == 0, (
-            f"samples_per_job ({views_per_job}) must be a multiple of "
-            f"num_views ({self.num_views})."
-        )
-        assert num_samples == -1 or num_samples % self.num_views == 0, (
-            f"num_samples ({num_samples}) must be a multiple of "
-            f"num_views ({self.num_views})."
-        )
+
+        def _round_up(n: int) -> int:
+            return ((n + self.num_views - 1) // self.num_views) * self.num_views
+
+        views_per_job = _round_up(samples_per_job or self.default_samples_per_job())
+        if num_samples != -1:
+            num_samples = _round_up(num_samples)
         num_videos_wanted = min(max(1, num_samples // self.num_views), self.num_videos)
         stride = self.num_videos // num_videos_wanted
         selected: list[int] = []

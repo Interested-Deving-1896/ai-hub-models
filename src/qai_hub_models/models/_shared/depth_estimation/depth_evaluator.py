@@ -64,7 +64,7 @@ class DepthEvaluator(BaseEvaluator):
         self.out = []
 
     def get_accuracy_score(self) -> float:
-        return float(np.mean(self.out))
+        return float(np.mean([float(t) for t in self.out]))
 
     def formatted_accuracy(self) -> str:
         return f"{self.get_accuracy_score():.3f} δ1"

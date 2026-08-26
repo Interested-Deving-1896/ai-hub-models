@@ -86,7 +86,8 @@ class CLIPRetrievalEvaluator(BaseEvaluator):
         dist_matrix = text_encodings @ image_encodings.T
         dist_matrix_cpu = dist_matrix.cpu()
         k_max = max(self.k_vals)
-        _, inds = torch.topk(dist_matrix_cpu, k=k_max, dim=1, largest=True, sorted=True)
+        k_t2i = min(k_max, dist_matrix_cpu.size(1))
+        _, inds = torch.topk(dist_matrix_cpu, k=k_t2i, dim=1, largest=True, sorted=True)
 
         # For each text, map top-k column indices back to dataset image indices
         retrieved_image_indices = image_indices[inds]
@@ -99,8 +100,9 @@ class CLIPRetrievalEvaluator(BaseEvaluator):
 
         # image-to-text: dist[i] = similarity of i-th image vs all texts
         dist_matrix_T = dist_matrix_cpu.T
+        k_i2t = min(k_max, dist_matrix_T.size(1))
         _, inds_i2t = torch.topk(
-            dist_matrix_T, k=k_max, dim=1, largest=True, sorted=True
+            dist_matrix_T, k=k_i2t, dim=1, largest=True, sorted=True
         )
 
         i2t_recall = []
