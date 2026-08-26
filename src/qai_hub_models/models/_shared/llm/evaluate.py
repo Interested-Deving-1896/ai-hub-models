@@ -15,12 +15,12 @@ from transformers import AutoProcessor
 from qai_hub_models import Precision
 from qai_hub_models.datasets import instantiate_dataset
 from qai_hub_models.models._shared.llm.generator_factory import make_generator
-from qai_hub_models.models._shared.llm.grader.grace import (
+from qai_hub_models.models._shared.llm.grace_tasks import (
     GRACE_TASK_ALIAS,
-    GRACE_TASK_NAME,
     PROMPT_TASKS,
     resolve_task_name,
 )
+from qai_hub_models.models._shared.llm.grader.grace import GRACE_TASK_NAME
 from qai_hub_models.models._shared.llm.llm_evaluator import LLMEvaluator
 from qai_hub_models.models._shared.llm.model import (
     DEFAULT_CALIBRATION_SEQ_LEN,

@@ -13,11 +13,13 @@ import yaml
 from PIL import Image
 from transformers import PreTrainedTokenizerBase
 
-from qai_hub_models.models._shared.llm.grader.grace import (
+from qai_hub_models.models._shared.llm.grace_tasks import (
     GRACE_DOC_URL,
+    MULTIMODAL_TASK_NAME,
+)
+from qai_hub_models.models._shared.llm.grader.grace import (
     GRACE_PROMPTS_PATH,
     GRACE_TASK_NAME,
-    MULTIMODAL_TASK_NAME,
     load_eval_prompts,
     select_balanced,
 )

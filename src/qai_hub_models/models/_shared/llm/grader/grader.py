@@ -2,7 +2,11 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-"""Grade free-form LLM responses with a grader LLM on a 0-10 rubric."""
+"""Grade free-form LLM responses with a grader LLM on a 0-10 rubric.
+
+The rubric and summary templates below are load-bearing: editing a single word
+moves every score, so a change here needs a ``GRACE_VERSION`` bump.
+"""
 
 from __future__ import annotations
 
@@ -19,10 +23,6 @@ from transformers import (
     PreTrainedModel,
     PreTrainedTokenizerBase,
 )
-
-from qai_hub_models.utils.version_helpers import ensure_supported_version
-
-MIN_TRANSFORMERS_VERSION = "5.2"
 
 MAX_POINTS: int = 10
 
@@ -289,9 +289,7 @@ def resolve_device(device: str | None = None, allow_cpu: bool = False) -> str:
             f"torch.cuda.is_available()={torch.cuda.is_available()}).\n"
             "On a GPU host this usually means the installed torch wheel's CUDA "
             "version doesn't match the driver, so torch silently disables CUDA. "
-            "Check that the grader venv installed a driver-compatible build "
-            "(see InstallLLMGraderRequirementsTask). Pass --allow-cpu to grade "
-            "on CPU anyway."
+            "Pass allow_cpu=True to grade on CPU anyway."
         )
     return resolved
 
@@ -358,8 +356,8 @@ class ResponseGrader:
         allow_cpu: bool = False,
         max_rationale_tokens: int = DEFAULT_MAX_RATIONALE_TOKENS,
         max_summary_tokens: int = DEFAULT_MAX_SUMMARY_TOKENS,
+        device_map: str | None = None,
     ) -> None:
-        ensure_supported_version("transformers", min_version=MIN_TRANSFORMERS_VERSION)
         if "{response}" not in prompt_template:
             raise ValueError(
                 "Prompt template must contain the '{response}' placeholder."
@@ -371,7 +369,9 @@ class ResponseGrader:
         self.prompt_template = prompt_template
         self.max_new_tokens = max_rationale_tokens
         self.max_summary_tokens = max_summary_tokens
-        self.tokenizer, self.model = _load_model(model_id, device, dtype)
+        self.tokenizer, self.model = _load_model(
+            model_id, device, dtype, device_map=device_map
+        )
         self.rating_token_ids = _rating_token_ids(self.tokenizer)
 
     @torch.no_grad()
@@ -659,15 +659,15 @@ def _strip_leading_rating(text: str) -> str:
 
 
 def _load_model(
-    model_id: str, device: str, dtype: torch.dtype
+    model_id: str, device: str, dtype: torch.dtype, device_map: str | None = None
 ) -> tuple[PreTrainedTokenizerBase, PreTrainedModel]:
     print(f"Loading tokenizer: {model_id}")
     tokenizer = AutoTokenizer.from_pretrained(model_id)
-    print(f"Loading model: {model_id} (dtype={dtype}, device={device})")
+    print(f"Loading model: {model_id} (dtype={dtype}, device={device_map or device})")
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=dtype,
-        device_map=device,
+        device_map=device_map or device,
     )
     model.eval()
     return tokenizer, model

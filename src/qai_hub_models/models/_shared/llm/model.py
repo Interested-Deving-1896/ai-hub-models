@@ -94,7 +94,7 @@ from qai_hub_models.models._shared.llm.common import (
     LLMIOType,
     cleanup,
 )
-from qai_hub_models.models._shared.llm.grader.grace import PROMPT_TASKS
+from qai_hub_models.models._shared.llm.grace_tasks import PROMPT_TASKS
 from qai_hub_models.models._shared.llm.llm_helpers import (
     create_genie_config,
     save_htp_config_for_genie_bundle,

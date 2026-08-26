@@ -9,6 +9,9 @@ Grace is "Grading Response Accuracy Evaluation".
 ``grace<version>.jsonl`` holds one record per line::
 
     {"idx": 0, "category": "knowledge", "prompt": "What is gravity?"}
+
+Scores are comparable across runs only while ``grace2.jsonl`` stays
+byte-identical; edit it and bump ``GRACE_VERSION``.
 """
 
 from __future__ import annotations
@@ -19,30 +22,16 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import zip_longest
 
-# Grace ("Grading Response Accuracy Evaluation") is the graded free-form response
-# metric: this prompt set plus the grader rubric in grader.py. The version bumps
-# whenever either changes enough that scores stop being comparable.
+# Bumped whenever the prompt set or the grader rubric changes enough that scores
+# stop being comparable. Hosts surface it however they report versions.
 GRACE_VERSION = 2
-# Task/dataset name, and the label the score is reported under.
 GRACE_TASK_NAME = f"grace{GRACE_VERSION}"
-GRACE_METRIC_NAME = f"Grace{GRACE_VERSION}"
-# Convenience alias on the command line: always the latest version.
-GRACE_TASK_ALIAS = "grace"
-# Public documentation for the prompt set, the grader rubric, and how the score
-# is computed. Published alongside the score as the metric's dataset link.
-GRACE_DOC_URL = (
-    "https://github.com/qualcomm/ai-hub-models/blob/main/tutorials/llm/grace.md"
-)
+# No metric-name constant: the label a score is filed under is the host's call,
+# so build_summary takes it as an argument.
 
 GRACE_PROMPTS_PATH = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{GRACE_TASK_NAME}.jsonl")
 )
-
-# The image + question set, graded the same way.
-MULTIMODAL_TASK_NAME = "multimodal_prompts"
-# Tasks whose evaluator generates free-form responses and grades them, as
-# opposed to the forward-only metrics (wikitext, mmlu, ...).
-PROMPT_TASKS: frozenset[str] = frozenset({GRACE_TASK_NAME, MULTIMODAL_TASK_NAME})
 
 
 @dataclass(frozen=True)
@@ -75,11 +64,6 @@ def load_eval_prompts(path: str | os.PathLike | None = None) -> list[EvalPrompt]
             "order: idx is the join key for device responses and grader summaries."
         )
     return prompts
-
-
-def resolve_task_name(task: str) -> str:
-    """Map the version-less ``grace`` alias onto the current Grace task name."""
-    return GRACE_TASK_NAME if task == GRACE_TASK_ALIAS else task
 
 
 def load_default_eval_prompts() -> list[str]:

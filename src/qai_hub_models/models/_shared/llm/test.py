@@ -34,7 +34,7 @@ from qai_hub_models.models._shared.llm.common import (
     save_job,
 )
 from qai_hub_models.models._shared.llm.evaluate import evaluate
-from qai_hub_models.models._shared.llm.grader.grace import (
+from qai_hub_models.models._shared.llm.grace_tasks import (
     PROMPT_TASKS,
     resolve_task_name,
 )

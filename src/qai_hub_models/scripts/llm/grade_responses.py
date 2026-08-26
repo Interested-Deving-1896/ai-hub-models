@@ -34,60 +34,18 @@ from pathlib import Path
 
 import torch
 
-from qai_hub_models.models._shared.llm.grader.grace import (
-    GRACE_METRIC_NAME,
-    default_categories_by_idx,
-    default_categories_by_prompt,
-)
+from qai_hub_models.models._shared.llm.grace_tasks import GRACE_METRIC_NAME
 from qai_hub_models.models._shared.llm.grader.grader import (
     DEFAULT_PROMPT_TEMPLATE,
     MAX_POINTS,
-    GradeResult,
     ResponseGrader,
     resolve_device,
 )
-
-
-def _resolve_categories(items: list[dict]) -> list[str | None]:
-    """Category per item, backfilled for response files that record none.
-
-    Device runs write only ``{idx, prompt, output}``, so the category is looked
-    up in the built-in prompt set by prompt text, then by ``idx``. None only for
-    a prompt that is not in the built-in set at all.
-    """
-    by_prompt = default_categories_by_prompt()
-    by_idx = default_categories_by_idx()
-    return [
-        item.get("category")
-        or by_prompt.get(str(item.get("prompt", "")).strip())
-        or by_idx.get(item.get("idx", -1))
-        for item in items
-    ]
-
-
-def _category_scores(
-    categories: list[str | None], results: list[GradeResult]
-) -> dict[str, tuple[float, int, int]]:
-    """Per-category (score_pct, points, num_scored), in first-seen order.
-
-    Mirrors the overall score: an item the grader failed to rate scores 0 and
-    stays in its category's denominator.
-    """
-    points: dict[str, int] = {}
-    scored: dict[str, int] = {}
-    for category, result in zip(categories, results, strict=True):
-        if category is None:
-            continue
-        points[category] = points.get(category, 0) + result.points
-        scored[category] = scored.get(category, 0) + 1
-    return {
-        name: (
-            100.0 * points[name] / (MAX_POINTS * scored[name]),
-            points[name],
-            scored[name],
-        )
-        for name in points
-    }
+from qai_hub_models.models._shared.llm.grader.report import (
+    build_summary,
+    category_scores,
+    resolve_categories,
+)
 
 
 def main() -> None:
@@ -235,12 +193,12 @@ def main() -> None:
             print(f"  - idx={idx} ({points}/{MAX_POINTS}): {rationale}")
         print()
 
-    categories = _resolve_categories(items)
-    category_scores = _category_scores(categories, summary.results)
-    if category_scores:
+    categories = resolve_categories(items)
+    per_category = category_scores(categories, summary.results)
+    if per_category:
         print("By category:")
         for name, (pct, pts, num) in sorted(
-            category_scores.items(), key=lambda kv: kv[1][0]
+            per_category.items(), key=lambda kv: kv[1][0]
         ):
             print(f"  {name:15s} {pct:5.1f}%  ({pts}/{MAX_POINTS * num} pts, n={num})")
         print()
@@ -254,36 +212,13 @@ def main() -> None:
         print()
 
     if args.output_json:
-        out = {
-            "input_file": str(args.responses_json),
-            "metric": GRACE_METRIC_NAME,
-            "grader_model": args.model,
-            "num_items": len(items),
-            "score_pct": summary.score_pct,
-            "total_points": summary.total_points,
-            "max_points": summary.max_points,
-            "num_unparsed": summary.num_unparsed,
-            "num_forced": summary.num_forced,
-            "summary_items": summary.summary_items,
-            "category_scores": {
-                name: {"score_pct": pct, "points": pts, "num_scored": num}
-                for name, (pct, pts, num) in category_scores.items()
-            },
-            "items": [
-                {
-                    "idx": item["idx"],
-                    "category": category,
-                    "points": result.points,
-                    "skipped": result.skipped,
-                    "parsed": result.parsed,
-                    "forced": result.forced,
-                    "rationale": result.rationale,
-                }
-                for item, category, result in zip(
-                    items, categories, summary.results, strict=True
-                )
-            ],
-        }
+        out = build_summary(
+            items,
+            summary,
+            metric_name=GRACE_METRIC_NAME,
+            grader_model=args.model,
+            input_file=str(args.responses_json),
+        )
         Path(args.output_json).write_text(json.dumps(out, indent=2))
         print(f"Wrote grading summary to {args.output_json}")
 
