@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from sys import platform
@@ -309,6 +310,10 @@ class PyTestTask(RunCommandsWithVenvTask):
         ignore_no_tests_return_code: bool = False,
         include_pytest_cmd_in_status_message: bool = True,
         junit_xml_path: str | None = None,
+        # Classname to record on a synthetic junit entry when pytest
+        # itself failed without writing a testcase (e.g. conftest
+        # ImportError). Not needed if pytest wrote proper entries.
+        junit_classname: str = "",
         config_file: str | os.PathLike = os.path.join(
             REPO_ROOT, "src", "pyproject.toml"
         ),
@@ -353,6 +358,8 @@ class PyTestTask(RunCommandsWithVenvTask):
         command = f"{pytest} {default_options} {pytest_options} "
 
         self.include_pytest_cmd_in_status_message = include_pytest_cmd_in_status_message
+        self._pytest_junit_xml_path = junit_xml_path
+        self._pytest_junit_classname = junit_classname
         super().__init__(
             group_name,
             venv,
@@ -367,6 +374,44 @@ class PyTestTask(RunCommandsWithVenvTask):
         if not self.include_pytest_cmd_in_status_message and self.last_result is False:
             return f"{self.group_name} failed."
         return super().get_status_message()
+
+    def run(self) -> bool:
+        result = super().run()
+        if not result:
+            self._ensure_failure_recorded_in_junit()
+        return result
+
+    def _ensure_failure_recorded_in_junit(self) -> None:
+        """Write a synthetic failure entry when pytest didn't record one.
+
+        Pytest aborts at conftest ImportError before emitting a testcase, so
+        --junit-xml stays empty of failures. Downstream summary generators
+        skip empty testcases and drop the model from the failure notification.
+        """
+        if not self._pytest_junit_xml_path or not self._pytest_junit_classname:
+            return
+        # If pytest recorded any failure/error, our composite failure is
+        # already visible — don't add noise.
+        if os.path.exists(self._pytest_junit_xml_path):
+            try:
+                tree = ET.parse(self._pytest_junit_xml_path)
+                for tc in tree.getroot().iter("testcase"):
+                    if tc.find("failure") is not None or tc.find("error") is not None:
+                        return
+            except ET.ParseError:
+                pass
+        write_junit_testcase(
+            junit_xml_path=self._pytest_junit_xml_path,
+            testsuite="pytest",
+            name="pytest_collection",
+            classname=self._pytest_junit_classname,
+            status=TestStatus.ERROR,
+            message=(
+                "pytest failed without recording a testcase-level failure "
+                "(commonly a conftest ImportError). Check the workflow log "
+                f"under group '{self.group_name}' for the underlying error."
+            ),
+        )
 
 
 class CompositeTask(Task):

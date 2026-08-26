@@ -417,6 +417,7 @@ class PyTestModelTask(CompositeTask):
                                     ignore_no_tests_return_code=True,
                                     include_pytest_cmd_in_status_message=False,
                                     junit_xml_path=junit_xml_path,
+                                    junit_classname=f"qai_hub_models.models.{model_name}",
                                     prereqs=[setup_task] if setup_task else None,
                                 )
                             )
