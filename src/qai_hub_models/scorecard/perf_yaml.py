@@ -19,7 +19,11 @@ from qai_hub_models import Precision
 from qai_hub_models.configs.proto_helpers import precision_to_proto, runtime_to_proto
 from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.scorecard import ScorecardDevice, ScorecardProfilePath
-from qai_hub_models.scorecard.results.chipset_helpers import sorted_chipsets
+from qai_hub_models.scorecard.device import compute_peer_chipsets
+from qai_hub_models.scorecard.results.chipset_helpers import (
+    get_supported_devices,
+    sorted_chipsets,
+)
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
 from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT
 
@@ -214,6 +218,30 @@ class QAIHMModelPerf(BaseQAIHMConfig):
         }
         if new_chipsets:
             self.supported_chipsets = sorted_chipsets(existing_chipsets | new_chipsets)
+
+    def apply_compute_peer_chipsets(self) -> None:
+        """
+        Credit interchangeable compute chipsets (see ``compute_peer_chipsets``).
+
+        Additive only: devices already listed are kept, so QDC-only devices absent
+        from the Hub device query survive. The non-LLM scorecard writer gets this
+        from ``ScorecardDevice.extended_supported_chipsets``; the LLM pipeline needs
+        it applied separately, and must not pick up that method's mobile proxying.
+        """
+        existing_chipsets = set(self.supported_chipsets)
+        peers = {c for chip in existing_chipsets for c in compute_peer_chipsets(chip)}
+        if not (new_chipsets := peers - existing_chipsets):
+            return
+
+        self.supported_chipsets = sorted_chipsets(peers)
+        existing_names = {str(d) for d in self.supported_devices}
+        # Appended rather than re-sorted: supported_devices may hold similar devices
+        # that are absent from Hub, and sorting resolves each chipset through Hub.
+        self.supported_devices += [
+            d
+            for d in get_supported_devices(new_chipsets)
+            if str(d) not in existing_names
+        ]
 
     def for_each_entry(
         self,

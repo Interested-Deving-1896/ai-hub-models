@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import os
 import shutil
 from collections.abc import Callable
@@ -31,6 +32,7 @@ from qai_hub_models.configs.proto_helpers import (
     use_case_to_proto,
 )
 from qai_hub_models.scorecard import ScorecardDevice, ScorecardProfilePath
+from qai_hub_models.scorecard.device import compute_peer_chipsets
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import (
     DevicesAndChipsetsYaml,
     _load_similar_devices_raw,
@@ -139,6 +141,16 @@ def _build_release_assets_proto(
                 elif internal and asset.s3_key:
                     asset.download_url = (
                         f"s3://{QAIHM_PRIVATE_S3_BUCKET}/{asset.s3_key}"
+                    )
+
+        # Interchangeable compute chipsets share one uploaded artifact, so the peer
+        # entry must be copied after URLs are resolved -- regenerating a URL from the
+        # peer's own name would point at a key that was never uploaded.
+        for chipset in list(prec_details.chipset_assets):
+            for peer in compute_peer_chipsets(chipset) - {chipset}:
+                if peer not in prec_details.chipset_assets:
+                    prec_details.chipset_assets[peer] = copy.deepcopy(
+                        prec_details.chipset_assets[chipset]
                     )
 
     return release_assets.to_proto(aihm_version, model_id)

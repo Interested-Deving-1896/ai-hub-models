@@ -137,6 +137,7 @@ def apply_updates(updates: list[dict]) -> int:
         if perf.empty:
             continue
         perf.apply_similar_devices(similar_devices_mapping)
+        perf.apply_compute_peer_chipsets()
         perf.to_model_yaml(model_id)
 
     measured = {_scope_key(u) for u in metrics}

@@ -85,6 +85,23 @@ def get_chipset_workbench_variants(chipset: str) -> list[str]:
     return [chipset]
 
 
+COMPUTE_PEER_CHIPSETS = frozenset(
+    {"qualcomm-snapdragon-x-elite", "qualcomm-snapdragon-x-plus-8-core"}
+)
+
+
+def compute_peer_chipsets(chipset: str) -> set[str]:
+    """
+    Compute chipsets that are interchangeable with ``chipset``, including itself.
+
+    X Plus 8-Core is the same NPU as X Elite (htp 73, soc_model 60), but only two
+    units exist in the QDC pool, so we measure X Elite and credit both.
+    """
+    if get_canonical_chipset_name(chipset) in COMPUTE_PEER_CHIPSETS:
+        return set(COMPUTE_PEER_CHIPSETS)
+    return {chipset}
+
+
 _FRAMEWORK_ATTR_PREFIX = "framework"
 
 
@@ -567,13 +584,7 @@ class ScorecardDevice(HubDeviceAttributes):
                 # we don't run older devices in the scorecard.
                 return {self.chipset} | set(mobile_chips[idx + 1 :])
         if self.form_factor == FormFactor.COMPUTE:
-            # If either compute chip works, both work
-            compute_chips = {
-                "qualcomm-snapdragon-x-elite",
-                "qualcomm-snapdragon-x-plus-8-core",
-            }
-            if self.chipset in compute_chips:
-                return compute_chips
+            return compute_peer_chipsets(self.chipset)
         return {self.chipset}
 
 

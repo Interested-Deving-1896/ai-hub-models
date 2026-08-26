@@ -213,3 +213,32 @@ def test_exempt_model_keeps_all_assets(perf_dir: Path) -> None:
 
     assert _assets_with(exempt, ScorecardProfilePath.GENIE) == CHIPSETS
     assert _assets_with(exempt, ScorecardProfilePath.GENIEX_QAIRT) == CHIPSETS
+
+
+def _supported(model_id: str) -> tuple[list[str], list[str]]:
+    perf = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
+    return perf.supported_chipsets, [str(d) for d in perf.supported_devices]
+
+
+def test_x_elite_metric_credits_x_plus(perf_dir: Path) -> None:
+    """X Plus is the same NPU as X Elite, so measuring X Elite advertises both."""
+    mod.apply_updates([_metric(DEV_OK, ScorecardProfilePath.GENIE)])
+
+    chipsets, devices = _supported(MODEL)
+    assert "qualcomm-snapdragon-x-elite" in chipsets
+    assert "qualcomm-snapdragon-x-plus-8-core" in chipsets
+    assert "Snapdragon X Plus 8-Core CRD" in devices
+
+
+def test_mobile_metric_does_not_backfill_older_chipsets(perf_dir: Path) -> None:
+    """Only the compute pairing applies: an 8B LLM must not claim Snapdragon 888."""
+    mod.apply_updates([_metric(DEV_FAILED, ScorecardProfilePath.GENIE)])
+
+    chipsets, _ = _supported(MODEL)
+    assert "qualcomm-snapdragon-8-elite" in chipsets
+    assert not {
+        "qualcomm-snapdragon-888",
+        "qualcomm-snapdragon-8gen1",
+        "qualcomm-snapdragon-8gen2",
+        "qualcomm-snapdragon-8gen3",
+    } & set(chipsets)

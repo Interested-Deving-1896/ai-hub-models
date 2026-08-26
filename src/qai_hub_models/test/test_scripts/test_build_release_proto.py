@@ -14,8 +14,10 @@ import ruamel.yaml
 from google.protobuf.json_format import Parse
 from qai_hub_models_cli.proto import manifest_pb2
 
+from qai_hub_models import Precision
 from qai_hub_models._version import __version__
 from qai_hub_models.configs._info_yaml_enums import MODEL_USE_CASE
+from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import (
     ALLOWED_SIMILAR_DEVICES,
     DevicesAndChipsetsYaml,
@@ -23,6 +25,7 @@ from qai_hub_models.scorecard.devices_and_chipsets_yaml import (
 )
 from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
 from qai_hub_models.scripts.build_release_proto import (
+    _build_release_assets_proto,
     _manifest_filter_fields,
     _simplify_enum_values_for_website_import,
     cmd_aws,
@@ -256,3 +259,27 @@ def test_restricted_model_excludes_release_assets(output_dir: Path) -> None:
     model_dir = output_dir / "aws" / "models" / RESTRICTED_MODEL
     assert not (model_dir / "release-assets.json").exists()
     assert not (model_dir / "release-assets.pb").exists()
+
+
+def test_chipset_assets_mirrored_onto_compute_peer(tmp_path: Path) -> None:
+    """X Plus reuses the X Elite artifact, so its entry carries the same URL."""
+    assets = QAIHMModelReleaseAssets()
+    assets.add_asset(
+        QAIHMModelReleaseAssets.AssetDetails(s3_key="k/x-elite-genie"),
+        precision=Precision.w4a16,
+        chipset="qualcomm-snapdragon-x-elite",
+        path=ScorecardProfilePath.GENIE,
+    )
+    model_id = "llama_v3_2_3b_instruct"
+    (tmp_path / model_id).mkdir()
+    with patch(
+        "qai_hub_models.scorecard.release_assets_yaml.QAIHM_MODELS_ROOT", tmp_path
+    ):
+        assets.to_model_yaml(model_id)
+        proto = _build_release_assets_proto(model_id, "0.0.0")
+
+    assert proto is not None
+    urls = {a.chipset: a.download_url for a in proto.assets}
+    assert (
+        urls["qualcomm-snapdragon-x-plus-8-core"] == urls["qualcomm-snapdragon-x-elite"]
+    )
