@@ -135,7 +135,7 @@ def update_code_gen_accuracy_failure_reasons(
 ) -> None:
     supported_precisions = get_model_test_precisions(
         model_id,
-        set(manifest.supported_precisions),
+        manifest.supported_precisions,
         can_use_quantize_job=manifest.can_use_quantize_job,
     )
 

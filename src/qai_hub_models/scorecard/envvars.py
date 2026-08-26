@@ -112,8 +112,10 @@ class SpecialPrecisionSetting(Enum):
     # Run all of the precisions defined in manifest.yaml for each model, except float
     DEFAULT_MINUS_FLOAT = "default_minus_float"
 
-    # For models that have w8a16 in supported precisions, run them in w8a16
-    # For all other models, run in w8a16
+    # Run each model in its own default quantized precision: the first quantized
+    # precision listed in its manifest.yaml (matching
+    # QAIHMModelManifest::default_quantized_precision).
+    # Models with no quantized precisions run in w8a8, which quantize job can produce.
     DEFAULT_QUANTIZED = "default_quantized"
 
     # Runs all models in float except the models specified in
@@ -155,7 +157,7 @@ Precisions are identified by the defined options in qai_hub_models/models/common
 Special options:
  * 'default' -- Enable supported precisions for each model
  * 'default_minus_float' -- Enable supported precisions for each model except float
- * 'default_quantized' -- Enable supported quantized precisions for each model (e.g. w8a16, w8a8, etc.)
+ * 'default_quantized' -- Enable the first supported quantized precision for each model (w8a8 if it has none)
  * 'bench' -- Enable precisions used by the weekly dev scorecard
 If a precision is specified explicitly (not through a special option), it is enabled regardless of whether it's included in the 'supported' set of precisions for each model.
 """

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -103,7 +104,12 @@ def get_enabled_test_precisions() -> tuple[
 
     return (
         precisions_special_settings[0] if precisions_special_settings else None,
-        [Precision.parse(p.strip()) for p in precisions_set if isinstance(p, str)],
+        # The envvar parses to an unordered set; sort so that force-enabled precisions
+        # are appended to the test precision list in a deterministic order.
+        sorted(
+            (Precision.parse(p.strip()) for p in precisions_set if isinstance(p, str)),
+            key=str,
+        ),
     )
 
 
@@ -117,10 +123,43 @@ def get_quantized_bench_models() -> set[str]:
         return set(f.read().strip().split("\n"))
 
 
+def get_default_quantized_precision(
+    supported_precisions: Sequence[Precision],
+) -> Precision:
+    """
+    Get the precision to test when exactly 1 quantized precision is desired.
+
+    A model's supported precisions are ordered; the first quantized one is treated as
+    that model's default. This mirrors QAIHMModelManifest::default_quantized_precision
+    (plus a w8a8 fallback), so the precision run by the "default_quantized" scorecard
+    matches the precision tagged "default_quantized" in the results spreadsheet.
+
+    Parameters
+    ----------
+    supported_precisions
+        The model's supported precisions, in manifest.yaml order.
+
+    Returns
+    -------
+    precision : Precision
+        The first precision with quantized activations, if the model has one.
+        Otherwise the first non-float precision. GGUF precisions (eg. q4_0, mxfp4) are
+        quantized but declare no separate activations dtype, so they land here.
+        Otherwise w8a8, which any model that can use quantize job can produce.
+    """
+    for precision in supported_precisions:
+        if precision.has_quantized_activations:
+            return precision
+    for precision in supported_precisions:
+        if precision != Precision.float:
+            return precision
+    return Precision.w8a8
+
+
 def get_model_test_precisions(
     model_id: str,
-    enabled_model_test_precisions: set[Precision],
-    passing_model_test_precisions: set[Precision] | None = None,
+    enabled_model_test_precisions: Sequence[Precision],
+    passing_model_test_precisions: Sequence[Precision] | None = None,
     can_use_quantize_job: bool = True,
     include_unsupported_paths: bool | None = None,
 ) -> list[Precision]:
@@ -132,7 +171,7 @@ def get_model_test_precisions(
     model_id
         The model ID.
     enabled_model_test_precisions
-        All Precisions that are enabled for testing with this model.
+        All Precisions that are enabled for testing with this model, in manifest.yaml order.
     passing_model_test_precisions
         All Precisions that are enabled for testing with this model and have no known failure reasons in manifest.yaml
         If None, assumes this is the same as enabled_model_test_precisions
@@ -145,7 +184,8 @@ def get_model_test_precisions(
     Returns
     -------
     model_test_precisions : list[Precision]
-        The list of precisions to test for this model.
+        The list of precisions to test for this model, in the order they appear in the
+        model's supported precisions. Precisions force-enabled via envvar come last.
     """
     if include_unsupported_paths is None:
         include_unsupported_paths = IgnoreKnownFailuresEnvvar.get()
@@ -157,45 +197,50 @@ def get_model_test_precisions(
 
     enabled_test_precisions = get_enabled_test_precisions()
     special_precision_setting, extra_enabled_precisions = enabled_test_precisions
-    enabled_precisions: set[Precision] = set()
+
+    # A dict is used as an ordered set. Precision hashes by its string name, so plain
+    # set iteration order changes between processes; keeping insertion order makes the
+    # returned list (and therefore pytest parameterization) deterministic, and lets
+    # "the model's first quantized precision" be a meaningful rule.
+    enabled_precisions: dict[Precision, None] = {}
     if special_precision_setting in [
         SpecialPrecisionSetting.DEFAULT,
         SpecialPrecisionSetting.DEFAULT_MINUS_FLOAT,
     ]:
         # If default precisions are enabled, always run tests with default precisions.
-        enabled_precisions.update(model_supported_precisions)
+        enabled_precisions.update(dict.fromkeys(model_supported_precisions))
 
-    if (
-        special_precision_setting == SpecialPrecisionSetting.DEFAULT_MINUS_FLOAT
-        and Precision.float in enabled_precisions
-    ):
-        enabled_precisions.remove(Precision.float)
+    if special_precision_setting == SpecialPrecisionSetting.DEFAULT_MINUS_FLOAT:
+        enabled_precisions.pop(Precision.float, None)
     if special_precision_setting == SpecialPrecisionSetting.DEFAULT_QUANTIZED:
-        enabled_precisions.add(
-            Precision.w8a16
-            if (Precision.w8a16 in model_supported_precisions)
-            else Precision.w8a8
-        )
+        # Run the model's own default quantized precision. Anything else risks building
+        # release bundles in a precision the model can't actually produce (eg. a
+        # w4a16-only LLM has no QuantizeJob, so it can never make w8a16/w8a8).
+        enabled_precisions[
+            get_default_quantized_precision(model_supported_precisions)
+        ] = None
     if special_precision_setting == SpecialPrecisionSetting.BENCH:
         if Precision.float in model_supported_precisions:
-            enabled_precisions.add(Precision.float)
+            enabled_precisions[Precision.float] = None
         if (
             Precision.w8a8 in model_supported_precisions
             and model_id in get_bench_pytorch_w8a8_models()
         ):
-            enabled_precisions.add(Precision.w8a8)
+            enabled_precisions[Precision.w8a8] = None
         if (
             Precision.w8a16 in model_supported_precisions
             and model_id in get_bench_pytorch_w8a16_models()
         ):
-            enabled_precisions.add(Precision.w8a16)
+            enabled_precisions[Precision.w8a16] = None
     if can_use_quantize_job and include_unsupported_paths:
         # If quantize job is supported, this model can run tests on any desired precision.
-        enabled_precisions.update(extra_enabled_precisions)
+        enabled_precisions.update(dict.fromkeys(extra_enabled_precisions))
     else:
         # If quantize job is not supported, we can still run enabled precisions that happen to be in the model's supported precisions list.
         enabled_precisions.update(
-            set(model_supported_precisions).intersection(extra_enabled_precisions)
+            dict.fromkeys(
+                p for p in model_supported_precisions if p in extra_enabled_precisions
+            )
         )
 
     return list(enabled_precisions)
@@ -247,8 +292,8 @@ def get_enabled_paths_for_testing(
     # Get the precisions enabled for this model in this test environment.
     test_precisions = get_model_test_precisions(
         model_id,
-        set(model_supported_test_paths.keys()),
-        set(model_passing_test_paths.keys())
+        list(model_supported_test_paths.keys()),
+        list(model_passing_test_paths.keys())
         if model_passing_test_paths is not None
         else None,
         can_use_quantize_job,
@@ -265,7 +310,9 @@ def get_enabled_paths_for_testing(
             for runtimes_by_precision in model_supported_test_paths.values()
             for runtime in runtimes_by_precision
         }
-        for precision in set(test_precisions) - model_test_precision_runtimes.keys():
+        for precision in [
+            p for p in test_precisions if p not in model_test_precision_runtimes
+        ]:
             if precision_runtimes := [
                 x for x in all_enabled_test_runtimes if x.supports_precision(precision)
             ]:
@@ -429,8 +476,8 @@ def get_quantize_parameterized_pytest_config(
 ) -> list[Precision]:
     precisions = get_model_test_precisions(
         model_id,
-        set(enabled_test_paths.keys()),
-        set(passing_test_paths.keys()),
+        list(enabled_test_paths.keys()),
+        list(passing_test_paths.keys()),
         can_use_quantize_job=True,
     )
     return [x for x in precisions if x.has_quantized_activations]
