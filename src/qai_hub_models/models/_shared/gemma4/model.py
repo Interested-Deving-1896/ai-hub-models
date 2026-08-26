@@ -103,10 +103,25 @@ from qai_hub_models.utils.onnx.helpers import ONNXBundle
 from qai_hub_models.utils.printing import print_with_box
 from qai_hub_models.utils.qai_hub_helpers import make_hub_dataset_entries
 
+# Chat turn markers, from the canonical Gemma4 template: every turn is bracketed
+# as <|turn>{role}\n ... <turn|>\n, the assistant role is named "model", and
+# bos_token is emitted once at the very start.
+BOS_TOKEN = "<bos>"
+START_TURN = "<|turn>"
+END_TURN = "<turn|>"
+SYSTEM_ID = "system"
+USER_ID = "user"
+ASSISTANT_ID = "model"
+
+# Gemma4Processor.replace_image_token expands one image to
+# boi_token + image_token * n + eoi_token, so these bracket the soft tokens.
+VISION_START = "<|image>"
+VISION_END = "<image|>"
+
 # Chat generation stop tokens (in addition to the tokenizer's eos_token_id).
 # An -it model ends a turn with <turn|>, not the bare <eos>; _fix_gemma4_genie_config
 # writes the same pair into genie_config.json's eos-token.
-END_TOKENS = {"<turn|>", "<eos>"}
+END_TOKENS = {END_TURN, "<eos>"}
 DEFAULT_USER_PROMPT = "What is gravity?"
 
 
@@ -423,16 +438,19 @@ def export_gemma4_embeddings(
         emb = _dequant_embedding(f, "model.language_model.embed_tokens")
         emb *= float(hidden_size) ** 0.5
         emb_enc = _global_uint16_encoding(emb)
+        emb_lut_name = "embedding_int16_lut.bin"
+        emb_enc_name = "embed_encodings.json"
         _write_uint16_lut(
             emb,
             emb_enc["scale"],
             emb_enc["offset"],
-            output_dir / "embedding_int16_lut.bin",
+            output_dir / emb_lut_name,
         )
-        with open(output_dir / "embed_encodings.json", "w") as jf:
+        with open(output_dir / emb_enc_name, "w") as jf:
             json.dump({"lut_enc": emb_enc, "size": hidden_size}, jf, indent=4)
         result["embedding"] = {
-            "lut-path": "embedding_int16_lut.bin",
+            "lut-path": emb_lut_name,
+            "enc-path": emb_enc_name,
             "size": hidden_size,
             "bw": emb_enc["bw"],
             "scale": emb_enc["scale"],
@@ -447,6 +465,7 @@ def export_gemma4_embeddings(
         ple *= float(ple_dim) ** 0.5
         ple_enc = _global_uint16_encoding(ple, perlayer_bitwidth)
         ple_lut_name = f"embed_token_int{perlayer_bitwidth}_lut.bin"
+        ple_enc_name = "embed_tokens_encodings.json"
         _write_uint16_lut(
             ple,
             ple_enc["scale"],
@@ -454,10 +473,11 @@ def export_gemma4_embeddings(
             output_dir / ple_lut_name,
             perlayer_bitwidth,
         )
-        with open(output_dir / "embed_tokens_encodings.json", "w") as jf:
+        with open(output_dir / ple_enc_name, "w") as jf:
             json.dump({"lut_enc": ple_enc, "size": ple_total}, jf, indent=4)
         result["perlayer_embedding"] = {
             "lut-path": ple_lut_name,
+            "enc-path": ple_enc_name,
             "size": ple_total,
             "bw": ple_enc["bw"],
             "scale": ple_enc["scale"],
@@ -503,6 +523,27 @@ class Gemma4Base(LLMBase):
 
     # Default IO type: external embeddings (inputs_embeds + per_layer_inputs)
     llm_io_type: LLMIOType = LLMIOType.genie_input_embeds
+
+    @classmethod
+    def get_chat_template(cls) -> dict[str, str]:
+        """Genie turn tokens for Gemma4.
+
+        Without this the base returns {} and the bundle ships a GenieChatTemplate
+        with every turn token empty, so Genie concatenates raw message text with
+        no role markers. think_* are set separately by the Collection.
+        """
+        return {
+            "global_prefix": BOS_TOKEN,
+            "system_prefix": f"{START_TURN}{SYSTEM_ID}\n",
+            "system_suffix": f"{END_TURN}\n",
+            "user_prefix": f"{START_TURN}{USER_ID}\n",
+            "user_suffix": f"{END_TURN}\n",
+            "assistant_prefix": f"{START_TURN}{ASSISTANT_ID}\n",
+            "assistant_suffix": f"{END_TURN}\n",
+            "vision_start": VISION_START,
+            "vision_end": VISION_END,
+            "default_system_prompt": cls.default_system_prompt,
+        }
 
     @property
     def main_input_name(self) -> str:
@@ -2601,4 +2642,10 @@ class Gemma4PreSplitCollectionBase(DynamicSplitCollectionBase):
             metadata.supplementary_files[ple_lut["lut-path"]] = (
                 "Host-side per-layer (PLE) embedding table "
                 f"(ufixed{ple_lut['bw']} LUT) for Genie."
+            )
+            metadata.supplementary_files[emb_lut["enc-path"]] = (
+                f"Quantization encoding (scale/offset) for {emb_lut['lut-path']}."
+            )
+            metadata.supplementary_files[ple_lut["enc-path"]] = (
+                f"Quantization encoding (scale/offset) for {ple_lut['lut-path']}."
             )
