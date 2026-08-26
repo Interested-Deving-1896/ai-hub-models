@@ -89,6 +89,7 @@ Bugs in our own codebase that caused nightly failures.
 | `get_default_hub_deployment` race condition | Apr 24 | Concurrent access bug. |
 | Circular import | Apr 25 | Import ordering issue. |
 | Python 3.13 incompatible dependency added | Apr 23 | Dependency not tested on all Python versions in PR CI. |
+| `centerpoint` spconv import guard (`importlib.util.find_spec`) passes on CPU-only hosts where spconv is installed but un-importable (invokes `pccm.builder.build_pybind` requiring `nvidia-smi`/CUDA); causes pytest collection abort on all Python versions | tetracode#20907 (Aug 2026) | Replace `find_spec('spconv')` with `try: import spconv` in all guards (`det3d/models/__init__.py`, `backbones/__init__.py`, `torchie/trainer/checkpoint.py`). Breeze misdiagnosed as `funasr_conformer_en`/ffmpeg — real cause identified in PR #4347 (khoin_QCOM). Fixed by PR #4349 (ashwmurt_QCOM). |
 
 **Detection heuristic:** If the stack trace is entirely in `qai_hub_models/`, the error appeared after a recent merge, and no external dependency changed, it's our bug.
 
