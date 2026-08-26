@@ -12,7 +12,7 @@ from typing_extensions import Self
 from ultralytics.models import FastSAM
 from ultralytics.nn.tasks import SegmentationModel
 
-from qai_hub_models import SampleInputsType
+from qai_hub_models import Precision, SampleInputsType
 from qai_hub_models.datasets.coco import CocoDataset
 from qai_hub_models.models._shared.ultralytics.segmentation_model import (
     UltralyticsSingleClassSegmentor,
@@ -30,6 +30,10 @@ class Fast_SAM(UltralyticsSingleClassSegmentor):
     @classmethod
     def from_pretrained(cls, ckpt_name: str = "") -> Self:
         return cls(cast(SegmentationModel, FastSAM(model=ckpt_name).model))
+
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
+        """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
+        return 25
 
     def get_evaluator(self) -> BaseEvaluator:
         from qai_hub_models.models._shared.fastsam.class_agnostic_ar_evaluator import (
