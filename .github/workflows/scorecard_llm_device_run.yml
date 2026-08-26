@@ -201,7 +201,12 @@ jobs:
     # GENIEX_LLAMACPP is in default_sweep_paths, so a 'default' token in
     # test_runtimes enables it. Mirrors the qairt collector; the plugin
     # selection is the only difference.
-    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && inputs.test_scope != 'compile_only' && (contains(format(',{0},', inputs.test_runtimes), ',default,') || contains(format(',{0},', inputs.test_runtimes), ',geniex_llamacpp,') || inputs.test_runtimes == '') }}
+    #
+    # llama.cpp accuracy is not scorecard-ready (qcom-ai-hub/tetracode#21062),
+    # so a 'default' sweep collects perf only (see `scope` below). An
+    # accuracy-only run therefore has nothing to do unless geniex_llamacpp is
+    # named explicitly -- skip it rather than fan out an unrequested perf sweep.
+    if: ${{ !cancelled() && needs.combine_llm_release_assets.result == 'success' && inputs.s3_prefix != '' && inputs.test_scope != 'compile_only' && (inputs.test_scope != 'accuracy' || contains(format(',{0},', inputs.test_runtimes), ',geniex_llamacpp,')) && (contains(format(',{0},', inputs.test_runtimes), ',default,') || contains(format(',{0},', inputs.test_runtimes), ',geniex_llamacpp,') || inputs.test_runtimes == '') }}
     secrets: inherit
     uses: ./.github/workflows/llm_perf_collection_geniex.yml
     with:
@@ -213,4 +218,7 @@ jobs:
       geniex_version: ${{ needs.determine_llm_models.outputs.geniex_version }}
       release_assets_action_id: ${{ inputs.action_id }}
       create_pr: false
-      scope: ${{ inputs.test_scope }}
+      # Perf always; accuracy only when geniex_llamacpp is named explicitly in
+      # test_runtimes. Keeps the not-yet-ready llama.cpp eval out of scheduled
+      # sweeps (which pass 'default') while leaving it available on demand.
+      scope: ${{ (contains(format(',{0},', inputs.test_runtimes), ',geniex_llamacpp,') && inputs.test_scope) || 'perf' }}
