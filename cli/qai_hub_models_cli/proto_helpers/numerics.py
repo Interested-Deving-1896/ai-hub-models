@@ -164,6 +164,17 @@ def filter_numerics(
     return filtered
 
 
+def _runtime_label(
+    dm: ModelNumerics.NumericsMetric.DeviceNumericsMetrics,
+    runtimes: Iterable[RuntimeInfo] | None,
+) -> str:
+    """Runtime display name, qualified by compute unit when the result names one."""
+    label = runtime_proto_to_str(dm.runtime, runtimes, display_name=True)
+    if dm.HasField("compute_unit"):
+        return f"{label} ({dm.compute_unit.upper()})"
+    return label
+
+
 def format_numerics_table(
     numerics: ModelNumerics,
     title: str | None = "Numerics (Accuracy)",
@@ -198,7 +209,7 @@ def format_numerics_table(
             metric.dataset_name,
             metric.metric_name,
             precision_proto_to_str(dm.precision),
-            runtime_proto_to_str(dm.runtime, runtimes, display_name=True),
+            _runtime_label(dm, runtimes),
             dm.device,
             f"{dm.partial_metric:.3g}{metric.metric_unit}",
             f"{metric.partial_torch_metric:.3g}{metric.metric_unit}",

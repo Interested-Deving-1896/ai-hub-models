@@ -21,6 +21,12 @@ from qai_hub_models.scorecard.utils.testing_async_utils import (
     get_accuracy_metadata_columns,
 )
 
+# Runtimes whose perf is published for several compute units. Accuracy is only
+# ever evaluated on NPU, so without recording that, the website would show an
+# NPU-measured score under the runtime's CPU/GPU options too.
+MULTI_COMPUTE_UNIT_PATHS = frozenset({ScorecardProfilePath.GENIEX_LLAMACPP})
+EVALUATED_COMPUTE_UNIT = "npu"
+
 
 class AccuracyMetadata(NamedTuple):
     dataset_name: str
@@ -107,7 +113,12 @@ def create_numerics_struct(
                 if precision not in metric_data_dict:
                     metric_data_dict[precision] = {}
                 metric_data_dict[precision][runtime] = QAIHMModelNumerics.DeviceDetails(
-                    partial_metric=float(device_accuracy)
+                    partial_metric=float(device_accuracy),
+                    compute_unit=(
+                        EVALUATED_COMPUTE_UNIT
+                        if runtime in MULTI_COMPUTE_UNIT_PATHS
+                        else None
+                    ),
                 )
             device_metric[chipset_registry[chipset]] = metric_data_dict
 

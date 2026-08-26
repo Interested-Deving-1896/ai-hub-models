@@ -62,6 +62,8 @@ def get_numerics_yaml_path(model_id: str) -> Path:
 class QAIHMModelNumerics(BaseQAIHMConfig):
     class DeviceDetails(BaseQAIHMConfig):
         partial_metric: float
+        # Set only for runtimes measured on several compute units.
+        compute_unit: str | None = None
 
     class Range(BaseQAIHMConfig):
         min: float | None = None
@@ -159,6 +161,7 @@ class QAIHMModelNumerics(BaseQAIHMConfig):
                                 runtime=runtime_proto,
                                 partial_metric=details.partial_metric,
                                 tool_versions=tool_versions,
+                                compute_unit=details.compute_unit,
                             )
                         )
 

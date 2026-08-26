@@ -77,10 +77,17 @@ class ModelNumerics(google.protobuf.message.Message):
             RUNTIME_FIELD_NUMBER: builtins.int
             PARTIAL_METRIC_FIELD_NUMBER: builtins.int
             TOOL_VERSIONS_FIELD_NUMBER: builtins.int
+            COMPUTE_UNIT_FIELD_NUMBER: builtins.int
             device: builtins.str
             precision: shared.precision_pb2.Precision.ValueType
             runtime: shared.runtime_pb2.Runtime.ValueType
             partial_metric: builtins.float
+            compute_unit: builtins.str
+            """Compute unit this was measured on ("npu", "gpu", "cpu"). Set only for
+            runtimes that publish results on several compute units, where
+            (precision, runtime) alone does not identify the measurement. Unset
+            means the result applies to whichever compute unit is selected.
+            """
             @property
             def tool_versions(self) -> shared.tool_versions_pb2.ToolVersions:
                 """The tool versions used to generate this result. Cross-referenced from
@@ -98,9 +105,11 @@ class ModelNumerics(google.protobuf.message.Message):
                 runtime: shared.runtime_pb2.Runtime.ValueType = ...,
                 partial_metric: builtins.float = ...,
                 tool_versions: shared.tool_versions_pb2.ToolVersions | None = ...,
+                compute_unit: builtins.str | None = ...,
             ) -> None: ...
-            def HasField(self, field_name: typing.Literal["tool_versions", b"tool_versions"]) -> builtins.bool: ...
-            def ClearField(self, field_name: typing.Literal["device", b"device", "partial_metric", b"partial_metric", "precision", b"precision", "runtime", b"runtime", "tool_versions", b"tool_versions"]) -> None: ...
+            def HasField(self, field_name: typing.Literal["_compute_unit", b"_compute_unit", "compute_unit", b"compute_unit", "tool_versions", b"tool_versions"]) -> builtins.bool: ...
+            def ClearField(self, field_name: typing.Literal["_compute_unit", b"_compute_unit", "compute_unit", b"compute_unit", "device", b"device", "partial_metric", b"partial_metric", "precision", b"precision", "runtime", b"runtime", "tool_versions", b"tool_versions"]) -> None: ...
+            def WhichOneof(self, oneof_group: typing.Literal["_compute_unit", b"_compute_unit"]) -> typing.Literal["compute_unit"] | None: ...
 
         DATASET_NAME_FIELD_NUMBER: builtins.int
         DATASET_LINK_FIELD_NUMBER: builtins.int

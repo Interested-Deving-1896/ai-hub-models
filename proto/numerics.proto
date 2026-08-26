@@ -71,6 +71,12 @@ message ModelNumerics {
       //
       // Unset in numerics protos from releases before 0.56.0.
       ToolVersions tool_versions = 5;
+
+      // Compute unit this was measured on ("npu", "gpu", "cpu"). Set only for
+      // runtimes that publish results on several compute units, where
+      // (precision, runtime) alone does not identify the measurement. Unset
+      // means the result applies to whichever compute unit is selected.
+      optional string compute_unit = 6;
     }
   }
 }
