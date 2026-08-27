@@ -19,7 +19,7 @@ Stage B requires aimet-onnx + onnxruntime-gpu + a CUDA GPU (e.g. the qaihm-dev
 venv). Stage A is CPU-only. Both stages can run in the same venv since the ONNX
 is shared (op names stay self-consistent).
 
-Per-model entry points (e.g. gemma_4_e2b_it/quantize.py) call ``main()`` with
+Per-model entry points (e.g. gemma_4_e4b_it/quantize.py) call ``main()`` with
 the model-specific PreSplit and QuantizablePreSplit classes plus the constants
 needed for the CLI help text.
 """

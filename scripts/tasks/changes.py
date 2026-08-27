@@ -66,8 +66,7 @@ LLM_GROUPS: list[list[str]] = [
         "qwen3_vl_4b_instruct",
     ],
     [
-        "gemma_4_e2b_it",  # smallest, primary representative
-        "gemma_4_e4b_it",
+        "gemma_4_e4b_it",  # only gemma4 pytorch recipe (E2B is llama.cpp-only)
     ],
 ]
 
@@ -81,7 +80,7 @@ QWEN_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/qwen3_0_6b/export.p
 QWEN_VL_REPRESENTATIVE_EXPORT_FILE = (
     "src/qai_hub_models/models/qwen3_vl_4b_instruct/export.py"
 )
-GEMMA4_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/gemma_4_e2b_it/export.py"
+GEMMA4_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/gemma_4_e4b_it/export.py"
 PI05_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/pi05/export.py"
 PRECOMPILED_REPRESENTATIVE_EXPORT_FILE = (
     "src/qai_hub_models/models/qwen2_7b_instruct/export.py"

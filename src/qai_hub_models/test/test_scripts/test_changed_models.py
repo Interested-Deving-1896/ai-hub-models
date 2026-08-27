@@ -330,22 +330,13 @@ def test_llm_group_mistral_and_falcon_in_llama_group() -> None:
     assert "mobilenet_v2" in pruned
 
 
-def test_llm_group_collapses_gemma4() -> None:
-    """gemma_4_e2b_it is first (smallest) in the gemma4 group, so it survives."""
-    models = {"gemma_4_e2b_it", "gemma_4_e4b_it", "mobilenet_v2"}
-    pruned = prune_llm_groups(models)
-    assert "gemma_4_e2b_it" in pruned
-    assert "gemma_4_e4b_it" not in pruned
-    assert "mobilenet_v2" in pruned
-
-
 def test_gemma4_e4b_alone_is_not_pruned() -> None:
     """
-    A change touching only E4B must still test E4B. Pruning keeps the first
-    group member that is PRESENT, so it must not substitute E2B here.
+    E4B is the only pytorch gemma4 recipe (E2B is llama.cpp-only), so it is
+    always the gemma4 representative and is never pruned away.
     """
-    pruned = prune_llm_groups({"gemma_4_e4b_it"})
-    assert pruned == {"gemma_4_e4b_it"}
+    pruned = prune_llm_groups({"gemma_4_e4b_it", "mobilenet_v2"})
+    assert pruned == {"gemma_4_e4b_it", "mobilenet_v2"}
 
 
 # ── gemma4 shared-file routing ──────────────────────────────────────
@@ -356,7 +347,7 @@ def test_shared_gemma4_change_detects_gemma4_representative() -> None:
     models = resolve_affected_models(
         ["src/qai_hub_models/models/_shared/gemma4/model.py"]
     )
-    assert "gemma_4_e2b_it" in models
+    assert "gemma_4_e4b_it" in models
 
 
 def test_shared_gemma4_quantize_change_detects_gemma4() -> None:
@@ -369,7 +360,7 @@ def test_shared_gemma4_quantize_change_detects_gemma4() -> None:
     models = resolve_affected_models(
         ["src/qai_hub_models/models/_shared/gemma4/quantize.py"]
     )
-    assert "gemma_4_e2b_it" in models
+    assert "gemma_4_e4b_it" in models
 
 
 def test_lm_driver_change_detects_gemma4_too() -> None:
@@ -380,6 +371,6 @@ def test_lm_driver_change_detects_gemma4_too() -> None:
     models = resolve_affected_models(
         ["src/qai_hub_models/models/_shared/lm_driver/generator.py"]
     )
-    assert "gemma_4_e2b_it" in models
+    assert "gemma_4_e4b_it" in models
     assert "llama_v3_2_1b_instruct" in models
     assert "qwen3_vl_4b_instruct" in models
