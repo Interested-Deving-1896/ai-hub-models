@@ -9,8 +9,10 @@ folder shape, manifest schema, requirements.txt vs. the base package's
 pin set, model imports and torch forward pass, App instantiation, and
 URL reachability against every URL declared in the manifest.
 
-No AI Hub workbench calls, no device, no dataset. Exit 0 iff every check
-passes; WARNs do not fail.
+No AI Hub workbench calls and no device. Datasets are only touched with
+``--check-datasets``, which instantiates each eval / calibration dataset to
+confirm TRAIN and VAL are genuinely distinct and that VAL is reproducible.
+Exit 0 iff every check passes; WARNs do not fail.
 """
 
 from __future__ import annotations
@@ -48,7 +50,11 @@ from qai_hub_models.utils.input_spec import make_torch_inputs
 from qai_hub_models.utils.metrics import VALID_METRIC_PAIRS
 from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT, QAIHM_PACKAGE_ROOT
 from qai_hub_models.utils.url_check import head_check_urls
-from qai_hub_models.utils.validation import perform_runtime_model_validation
+from qai_hub_models.utils.validation import (
+    DatasetCheckOutcome,
+    perform_runtime_model_validation,
+    validate_dataset_splits,
+)
 
 
 class Status(Enum):
@@ -191,6 +197,14 @@ def _skip_downstream_on_install_failure(report: Report) -> None:
     report.add(
         Result(
             "Evaluator declared",
+            "Datasets / evaluator",
+            Status.SKIP,
+            "install failed",
+        )
+    )
+    report.add(
+        Result(
+            DATASET_CHECKS_ROW_NAME,
             "Datasets / evaluator",
             Status.SKIP,
             "install failed",
@@ -1068,6 +1082,40 @@ def _check_evaluator(model: Any, report: Report) -> None:
     )
 
 
+DATASET_CHECKS_ROW_NAME = "dataset splits"
+
+_OUTCOME_TO_STATUS = {
+    DatasetCheckOutcome.PASS: Status.PASS,
+    DatasetCheckOutcome.FAIL: Status.FAIL,
+    DatasetCheckOutcome.UNKNOWN: Status.WARN,
+    DatasetCheckOutcome.UNAVAILABLE: Status.SKIP,
+}
+
+
+def _check_datasets(model: Any, report: Report) -> None:
+    """Render ``validate_dataset_splits`` findings as report rows."""
+    results = validate_dataset_splits(model)
+    if not results:
+        report.add(
+            Result(
+                DATASET_CHECKS_ROW_NAME,
+                "Datasets / evaluator",
+                Status.SKIP,
+                "no eval or calibration dataset class declared.",
+            )
+        )
+        return
+    for result in results:
+        report.add(
+            Result(
+                f"{result.dataset_name} {result.check.value}",
+                "Datasets / evaluator",
+                _OUTCOME_TO_STATUS[result.outcome],
+                result.detail,
+            )
+        )
+
+
 # =========================================================================
 # URL reachability
 # =========================================================================
@@ -1448,6 +1496,7 @@ def _run_all_checks(
     source_dir: Path,
     report: Report,
     skip_install: bool = False,
+    check_datasets: bool = False,
 ) -> QAIHMModelManifest | None:
     if skip_install:
         report.add(
@@ -1483,6 +1532,19 @@ def _run_all_checks(
     if model is not None:
         _check_app(source_dir, model, report)
         _check_evaluator(model, report)
+        if check_datasets:
+            _check_datasets(model, report)
+        else:
+            report.add(
+                Result(
+                    DATASET_CHECKS_ROW_NAME,
+                    "Datasets / evaluator",
+                    Status.SKIP,
+                    "pass --check-datasets to instantiate each eval / "
+                    "calibration dataset and check its splits (may download "
+                    "large archives).",
+                )
+            )
     _check_pytest(source_dir, report)
     if manifest is not None:
         _check_url_reachability(manifest, report)
@@ -1556,6 +1618,18 @@ def build_parser(prog: str = "qai-hub-models validate") -> argparse.ArgumentPars
         ),
     )
     parser.add_argument(
+        "--check-datasets",
+        action="store_true",
+        help=(
+            "Instantiate every eval and calibration dataset class and compare "
+            "the first item across splits: DatasetSplit.TRAIN must differ from "
+            "DatasetSplit.VAL (catching a train split that silently serves val "
+            "data), and two from-scratch VAL instances must agree (catching "
+            "unseeded shuffling / unsorted file listings). Off by default "
+            "because it downloads dataset data."
+        ),
+    )
+    parser.add_argument(
         "--internal",
         action="store_true",
         help=(
@@ -1587,7 +1661,12 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     report = Report()
-    manifest = _run_all_checks(source_dir, report, skip_install=args.no_install)
+    manifest = _run_all_checks(
+        source_dir,
+        report,
+        skip_install=args.no_install,
+        check_datasets=args.check_datasets,
+    )
     if args.internal:
         _run_internal_checks(source_dir, manifest, report)
 
