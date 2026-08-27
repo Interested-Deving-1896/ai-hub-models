@@ -87,6 +87,13 @@ def _clear_version_cache() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _clear_exception_verbosity_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear CI-implies-verbose envvars so tests deterministically hit the swallow-and-print path."""
+    monkeypatch.delenv("QAIHM_CI", raising=False)
+    monkeypatch.delenv("QAIHM_CLI_VERBOSE_EXCEPTIONS", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _block_network(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Fail tests if they make a real network connection.

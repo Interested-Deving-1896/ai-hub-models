@@ -38,3 +38,8 @@ def bool_envvar_value(envvar: str, default: bool = False) -> bool:
         "true",
         "yes",
     ]
+
+
+def verbose_exceptions_enabled() -> bool:
+    """Verbose CLI exceptions are on when explicitly requested, or automatically in CI."""
+    return bool_envvar_value(VERBOSE_EXCEPTIONS_ENVVAR) or bool_envvar_value("QAIHM_CI")

@@ -37,7 +37,7 @@ from qai_hub_models_cli.common import (
 )
 from qai_hub_models_cli.envvars import (
     VERBOSE_EXCEPTIONS_ENVVAR,
-    bool_envvar_value,
+    verbose_exceptions_enabled,
 )
 from qai_hub_models_cli.fetch import fetch, get_asset_url
 from qai_hub_models_cli.find import find_matching_releases
@@ -1628,7 +1628,7 @@ def main(args: list[str] | None = None) -> None:
         try:
             _dispatch_recipe_command(raw[0], raw[1:])
         except Exception as e:
-            if bool_envvar_value(VERBOSE_EXCEPTIONS_ENVVAR):
+            if verbose_exceptions_enabled():
                 raise
             print(e.args[0] if isinstance(e, KeyError) and e.args else e)
             sys.exit(1)
@@ -1649,7 +1649,7 @@ def main(args: list[str] | None = None) -> None:
         try:
             parsed.func(parsed)
         except Exception as e:
-            if bool_envvar_value(VERBOSE_EXCEPTIONS_ENVVAR):
+            if verbose_exceptions_enabled():
                 raise
             # KeyError.__str__ wraps its message in quotes (it uses repr); print
             # the message text directly so error output reads cleanly.
