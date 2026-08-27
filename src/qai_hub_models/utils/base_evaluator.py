@@ -66,7 +66,14 @@ class BaseEvaluator(ABC, Generic[OutputT, GtT]):
 
     @abstractmethod
     def get_accuracy_score(self) -> float:
-        """Single float value representing model accuracy. Higher is better."""
+        """
+        Single float value representing model accuracy.
+
+        Higher is better by default. Error/distance metrics (WER, NME, perplexity,
+        ...) may return a score where lower is better; such an evaluator must
+        declare `higher_is_better=False` on the metric returned by
+        `get_metric_metadata`, so downstream consumers interpret it correctly.
+        """
 
     @abstractmethod
     def formatted_accuracy(self) -> str:
@@ -80,7 +87,10 @@ class BaseEvaluator(ABC, Generic[OutputT, GtT]):
         return False
 
     def get_metric_metadata(self) -> MetricMetadata:
-        """Metadata about the metric corresponding to get_accuracy_score."""
+        """
+        Metadata about the metric corresponding to get_accuracy_score, including
+        whether a higher or lower score is better.
+        """
         raise NotImplementedError()
 
     def add_from_dataset(

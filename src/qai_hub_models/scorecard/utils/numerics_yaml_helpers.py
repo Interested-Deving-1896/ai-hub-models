@@ -40,7 +40,19 @@ class AccuracyMetadata(NamedTuple):
     metric_min: float | None
     metric_max: float | None
     metric_threshold: float | None
+    # None for accuracy.csv rows written before this column existed.
+    metric_higher_is_better: bool | None
     num_samples: int
+
+
+def _parse_bool(value: object) -> bool | None:
+    """Parse a CSV bool. pandas yields np.bool_ or the strings "True"/"False"."""
+    text = str(value).strip().lower()
+    if text == "true":
+        return True
+    if text == "false":
+        return False
+    return None
 
 
 def _extract_metadata(df: pd.DataFrame) -> AccuracyMetadata | str:
@@ -55,6 +67,9 @@ def _extract_metadata(df: pd.DataFrame) -> AccuracyMetadata | str:
             value = None
         if column_name in ["metric_min", "metric_max", "metric_threshold"]:
             value = float(value) if value is not None else None
+        elif column_name == "metric_higher_is_better":
+            # bool(value) is wrong here — bool("False") is True.
+            value = _parse_bool(value) if value is not None else None
         values_dict[column_name] = value
     return AccuracyMetadata(**values_dict)
 
@@ -148,6 +163,9 @@ def create_numerics_struct(
                     threshold_override
                     if threshold_override is not None
                     else accuracy_metadata.metric_threshold
+                ),
+                higher_is_better=(
+                    accuracy_metadata.metric_higher_is_better is not False
                 ),
                 benchmark_value=bm_value,
                 num_partial_samples=accuracy_metadata.num_samples,

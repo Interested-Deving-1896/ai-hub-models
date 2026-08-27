@@ -22,6 +22,9 @@ class MetricMetadata(NamedTuple):
     description: str
     range: tuple[float | None, float | None]
     float_vs_device_threshold: float | None = None
+    # False for error/distance metrics (WER, NME, perplexity, ...), where a
+    # smaller score is a better model.
+    higher_is_better: bool = True
 
     def with_description(self, description: str) -> MetricMetadata:
         """Return a copy with a different description."""
@@ -105,8 +108,9 @@ KL_DIVERGENCE = _register_metric(
     MetricMetadata(
         name="KL divergence",
         unit="kldiv",
-        description="A distance metric between two probability distributions. Lower is better.",
+        description="A distance metric between two probability distributions.",
         range=(0.0, None),
+        higher_is_better=False,
     )
 )
 
@@ -114,9 +118,10 @@ MEAN_ANGULAR_ERROR = _register_metric(
     MetricMetadata(
         name="Mean Angular Error",
         unit="MAE (Degrees)",
-        description="Mean angular error between predicted and ground truth gaze directions. Lower is better.",
+        description="Mean angular error between predicted and ground truth gaze directions.",
         range=(0.0, None),
         float_vs_device_threshold=5.0,
+        higher_is_better=False,
     )
 )
 
@@ -184,9 +189,10 @@ NORMALIZED_MEAN_ERROR = _register_metric(
     MetricMetadata(
         name="Normalized Mean Error",
         unit="NME",
-        description="Average error between predictions and ground truth, normalized by a reference scale. Lower is better.",
+        description="Average error between predictions and ground truth, normalized by a reference scale.",
         range=(0.0, None),
         float_vs_device_threshold=0.01,
+        higher_is_better=False,
     )
 )
 
@@ -214,8 +220,9 @@ PERPLEXITY = _register_metric(
     MetricMetadata(
         name="Perplexity",
         unit="PPL",
-        description="A measure of how likely the model is to predict a given sequence of words. Lower is better.",
+        description="A measure of how likely the model is to predict a given sequence of words.",
         range=(0.0, None),
+        higher_is_better=False,
     )
 )
 
@@ -243,9 +250,10 @@ WORD_ERROR_RATE = _register_metric(
     MetricMetadata(
         name="Word Error Rate",
         unit="WER",
-        description="The percentage of words incorrectly predicted. Lower is better.",
+        description="The percentage of words incorrectly predicted.",
         range=(0.0, 100.0),
         float_vs_device_threshold=10.0,
+        higher_is_better=False,
     )
 )
 

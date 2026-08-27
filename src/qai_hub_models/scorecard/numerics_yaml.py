@@ -77,6 +77,9 @@ class QAIHMModelNumerics(BaseQAIHMConfig):
         metric_description: str
         metric_unit: str
         metric_range: QAIHMModelNumerics.Range
+        # False for error/distance metrics (WER, NME, perplexity, ...), where a
+        # smaller metric is a better model.
+        higher_is_better: bool = True
         # Maximum allowed deviation between torch and device accuracy, or
         # between actual accuracy and the benchmark value.
         # Paths exceeding this threshold are disabled by the scorecard.
@@ -177,6 +180,7 @@ class QAIHMModelNumerics(BaseQAIHMConfig):
                     metric_description=m.metric_description,
                     metric_unit=m.metric_unit,
                     metric_range=metric_range,
+                    higher_is_better=m.higher_is_better,
                     metric_enablement_threshold=m.metric_enablement_threshold,
                     benchmark_value=m.benchmark_value,
                     num_partial_samples=m.num_partial_samples,

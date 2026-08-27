@@ -102,5 +102,5 @@ class HRNetFaceEvaluator(BaseEvaluator):
 
     def get_metric_metadata(self) -> MetricMetadata:
         return NORMALIZED_MEAN_ERROR.with_description(
-            "Average keypoint error normalized by inter-ocular distance (COFW dataset). Lower is better."
+            "Average keypoint error normalized by inter-ocular distance (COFW dataset)."
         )

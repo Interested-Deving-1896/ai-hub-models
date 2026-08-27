@@ -175,6 +175,16 @@ def _runtime_label(
     return label
 
 
+def _metric_label(metric: ModelNumerics.NumericsMetric) -> str:
+    """Metric name, annotated when a lower score is the better one.
+
+    Unset means higher-is-better (protos from releases predating the field).
+    """
+    if metric.HasField("higher_is_better") and not metric.higher_is_better:
+        return f"{metric.metric_name} (lower is better)"
+    return metric.metric_name
+
+
 def format_numerics_table(
     numerics: ModelNumerics,
     title: str | None = "Numerics (Accuracy)",
@@ -183,9 +193,10 @@ def format_numerics_table(
     """Format a model's numerical accuracy metrics as a table.
 
     One row per (metric, device result). The torch reference value for each
-    metric is shown alongside each on-device value for comparison. The SDK
-    Versions column is sourced from each result's tool versions (cross-referenced
-    from perf at build time).
+    metric is shown alongside each on-device value for comparison. Metrics where
+    a smaller score is better are annotated as such. The SDK Versions column is
+    sourced from each result's tool versions (cross-referenced from perf at
+    build time).
 
     *runtimes* (``platform.runtimes``), when provided, is used to render each
     runtime by its human display name (e.g. ``TensorFlow Lite``) instead of its
@@ -207,7 +218,7 @@ def format_numerics_table(
     rows = [
         [
             metric.dataset_name,
-            metric.metric_name,
+            _metric_label(metric),
             precision_proto_to_str(dm.precision),
             _runtime_label(dm, runtimes),
             dm.device,

@@ -289,6 +289,7 @@ def remove_numerics_failures(
                     metric_description=metric.metric_description,
                     metric_unit=metric.metric_unit,
                     metric_range=copy.copy(metric.metric_range),
+                    higher_is_better=metric.higher_is_better,
                     metric_enablement_threshold=metric.metric_enablement_threshold,
                     benchmark_value=metric.benchmark_value,
                     num_partial_samples=metric.num_partial_samples,

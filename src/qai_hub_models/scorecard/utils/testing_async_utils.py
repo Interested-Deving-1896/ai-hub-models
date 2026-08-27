@@ -94,6 +94,7 @@ def get_accuracy_metadata_columns() -> list[str]:
         "metric_min",
         "metric_max",
         "metric_threshold",
+        "metric_higher_is_better",
         "num_samples",
     ]
 
@@ -203,10 +204,11 @@ def write_accuracy(
                 str(metric_metadata.range[0]),
                 str(metric_metadata.range[1]),
                 str(metric_metadata.float_vs_device_threshold),
+                str(metric_metadata.higher_is_better),
             ]
         )
     else:
-        row.extend(["", "", "", "", "", ""])
+        row.extend(["", "", "", "", "", "", ""])
 
     row.append(str(num_samples) if num_samples is not None else "")
 

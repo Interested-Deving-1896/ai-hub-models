@@ -90,6 +90,7 @@ class LeRobotEvaluator(BaseEvaluator):
             unit="rad",
             description="Root mean squared error between model predicted actions and ground truth actions from the dataset",
             range=(0.0, float("inf")),
+            higher_is_better=False,
         )
 
     def reset(self) -> None:

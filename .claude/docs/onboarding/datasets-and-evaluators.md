@@ -37,9 +37,11 @@ Inherit from `BaseEvaluator` in `qai_hub_models/utils/base_evaluator.py`. Place 
 
 Key requirements:
 - `add_batch()` accumulates metrics comparing model output to ground truth
-- `get_accuracy_score()` returns a single scalar (higher = better)
+- `get_accuracy_score()` returns a single scalar (higher = better by default)
 - `formatted_accuracy()` returns a human-readable string
-- `get_metric_metadata()` returns a `MetricMetadata` describing the metric name, unit, and acceptable thresholds
+- `get_metric_metadata()` returns a `MetricMetadata` describing the metric name, unit, acceptable thresholds, and direction
+
+If the score is an error/distance metric where a smaller value is a better model (WER, NME, perplexity, RMSE, ...), the metric must set `higher_is_better=False`. Prefer reusing a registered metric from `qai_hub_models/utils/metrics.py`, which already declares direction; that flag flows into `numerics.yaml` and the published proto, so consumers don't have to guess from the metric name.
 
 ## Docstrings
 

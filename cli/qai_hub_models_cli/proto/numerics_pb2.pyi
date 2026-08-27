@@ -118,6 +118,7 @@ class ModelNumerics(google.protobuf.message.Message):
         METRIC_DESCRIPTION_FIELD_NUMBER: builtins.int
         METRIC_UNIT_FIELD_NUMBER: builtins.int
         METRIC_RANGE_FIELD_NUMBER: builtins.int
+        HIGHER_IS_BETTER_FIELD_NUMBER: builtins.int
         METRIC_ENABLEMENT_THRESHOLD_FIELD_NUMBER: builtins.int
         BENCHMARK_VALUE_FIELD_NUMBER: builtins.int
         NUM_PARTIAL_SAMPLES_FIELD_NUMBER: builtins.int
@@ -131,6 +132,13 @@ class ModelNumerics(google.protobuf.message.Message):
         """Metric definition"""
         metric_description: builtins.str
         metric_unit: builtins.str
+        higher_is_better: builtins.bool
+        """False for error/distance metrics (WER, NME, perplexity, ...), where a
+        smaller metric is a better model.
+
+        Unset in numerics protos from releases predating this field; treat unset
+        as true, which is what every metric was assumed to be.
+        """
         metric_enablement_threshold: builtins.float
         """Maximum allowed deviation between torch and device accuracy, or
         between actual accuracy and the benchmark value.
@@ -157,16 +165,19 @@ class ModelNumerics(google.protobuf.message.Message):
             metric_description: builtins.str = ...,
             metric_unit: builtins.str = ...,
             metric_range: shared.range_pb2.DoubleRange | None = ...,
+            higher_is_better: builtins.bool | None = ...,
             metric_enablement_threshold: builtins.float | None = ...,
             benchmark_value: builtins.float | None = ...,
             num_partial_samples: builtins.int = ...,
             partial_torch_metric: builtins.float = ...,
             device_metrics: collections.abc.Iterable[global___ModelNumerics.NumericsMetric.DeviceNumericsMetrics] | None = ...,
         ) -> None: ...
-        def HasField(self, field_name: typing.Literal["_benchmark_value", b"_benchmark_value", "_metric_enablement_threshold", b"_metric_enablement_threshold", "benchmark_value", b"benchmark_value", "metric_enablement_threshold", b"metric_enablement_threshold", "metric_range", b"metric_range"]) -> builtins.bool: ...
-        def ClearField(self, field_name: typing.Literal["_benchmark_value", b"_benchmark_value", "_metric_enablement_threshold", b"_metric_enablement_threshold", "benchmark_value", b"benchmark_value", "dataset_link", b"dataset_link", "dataset_name", b"dataset_name", "dataset_split_description", b"dataset_split_description", "device_metrics", b"device_metrics", "metric_description", b"metric_description", "metric_enablement_threshold", b"metric_enablement_threshold", "metric_name", b"metric_name", "metric_range", b"metric_range", "metric_unit", b"metric_unit", "num_partial_samples", b"num_partial_samples", "partial_torch_metric", b"partial_torch_metric"]) -> None: ...
+        def HasField(self, field_name: typing.Literal["_benchmark_value", b"_benchmark_value", "_higher_is_better", b"_higher_is_better", "_metric_enablement_threshold", b"_metric_enablement_threshold", "benchmark_value", b"benchmark_value", "higher_is_better", b"higher_is_better", "metric_enablement_threshold", b"metric_enablement_threshold", "metric_range", b"metric_range"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["_benchmark_value", b"_benchmark_value", "_higher_is_better", b"_higher_is_better", "_metric_enablement_threshold", b"_metric_enablement_threshold", "benchmark_value", b"benchmark_value", "dataset_link", b"dataset_link", "dataset_name", b"dataset_name", "dataset_split_description", b"dataset_split_description", "device_metrics", b"device_metrics", "higher_is_better", b"higher_is_better", "metric_description", b"metric_description", "metric_enablement_threshold", b"metric_enablement_threshold", "metric_name", b"metric_name", "metric_range", b"metric_range", "metric_unit", b"metric_unit", "num_partial_samples", b"num_partial_samples", "partial_torch_metric", b"partial_torch_metric"]) -> None: ...
         @typing.overload
         def WhichOneof(self, oneof_group: typing.Literal["_benchmark_value", b"_benchmark_value"]) -> typing.Literal["benchmark_value"] | None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_higher_is_better", b"_higher_is_better"]) -> typing.Literal["higher_is_better"] | None: ...
         @typing.overload
         def WhichOneof(self, oneof_group: typing.Literal["_metric_enablement_threshold", b"_metric_enablement_threshold"]) -> typing.Literal["metric_enablement_threshold"] | None: ...
 

@@ -6,6 +6,7 @@ import os
 import tempfile
 
 import pandas as pd
+import pytest
 
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard.artifacts import ScorecardArtifact
@@ -54,20 +55,40 @@ def test_yaml_roundtrip() -> None:
     assert original_yaml == roundtrip_dict
 
 
+def _struct_from_intermediates(model_id: str) -> QAIHMModelNumerics:
+    info = QAIHMModelManifest.from_model(model_id)
+    struct = create_numerics_struct(
+        model_id,
+        pd.read_csv(ScorecardArtifact.ACCURACY_CSV.intermediates_path),
+        get_chipset_registry(),
+        benchmark=info.numerics_benchmark,
+    )
+    assert struct is not None
+    return struct
+
+
+# eyegaze reports Mean Angular Error and hrnet_face reports NME; both are better
+# when smaller.
+@pytest.mark.parametrize(
+    ("model_id", "higher_is_better"),
+    [("resnet18", True), ("eyegaze", False), ("hrnet_face", False)],
+)
+def test_metric_direction_from_accuracy_csv(
+    model_id: str, higher_is_better: bool
+) -> None:
+    struct = _struct_from_intermediates(model_id)
+    assert struct.metrics
+    for metric in struct.metrics:
+        assert metric.higher_is_better is higher_is_better, metric.metric_name
+
+
 def test_accuracy_yaml_creation() -> None:
     model_id = "resnet18"
     accuracy_yaml_path = get_numerics_yaml_path(model_id)
     original_yaml = load_yaml(accuracy_yaml_path)
 
     # Create accuracy struct from scratch using accuracy.csv
-    info = QAIHMModelManifest.from_model(model_id)
-    new_struct = create_numerics_struct(
-        model_id,
-        pd.read_csv(ScorecardArtifact.ACCURACY_CSV.intermediates_path),
-        get_chipset_registry(),
-        benchmark=info.numerics_benchmark,
-    )
-    assert new_struct is not None
+    new_struct = _struct_from_intermediates(model_id)
 
     # Write to yaml and load to dict
     with tempfile.TemporaryDirectory() as tmp:

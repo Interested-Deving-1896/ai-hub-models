@@ -82,5 +82,5 @@ class FaceMap3DMMEvaluator(BaseEvaluator):
 
     def get_metric_metadata(self) -> MetricMetadata:
         return NORMALIZED_MEAN_ERROR.with_description(
-            "Average distance between predicted and expected landmarks, weighted by the typical scale for each landmark. Lower is better."
+            "Average distance between predicted and expected landmarks, weighted by the typical scale for each landmark."
         )

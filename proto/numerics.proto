@@ -44,6 +44,13 @@ message ModelNumerics {
     string metric_unit = 6;
     DoubleRange metric_range = 7;
 
+    // False for error/distance metrics (WER, NME, perplexity, ...), where a
+    // smaller metric is a better model.
+    //
+    // Unset in numerics protos from releases predating this field; treat unset
+    // as true, which is what every metric was assumed to be.
+    optional bool higher_is_better = 13;
+
     // Maximum allowed deviation between torch and device accuracy, or
     // between actual accuracy and the benchmark value.
     // Paths exceeding this threshold are disabled by the scorecard.

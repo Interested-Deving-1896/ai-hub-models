@@ -69,6 +69,11 @@ def prepare_raw_data(scorecard_path: Path, accuracy_path: Path | None) -> pd.Dat
         accuracy_df = pd.DataFrame(columns=get_accuracy_columns())
 
     for col_name in get_accuracy_metadata_columns():
+        # Direction is kept: check_numerics needs it to know which way a metric
+        # moving means "worse". get_model_status() builds its output row
+        # explicitly, so it never reaches results.csv.
+        if col_name == "metric_higher_is_better":
+            continue
         accuracy_df = accuracy_df.drop(col_name, axis=1)
     accuracy_df["runtime"] = accuracy_df["runtime"].apply(_convert_runtime_name)
 
@@ -96,20 +101,31 @@ def create_check_numerics_function(
     """Return a function that returns whether a single row passes numerical checks."""
     psnr_row_headers = [f"PSNR_{i}" for i in range(10)]
 
+    def regression(row: pd.Series, measured: float) -> float:
+        """How much worse than torch `measured` is, in the metric's own direction.
+
+        Positive means worse. For lower-is-better metrics (WER, NME, ...) a
+        larger score is the regression, so the subtraction flips.
+        """
+        torch_accuracy = row["Torch Accuracy"]
+        if torch_accuracy < 1:
+            torch_accuracy *= 100
+            measured *= 100
+        # Compared as text so np.bool_, "False" and NaN all read correctly. NaN
+        # (row predates the column, or no accuracy data) means higher-is-better,
+        # which is what every metric was assumed to be.
+        if str(row.get("metric_higher_is_better")).strip().lower() == "false":
+            return measured - torch_accuracy
+        return torch_accuracy - measured
+
     def check_numerics(row: pd.Series) -> str:
-        if not np.isnan(sim_accuracy := row["Sim Accuracy"]):
-            torch_accuracy = row["Torch Accuracy"]
-            if torch_accuracy < 1:
-                torch_accuracy *= 100
-                sim_accuracy *= 100
-            if torch_accuracy - sim_accuracy > accuracy_threshold:
-                return "Off-Target Numerical Failure"
+        if (
+            not np.isnan(sim_accuracy := row["Sim Accuracy"])
+            and regression(row, sim_accuracy) > accuracy_threshold
+        ):
+            return "Off-Target Numerical Failure"
         if not np.isnan(device_accuracy := row["Device Accuracy"]):
-            torch_accuracy = row["Torch Accuracy"]
-            if torch_accuracy < 1:
-                torch_accuracy *= 100
-                device_accuracy *= 100
-            if torch_accuracy - device_accuracy > accuracy_threshold:
+            if regression(row, device_accuracy) > accuracy_threshold:
                 return "On-Target Numerical Failure"
             return "Passed"
         if not np.isnan(row["PSNR_0"]):

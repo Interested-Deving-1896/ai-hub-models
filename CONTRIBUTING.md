@@ -309,14 +309,14 @@ Create or reuse an evaluator. Place it in the model's own folder if it's only us
 |--------|-------------|
 | `add_batch(self, output, gt)` | Accumulate metrics for a batch of model outputs vs ground truth |
 | `reset(self)` | Reset accumulated state |
-| `get_accuracy_score(self)` | Return single float accuracy (higher is better) |
+| `get_accuracy_score(self)` | Return single float accuracy (higher is better by default; for an error metric like WER or NME, set `higher_is_better=False` on the metric returned by `get_metric_metadata`) |
 | `formatted_accuracy(self)` | Return formatted string with accuracy and units |
 
 **Optional methods:**
 
 | Method | Description |
 |--------|-------------|
-| `get_metric_metadata(self)` | Return `MetricMetadata` for website publishing |
+| `get_metric_metadata(self)` | Return `MetricMetadata` for website publishing (name, unit, range, and whether higher or lower is better) |
 
 See [`classification_evaluator.py`](qai_hub_models/models/_shared/imagenet_classifier/classification_evaluator.py) for an example evaluator implementation.
 

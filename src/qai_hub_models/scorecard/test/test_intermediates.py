@@ -29,6 +29,7 @@ def test_validate_accuracy_csv() -> None:
         "dataset_name",
         "date",
         "metric_description",
+        "metric_higher_is_better",
         "metric_max",
         "metric_min",
         "metric_name",
