@@ -12,6 +12,8 @@ pipelines and to the CLI parsers.
 from __future__ import annotations
 
 import argparse
+import importlib
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -24,25 +26,35 @@ from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
 from qai_hub_models.utils.export.context import (
+    import_recipe_module,
     resolve_manifest,
     resolve_model_cls,
     resolve_recipe_dir,
 )
 from qai_hub_models.utils.export.dispatch import select_pipeline
 
+_PROMPT_STATUSES = (MODEL_STATUS.UNPUBLISHED, MODEL_STATUS.PENDING)
+
 
 def _confirm_run_ok(source_dir: Path) -> bool:
     """Return False iff the user declines the unpublished-recipe warning.
 
-    Only ``status: published`` skips the prompt. Every other status
-    (``unpublished``, ``pending``, or the ``unset`` default that external /
-    newly-onboarded recipes ship with) triggers the confirmation prompt —
-    running unreviewed recipe code should be an explicit user decision.
+    Only ``unpublished`` and ``pending`` prompt. Both are in-tree statuses that
+    say something true: the recipe is in the Qualcomm catalog but has not
+    cleared review, so the warning's offer of no support is accurate.
+
+    ``unset`` does not prompt. It is the default every external / standalone
+    recipe ships with, and in-tree recipes must set an explicit status
+    (enforced in ``test_manifest_yamls.py``), so ``unset`` means "authored
+    outside the catalog" — where the warning is simply wrong. It told authors
+    their own recipe might not meet standards Qualcomm never applied to it, on
+    every single run. The generated card's banner already skips external
+    recipes for the same reason.
     """
     manifest = resolve_manifest(source_dir)
-    if manifest.status is MODEL_STATUS.PUBLISHED:
-        return True
-    return check_unpublished_model_warning()
+    if manifest.status in _PROMPT_STATUSES:
+        return check_unpublished_model_warning()
+    return True
 
 
 def build_export_parser_for(source_dir: Path) -> argparse.ArgumentParser:
@@ -88,7 +100,7 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         rejects ``script="install"``/``"generate-files"``/``"validate"``
         with a folder before this is called.
     script
-        Script name: ``"export"``, ``"evaluate"``, ``"install"``,
+        Script name: ``"demo"``, ``"export"``, ``"evaluate"``, ``"install"``,
         ``"generate-files"``, or ``"validate"``.
     forwarded
         Argv tail handed to the target's parser.
@@ -106,6 +118,22 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         return
 
     source_dir = resolve_recipe_dir(model_id)
+    if script == "demo":
+        demo_module = importlib.import_module(
+            f"{import_recipe_module(source_dir).__name__}.demo"
+        )
+        if not _confirm_run_ok(source_dir):
+            return
+        # Demo scripts build their own parser internally and read sys.argv
+        # rather than taking argv, so the tail is handed over that way.
+        saved_argv = sys.argv
+        sys.argv = [f"{source_dir.name}.demo", *forwarded]
+        try:
+            demo_module.main()
+        finally:
+            sys.argv = saved_argv
+        return
+
     if script == "export":
         parser = build_export_parser_for(source_dir)
         parser.prog = f"qai_hub_models export {source_dir.name}"
@@ -125,6 +153,6 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         return
 
     raise ValueError(
-        "This function currently only supports evaluate, export, install, "
+        "This function currently only supports demo, evaluate, export, install, "
         "generate-files, and validate."
     )

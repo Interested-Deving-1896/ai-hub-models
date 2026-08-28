@@ -59,6 +59,7 @@ the full flag list of any command.
 | ---------- | --------------------------------------------------------- | ---------------------------------------------------- |
 | `export` | Export a model to a Qualcomm runtime via AI Hub Workbench | `qai-hub-models export mobilenet_v2 -r tflite -p float -d "Samsung Galaxy S25 (Family)"` |
 | `evaluate` | Evaluate a model's accuracy on a dataset via AI Hub Workbench | `qai-hub-models evaluate mobilenet_v2 -r tflite -p float -d "Samsung Galaxy S25 (Family)"` |
+| `demo` | Run a recipe's demo, locally in PyTorch or on a hosted device with `--eval-mode on-device` | `qai-hub-models demo my_model` |
 | `install` | Install a recipe's dependency graph (its `requirements.txt` and pre/post pip commands, leaf-first) | `qai-hub-models install my_model` |
 | `generate-files` | Regenerate a recipe's auto-generated files (`README.md`, `external_repos/__init__.py`) | `qai-hub-models generate-files my_model` |
 | `validate` | Check a recipe for authoring errors — folder shape, manifest schema, model code, URLs | `qai-hub-models validate my_model` |

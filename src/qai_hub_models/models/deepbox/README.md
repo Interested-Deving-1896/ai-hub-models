@@ -52,7 +52,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m qai_hub_models.models.deepbox.demo { --quantize w8a16 }
+qai-hub-models demo deepbox
 ```
 More details on the CLI tool can be found with the `--help` option. See
 [demo.py](demo.py) for sample usage of the model including pre/post processing

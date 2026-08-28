@@ -41,7 +41,7 @@ research_paper_title: Test Paper
 source_repo: https://github.com/example/test-model
 {status_line}\
 supported_precisions:
-- float
+{precisions}\
 tags:
 - bu-auto
 templates:
@@ -51,7 +51,10 @@ use_case: Image Classification
 
 
 def _write_recipe(
-    folder: Path, model_id: str = "my_model", status_line: str = ""
+    folder: Path,
+    model_id: str = "my_model",
+    status_line: str = "",
+    precisions: str = "- float\n",
 ) -> QAIHMModelManifest:
     """Author a minimal recipe folder + manifest at *folder* and return the manifest."""
     folder.mkdir(parents=True, exist_ok=True)
@@ -61,6 +64,7 @@ def _write_recipe(
             model_id=model_id,
             model_name="MyModel",
             status_line=status_line,
+            precisions=precisions,
         )
     )
     return QAIHMModelManifest.from_yaml(manifest_path)
@@ -91,12 +95,20 @@ class TestExternalReadme:
         assert "qai-hub-models export my_model" in readme
         assert "./my_model/" not in readme
 
-    def test_demo_uses_folder_module(self, tmp_path: Path) -> None:
+    def test_demo_uses_the_cli_command(self, tmp_path: Path) -> None:
+        """`qai-hub-models demo`, not a python -m module path."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
         readme = _write_readme(recipe, manifest).read_text()
-        assert "python -m my_model.demo" in readme
-        assert "python -m qai_hub_models.models.my_model.demo" not in readme
+        assert "qai-hub-models demo my_model" in readme
+        assert "python -m" not in readme
+
+    def test_demo_command_has_no_quantize_flag(self, tmp_path: Path) -> None:
+        """--quantize is a redundant alias for --precision; it must not be advertised."""
+        recipe = tmp_path / "my_model"
+        manifest = _write_recipe(recipe, precisions="- float\n- w8a8\n")
+        readme = _write_readme(recipe, manifest).read_text()
+        assert "--quantize" not in readme
 
     def test_no_catalog_quickstart_commands(self, tmp_path: Path) -> None:
         """``qai-hub-models info/perf/numerics/fetch`` need a catalog id — external skips."""
@@ -137,7 +149,10 @@ class TestExternalReadme:
         recipe.mkdir()
         manifest_path.write_text(
             _MINIMAL_MANIFEST.format(
-                model_id="my_model", model_name="MyModel", status_line=""
+                model_id="my_model",
+                model_name="MyModel",
+                status_line="",
+                precisions="- float\n",
             ).replace("headline: A test classifier.\n", "")
         )
         manifest = QAIHMModelManifest.from_yaml(manifest_path)
@@ -155,11 +170,13 @@ class TestInternalReadme:
         assert "qai-hub-models export my_model" in readme
         assert "qai-hub-models export ./my_model/" not in readme
 
-    def test_demo_uses_qualified_package(self, tmp_path: Path) -> None:
+    def test_demo_uses_the_cli_command(self, tmp_path: Path) -> None:
+        """In-tree cards use the same CLI command, with the bare model id."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
         readme = _write_readme(recipe, manifest).read_text()
-        assert "python -m qai_hub_models.models.my_model.demo" in readme
+        assert "qai-hub-models demo my_model" in readme
+        assert "python -m qai_hub_models.models.my_model.demo" not in readme
 
     def test_includes_catalog_quickstart(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"

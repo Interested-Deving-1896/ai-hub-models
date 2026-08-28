@@ -227,7 +227,6 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
     separate_quantize_script=False,
     is_external=False
 ) -%}
-{%- set precisions_str = "{ --quantize " ~ (supported_precisions | reject('equalto', 'float') | join(', ')) ~ " }" if supported_precisions and supported_precisions|length > 1 and not separate_quantize_script else "" -%}
 {%- set step = namespace(num=1) -%}
 {# Header levels shift one deeper when nesting under a single "## Export" parent. #}
 {%- set h_setup = "###" if local_device_deployment else "##" -%}
@@ -260,7 +259,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m {{ demo_module }}.demo{{ ' ' ~ precisions_str if precisions_str else '' }}
+qai-hub-models demo {{ cli_target }}
 ```
 More details on the CLI tool can be found with the `--help` option.{% if not is_hf_readme %} See
 [demo.py](demo.py) for sample usage of the model including pre/post processing
@@ -269,7 +268,7 @@ models](../../../#getting-started) for more usage instructions.{% endif %}{% end
 
 {% if has_on_target_demo %}
 
-By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` to the demo script to run the model on a cloud-hosted target device.
+By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` to run the model on a cloud-hosted target device.
 {% endif %}
 
 {{ h_setup }} {{ "Export the model artifact" if local_device_deployment else "Export for on-device deployment" }}

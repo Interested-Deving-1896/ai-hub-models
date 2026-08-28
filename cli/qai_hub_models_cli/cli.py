@@ -511,7 +511,14 @@ def add_numerics_parser(
     return parser
 
 
-_RECIPE_COMMANDS = ("export", "evaluate", "install", "generate-files", "validate")
+_RECIPE_COMMANDS = (
+    "demo",
+    "export",
+    "evaluate",
+    "install",
+    "generate-files",
+    "validate",
+)
 
 
 def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
@@ -645,6 +652,22 @@ def add_evaluate_parser(
     )
 
 
+def add_demo_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    return add_qaihm_required_help_only_parser(
+        subparsers,
+        name="demo",
+        helpmsg="Run a model's demo locally, or on a hosted device.",
+        description=(
+            f"Run `{CLI_NAME} demo <model> --help` to see the model's native "
+            "demo options. By default the demo runs locally in PyTorch; pass "
+            "`--eval-mode on-device` to run it on a cloud-hosted target device."
+        ),
+        args=[("model", str)],
+    )
+
+
 def add_install_parser(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
@@ -719,7 +742,8 @@ def add_register_parser(
         "register",
         help="Register a name for a local model folder.",
         description="Register a short name for a standalone model folder so it "
-        "can be used with `export` / `evaluate` in place of the full folder path.",
+        "can be used with `demo` / `export` / `evaluate` in place of the full "
+        "folder path.",
     )
     parser.add_argument("name", type=str, help="Alias to register (e.g. my_yolo).")
     parser.add_argument("folder", type=str, help="Path to the model folder.")
@@ -1571,6 +1595,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_list_runtimes_parser(subparsers)
     add_find_parser(subparsers)
     add_versions_parser(subparsers)
+    add_demo_parser(subparsers)
     add_export_parser(subparsers)
     add_evaluate_parser(subparsers)
     add_install_parser(subparsers)
@@ -1592,6 +1617,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ],
         "Customized Models (export from source)": [
             "install",
+            "demo",
             "export",
             "evaluate",
             "generate-files",

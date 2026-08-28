@@ -52,14 +52,14 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m qai_hub_models.models.inception_v3.demo { --quantize w8a8 }
+qai-hub-models demo inception_v3
 ```
 More details on the CLI tool can be found with the `--help` option. See
 [demo.py](demo.py) for sample usage of the model including pre/post processing
 scripts. Please refer to our [general instructions on using
 models](../../../#getting-started) for more usage instructions.
 
-By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` to the demo script to run the model on a cloud-hosted target device.
+By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` to run the model on a cloud-hosted target device.
 
 ## Export for on-device deployment
 To run the model on Qualcomm® devices, you must export the model for use with an edge runtime such as

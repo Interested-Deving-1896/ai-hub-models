@@ -147,7 +147,7 @@ After permissions are configured, ask the user what they're working on and load 
 - `qai-hub-models install <model_id>` — install a model and all its declared deps
 - `qai-hub-models export <model_id>` — compile + profile on device
 - `qai-hub-models evaluate <model_id>` — run accuracy evaluation
-- `python -m <model_folder>.demo` — run the model's demo (no `qai-hub-models demo` subcommand yet)
+- `qai-hub-models demo <model_id>` — run the model's demo
 - `python -m pytest qai_hub_models/models/<model_id>/test.py -v` — run model tests
 
 ## Resources

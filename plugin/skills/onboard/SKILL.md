@@ -276,7 +276,7 @@ Every command takes a `<target>`: either a **folder name or path** (`my_model`) 
 | `qai-hub-models generate-files <target>` | Writes auto-generated files (`README.md`, `external_repos/__init__.py`). Run after editing manifest. |
 | `qai-hub-models export <target> [args...]` | Compile + profile on AI Hub. Flags: `--target-runtime`, `--device`, `--precision`, … `--help` for the full list. |
 | `qai-hub-models evaluate <target> [args...]` | Accuracy eval using `get_evaluator()` and `get_eval_dataset_classes()`. |
-| `python -m <target_folder_name>.demo` | Runs `demo.py`. There's no `qai-hub-models demo` subcommand — invoke the module directly, from the folder containing the recipe folder. |
+| `qai-hub-models demo <target> [args...]` | Runs the recipe's `demo.py`. Locally in PyTorch by default; `--eval-mode on-device` runs it on a hosted device. |
 
 Legacy `python -m qai_hub_models.models.<id>.export` / `.evaluate` paths are being phased out.
 

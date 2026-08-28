@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import argparse
+import sys
+import types
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -107,8 +109,8 @@ def test_dispatch_export_prompts_for_pending_model() -> None:
         mock_select.assert_not_called()
 
 
-def test_dispatch_export_prompts_for_unset_status() -> None:
-    """External recipe with ``status: unset`` prompts — the fail-closed default."""
+def test_dispatch_export_does_not_prompt_for_unset_status() -> None:
+    """``status: unset`` means external, where the catalog warning does not apply."""
     fake_parser = argparse.ArgumentParser()
     fake_parsed = argparse.Namespace()
 
@@ -133,8 +135,8 @@ def test_dispatch_export_prompts_for_unset_status() -> None:
 
         run_model_script("external_recipe", "export", [])
 
-        mock_check.assert_called_once()
-        mock_select.assert_not_called()
+        mock_check.assert_not_called()
+        mock_select.assert_called_once()
 
 
 def test_dispatch_export_skips_prompt_for_published_model() -> None:
@@ -280,3 +282,48 @@ def test_evaluate_parser_uses_export_paths() -> None:
         kwargs = mock_evaluate_parser.call_args.kwargs
         assert kwargs["supported_precision_runtimes"] is export_paths
         assert kwargs["supported_precision_runtimes"] is not testing_paths
+
+
+class TestDispatchDemo:
+    """`demo` hands its argv tail to the recipe's own demo.main()."""
+
+    def _run(self, forwarded: list[str], confirm: bool = True) -> list[str]:
+        """Run the demo branch and return the sys.argv its main() observed."""
+        seen: list[str] = []
+        demo_module = types.ModuleType("fake_model.demo")
+        demo_module.main = lambda: seen.extend(sys.argv)  # type: ignore[attr-defined]
+        recipe_module = types.ModuleType("fake_model")
+
+        with (
+            patch(
+                "qai_hub_models.cli.dispatch.resolve_recipe_dir",
+                return_value=Path("/tmp/fake_model"),
+            ),
+            patch(
+                "qai_hub_models.cli.dispatch.import_recipe_module",
+                return_value=recipe_module,
+            ),
+            patch(
+                "qai_hub_models.cli.dispatch.importlib.import_module",
+                return_value=demo_module,
+            ),
+            patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=confirm),
+        ):
+            run_model_script("fake_model", "demo", forwarded)
+        return seen
+
+    def test_forwards_the_tail_as_argv(self) -> None:
+        """Demo scripts read sys.argv, so the tail has to arrive that way."""
+        assert self._run(["--eval-mode", "on-device"]) == [
+            "fake_model.demo",
+            "--eval-mode",
+            "on-device",
+        ]
+
+    def test_restores_argv_afterwards(self) -> None:
+        before = list(sys.argv)
+        self._run(["--image", "x.png"])
+        assert sys.argv == before
+
+    def test_declining_the_prompt_skips_the_demo(self) -> None:
+        assert self._run([], confirm=False) == []

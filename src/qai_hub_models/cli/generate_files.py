@@ -78,7 +78,7 @@ def _write_readme(folder: Path, manifest: QAIHMModelManifest) -> Path:
 
     Standalone / external recipes (``status: unset``) get an external-flavored
     README whose commands take the folder name (``qai-hub-models install
-    <folder>``, ``python -m <folder>.demo``, ``qai-hub-models export
+    <folder>``, ``qai-hub-models demo <folder>``, ``qai-hub-models export
     <folder>``) and which drops the catalog-only Quick Start block, the
     workbench.aihub.qualcomm.com model-page link, and the unpublished
     warning banner. In-tree recipes get the existing catalog-flavored
