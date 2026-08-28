@@ -62,10 +62,7 @@ from qai_hub_models.utils.export.profile import run_profile as profile_model
 from qai_hub_models.utils.export.quantize import run_quantize as quantize_model
 from qai_hub_models.utils.export.upload import upload_source as upload_model
 from qai_hub_models.utils.input_spec import InputSpec
-from qai_hub_models.utils.validation import (
-    perform_dataset_split_validation,
-    perform_runtime_model_validation,
-)
+from qai_hub_models.utils.validation import perform_runtime_model_validation
 
 # All runtime + precision pairs that are enabled for testing and are compatibile with this model.
 # NOTE:
@@ -106,11 +103,6 @@ export_model = select_pipeline(resolve_recipe_dir(MODEL_ID))
 @pytest.mark.compile
 def test_runtime_model_validation() -> None:
     perform_runtime_model_validation(Model, MODEL_ID)
-
-
-@pytest.mark.compile
-def test_dataset_split_validation() -> None:
-    perform_dataset_split_validation(Model)
 
 
 @pytest.mark.pre_quantize_compile

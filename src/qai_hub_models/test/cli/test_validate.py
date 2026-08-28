@@ -18,12 +18,10 @@ from qai_hub_models.cli import validate as validate_mod
 from qai_hub_models.cli.dispatch import run_model_script
 from qai_hub_models.cli.install import InstallAborted
 from qai_hub_models.cli.validate import (
-    DATASET_CHECKS_ROW_NAME,
     Report,
     Result,
     Status,
     _check_arxiv_abs,
-    _check_datasets,
     _check_default_device_canary,
     _check_external_repo_shas,
     _check_external_repos_init,
@@ -52,11 +50,6 @@ from qai_hub_models.cli.validate import (
 )
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.utils.validation import (
-    DatasetCheck,
-    DatasetCheckOutcome,
-    DatasetCheckResult,
-)
 
 
 def _make_manifest(**kwargs: Any) -> QAIHMModelManifest:
@@ -794,119 +787,3 @@ class TestInternalChecks:
             report = Report()
             _run_internal_checks(tmp_path, None, report)
         assert any(r.status is Status.SKIP for r in report.rows)
-
-
-def _fake_result(
-    dataset_name: str, check: DatasetCheck, outcome: DatasetCheckOutcome
-) -> DatasetCheckResult:
-    return DatasetCheckResult(dataset_name, check, outcome, "detail")
-
-
-class TestDatasetCheckAdapter:
-    """_check_datasets renders validate_dataset_splits findings as report rows."""
-
-    def _rows(self, results: list[DatasetCheckResult]) -> list[Result]:
-        report = Report()
-        with patch(
-            "qai_hub_models.cli.validate.validate_dataset_splits",
-            return_value=results,
-        ):
-            _check_datasets(object(), report)
-        return report.rows
-
-    @pytest.mark.parametrize(
-        ("outcome", "status"),
-        [
-            (DatasetCheckOutcome.PASS, Status.PASS),
-            (DatasetCheckOutcome.FAIL, Status.FAIL),
-            (DatasetCheckOutcome.UNKNOWN, Status.WARN),
-            (DatasetCheckOutcome.UNAVAILABLE, Status.SKIP),
-        ],
-    )
-    def test_outcome_maps_to_status(
-        self, outcome: DatasetCheckOutcome, status: Status
-    ) -> None:
-        rows = self._rows(
-            [_fake_result("imagenette", DatasetCheck.DISTINCT_SPLITS, outcome)]
-        )
-        assert len(rows) == 1
-        assert rows[0].status is status
-        assert rows[0].category == "Datasets / evaluator"
-
-    def test_row_name_is_dataset_plus_check(self) -> None:
-        rows = self._rows(
-            [
-                _fake_result(
-                    "imagenette",
-                    DatasetCheck.VAL_REPRODUCIBLE,
-                    DatasetCheckOutcome.PASS,
-                )
-            ]
-        )
-        assert rows[0].name == f"imagenette {DatasetCheck.VAL_REPRODUCIBLE.value}"
-
-    def test_no_datasets_emits_single_skip_row(self) -> None:
-        rows = self._rows([])
-        assert len(rows) == 1
-        assert rows[0].status is Status.SKIP
-        assert rows[0].name == DATASET_CHECKS_ROW_NAME
-
-
-class TestDatasetChecksFlag:
-    """--check-datasets gates the (downloading) dataset comparisons."""
-
-    def _run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kwargs: Any
-    ) -> Report:
-        monkeypatch.setattr(validate_mod, "install_model", lambda *_a, **_kw: None)
-        for fn in (
-            "_check_files_present",
-            "_check_no_self_referential_imports",
-            "_check_init_exports",
-            "_check_external_repos_init",
-            "_check_requirements_txt",
-            "_check_pip_commands",
-            "_check_app",
-            "_check_evaluator",
-            "_check_pytest",
-            "_check_url_reachability",
-        ):
-            monkeypatch.setattr(validate_mod, fn, lambda *_a, **_kw: None)
-        monkeypatch.setattr(
-            validate_mod, "_check_manifest", lambda *_a, **_kw: _make_manifest(id="m")
-        )
-        monkeypatch.setattr(
-            validate_mod, "_check_model_code", lambda *_a, **_kw: object()
-        )
-        report = Report()
-        _run_all_checks(tmp_path, report, **kwargs)
-        return report
-
-    def test_absent_flag_emits_skip_row(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        called = False
-
-        def _spy(*_a: Any, **_kw: Any) -> None:
-            nonlocal called
-            called = True
-
-        monkeypatch.setattr(validate_mod, "_check_datasets", _spy)
-        report = self._run(tmp_path, monkeypatch)
-        assert not called
-        row = next(r for r in report.rows if r.name == DATASET_CHECKS_ROW_NAME)
-        assert row.status is Status.SKIP
-        assert "--check-datasets" in row.detail
-
-    def test_flag_runs_the_check(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        called = False
-
-        def _spy(*_a: Any, **_kw: Any) -> None:
-            nonlocal called
-            called = True
-
-        monkeypatch.setattr(validate_mod, "_check_datasets", _spy)
-        self._run(tmp_path, monkeypatch, check_datasets=True)
-        assert called
