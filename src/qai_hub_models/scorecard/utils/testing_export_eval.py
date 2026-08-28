@@ -1701,11 +1701,11 @@ def torch_inference_for_accuracy_validation(
     )
 
 
-def torch_eval_smoke_on_one_sample(
+def torch_eval_smoke_on_two_samples(
     model: QAIHMModelT, dataset_cls: type[BaseDataset], model_id: str
 ) -> None:
     """
-    Smoke-test the dataset + evaluator plumbing on a single sample via torch.
+    Smoke-test the dataset + evaluator plumbing on two samples via torch.
 
     No accuracy threshold — this only proves the (dataset -> torch forward ->
     evaluator) chain runs end-to-end so nightly catches evaluator or dataset
@@ -1719,8 +1719,8 @@ def torch_eval_smoke_on_one_sample(
         model_executors={"torch": model},
         input_spec=model.get_input_spec(),
         dataset_cls=dataset_cls,
-        num_samples=1,
-        samples_per_job=1,
+        num_samples=2,
+        samples_per_job=2,
         use_cache=False,
     )
     assert result.torch_accuracy is not None, (

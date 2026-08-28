@@ -48,7 +48,7 @@ from qai_hub_models.scorecard.utils.testing_export_eval import (
     sim_accuracy_on_dataset,
     split_and_group_accuracy_validation_output_batches,
     torch_accuracy_on_dataset,
-    torch_eval_smoke_on_one_sample,
+    torch_eval_smoke_on_two_samples,
     torch_inference_for_accuracy_validation,
     torch_inference_for_accuracy_validation_outputs,
 )
@@ -273,7 +273,7 @@ def test_val_data_torch() -> None:
 def test_val_data_torch_smoke() -> None:
     if not HAS_EVAL_DATASET:
         return
-    torch_eval_smoke_on_one_sample(
+    torch_eval_smoke_on_two_samples(
         Model.from_pretrained(), Model.get_eval_dataset_classes()[0], MODEL_ID
     )
 
