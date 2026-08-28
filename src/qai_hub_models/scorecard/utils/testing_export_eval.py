@@ -1086,6 +1086,7 @@ def profile_via_export(
     precision: Precision,
     scorecard_path: ScorecardProfilePath,
     device: ScorecardDevice,
+    components: list[str] | None = None,
 ) -> None:
     """
     Use the provided export script function to submit profile jobs.
@@ -1116,10 +1117,32 @@ def profile_via_export(
         Scorecard path.
     device
         Scorecard device.
+    components
+        Profile only these components. Used by hybrid LLMs, whose backbone parts are
+        measured end-to-end rather than individually. Defaults to every component.
     """
     component_names, graph_names, component_graph_names = (
         _get_components_and_graph_names(model, model_id)
     )
+
+    if components is not None:
+        # Narrow after the call above, which stashes the full component list that
+        # compile and link still need.
+        assert component_names is not None, (
+            f"{model_id} has no components to restrict to {components}"
+        )
+        unknown = sorted(set(components) - set(component_names))
+        assert not unknown, f"{model_id}: cannot profile unknown component(s) {unknown}"
+        component_names = [c for c in component_names if c in components]
+        if component_graph_names is not None:
+            component_graph_names = ComponentGroup(
+                {
+                    name: gn
+                    for name, gn in component_graph_names.items()
+                    if name in components
+                }
+            )
+
     test_params = ScExportTestParams(
         model_id,
         path=scorecard_path,
@@ -1147,11 +1170,15 @@ def profile_via_export(
             scorecard_path.runtime,
             scorecard_path.get_profile_options(precision, device),
         )
+        # Only collection profile runners accept `components`; single-model ones
+        # have nothing to restrict, and `components` is never set for them.
+        component_kwarg = {} if components is None else {"components": components}
         profile_output = profile_model(  # type: ignore[assignment]
             model_id,
             device.execution_device,
             profile_options,
             target_models,
+            **component_kwarg,
         )
 
     cache = ProfileScorecardJobYaml.from_test_artifacts()

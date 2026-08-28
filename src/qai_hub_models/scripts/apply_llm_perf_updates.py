@@ -21,6 +21,7 @@ from pathlib import Path
 from filelock import FileLock
 
 from qai_hub_models import Precision
+from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.models._shared.llm.perf_collection import update_perf_yaml
 from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE, ScorecardDevice
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import load_similar_devices
@@ -114,7 +115,11 @@ def apply_updates(updates: list[dict]) -> int:
             continue
         with FileLock(f"{perf_path}.lock"):
             perf = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
-            perf.drop_entries_in_scope(scope)
+            # This writer only ever produces the consolidated backbone entry (see
+            # _update_perf_yaml_locked). Anything else in this perf.yaml is a standalone
+            # component owned by the scorecard, which runs earlier in the same workflow.
+            backbone = QAIHMModelManifest.from_model(model_id).perf_component_key(None)
+            perf.drop_entries_in_scope(scope, only_components={backbone})
             perf.to_model_yaml(model_id)
 
     for u in metrics:

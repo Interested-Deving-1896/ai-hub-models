@@ -240,10 +240,21 @@ class ScExportTestParams(Generic[ScorecardPathT]):
     graph_names: list[str] | None = None
     component_graph_names: ComponentGroup[list[str]] | None = None
 
+    # Components expected to have profile / inference jobs. None means all of them.
+    # Hybrid LLMs narrow this: their backbone parts compile and link but are measured
+    # end-to-end, so they never get a profile job of their own.
+    profile_component_names: list[str] | None = None
+
     def str_with_description(self, val: str) -> str:
         return _str_with_description(
             val, self.model_id, self.precision, self.path, self.device, None, None
         )
+
+    def expects_device_job(self, component: str | None) -> bool:
+        """Whether a profile / inference job is expected for this component."""
+        if self.profile_component_names is None or component is None:
+            return True
+        return component in self.profile_component_names
 
     @cached_property
     def component_gn_pairs(self) -> list[tuple[str | None, str | None]]:

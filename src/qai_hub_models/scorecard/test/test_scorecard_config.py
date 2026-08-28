@@ -10,6 +10,7 @@ from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard.envvars import SpecialModelSetting
 from qai_hub_models.scorecard.scorecard_config_yaml import (
     LLMWeekendGroup,
+    QAIHMModelScorecardConfig,
     get_downloadable_llm_model_ids,
     get_llm_model_ids,
     get_week_model_ids,
@@ -41,6 +42,17 @@ def test_pip_commands_require_global_requirements_incompatible(model_id: str) ->
         "manifest.yaml, but global_requirements_incompatible is not true in "
         "scorecard-config.yaml."
     )
+
+
+def test_duplicate_standalone_component_labels_rejected() -> None:
+    # Two components sharing a label would silently merge in perf.yaml.
+    with pytest.raises(ValueError, match="labels must be unique"):
+        QAIHMModelScorecardConfig(
+            standalone_components={
+                "vision_encoder": "Encoder",
+                "audio_encoder": "Encoder",
+            }
+        )
 
 
 def test_all_llms_have_weekend_group() -> None:

@@ -1206,6 +1206,48 @@ class QAIHMModelManifest(BaseQAIHMConfig):
 
         return self
 
+    def validate_standalone_components(self) -> None:
+        """
+        Check scorecard-config.yaml's standalone_components against this manifest.
+
+        Cross-file, so it cannot live in either model_validator: from_model runs
+        from_yaml (and its validators) before scorecard_config is attached.
+        """
+        standalone_components = self.scorecard_config.standalone_components
+        if not standalone_components:
+            return
+
+        # Non-LLM collection models already get a tab per component.
+        if not self.model_type_llm:
+            raise ValueError(
+                "standalone_components can only be set on LLM/VLM models "
+                "(model_type_llm must be true). Non-LLM collection models already "
+                "get one model card tab per component."
+            )
+
+        # `name` keys the consolidated backbone entry, so reusing it overwrites it.
+        if self.name is not None and self.name in standalone_components.values():
+            raise ValueError(
+                f"standalone_components label {self.name!r} collides with the model "
+                f"name, which keys the consolidated backbone entry in perf.yaml."
+            )
+
+    def perf_component_key(self, component: str | None) -> str:
+        """
+        perf.yaml key for a component. Standalone components use their declared label.
+        Any other component on a model that declares standalone ones is an LLM backbone
+        part, which collapses to the model name because the parts are only measured
+        together end-to-end. Regular collection models keep their raw component names.
+        """
+        standalone_components = self.scorecard_config.standalone_components
+        if component is not None:
+            if component in standalone_components:
+                return standalone_components[component]
+            if not standalone_components:
+                return component
+        assert self.id is not None, "perf_component_key needs a full model manifest"
+        return self.name or self.id
+
     # =============================================================================
     # Loader / writer
     # =============================================================================
@@ -1220,6 +1262,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         manifest_path = model_folder / "manifest.yaml"
         manifest = cls.from_yaml(manifest_path)
         manifest.scorecard_config = QAIHMModelScorecardConfig.from_model(model_id)
+        manifest.validate_standalone_components()
         return manifest
 
     def to_model_yaml(self) -> Path:

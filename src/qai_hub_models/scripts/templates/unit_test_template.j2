@@ -214,7 +214,7 @@ def test_link(precision: Precision, scorecard_path: ScorecardCompilePath, device
     except CachedScorecardJobError as e:
         pytest.skip(str(e))
 
-{%- if not is_llm %}
+{%- if not is_llm or standalone_components %}
 @pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_profile_parameterized_pytest_config(MODEL_ID, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES{{ ", can_use_quantize_job=False" if not can_use_quantize_job else ''}}{{ ", is_llm=True" if is_llm else ''}}), ids=pytest_device_idfn)
 @pytest.mark.profile
 def test_profile(precision: Precision, scorecard_path: ScorecardProfilePath, device: ScorecardDevice) -> None:
@@ -231,12 +231,16 @@ def test_profile(precision: Precision, scorecard_path: ScorecardProfilePath, dev
             precision,
             scorecard_path,
             device,
+            {%- if standalone_components %}
+            # The remaining components are LLM backbone parts, measured end-to-end.
+            components={{ standalone_components | list }},
+            {%- endif %}
         )
     except CachedScorecardJobError as e:
         pytest.skip(str(e))
 
 
-{%- if not has_multi_graph %}
+{%- if not has_multi_graph and not is_llm %}
 @pytest.mark.parametrize(("precision", "scorecard_path", "device"), get_evaluation_parameterized_pytest_config(MODEL_ID, EVAL_DEVICE, ENABLED_PRECISION_RUNTIMES, PASSING_PRECISION_RUNTIMES, {{ "can_use_quantize_job=False, " if not can_use_quantize_job else ''}}), ids=pytest_device_idfn)
 @pytest.mark.inference
 def test_inference(precision: Precision, scorecard_path: ScorecardProfilePath, device: ScorecardDevice) -> None:

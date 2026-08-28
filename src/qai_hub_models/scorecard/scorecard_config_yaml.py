@@ -9,6 +9,8 @@ import os
 from enum import Enum, unique
 from typing import Literal
 
+from pydantic import Field, model_validator
+
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
 from qai_hub_models.utils.path_helpers import (
     MODEL_IDS,
@@ -100,6 +102,22 @@ class QAIHMModelScorecardConfig(BaseQAIHMConfig):
 
     # True if the LLM publishes downloadable release assets (rerun on a QAIRT bump).
     downloadable_llm_asset: bool = False
+
+    # Components benchmarked standalone, mapped to their model card tab label (also the
+    # component's perf.yaml key). Unlisted components are LLM backbone parts, measured
+    # together end-to-end and consolidated into one tab keyed by the model name.
+    standalone_components: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_standalone_component_labels(self) -> QAIHMModelScorecardConfig:
+        # Labels are perf.yaml component keys, so a duplicate silently merges two
+        # components' metrics.
+        labels = list(self.standalone_components.values())
+        if len(labels) != len(set(labels)):
+            raise ValueError(
+                f"standalone_components labels must be unique, got {sorted(labels)}."
+            )
+        return self
 
     @classmethod
     def from_model(cls, model_id: str) -> QAIHMModelScorecardConfig:

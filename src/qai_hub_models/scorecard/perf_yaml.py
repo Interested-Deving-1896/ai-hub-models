@@ -308,8 +308,21 @@ class QAIHMModelPerf(BaseQAIHMConfig):
     def drop_entries_in_scope(
         self,
         scope: set[tuple[Precision, ScorecardProfilePath, ScorecardDevice]],
+        only_components: set[str] | None = None,
     ) -> None:
-        """Delete every entry whose (precision, path, device) key is in scope."""
+        """
+        Delete every entry whose (precision, path, device) key is in scope.
+
+        Parameters
+        ----------
+        scope
+            The (precision, path, device) keys to drop.
+        only_components
+            Restrict the drop to these component names. A hybrid LLM's perf.yaml has two
+            writers -- the QDC pipeline owns the consolidated backbone entry and the
+            scorecard owns the standalone components -- and each must only clear its own,
+            or whichever runs second deletes the other's results.
+        """
         for precision, path, device in scope:
             precision_details = self.precisions.get(precision)
             if precision_details is None:
@@ -319,6 +332,11 @@ class QAIHMModelPerf(BaseQAIHMConfig):
                 component_name,
                 component_details,
             ) in precision_details.components.items():
+                if (
+                    only_components is not None
+                    and component_name not in only_components
+                ):
+                    continue
                 device_metrics = component_details.performance_metrics.get(device)
                 if device_metrics is None:
                     continue

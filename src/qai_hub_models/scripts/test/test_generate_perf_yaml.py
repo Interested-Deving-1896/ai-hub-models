@@ -46,6 +46,7 @@ def test_generate_perf(hub_test_deployment: str) -> None:
         component_names=["encoder", "decoder"],
         graph_names=None,
         component_graph_names=None,
+        profile_component_names=["encoder", "decoder"],
         profile_tests=[
             (Precision.float, ScorecardProfilePath.TFLITE, cs_8_gen_3),
             (Precision.float, ScorecardProfilePath.ONNX, cs_8_gen_3),

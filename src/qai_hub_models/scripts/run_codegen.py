@@ -303,6 +303,7 @@ def generate_code_for_model(model_name: str) -> list[str]:
 
     manifest_dict["has_external_repos"] = bool(manifest.external_repos)
     manifest_dict["is_llm"] = scorecard_config.is_llm
+    manifest_dict["standalone_components"] = scorecard_config.standalone_components
 
     should_generate_tests = not scorecard_config.skip_hub_tests_and_scorecard
     scorecard_model_dir = QAIHM_PACKAGE_ROOT / "scorecard" / "models" / model_name

@@ -23,6 +23,8 @@ from qai_hub_models.configs.manifest_yaml import (
     TechnicalDetails,
 )
 from qai_hub_models.models._shared.lm_schema import Recipe
+from qai_hub_models.scorecard.results.yaml import ComponentNamesYaml
+from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG, QAIHM_WEB_ASSET
 from qai_hub_models.utils.device import CANARY_DEVICES
 from qai_hub_models.utils.metrics import VALID_METRIC_PAIRS
@@ -359,6 +361,71 @@ class TestLMQuantizationDetailsValidation:
             supported_precisions=[Precision.float],
         )
         assert manifest.lm_quantization_details == {}
+
+
+class TestStandaloneComponentsValidation:
+    """
+    standalone_components lives in scorecard-config.yaml, so these cross-file checks run
+    through QAIHMModelManifest.validate_standalone_components rather than a validator.
+    """
+
+    @staticmethod
+    def _manifest(
+        standalone_components: dict[str, str],
+        model_type_llm: bool = True,
+        name: str | None = None,
+    ) -> QAIHMModelManifest:
+        manifest = QAIHMModelManifest(model_type_llm=model_type_llm, name=name)
+        manifest.scorecard_config = QAIHMModelScorecardConfig(
+            standalone_components=standalone_components
+        )
+        return manifest
+
+    def test_llm_with_standalone_component_is_valid(self) -> None:
+        manifest = self._manifest({"vision_encoder": "Vision Encoder"})
+        manifest.validate_standalone_components()
+        assert manifest.perf_component_key("vision_encoder") == "Vision Encoder"
+
+    def test_non_llm_rejected(self) -> None:
+        manifest = self._manifest({"encoder": "Encoder"}, model_type_llm=False)
+        with pytest.raises(ValueError, match="can only be set on LLM/VLM models"):
+            manifest.validate_standalone_components()
+
+    def test_label_colliding_with_model_name_rejected(self) -> None:
+        # `name` keys the consolidated backbone entry, so reusing it would
+        # overwrite the end-to-end numbers with a single component's.
+        manifest = self._manifest({"vision_encoder": "My-VLM"}, name="My-VLM")
+        with pytest.raises(ValueError, match="collides with the model name"):
+            manifest.validate_standalone_components()
+
+
+def test_standalone_components_are_real_components() -> None:
+    """
+    Every standalone_components key must name a component the model actually declares
+    in Python, otherwise the scorecard would ask to profile a component that does not
+    exist and the tab would silently never appear.
+    """
+    known_components = ComponentNamesYaml.from_intermediates()
+    errors: list[str] = []
+    for model_id in MODEL_IDS:
+        manifest = QAIHMModelManifest.from_model(model_id)
+        standalone_components = manifest.scorecard_config.standalone_components
+        if not standalone_components:
+            continue
+        components = known_components.get(model_id)
+        if components is None:
+            errors.append(
+                f"{model_id}: declares standalone_components but has no recorded "
+                f"component names; it must be a collection model."
+            )
+            continue
+        unknown = set(standalone_components) - set(components)
+        if unknown:
+            errors.append(
+                f"{model_id}: standalone_components {sorted(unknown)} are not "
+                f"components of this model (has {sorted(components)})."
+            )
+    assert not errors, "\n".join(errors)
 
 
 # ---------------------------------------------------------------------------

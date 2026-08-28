@@ -142,9 +142,9 @@ class ScorecardJobSummary(Generic[ScorecardPathT]):
             perf.precisions[params.precision] = QAIHMModelPerf.PrecisionDetails()
 
         precision_details = perf.precisions[params.precision]
-        component_id = params.component or (
-            QAIHMModelManifest.from_model(params.model_id).name or params.model_id
-        )
+        component_id = QAIHMModelManifest.from_model(
+            params.model_id
+        ).perf_component_key(params.component)
         if component_id not in precision_details.components:
             # This field is set only when the parent precision is "mixed", since it is not otherwise
             # possible to decipher what precision was used for each component.
@@ -225,7 +225,8 @@ class ScorecardExportTestSummary:
                 ):
                     too_slow_jobs.append(summary.profile_job.job_id)
                 continue
-            has_missing_profile_job = True
+            if self.params.expects_device_job(summary.params.component):
+                has_missing_profile_job = True
 
             if summary.link_job:
                 if not summary.link_job.success:
@@ -256,11 +257,20 @@ class ScorecardExportTestSummary:
         return None
 
     @property
+    def profiled_job_summaries(self) -> list[ScorecardJobSummary[ScorecardProfilePath]]:
+        """The job summaries whose component is expected to have a profile job."""
+        return [
+            x
+            for x in self.job_summaries
+            if self.params.expects_device_job(x.params.component)
+        ]
+
+    @property
     def has_profile_failure(self) -> bool:
         """Returns true if any profile job failed or any expected profile job is missing in the job cache for this export test."""
         return any(
             x.profile_job is None or not x.profile_job.success
-            for x in self.job_summaries
+            for x in self.profiled_job_summaries
         )
 
     def add_to_perf(self, perf: QAIHMModelPerf, include_failures: bool = False) -> None:
@@ -269,7 +279,11 @@ class ScorecardExportTestSummary:
         if not include_failures and self.has_profile_failure:
             return
 
-        for summary in self.job_summaries:
+        summaries = self.profiled_job_summaries
+        if not summaries:
+            return
+
+        for summary in summaries:
             summary.add_to_perf(perf, include_failures)
 
         new_chipsets: set[str] = set()
@@ -295,6 +309,11 @@ class ModelTestConfig:
     component_names: list[str] | None
     graph_names: list[str] | None
     component_graph_names: ComponentGroup[list[str]] | None
+
+    # Components the generated test_profile actually profiles. Narrower than
+    # component_names for hybrid LLMs, whose backbone parts are measured end-to-end;
+    # counting those as expected profile jobs would mark every export test failed.
+    profile_component_names: list[str] | None
 
     profile_tests: list[tuple[Precision, ScorecardProfilePath, ScorecardDevice]]
     inference_tests: list[tuple[Precision, ScorecardProfilePath, ScorecardDevice]]
@@ -326,11 +345,15 @@ class ModelTestConfig:
             manifest.can_use_quantize_job,
         )
 
+        # is_llm must match what the generated test_profile ran with, or the scope
+        # computed here covers devices the model never profiles on.
+        is_llm = manifest.scorecard_config.is_llm
         profile_tests = get_profile_parameterized_pytest_config(
             model_id,
             model_supported_paths,
             model_passing_paths,
             manifest.can_use_quantize_job,
+            is_llm=is_llm,
         )
         inference_tests = get_evaluation_parameterized_pytest_config(
             model_id,
@@ -340,11 +363,19 @@ class ModelTestConfig:
             manifest.can_use_quantize_job,
         )
 
+        standalone_components = manifest.scorecard_config.standalone_components
+        profile_component_names = component_names
+        if standalone_components and component_names is not None:
+            profile_component_names = [
+                c for c in component_names if c in standalone_components
+            ]
+
         return ModelTestConfig(
             model_id=model_id,
             component_names=component_names,
             graph_names=graph_names,
             component_graph_names=component_graph_names,
+            profile_component_names=profile_component_names,
             profile_tests=profile_tests,
             inference_tests=inference_tests,
             enabled_paths=enabled_paths,
@@ -360,6 +391,7 @@ class ModelTestConfig:
             component_names=None,
             component_graph_names=None,
             graph_names=None,
+            profile_component_names=None,
             profile_tests=get_static_model_test_parameterizations(
                 model_info.id,
                 JobType.PROFILE,
@@ -391,6 +423,7 @@ class ModelTestConfig:
                 self.component_names,
                 self.graph_names,
                 self.component_graph_names,
+                profile_component_names=self.profile_component_names,
             )
             for pp in all_paramaterizations
         ]

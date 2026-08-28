@@ -68,6 +68,7 @@ from qai_hub_models.scorecard.results.yaml import (
     ToolVersionsByPathYaml,
     get_model_component_and_graph_names,
 )
+from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -139,6 +140,20 @@ def _scope_from_test_config(
 ) -> set[tuple[Precision, ScorecardProfilePath, ScorecardDevice]]:
     """The (precision, path, device) tuples this run was configured to measure."""
     return {(prec, path, device) for prec, path, device in test_params.profile_tests}
+
+
+def _perf_components_owned_here(sc: QAIHMModelScorecardConfig) -> set[str] | None:
+    """
+    perf.yaml component names this writer may modify, or None for all of them.
+
+    A hybrid LLM's perf.yaml is co-owned: apply_llm_perf_updates writes the consolidated
+    backbone entry from QDC measurements, and this writer contributes the standalone
+    components it profiled through Workbench. Restricting the scoped drop to our own
+    components keeps each writer from deleting the other's results.
+    """
+    if not sc.is_llm or not sc.standalone_components:
+        return None
+    return set(sc.standalone_components.values())
 
 
 def _accuracy_scope_from_test_config(
@@ -586,16 +601,21 @@ def process_e2e_recipe_model(
         # Load old model card and write new model card. Skip the write when this shard
         # produced no published summaries -- otherwise the scoped merge deletes committed entries.
         prev_model_card = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
+        # A hybrid LLM's standalone components are profiled through Workbench, so this
+        # writer owns their entries while apply_llm_perf_updates owns the backbone entry.
+        owned_components = _perf_components_owned_here(sc)
         if (
             not sc.freeze_perf_yaml
-            and not sc.is_llm
+            and (not sc.is_llm or owned_components)
             and model_card_without_failures
             and not model_card_without_failures.empty
         ):
             # Scoped merge: drop in-scope (precision, path, device) tuples
             # from the committed card, then upsert this run's results.
             merged = copy.deepcopy(prev_model_card)
-            merged.drop_entries_in_scope(_scope_from_test_config(test_params))
+            merged.drop_entries_in_scope(
+                _scope_from_test_config(test_params), only_components=owned_components
+            )
             for summary in summaries:
                 if summary.params.path.is_published:
                     summary.add_to_perf(merged, include_failures=False)
