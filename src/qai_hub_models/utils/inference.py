@@ -118,18 +118,21 @@ def compile_model_from_args(
         )
     if isinstance(export_output, CollectionExportResult):
         assert export_output.compile_jobs is not None
+        # For AOT runtimes the runnable artifact is the linked context binary,
+        # not the unlinked compiled DLC. Fall back to compile jobs for JIT.
+        jobs = export_output.link_jobs or export_output.compile_jobs
         if component is not None:
-            compile_job = export_output.compile_jobs[component]
-            target_model = compile_job.get_target_model()
+            target_model = jobs[component].get_target_model()
             assert target_model is not None
             return target_model
         target_model_list: list[hub.Model] = []
-        for compile_job in export_output.compile_jobs.values():
-            model = compile_job.get_target_model()
+        for job in jobs.values():
+            model = job.get_target_model()
             assert model is not None
             target_model_list.append(model)
         return target_model_list
-    target_model = export_output.compile_job.get_target_model()
+    job = export_output.link_job or export_output.compile_job
+    target_model = job.get_target_model()
     assert target_model is not None
     return target_model
 
