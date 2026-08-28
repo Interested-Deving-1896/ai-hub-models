@@ -9,10 +9,10 @@ import torch
 from PIL import Image
 from ultralytics.models.fastsam.model import FastSAM
 
-from qai_hub_models.models._shared.fastsam.app import FastSAMApp
 from qai_hub_models.models.fastsam_s.demo import INPUT_IMAGE
 from qai_hub_models.models.fastsam_s.demo import main as demo_main
 from qai_hub_models.models.fastsam_s.model import DEFAULT_WEIGHTS, FastSAM_S
+from qai_hub_models.models.templates.fastsam.app import FastSAMApp
 
 
 def test_task() -> None:

@@ -7,13 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from qai_hub_models.models._shared.sam.app import SAMInputImageLayout
 from qai_hub_models.models.sam3.app import SAM3App
 from qai_hub_models.models.sam3.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     SAM3,
 )
+from qai_hub_models.models.templates.sam.app import SAMInputImageLayout
 from qai_hub_models.utils.args import (
     add_output_dir_arg,
     demo_model_components_from_cli_args,

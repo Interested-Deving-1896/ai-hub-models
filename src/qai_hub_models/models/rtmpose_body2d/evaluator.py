@@ -14,7 +14,7 @@ import torch
 from qai_hub_models.datasets.cocowholebody import CocoWholeBodyDataset
 from qai_hub_models.extern.mmpose import patch_mmpose_no_build_deps
 from qai_hub_models.extern.xtcocotools.cocoeval import COCOeval
-from qai_hub_models.models._shared.pose.pose_utils import (
+from qai_hub_models.models.templates.pose.pose_utils import (
     BODY_SIGMAS,
     FACE_SIGMAS,
     FOOT_SIGMAS,

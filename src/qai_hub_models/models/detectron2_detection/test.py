@@ -11,13 +11,13 @@ from detectron2.config import get_cfg
 from detectron2.engine import DefaultPredictor
 from detectron2.model_zoo import get_checkpoint_url, get_config_file
 
-from qai_hub_models.models._shared.detectron2.model import IMAGE_ADDRESS
 from qai_hub_models.models.detectron2_detection.app import Detectron2DetectionApp
 from qai_hub_models.models.detectron2_detection.demo import main as demo_main
 from qai_hub_models.models.detectron2_detection.model import (
     DEFAULT_CONFIG,
     Detectron2Detection,
 )
+from qai_hub_models.models.templates.detectron2.model import IMAGE_ADDRESS
 from qai_hub_models.utils.asset_loaders import load_image
 from qai_hub_models.utils.test_helpers import (
     assert_most_close,

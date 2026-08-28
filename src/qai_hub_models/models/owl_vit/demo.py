@@ -5,13 +5,13 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.owl.demo import owl_detection_demo
 from qai_hub_models.models.owl_vit.model import (
     HF_MODEL_ID,
     MODEL_ASSET_VERSION,
     MODEL_ID,
     OwlViT,
 )
+from qai_hub_models.models.templates.owl.demo import owl_detection_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 DEFAULT_TEXT_QUERIES = ["a photo of a cup"]

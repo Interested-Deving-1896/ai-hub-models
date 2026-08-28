@@ -5,8 +5,8 @@
 r"""
 Quantization script for Gemma4-E4B.
 
-Delegates to the shared Gemma4 two-stage workflow. See
-``qai_hub_models.models._shared.gemma4.quantize`` for the full description.
+Delegates to the Gemma4 template's two-stage workflow. See
+``qai_hub_models.models.templates.gemma4.quantize`` for the full description.
 
 Usage
 -----
@@ -28,20 +28,20 @@ GEMMA4_LOCAL_CHECKPOINT can supply the checkpoint dir instead of --checkpoint.
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.gemma4 import quantize as _shared_quantize
 from qai_hub_models.models.gemma_4_e4b_it.model import (
     MODEL_ID,
     SUPPORTED_PRECISIONS,
     Gemma4_E4B_PreSplit,
     Gemma4_E4B_QuantizablePreSplit,
 )
+from qai_hub_models.models.templates.gemma4 import quantize as _template_quantize
 
-export_onnx = _shared_quantize.export_onnx
-quantize = _shared_quantize.quantize
+export_onnx = _template_quantize.export_onnx
+quantize = _template_quantize.quantize
 
 
 def main() -> None:
-    _shared_quantize.main(
+    _template_quantize.main(
         presplit_cls=Gemma4_E4B_PreSplit,
         quant_presplit_cls=Gemma4_E4B_QuantizablePreSplit,
         model_id=MODEL_ID,

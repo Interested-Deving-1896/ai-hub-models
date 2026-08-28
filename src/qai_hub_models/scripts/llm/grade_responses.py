@@ -15,7 +15,7 @@ Reads a JSON file containing a list of items in the form::
 
 The ``prompt`` is passed through to the grader as-is, and ``output`` is the
 generated response to grade. Grading is delegated to
-:mod:`qai_hub_models.models._shared.llm.grader.grader`.
+:mod:`qai_hub_models.models.templates.llm.grader.grader`.
 
 A closing pass sends the rationales back to the grader model and condenses them
 into at most five recurring failure modes, printed last and stored under
@@ -34,14 +34,14 @@ from pathlib import Path
 
 import torch
 
-from qai_hub_models.models._shared.llm.grace_tasks import GRACE_METRIC_NAME
-from qai_hub_models.models._shared.llm.grader.grader import (
+from qai_hub_models.models.templates.llm.grace_tasks import GRACE_METRIC_NAME
+from qai_hub_models.models.templates.llm.grader.grader import (
     DEFAULT_PROMPT_TEMPLATE,
     MAX_POINTS,
     ResponseGrader,
     resolve_device,
 )
-from qai_hub_models.models._shared.llm.grader.report import (
+from qai_hub_models.models.templates.llm.grader.report import (
     build_summary,
     category_scores,
     resolve_categories,

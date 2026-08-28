@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.video_classifier.model import INPUT_VIDEO_PATH
+from qai_hub_models.models.templates.video_classifier.model import INPUT_VIDEO_PATH
 from qai_hub_models.models.video_mae.app import VideoMAEApp
 from qai_hub_models.models.video_mae.demo import main as demo_main
 from qai_hub_models.models.video_mae.model import VideoMAE

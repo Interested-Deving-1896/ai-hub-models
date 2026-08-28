@@ -144,7 +144,7 @@ If you're tempted to reimplement a model architecture inline in `model.py` (back
 
 - **model_id** — folder name, lowercase snake_case.
 - **model_name** — display name in manifest, dashes, no spaces / underscores.
-- **template** — reusable base under `qai_hub_models/models/_shared/<name>/`, declared in `manifest.yaml` `templates:` and resolved transitively.
+- **template** — reusable base under `qai_hub_models/models/templates/<name>/`, declared in `manifest.yaml` `templates:` and resolved transitively.
 
 ## Folder layout
 
@@ -177,7 +177,7 @@ Standalone folder contains everything the CLI needs. No generated files ship in 
 
    **`MODEL_ASSET_VERSION`** — models shipping test assets (sample inputs, expected outputs) declare `MODEL_ASSET_VERSION = 1` at module scope. `demo.py` and `test.py` reference it when building asset paths. Bump when uploading a new asset set.
 
-   **`SerializationSettings(use_pt2=False, check_trace=False)`** — pass when your model uses a shared base whose default trace-check is too strict. Some detector-family templates require this.
+   **`SerializationSettings(use_pt2=False, check_trace=False)`** — pass when your model uses a template base whose default trace-check is too strict. Some detector-family templates require this.
 
 2. **`app.py`** — end-to-end app with pre/postprocessing. `App` class takes a `Callable` (works with torch or on-device inference), exposes `predict()`. Use `app_to_net_image_inputs()` from `image_processing.py` for standard image input conversion; `draw.py` / `bounding_box_processing.py` for postprocessing overlays. Skip this file when a template's App matches your preprocessing exactly — re-export the template's app class from `__init__.py`. Before reusing a template's App, check its `forward()` / preprocessing — templates often bake in a specific normalization or channel order. If your preprocessing diverges (different mean/std, `do_normalize=False`, different resize/interpolation), write your own `app.py` or subclass and override. New-task-shaped models with no template match — write from scratch.
 
@@ -191,7 +191,7 @@ Standalone folder contains everything the CLI needs. No generated files ship in 
    - **Never set `status:`** for standalone / external recipes. The field is reserved for in-tree (see `onboard-internal`). Omit it — not `status: unset`, not `status: draft`, no key at all.
    - `use_case`, `tags`, `domain`, `license_type` are validated enums — see `qai_hub_models/configs/_info_yaml_enums.py`.
    - **Dependency-graph fields:**
-     - `templates:` — shared bases under `qai_hub_models/models/_shared/<name>/`, transitive deps resolved automatically.
+     - `templates:` — template bases under `qai_hub_models/models/templates/<name>/`, transitive deps resolved automatically.
      - `datasets:` — datasets under `qai_hub_models/datasets/<name>/`.
      - `models:` — direct deps on other model folders.
      - `external_repos:` — upstream research repos (see above). Primary way to pull in upstream code, not pip install.
@@ -222,16 +222,16 @@ Encoder + decoder splits, autoregressive decoding, iterative refinement — the 
 
 ### Templates
 
-`qai_hub_models/models/_shared/<name>/`. Reusable base for a family of models (classifiers, detectors, segmenters, encoder-decoder pairs, etc.). When your model lists a template in its `templates:` field, the CLI walks the template's own dependencies and installs everything in leaf-first order.
+`qai_hub_models/models/templates/<name>/`. Reusable base for a family of models (classifiers, detectors, segmenters, encoder-decoder pairs, etc.). When your model lists a template in its `templates:` field, the CLI walks the template's own dependencies and installs everything in leaf-first order.
 
-Any folder under `_shared/` listed in `templates:` is valid — **`manifest.yaml` is NOT required.** Two flavors:
+Any folder under `templates/` listed in `templates:` is valid — **`manifest.yaml` is NOT required.** Two flavors:
 
 1. **With `manifest.yaml`** — declares transitive dependencies (other templates, datasets) that the CLI walks; may also carry an `App`, `Model`, and manifest-metadata inheritance.
 2. **With only `requirements.txt`** — pure "code + pip deps" module. CLI walker handles this natively: template node yields empty transitive deps and just installs its `requirements.txt`.
 
 Do NOT reject a template because it lacks a manifest — list it in your recipe's `templates:` and the CLI will install its `requirements.txt`. `grep -l '- <template_name>' src/qai_hub_models/models/*/manifest.yaml` shows how neighbors reference it.
 
-Prefer inheriting from a template over rebuilding preprocessing / evaluators from scratch. Browse `qai_hub_models/models/_shared/` for what's available.
+Prefer inheriting from a template over rebuilding preprocessing / evaluators from scratch. Browse `qai_hub_models/models/templates/` for what's available.
 
 ### Key utilities
 
@@ -299,7 +299,7 @@ Categories:
 Before your first `validate` run, verify:
 
 1. **All imports at the top?** Open each `.py` — no `import` inside a function/method. Most-violated rule.
-2. **No self-referential imports?** No `from qai_hub_models.models.<id>...` in a standalone recipe. Use relative (`.external_repos`, `._shared`).
+2. **No self-referential imports?** No `from qai_hub_models.models.<id>...` in a standalone recipe. Use relative (`.external_repos`, `.templates`).
 3. **External-repos bootstrap present?** If manifest declares `external_repos:`, `external_repos/__init__.py` exists — `qai-hub-models generate-files <path>` writes it.
 4. **No `status:` in manifest.yaml?** `grep '^status:' manifest.yaml` returns nothing.
 5. **`supported_precisions` is `[float]`?** No `w8a8` / `w8a16` here — that's `add-quantization`.
@@ -358,7 +358,7 @@ Either way:
 
 ### Evaluator
 
-Under the model folder (single-consumer) or `qai_hub_models/models/_shared/<name>/` (multi-consumer). Inherit the base evaluator; implement task-appropriate metrics.
+Under the model folder (single-consumer) or `qai_hub_models/models/templates/<name>/` (multi-consumer). Inherit the base evaluator; implement task-appropriate metrics.
 
 ### Model.py wiring
 

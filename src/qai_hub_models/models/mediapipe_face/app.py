@@ -13,7 +13,6 @@ import torch
 from qai_hub.public_rest_api import DatasetEntries
 
 from qai_hub_models.datasets import instantiate_dataset
-from qai_hub_models.models._shared.mediapipe.app import MediaPipeApp
 from qai_hub_models.models.mediapipe_face.model import (
     DETECT_DSCALE,
     DETECT_DXY,
@@ -24,6 +23,7 @@ from qai_hub_models.models.mediapipe_face.model import (
     ROTATION_VECTOR_OFFSET_RADS,
     MediaPipeFace,
 )
+from qai_hub_models.models.templates.mediapipe.app import MediaPipeApp
 from qai_hub_models.utils.base_collection_model import (
     CollectionModel,
     WorkbenchModelCollection,

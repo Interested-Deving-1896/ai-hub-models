@@ -8,15 +8,15 @@ from __future__ import annotations
 import torch
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.cityscapes_segmentation.model import (
-    CityscapesSegmentor,
-)
 from qai_hub_models.models.hrnet_w48_ocr.external_repos import EXTERNAL_REPO_PATHS
 from qai_hub_models.models.hrnet_w48_ocr.external_repos.hrnet_semantic_seg.lib.config import (
     config,
 )
 from qai_hub_models.models.hrnet_w48_ocr.external_repos.hrnet_semantic_seg.lib.models.seg_hrnet_ocr import (
     get_seg_model,
+)
+from qai_hub_models.models.templates.cityscapes_segmentation.model import (
+    CityscapesSegmentor,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.image_processing import normalize_image_torchvision

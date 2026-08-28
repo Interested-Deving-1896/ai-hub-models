@@ -12,7 +12,7 @@ from transformers import MobileViTFeatureExtractor, MobileViTForImageClassificat
 from typing_extensions import Self
 
 from qai_hub_models.datasets.imagenet import Imagenet_256Dataset, Imagenette_256Dataset
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.input_spec import (

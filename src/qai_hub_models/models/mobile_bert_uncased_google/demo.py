@@ -6,11 +6,11 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.bert_hf.demo import bert_demo
 from qai_hub_models.models.mobile_bert_uncased_google.model import (
     MODEL_ID,
     MobileBertUncasedGoogle,
 )
+from qai_hub_models.models.templates.bert_hf.demo import bert_demo
 
 DEMO_TEXT = "Paris is the [MASK] of France."
 

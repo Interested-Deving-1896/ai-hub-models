@@ -9,7 +9,7 @@ import os
 
 from qai_hub_models import TargetRuntime
 from qai_hub_models.configs.tensor_spec import TensorSpec
-from qai_hub_models.models._shared.llm.llm_helpers import get_kv_cache_names
+from qai_hub_models.models.templates.llm.llm_helpers import get_kv_cache_names
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_collection_model import (
     PrecompiledWorkbenchModelCollection,

@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.depth_estimation.app import DepthEstimationApp
 from qai_hub_models.models.depth_anything_v3.demo import INPUT_IMAGE_ADDRESS
 from qai_hub_models.models.depth_anything_v3.demo import main as demo_main
 from qai_hub_models.models.depth_anything_v3.model import (
@@ -14,6 +13,7 @@ from qai_hub_models.models.depth_anything_v3.model import (
     MODEL_ID,
     DepthAnythingV3,
 )
+from qai_hub_models.models.templates.depth_estimation.app import DepthEstimationApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 
 OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

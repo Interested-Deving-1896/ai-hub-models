@@ -55,14 +55,14 @@ from qai_hub_models import (
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.configs.tensor_spec import TensorSpec
 from qai_hub_models.datasets.imagenet import IMAGENETTE_ASSET
-from qai_hub_models.models._shared.llm.common import LLMIOType
-from qai_hub_models.models._shared.llm.generator_factory import (
+from qai_hub_models.models.templates.llm.common import LLMIOType
+from qai_hub_models.models.templates.llm.generator_factory import (
     HubCompatibleVLMGenerator,
 )
-from qai_hub_models.models._shared.llm.llm_helpers import (
+from qai_hub_models.models.templates.llm.llm_helpers import (
     export_embedding_weights_from_tensor,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     DEFAULT_SEQUENCE_LENGTH,
     DynamicPreSplitOnnxMixin,
@@ -73,15 +73,15 @@ from qai_hub_models.models._shared.llm.model import (
     get_onnx_model,
     get_tokenizer,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.onnx_optimize import optimize_onnx_model
-from qai_hub_models.models._shared.qwen2_vl.model import (
+from qai_hub_models.models.templates.llm.onnx_optimize import optimize_onnx_model
+from qai_hub_models.models.templates.qwen2_vl.model import (
     Qwen2VLDynamic_AIMETOnnx,
     Qwen2VLTextBase,
 )
-from qai_hub_models.models._shared.qwen2_vl.vision_encoder import (
+from qai_hub_models.models.templates.qwen2_vl.vision_encoder import (
     Qwen2VLVisionEncoder,
     Qwen2VLVisionWrapper,
 )
@@ -178,7 +178,7 @@ class Qwen2_5_VL_7B_PreSplit(
         precision: Precision = DEFAULT_PRECISION,
     ) -> tuple[float | None, float]:
         # Some layers have per-layer scaling
-        # defined in _shared/qwen2_vl/model.py.
+        # defined in templates/qwen2_vl/model.py.
         return (-250.0, 1.0)
 
     _hf_repo_name: str = HF_REPO_NAME
@@ -351,7 +351,7 @@ class Qwen2_5_VL_7B_QuantizablePreSplit(  # type: ignore[misc]
         precision: Precision,
     ) -> tuple[float | None, float]:
         # Some layers have per-layer scaling
-        # defined in _shared/qwen2_vl/model.py.
+        # defined in templates/qwen2_vl/model.py.
         return (-250.0, 1.0)
 
     def get_output_spec(self) -> OutputSpec:
@@ -666,7 +666,7 @@ class Qwen2_5_VL_7B_VisionEncoder(Qwen2VLVisionEncoder):
         step = max(1, len(image_paths) // num_samples)
         selected = image_paths[: step * num_samples : step]
 
-        from qai_hub_models.models._shared.qwen2_vl.model import Qwen2VLTextBase
+        from qai_hub_models.models.templates.qwen2_vl.model import Qwen2VLTextBase
 
         proc = AutoProcessor.from_pretrained(HF_REPO_NAME)
         tokenizer = get_tokenizer(HF_REPO_NAME)
@@ -1301,7 +1301,7 @@ class Qwen2_5_VL_7B_Collection(MultiGraphWorkbenchModelCollection):
         metadata: ModelMetadata,
     ) -> None:
         """Write genie-app assets: genie config, embedding table, tokenizer, HTP config, app script."""
-        from qai_hub_models.models._shared.llm.llm_helpers import (
+        from qai_hub_models.models.templates.llm.llm_helpers import (
             create_genie_config,
             generate_genie_app_script,
             save_htp_config_for_genie_bundle,
@@ -1640,7 +1640,7 @@ class Qwen2_5_VL_7B_Collection(MultiGraphWorkbenchModelCollection):
         img_resized = img.resize((DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT))
 
         # Patchify + normalize via HF processor
-        from qai_hub_models.models._shared.qwen2_vl.model import Qwen2VLTextBase
+        from qai_hub_models.models.templates.qwen2_vl.model import Qwen2VLTextBase
 
         proc = AutoProcessor.from_pretrained(HF_REPO_NAME)
         tokenizer = get_tokenizer(HF_REPO_NAME)

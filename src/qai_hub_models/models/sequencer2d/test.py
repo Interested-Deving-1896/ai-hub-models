@@ -5,15 +5,15 @@
 
 import pytest
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
-    run_imagenet_classifier_test,
-    run_imagenet_classifier_trace_test,
-)
 from qai_hub_models.models.sequencer2d.demo import main as demo_main
 from qai_hub_models.models.sequencer2d.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     Sequencer2D,
+)
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
+    run_imagenet_classifier_test,
+    run_imagenet_classifier_trace_test,
 )
 
 

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import sys
 
-from qai_hub_models.models._shared.vlm.evaluate import vlm_evaluate
 from qai_hub_models.models.qwen3_vl_8b_instruct.model import (
     DEFAULT_IMAGE_HEIGHT,
     DEFAULT_IMAGE_WIDTH,
@@ -17,6 +16,7 @@ from qai_hub_models.models.qwen3_vl_8b_instruct.model import (
     Qwen3_VL_8B_QuantizablePreSplit,
     Qwen3_VL_8B_VisionEncoder,
 )
+from qai_hub_models.models.templates.vlm.evaluate import vlm_evaluate
 
 if __name__ == "__main__":
     use_presplit = "--use-presplit" in sys.argv

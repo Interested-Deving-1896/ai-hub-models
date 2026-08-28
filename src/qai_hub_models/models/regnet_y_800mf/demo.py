@@ -2,8 +2,8 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-from qai_hub_models.models._shared.imagenet_classifier.demo import imagenet_demo
 from qai_hub_models.models.regnet_y_800mf.model import MODEL_ID, RegNet
+from qai_hub_models.models.templates.imagenet_classifier.demo import imagenet_demo
 
 
 def main(is_test: bool = False) -> None:

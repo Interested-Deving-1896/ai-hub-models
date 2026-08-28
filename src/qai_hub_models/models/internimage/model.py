@@ -9,7 +9,6 @@ from types import SimpleNamespace
 import torch
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.models.internimage.external_repos import EXTERNAL_REPO_PATHS
 from qai_hub_models.models.internimage.external_repos.internimage.classification.config import (
     get_config,
@@ -17,6 +16,7 @@ from qai_hub_models.models.internimage.external_repos.internimage.classification
 from qai_hub_models.models.internimage.external_repos.internimage.classification.models import (
     build_model,
 )
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 MODEL_ID = __name__.split(".")[-2]

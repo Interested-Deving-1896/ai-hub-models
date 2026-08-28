@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import torchvision.models as tv_models
 
-from qai_hub_models.models._shared.imagenet_classifier.model import (
+from qai_hub_models.models.templates.imagenet_classifier.model import (
     ImagenetClassifierWithModelBuilder,
 )
 

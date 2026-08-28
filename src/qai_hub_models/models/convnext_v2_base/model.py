@@ -12,7 +12,7 @@ from transformers import ConvNextV2ForImageClassification
 from typing_extensions import Self
 
 from qai_hub_models.datasets.imagenet import ImagenetDataset, ImagenetteDataset
-from qai_hub_models.models._shared.imagenet_classifier.model import (
+from qai_hub_models.models.templates.imagenet_classifier.model import (
     TEST_IMAGENET_IMAGE,
     ImagenetClassifier,
 )

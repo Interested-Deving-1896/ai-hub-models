@@ -10,12 +10,12 @@ from qai_hub.client import Device
 from typing_extensions import Self
 
 from qai_hub_models import Precision, SampleInputsType, TargetRuntime
-from qai_hub_models.models._shared.cityscapes_segmentation.model import (
-    CityscapesSegmentor,
-)
 from qai_hub_models.models.ddrnet23_slim.external_repos.ddrnet_pytorch.lib.models.ddrnet_23_slim import (
     BasicBlock,
     DualResNet,
+)
+from qai_hub_models.models.templates.cityscapes_segmentation.model import (
+    CityscapesSegmentor,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs

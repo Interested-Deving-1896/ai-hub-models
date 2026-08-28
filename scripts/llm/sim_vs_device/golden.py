@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import torch
 
-from qai_hub_models.models._shared.llm.generator_factory import make_generator
+from qai_hub_models.models.templates.llm.generator_factory import make_generator
 
 
 @dataclass

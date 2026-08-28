@@ -8,10 +8,10 @@ from __future__ import annotations
 import torch
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.cityscapes_segmentation.model import (
+from qai_hub_models.models.templates.cityscapes_segmentation.model import (
     CityscapesSegmentor,
 )
-from qai_hub_models.models._shared.efficientvit.external_repos.efficientvit.efficientvit.seg_model_zoo import (
+from qai_hub_models.models.templates.efficientvit.external_repos.efficientvit.efficientvit.seg_model_zoo import (
     create_seg_model,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset

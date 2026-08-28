@@ -57,11 +57,11 @@ def test_import_expression_matches_real_imports() -> None:
     assert expr == "qai_hub_models.models.mobilenet_v2.model"
 
 
-def test_import_expression_for_shared_module() -> None:
-    """Shared modules under _shared/ should also resolve correctly."""
-    filepath = "src/qai_hub_models/models/_shared/diffusion/model.py"
+def test_import_expression_for_template_module() -> None:
+    """Template modules under templates/ should also resolve correctly."""
+    filepath = "src/qai_hub_models/models/templates/diffusion/model.py"
     expr = get_python_import_expression(filepath)
-    assert expr == "qai_hub_models.models._shared.diffusion.model"
+    assert expr == "qai_hub_models.models.templates.diffusion.model"
 
 
 def test_import_expression_for_init() -> None:
@@ -71,12 +71,12 @@ def test_import_expression_for_init() -> None:
     assert expr == "qai_hub_models.models.mobilenet_v2"
 
 
-def test_shared_model_change_detects_dependent_models() -> None:
+def test_template_change_detects_dependent_models() -> None:
     """
-    Changing a _shared module should detect the concrete models
+    Changing a templates module should detect the concrete models
     that import from it.
     """
-    changed = ["src/qai_hub_models/models/_shared/diffusion/model.py"]
+    changed = ["src/qai_hub_models/models/templates/diffusion/model.py"]
     models = resolve_affected_models(changed)
     assert "stable_diffusion_v1_5" in models
     assert "controlnet_canny" in models
@@ -114,10 +114,10 @@ def test_model_change_propagates_to_export() -> None:
     assert "mobilenet_v2" in models
 
 
-def test_shared_whisper_change_detects_whisper_models() -> None:
-    """Changing _shared/hf_whisper should detect whisper variants."""
+def test_template_whisper_change_detects_whisper_models() -> None:
+    """Changing templates/hf_whisper should detect whisper variants."""
     models = resolve_affected_models(
-        ["src/qai_hub_models/models/_shared/hf_whisper/model.py"]
+        ["src/qai_hub_models/models/templates/hf_whisper/model.py"]
     )
     assert "whisper_tiny" in models
 
@@ -149,16 +149,16 @@ def test_unrelated_file_detects_nothing() -> None:
     assert len(models) == 0
 
 
-def test_shared_change_does_not_detect_shared_as_model() -> None:
+def test_template_change_does_not_detect_template_as_model() -> None:
     """
-    _shared/ directories are not models — they should never appear
+    templates/ directories are not models — they should never appear
     in the output even though they're under models/.
     """
     models = resolve_affected_models(
-        ["src/qai_hub_models/models/_shared/diffusion/model.py"]
+        ["src/qai_hub_models/models/templates/diffusion/model.py"]
     )
     for m in models:
-        assert not m.startswith("_shared")
+        assert not m.startswith("templates")
 
 
 def test_model_inherited_by_others_detects_dependents() -> None:
@@ -339,37 +339,37 @@ def test_gemma4_e4b_alone_is_not_pruned() -> None:
     assert pruned == {"gemma_4_e4b_it", "mobilenet_v2"}
 
 
-# ── gemma4 shared-file routing ──────────────────────────────────────
+# ── gemma4 template-file routing ────────────────────────────────────
 
 
-def test_shared_gemma4_change_detects_gemma4_representative() -> None:
-    """Changing _shared/gemma4/ should test the gemma4 representative."""
+def test_template_gemma4_change_detects_gemma4_representative() -> None:
+    """Changing templates/gemma4/ should test the gemma4 representative."""
     models = resolve_affected_models(
-        ["src/qai_hub_models/models/_shared/gemma4/model.py"]
+        ["src/qai_hub_models/models/templates/gemma4/model.py"]
     )
     assert "gemma_4_e4b_it" in models
 
 
-def test_shared_gemma4_quantize_change_detects_gemma4() -> None:
+def test_template_gemma4_quantize_change_detects_gemma4() -> None:
     """
     quantize.py's only consumers are per-model quantize.py files, which
     resolve_affected_models filters out (not in its filename allowlist).
     Without a MANUAL_EDGES entry this would resolve to no models at all,
-    so a change to the shared quantize workflow would go untested.
+    so a change to the template quantize workflow would go untested.
     """
     models = resolve_affected_models(
-        ["src/qai_hub_models/models/_shared/gemma4/quantize.py"]
+        ["src/qai_hub_models/models/templates/gemma4/quantize.py"]
     )
     assert "gemma_4_e4b_it" in models
 
 
 def test_lm_driver_change_detects_gemma4_too() -> None:
     """
-    _shared/lm_driver/ is imported by _shared/gemma4/model.py as well as by
+    templates/lm_driver/ is imported by templates/gemma4/model.py as well as by
     llama and qwen-VL, so all three representatives must be tested.
     """
     models = resolve_affected_models(
-        ["src/qai_hub_models/models/_shared/lm_driver/generator.py"]
+        ["src/qai_hub_models/models/templates/lm_driver/generator.py"]
     )
     assert "gemma_4_e4b_it" in models
     assert "llama_v3_2_1b_instruct" in models

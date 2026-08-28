@@ -9,7 +9,6 @@ import torch
 from torch import nn
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.deeplab.model import DeepLabV3Model
 from qai_hub_models.models.deeplab_xception.external_repos import EXTERNAL_REPO_PATHS
 from qai_hub_models.models.deeplab_xception.external_repos.segmentron.segmentron.config import (
     cfg,
@@ -17,6 +16,7 @@ from qai_hub_models.models.deeplab_xception.external_repos.segmentron.segmentron
 from qai_hub_models.models.deeplab_xception.external_repos.segmentron.segmentron.models.model_zoo import (
     get_segmentation_model,
 )
+from qai_hub_models.models.templates.deeplab.model import DeepLabV3Model
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_torch
 from qai_hub_models.utils.input_spec import (
     ColorFormat,

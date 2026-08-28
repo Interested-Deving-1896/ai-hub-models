@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.yolo.demo import yolo_detection_demo
+from qai_hub_models.models.templates.yolo.demo import yolo_detection_demo
 from qai_hub_models.models.yolov7.app import YoloV7DetectionApp
 from qai_hub_models.models.yolov7.model import MODEL_ASSET_VERSION, MODEL_ID, YoloV7
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset

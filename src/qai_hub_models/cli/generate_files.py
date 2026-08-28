@@ -64,8 +64,8 @@ def _write_external_repos_init(folder: Path, manifest: QAIHMModelManifest) -> Pa
     template = env.get_template("external_repos_init_template.j2")
 
     render_args: dict[str, str] = {"header": _HEADER}
-    if folder.parent.name == "_shared":
-        render_args["shared_name"] = folder.name
+    if folder.parent.name == "templates":
+        render_args["template_name"] = folder.name
     else:
         render_args["model_id"] = folder.name
 

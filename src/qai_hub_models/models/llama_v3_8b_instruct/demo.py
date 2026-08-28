@@ -5,9 +5,6 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.llama3.model import END_TOKENS
-from qai_hub_models.models._shared.llm.demo import llm_chat_demo
-from qai_hub_models.models._shared.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.models.llama_v3_8b_instruct.model import (
     HF_REPO_NAME,
     HF_REPO_URL,
@@ -15,6 +12,9 @@ from qai_hub_models.models.llama_v3_8b_instruct.model import (
     Llama3_8B_PreSplit,
     QuantizedSplitModelWrapper,
 )
+from qai_hub_models.models.templates.llama3.model import END_TOKENS
+from qai_hub_models.models.templates.llm.demo import llm_chat_demo
+from qai_hub_models.models.templates.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 
 

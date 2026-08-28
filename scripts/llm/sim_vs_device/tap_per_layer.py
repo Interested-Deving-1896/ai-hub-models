@@ -42,7 +42,7 @@ from harness import HarnessContext
 from metrics import TensorMetric, Verdict
 
 from qai_hub_models import TargetRuntime
-from qai_hub_models.models._shared.llm.model import LLMDynamic_AIMETOnnx
+from qai_hub_models.models.templates.llm.model import LLMDynamic_AIMETOnnx
 from qai_hub_models.utils.model_cache import CacheMode
 from qai_hub_models.utils.onnx.helpers import ONNXBundle
 
@@ -549,7 +549,7 @@ def golden_taps_from_sim(
     quant_sim = LLMDynamic_AIMETOnnx._build_quantsim(onnx_model, providers)
     LLMDynamic_AIMETOnnx._apply_precision_activations(quant_sim, ctx.precision)
     if tapped_bundle.aimet_encodings_path is not None:
-        from qai_hub_models.models._shared.llm.model import load_encodings_to_sim
+        from qai_hub_models.models.templates.llm.model import load_encodings_to_sim
 
         load_encodings_to_sim(
             quant_sim, str(tapped_bundle.aimet_encodings_path), strict=False

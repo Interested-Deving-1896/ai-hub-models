@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.diffusion.quantize import (
+from qai_hub_models.models.controlnet_canny import MODEL_ID, Model
+from qai_hub_models.models.templates.diffusion.quantize import (
     stable_diffusion_quantize,
 )
-from qai_hub_models.models.controlnet_canny import MODEL_ID, Model
 
 if __name__ == "__main__":
     stable_diffusion_quantize(

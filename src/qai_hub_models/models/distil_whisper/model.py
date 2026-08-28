@@ -12,14 +12,14 @@ from transformers import WhisperForConditionalGeneration
 from typing_extensions import Self
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.hf_whisper.model import (
+from qai_hub_models.models.distil_whisper.model_patch import (
+    monkey_patch_distil_whisper_model,
+)
+from qai_hub_models.models.templates.hf_whisper.model import (
     MASK_NEG,
     HfWhisper,
     HfWhisperDecoder,
     HfWhisperEncoder,
-)
-from qai_hub_models.models.distil_whisper.model_patch import (
-    monkey_patch_distil_whisper_model,
 )
 
 MODEL_ID = __name__.split(".")[-2]

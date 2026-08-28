@@ -22,7 +22,7 @@ from qai_hub_models.configs.manifest_yaml import (
     QAIHMModelManifest,
     TechnicalDetails,
 )
-from qai_hub_models.models._shared.lm_schema import Recipe
+from qai_hub_models.models.templates.lm_schema import Recipe
 from qai_hub_models.scorecard.results.yaml import ComponentNamesYaml
 from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG, QAIHM_WEB_ASSET
@@ -316,7 +316,7 @@ def test_export_paths_include_aot_on_jit() -> None:
 # lm_quantization_details validation (QAIHMModelManifest.check_fields):
 #   1. the section is LLM/VLM-only (requires model_type_llm)
 #   2. every recipe key must be in supported_precisions
-# These are shared/template-shaped manifests (id=None) so the website-facing
+# These are template-shaped manifests (id=None) so the website-facing
 # checks are skipped and only the build/export invariants run.
 # ---------------------------------------------------------------------------
 def _lm_details() -> LMQuantizationDetails:

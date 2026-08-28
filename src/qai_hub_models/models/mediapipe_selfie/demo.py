@@ -5,13 +5,13 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.selfie_segmentation.demo import (
-    selfie_segmentation_demo,
-)
 from qai_hub_models.models.mediapipe_selfie.model import (
     IMAGE_ADDRESS,
     MODEL_ID,
     MediapipeSelfie,
+)
+from qai_hub_models.models.templates.selfie_segmentation.demo import (
+    selfie_segmentation_demo,
 )
 
 

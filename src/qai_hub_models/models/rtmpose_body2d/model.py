@@ -14,10 +14,10 @@ from qai_hub_models import SampleInputsType
 from qai_hub_models.datasets.cocowholebody import CocoWholeBodyDataset
 from qai_hub_models.extern.mmengine import patch_mmengine_pkgresources
 from qai_hub_models.extern.mmpose import patch_mmpose_no_build_deps
-from qai_hub_models.models._shared.mmpose.silence import (
+from qai_hub_models.models.rtmpose_body2d.evaluator import WholeBodyPoseEvaluator
+from qai_hub_models.models.templates.mmpose.silence import (
     set_mmpose_inferencer_show_progress,
 )
-from qai_hub_models.models.rtmpose_body2d.evaluator import WholeBodyPoseEvaluator
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_numpy
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

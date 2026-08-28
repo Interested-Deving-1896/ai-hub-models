@@ -11,7 +11,7 @@ import torch
 from ultralytics.models import YOLOWorld
 from ultralytics.nn.tasks import WorldModel
 
-from qai_hub_models.models._shared.yolo.model import yolo_detect_postprocess
+from qai_hub_models.models.templates.yolo.model import yolo_detect_postprocess
 from qai_hub_models.models.yolo_world.app import YoloWorldDetectionApp
 from qai_hub_models.models.yolo_world.demo import IMAGE_ADDRESS
 from qai_hub_models.models.yolo_world.demo import main as demo_main

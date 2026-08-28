@@ -35,15 +35,15 @@ Each model lives in `qai_hub_models/models/<model_id>/` and requires:
 | File | Purpose |
 |------|---------|
 | `model.py` | PyTorch model inheriting from `BaseModel` |
-| `app.py` | End-to-end application with pre/post-processing (can be inherited from `models/_shared/`) |
+| `app.py` | End-to-end application with pre/post-processing (can be inherited from `models/templates/`) |
 | `demo.py` | CLI demo running the app on sample data |
 | `test.py` | Unit tests for the model |
 | `manifest.yaml` | Website metadata + codegen/export options (single unified schema) |
 
-**Note:** Many models extend shared implementations from `models/_shared/`. For example, segmentation models can inherit from `CityscapesSegmentor` and use the shared `SegmentationApp`. Check existing models solving similar tasks before writing everything from scratch.
+**Note:** Many models extend template implementations from `models/templates/`. For example, segmentation models can inherit from `CityscapesSegmentor` and use the template `SegmentationApp`. Check existing models solving similar tasks before writing everything from scratch.
 
 **Sample models to reference:**
-- **Regular model**: [`ddrnet23_slim`](qai_hub_models/models/ddrnet23_slim/) - segmentation model using shared base class
+- **Regular model**: [`ddrnet23_slim`](qai_hub_models/models/ddrnet23_slim/) - segmentation model using a template base class
 - **Collection model**: [`whisper_tiny`](qai_hub_models/models/whisper_tiny/) - encoder-decoder with separately compiled components
 
 ### Optional Files
@@ -176,7 +176,7 @@ Check these files in `qai_hub_models/utils/` before implementing your own:
 | `asset_loaders.py` | Loading assets from URLs, S3, Google Drive |
 | `transpose_channel.py` | Channel transposition utilities (NCHW <-> NHWC) |
 
-Also check `qai_hub_models/models/_shared/` for shared app implementations for common tasks (segmentation, classification, object detection, etc.).
+Also check `qai_hub_models/models/templates/` for template app implementations for common tasks (segmentation, classification, object detection, etc.).
 
 ### I/O Conventions
 
@@ -301,7 +301,7 @@ See [`imagenette.py`](qai_hub_models/datasets/imagenet/imagenette.py) for an exa
 
 ### 2. Add an Evaluator
 
-Create or reuse an evaluator. Place it in the model's own folder if it's only used by that model, or in the appropriate shared folder under `qai_hub_models/models/_shared/<name>/` if it's used by multiple models. Inherit from `BaseEvaluator` and implement the required methods.
+Create or reuse an evaluator. Place it in the model's own folder if it's only used by that model, or in the appropriate template folder under `qai_hub_models/models/templates/<name>/` if it's used by multiple models. Inherit from `BaseEvaluator` and implement the required methods.
 
 **Required methods:**
 
@@ -318,7 +318,7 @@ Create or reuse an evaluator. Place it in the model's own folder if it's only us
 |--------|-------------|
 | `get_metric_metadata(self)` | Return `MetricMetadata` for website publishing (name, unit, range, and whether higher or lower is better) |
 
-See [`classification_evaluator.py`](qai_hub_models/models/_shared/imagenet_classifier/classification_evaluator.py) for an example evaluator implementation.
+See [`classification_evaluator.py`](qai_hub_models/models/templates/imagenet_classifier/classification_evaluator.py) for an example evaluator implementation.
 
 ### 3. Update the Model
 

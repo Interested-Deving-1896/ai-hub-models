@@ -22,8 +22,8 @@ from pathlib import Path
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.models._shared.llm.grace_tasks import GRACE_DOC_URL
-from qai_hub_models.models._shared.llm.grader.grace import GRACE_TASK_NAME
+from qai_hub_models.models.templates.llm.grace_tasks import GRACE_DOC_URL
+from qai_hub_models.models.templates.llm.grader.grace import GRACE_TASK_NAME
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.utils.testing_async_utils import write_accuracy
 from qai_hub_models.utils.base_dataset import DatasetMetadata

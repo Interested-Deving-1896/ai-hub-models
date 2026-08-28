@@ -654,7 +654,7 @@ def add_install_parser(
         helpmsg="Install a model and all of its declared dependencies.",
         description=(
             f"Run `{CLI_NAME} install <target>` to walk the model's dependency graph "
-            "(datasets, shared templates, other models) and install each node's "
+            "(datasets, templates, other models) and install each node's "
             "requirements exactly once. Shared deps between two models install only "
             "once. <target> is a recipe folder path (my_model) or an installed "
             "model id (yolov8_det). Use `--dry-run` to preview the plan."

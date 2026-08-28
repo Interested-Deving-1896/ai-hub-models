@@ -5,7 +5,7 @@
 """Merge LLM perf.yaml update logs from every runtime into the checkout.
 
 Each perf job (genie, geniex) emits a JSON-lines log with two record kinds
-(see _shared/llm/perf_collection.py): a "scope" line per bucket the run
+(see templates/llm/perf_collection.py): a "scope" line per bucket the run
 intended to measure, and a "metric" line per measurement it produced. This
 script drops every in-scope bucket and re-adds only the measured ones, so a
 device that failed loses its row rather than keeping stale numbers.
@@ -22,7 +22,7 @@ from filelock import FileLock
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.models._shared.llm.perf_collection import update_perf_yaml
+from qai_hub_models.models.templates.llm.perf_collection import update_perf_yaml
 from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE, ScorecardDevice
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import load_similar_devices
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath

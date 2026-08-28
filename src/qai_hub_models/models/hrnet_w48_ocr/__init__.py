@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.cityscapes_segmentation.app import (
+from qai_hub_models.models.templates.cityscapes_segmentation.app import (
     CityscapesSegmentationApp as App,
 )
 

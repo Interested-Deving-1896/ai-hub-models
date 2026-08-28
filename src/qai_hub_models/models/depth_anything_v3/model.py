@@ -10,7 +10,6 @@ from omegaconf import DictConfig
 from safetensors.torch import load_file
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.depth_estimation.model import DepthEstimationModel
 from qai_hub_models.models.depth_anything_v3.external_repos.depth_anything_3.src.depth_anything_3.cfg import (
     create_object,
     load_config,
@@ -18,6 +17,7 @@ from qai_hub_models.models.depth_anything_v3.external_repos.depth_anything_3.src
 from qai_hub_models.models.depth_anything_v3.external_repos.depth_anything_3.src.depth_anything_3.registry import (
     MODEL_REGISTRY,
 )
+from qai_hub_models.models.templates.depth_estimation.model import DepthEstimationModel
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 from qai_hub_models.utils.input_spec import (

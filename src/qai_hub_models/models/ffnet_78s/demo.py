@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.cityscapes_segmentation.demo import (
+from qai_hub_models.models.ffnet_78s.model import MODEL_ID, FFNet78S
+from qai_hub_models.models.templates.cityscapes_segmentation.demo import (
     cityscapes_segmentation_demo,
 )
-from qai_hub_models.models.ffnet_78s.model import MODEL_ID, FFNet78S
 
 
 def main(is_test: bool = False) -> None:

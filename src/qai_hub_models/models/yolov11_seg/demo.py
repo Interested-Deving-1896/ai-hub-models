@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.yolo.demo import yolo_segmentation_demo
+from qai_hub_models.models.templates.yolo.demo import yolo_segmentation_demo
 from qai_hub_models.models.yolov11_seg.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,

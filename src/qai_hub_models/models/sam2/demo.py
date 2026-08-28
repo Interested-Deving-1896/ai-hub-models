@@ -4,13 +4,13 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.sam2.demo import sam2_demo_main
 from qai_hub_models.models.sam2.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     SAM2,
     TINY_MODEL_TYPE,
 )
+from qai_hub_models.models.templates.sam2.demo import sam2_demo_main
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

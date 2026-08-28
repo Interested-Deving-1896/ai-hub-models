@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.models._shared.yolo.app import YoloPoseApp
+from qai_hub_models.models.templates.yolo.app import YoloPoseApp
 
 
 class Yolo26PoseApp(YoloPoseApp):

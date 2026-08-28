@@ -14,13 +14,13 @@ from typing_extensions import Self
 
 from qai_hub_models import SampleInputsType
 from qai_hub_models.datasets.coco import CocoBodyDataset
-from qai_hub_models.models._shared.centernet.external_repos.centernet.src.lib.models.decode import (
-    multi_pose_decode,
-)
-from qai_hub_models.models._shared.centernet.model import CenterNet
 from qai_hub_models.models.centernet_pose.evaluator import (
     CenternetPoseEvaluator,
 )
+from qai_hub_models.models.templates.centernet.external_repos.centernet.src.lib.models.decode import (
+    multi_pose_decode,
+)
+from qai_hub_models.models.templates.centernet.model import CenterNet
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

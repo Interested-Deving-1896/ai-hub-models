@@ -9,7 +9,7 @@ import torch
 from typing_extensions import Self
 
 from qai_hub_models import Precision, SampleInputsType
-from qai_hub_models.models._shared.segmentation.segmentation_evaluator import (
+from qai_hub_models.models.templates.segmentation.segmentation_evaluator import (
     SegmentationOutputEvaluator,
 )
 from qai_hub_models.models.unet_segmentation.dataset import CarvanaDataset

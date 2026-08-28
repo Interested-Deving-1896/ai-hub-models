@@ -7,13 +7,13 @@ import numpy as np
 import torch
 import torchvision.models as tv_models
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (  # noqa: F401
+from qai_hub_models.models.swin_tiny.demo import main as demo_main
+from qai_hub_models.models.swin_tiny.model import MODEL_ID, SwinTiny
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (  # noqa: F401
     imagenet_sample_torch,
     run_imagenet_classifier_test,
     run_imagenet_classifier_trace_test,
 )
-from qai_hub_models.models.swin_tiny.demo import main as demo_main
-from qai_hub_models.models.swin_tiny.model import MODEL_ID, SwinTiny
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 
 

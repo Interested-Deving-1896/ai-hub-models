@@ -8,14 +8,14 @@ from __future__ import annotations
 import os
 
 from qai_hub_models.configs.model_metadata import ModelMetadata
-from qai_hub_models.models._shared.hf_whisper.model import (
+from qai_hub_models.models.templates.hf_whisper.model import (
     TIKTOKEN_URL,
     HfWhisper,
 )
-from qai_hub_models.models._shared.hf_whisper.utils import (
+from qai_hub_models.models.templates.hf_whisper.utils import (
     write_whisper_supplementary_files,
 )
-from qai_hub_models.models._shared.hf_whisper.whisper_metadata_json import (
+from qai_hub_models.models.templates.hf_whisper.whisper_metadata_json import (
     WhisperCapabilities,
 )
 

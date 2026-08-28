@@ -245,7 +245,7 @@ GRADER_REQUIREMENTS_PATH = os.path.join(
     "src",
     "qai_hub_models",
     "models",
-    "_shared",
+    "templates",
     "llm",
     "grader",
     "requirements.txt",

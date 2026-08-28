@@ -15,13 +15,13 @@ from typing_extensions import Self
 from qai_hub_models import SampleInputsType
 from qai_hub_models.configs.tensor_spec import TensorSpec
 from qai_hub_models.datasets.coco import CocoDataset
-from qai_hub_models.models._shared.centernet.external_repos.centernet.src.lib.models.decode import (
-    ctdet_decode,
-)
-from qai_hub_models.models._shared.centernet.model import CenterNet
 from qai_hub_models.models.centernet_2d.evaluator import (
     CenternetDetectionEvaluator,
 )
+from qai_hub_models.models.templates.centernet.external_repos.centernet.src.lib.models.decode import (
+    ctdet_decode,
+)
+from qai_hub_models.models.templates.centernet.model import CenterNet
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

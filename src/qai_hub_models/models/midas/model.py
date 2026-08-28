@@ -8,8 +8,8 @@ from __future__ import annotations
 import torch
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.depth_estimation.model import DepthEstimationModel
 from qai_hub_models.models.midas.external_repos.midas.hubconf import MiDaS_small
+from qai_hub_models.models.templates.depth_estimation.model import DepthEstimationModel
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_torch,

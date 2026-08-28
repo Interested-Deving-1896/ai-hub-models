@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.opus_mt.app import (
+from qai_hub_models.models.templates.opus_mt.app import (
     OpusMTApp as App,
 )
 

@@ -15,8 +15,6 @@ from PIL.Image import Image
 from qai_hub.public_rest_api import DatasetEntries
 
 from qai_hub_models.datasets import instantiate_dataset
-from qai_hub_models.models._shared.mediapipe.app import MediaPipeApp
-from qai_hub_models.models._shared.mediapipe.utils import preprocess_hand_x64
 from qai_hub_models.models.mediapipe_hand.model import (
     DETECT_DSCALE,
     DETECT_DXY,
@@ -30,6 +28,8 @@ from qai_hub_models.models.mediapipe_hand_gesture.model import (
     GESTURE_LABELS,
     MediaPipeHandGesture,
 )
+from qai_hub_models.models.templates.mediapipe.app import MediaPipeApp
+from qai_hub_models.models.templates.mediapipe.utils import preprocess_hand_x64
 from qai_hub_models.utils.base_collection_model import (
     CollectionModel,
     WorkbenchModelCollection,

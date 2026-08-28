@@ -2,13 +2,13 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-from qai_hub_models.models._shared.llm.quantize import llm_quantize
 from qai_hub_models.models.qwen3_4b.model import (
     MODEL_ID,
     SUPPORTED_PRECISIONS,
     Qwen3_4B_PreSplit,
     Qwen3_4B_QuantizablePreSplit,
 )
+from qai_hub_models.models.templates.llm.quantize import llm_quantize
 
 if __name__ == "__main__":
     llm_quantize(

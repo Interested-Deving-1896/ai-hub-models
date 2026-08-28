@@ -11,11 +11,11 @@ from typing_extensions import Self
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.tensor_spec import TensorSpec
-from qai_hub_models.models._shared.detection.coco_detection_evaluator import (
+from qai_hub_models.models.templates.detection.coco_detection_evaluator import (
     COCODetectionEvaluator,
 )
-from qai_hub_models.models._shared.yolo.model import Yolo
-from qai_hub_models.models._shared.yolo.utils import detect_postprocess
+from qai_hub_models.models.templates.yolo.model import Yolo
+from qai_hub_models.models.templates.yolo.utils import detect_postprocess
 from qai_hub_models.models.yolov6.external_repos.yolov6.yolov6.layers.common import (
     RepVGGBlock,
 )

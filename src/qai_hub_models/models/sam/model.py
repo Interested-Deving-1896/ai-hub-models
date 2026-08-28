@@ -21,14 +21,14 @@ from segment_anything.modeling.transformer import (
 from segment_anything.utils.onnx import SamOnnxModel
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.sam.model_patches import (
+from qai_hub_models.models.sam.model_patches import (
+    SplitHeadSAMEncoderAttention,
+)
+from qai_hub_models.models.templates.sam.model_patches import (
     Conv2DInplaceLinearSAMMaskDecoderMLP,
     Conv2DInplaceLinearSAMTransformerMLPBlock,
     SplitHeadSAMDecoderAttention,
     sam_decoder_predict_masks,
-)
-from qai_hub_models.models.sam.model_patches import (
-    SplitHeadSAMEncoderAttention,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection

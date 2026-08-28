@@ -11,8 +11,6 @@ import pytest
 import torch
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.models.llama_v3_elyza_jp_8b import Model
 from qai_hub_models.models.llama_v3_elyza_jp_8b.demo import llama_3_elyza_jp_chat_demo
 from qai_hub_models.models.llama_v3_elyza_jp_8b.model import (
@@ -22,6 +20,8 @@ from qai_hub_models.models.llama_v3_elyza_jp_8b.model import (
     Llama3_Elyza_JP_8B_QuantizablePreSplit,
     QuantizedSplitModelWrapper,
 )
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,

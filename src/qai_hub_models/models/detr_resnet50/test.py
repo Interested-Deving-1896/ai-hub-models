@@ -5,13 +5,13 @@
 
 import pytest
 
-from qai_hub_models.models._shared.detr.app import DETRApp
 from qai_hub_models.models.detr_resnet50.demo import main as demo_main
 from qai_hub_models.models.detr_resnet50.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     DETRResNet50,
 )
+from qai_hub_models.models.templates.detr.app import DETRApp
 from qai_hub_models.utils.args import get_model_cli_parser, model_from_cli_args
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 

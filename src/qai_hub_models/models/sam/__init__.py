@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.sam.app import SAMApp as App
+from qai_hub_models.models.templates.sam.app import SAMApp as App
 
 # Use SamLarge as the default. This really needs to be split into multiple
 # directory like llama

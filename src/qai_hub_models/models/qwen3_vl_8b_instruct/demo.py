@@ -6,9 +6,6 @@ from __future__ import annotations
 
 import sys
 
-from qai_hub_models.models._shared.llm.demo import llm_chat_demo
-from qai_hub_models.models._shared.llm.model import LLM_QNN
-from qai_hub_models.models._shared.qwen3_vl.model import DEFAULT_USER_PROMPT, END_TOKENS
 from qai_hub_models.models.qwen3_vl_8b_instruct import MODEL_ID
 from qai_hub_models.models.qwen3_vl_8b_instruct.model import (
     HF_REPO_NAME,
@@ -18,6 +15,12 @@ from qai_hub_models.models.qwen3_vl_8b_instruct.model import (
     Qwen3_VL_8B_PreSplit,
     Qwen3_VL_8B_QuantizablePreSplit,
     Qwen3_VL_8B_VisionEncoder,
+)
+from qai_hub_models.models.templates.llm.demo import llm_chat_demo
+from qai_hub_models.models.templates.llm.model import LLM_QNN
+from qai_hub_models.models.templates.qwen3_vl.model import (
+    DEFAULT_USER_PROMPT,
+    END_TOKENS,
 )
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 

@@ -204,9 +204,9 @@ minimum baseline for shape, plus one or two recent in-tree recipes in
 the same task family as the model you're adding (grep
 `src/qai_hub_models/models/` by `use_case:` or `domain:` in their
 manifests). In-tree recipes are expected to inherit heavily from
-`_shared/<template>/` when a template exists — do NOT re-author
+`templates/<template>/` when a template exists — do NOT re-author
 preprocessing/postprocessing helpers that already live under
-`_shared/`.
+`templates/`.
 
 ## Non-goals of this delta
 

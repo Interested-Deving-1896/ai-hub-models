@@ -22,9 +22,9 @@ import pytest
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.llm_helpers import log_perf_on_device_result
-from qai_hub_models.models._shared.llm.perf_collection import (
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.llm_helpers import log_perf_on_device_result
+from qai_hub_models.models.templates.llm.perf_collection import (
     LLMPerfConfig,
     get_llm_perf_parametrization,
 )

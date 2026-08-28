@@ -33,7 +33,7 @@ from tap_per_layer import (
     discover_taps,
 )
 
-from qai_hub_models.models._shared.llm.split_onnx_utils.utils import (
+from qai_hub_models.models.templates.llm.split_onnx_utils.utils import (
     get_split_tensors,
     split_onnx_by_names,
 )

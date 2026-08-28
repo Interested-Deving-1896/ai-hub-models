@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.imagenet_classifier.app import (
+from qai_hub_models.models.templates.imagenet_classifier.app import (
     ImagenetClassifierApp as App,
 )
 

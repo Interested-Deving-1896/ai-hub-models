@@ -13,10 +13,10 @@ from ultralytics.models import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import DetectionModel
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.ultralytics.detect_patches import (
+from qai_hub_models.models.templates.ultralytics.detect_patches import (
     patch_ultralytics_detection_head,
 )
-from qai_hub_models.models._shared.yolo.model import Yolo, yolo_detect_postprocess
+from qai_hub_models.models.templates.yolo.model import Yolo, yolo_detect_postprocess
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
 from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.input_spec import (
@@ -143,7 +143,7 @@ class YoloV10Detector(Yolo):
     def get_evaluator(self) -> BaseEvaluator:
         # This is imported here so segmentation models don't have to install
         # detection evaluator dependencies.
-        from qai_hub_models.models._shared.detection.detection_evaluator import (
+        from qai_hub_models.models.templates.detection.detection_evaluator import (
             DetectionEvaluator,
         )
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.wedetect.dataset import WeDetectCocoDataset
+from qai_hub_models.models.templates.wedetect.dataset import WeDetectCocoDataset
 from qai_hub_models.models.wedetect.external_repos import EXTERNAL_REPO_PATHS
 
 

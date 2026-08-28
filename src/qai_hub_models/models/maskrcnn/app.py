@@ -12,7 +12,7 @@ import torch
 from PIL import Image
 from torchvision.models.detection.roi_heads import paste_masks_in_image
 
-from qai_hub_models.models._shared.proposal_based_detection.app import (
+from qai_hub_models.models.templates.proposal_based_detection.app import (
     ProposalBasedDetectionApp,
 )
 from qai_hub_models.utils.bounding_box_processing import batched_nms

@@ -14,10 +14,10 @@ from qai_hub.client import DatasetEntries
 from torch.utils.data import DataLoader
 
 from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
-from qai_hub_models.models._shared.proposal_based_detection.app import (
+from qai_hub_models.models.protocols import ExecutableModelProtocol
+from qai_hub_models.models.templates.proposal_based_detection.app import (
     ProposalBasedDetectionApp,
 )
-from qai_hub_models.models.protocols import ExecutableModelProtocol
 from qai_hub_models.utils.base_app import (
     CollectionAppEvaluateProtocol,
     CollectionAppQuantizeProtocol,

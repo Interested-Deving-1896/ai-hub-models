@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.repaint.app import RepaintMaskApp
 from qai_hub_models.models.lama_dilated.demo import IMAGE_ADDRESS, MASK_ADDRESS
 from qai_hub_models.models.lama_dilated.demo import main as demo_main
 from qai_hub_models.models.lama_dilated.model import (
@@ -14,6 +13,7 @@ from qai_hub_models.models.lama_dilated.model import (
     MODEL_ID,
     LamaDilated,
 )
+from qai_hub_models.models.templates.repaint.app import RepaintMaskApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.test_helpers import (
     assert_most_close,

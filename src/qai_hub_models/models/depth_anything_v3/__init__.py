@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.depth_estimation.app import (
+from qai_hub_models.models.templates.depth_estimation.app import (
     DepthEstimationApp as App,
 )
 

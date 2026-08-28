@@ -9,8 +9,8 @@ from typing import Any
 import pytest
 from transformers import AutoConfig
 
-from qai_hub_models.models._shared.llm.llm_helpers import create_genie_config
 from qai_hub_models.models.llama_v3_taide_8b_chat.model import HF_REPO_NAME
+from qai_hub_models.models.templates.llm.llm_helpers import create_genie_config
 
 
 @pytest.mark.unmarked

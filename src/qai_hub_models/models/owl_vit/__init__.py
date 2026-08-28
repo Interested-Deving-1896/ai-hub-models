@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.owl.app import OwlApp as App
+from qai_hub_models.models.templates.owl.app import OwlApp as App
 
 from .model import MODEL_ID
 from .model import OwlViT as Model

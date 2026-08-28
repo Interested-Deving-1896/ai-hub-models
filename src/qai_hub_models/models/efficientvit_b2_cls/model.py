@@ -9,13 +9,13 @@ import torch
 from typing_extensions import Self
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.efficientvit.external_repos.efficientvit.efficientvit.cls_model_zoo import (
+from qai_hub_models.models.templates.efficientvit.external_repos.efficientvit.efficientvit.cls_model_zoo import (
     create_cls_model,
 )
-from qai_hub_models.models._shared.efficientvit.litemla_patch import (
+from qai_hub_models.models.templates.efficientvit.litemla_patch import (
     apply_attention_denominator_floor,
 )
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 MODEL_ID = __name__.split(".")[-2]
@@ -24,7 +24,7 @@ DEFAULT_WEIGHTS = "b2-r288.pt"
 MODEL_ASSET_VERSION = 1
 
 # Quant-safe floor for the LiteMLA attention-normalization denominator (see
-# qai_hub_models.models._shared.efficientvit.litemla_patch for the full rationale).
+# qai_hub_models.models.templates.efficientvit.litemla_patch for the full rationale).
 # The floor must clear the int-0 / coarse-reciprocal regime without tripping the
 # server mixed-precision promotion. Chosen by an on-device w8a16 sweep: device
 # top1 climbs with eps (1->53%, 8->68%, 30->74%) and reaches ~79% at 90.

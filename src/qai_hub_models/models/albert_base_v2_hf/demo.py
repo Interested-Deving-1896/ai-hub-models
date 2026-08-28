@@ -6,8 +6,8 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.bert_hf.demo import bert_demo
 from qai_hub_models.models.albert_base_v2_hf.model import MODEL_ID, AlbertBaseV2Hf
+from qai_hub_models.models.templates.bert_hf.demo import bert_demo
 
 DEMO_TEXT = "Paris is the [MASK] of France."
 

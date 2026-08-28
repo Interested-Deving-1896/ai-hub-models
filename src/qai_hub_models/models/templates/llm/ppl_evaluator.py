@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------------
+# Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+# ---------------------------------------------------------------------
+
+from __future__ import annotations
+
+import math
+from typing import TYPE_CHECKING
+
+import torch
+from torch.nn import CrossEntropyLoss
+
+from qai_hub_models.models.templates.llm.llm_evaluator import LLMEvaluator
+from qai_hub_models.utils.metrics import (
+    PERPLEXITY,
+    MetricMetadata,
+)
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerBase
+    from transformers.modeling_outputs import CausalLMOutputWithPast
+
+
+class PerplexityEvaluator(LLMEvaluator):
+    """Evaluator for computing PPL of a Large Language Model.
+    This may not be as generic as hoped and may need work. Works with Llama 3.2 3B.
+
+    """
+
+    def __init__(
+        self,
+        context_length: int,
+        device: torch.device,
+        tokenizer: PreTrainedTokenizerBase,
+    ) -> None:
+        self.context_length = context_length
+        self.device = device
+        self.tokenizer = tokenizer
+
+        self.reset()
+
+    def add_batch(self, output: CausalLMOutputWithPast, gt: torch.Tensor) -> None:
+        self.batch_index += 1
+        logits = output.logits
+        assert logits is not None
+        # This kv cache is needed to maintain the context between multiple blocks.
+        lm_logits = logits.reshape(1, -1, logits.shape[-1])
+        shift_logits = lm_logits[..., :-1, :].contiguous().to(dtype=torch.float32)
+        shift_labels = gt[..., 1:].contiguous().to(shift_logits.device)
+        loss_fct = CrossEntropyLoss()
+        loss_value = loss_fct(
+            shift_logits.view(-1, shift_logits.size(-1)),
+            shift_labels.view(-1),
+        ).item()
+        self.loss += loss_value
+
+    def reset(self) -> None:
+        self.loss = 0.0
+        self.batch_index = 0
+
+    def get_accuracy_score(self) -> float:
+        average_loss = self.loss / self.batch_index
+        return math.exp(average_loss)
+
+    def formatted_accuracy(self) -> str:
+        return f"PPL (lower is better): {self.get_accuracy_score():.2f}"
+
+    def get_metric_metadata(self) -> MetricMetadata:
+        return PERPLEXITY

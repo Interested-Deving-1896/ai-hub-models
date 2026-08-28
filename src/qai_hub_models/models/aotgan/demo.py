@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.repaint.demo import repaint_demo
 from qai_hub_models.models.aotgan.model import AOTGAN, MODEL_ASSET_VERSION, MODEL_ID
+from qai_hub_models.models.templates.repaint.demo import repaint_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

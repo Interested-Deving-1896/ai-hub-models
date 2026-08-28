@@ -4,12 +4,12 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-from qai_hub_models.models._shared.nafnet.demo import nafnet_demo
 from qai_hub_models.models.nafnet_deblur.model import (
     IMAGE_ADDRESS,
     MODEL_ID,
     NafNetDeBlur,
 )
+from qai_hub_models.models.templates.nafnet.demo import nafnet_demo
 
 
 def main(is_test: bool = False) -> None:

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.models._shared.yolo.app import YoloObjectDetectionApp
-from qai_hub_models.models._shared.yolo.utils import detect_postprocess
+from qai_hub_models.models.templates.yolo.app import YoloObjectDetectionApp
+from qai_hub_models.models.templates.yolo.utils import detect_postprocess
 from qai_hub_models.models.yolov3.model import YoloV3
 
 

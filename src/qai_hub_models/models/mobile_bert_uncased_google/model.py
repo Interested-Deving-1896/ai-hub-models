@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from transformers import AutoModelForMaskedLM, MobileBertTokenizer
 
-from qai_hub_models.models._shared.bert_hf.model import BaseBertModel
-from qai_hub_models.models._shared.bert_hf.model_patches import (
+from qai_hub_models.models.templates.bert_hf.model import BaseBertModel
+from qai_hub_models.models.templates.bert_hf.model_patches import (
     patch_get_extended_attention_mask,
 )
 

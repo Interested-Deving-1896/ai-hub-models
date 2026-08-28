@@ -6,10 +6,10 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.depth_estimation.app import DepthEstimationApp
 from qai_hub_models.models.midas.demo import INPUT_IMAGE_ADDRESS
 from qai_hub_models.models.midas.demo import main as demo_main
 from qai_hub_models.models.midas.model import MODEL_ASSET_VERSION, MODEL_ID, Midas
+from qai_hub_models.models.templates.depth_estimation.app import DepthEstimationApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 
 OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

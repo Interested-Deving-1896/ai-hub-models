@@ -12,7 +12,7 @@ This module provides:
 - Collection class for deploying as 5 text splits + 1 vision encoder
 """
 
-from qai_hub_models.models._shared.qwen2_vl.model import (
+from qai_hub_models.models.templates.qwen2_vl.model import (
     Qwen2VLPositionProcessor as PositionProcessor,
 )
 

@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.fastsam.demo import fastsam_demo
 from qai_hub_models.models.fastsam_x.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     FastSAM_X,
 )
+from qai_hub_models.models.templates.fastsam.demo import fastsam_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 INPUT_IMAGE = CachedWebModelAsset.from_asset_store(

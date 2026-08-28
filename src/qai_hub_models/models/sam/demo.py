@@ -7,14 +7,14 @@ import numpy as np
 import torch
 from segment_anything.utils.transforms import ResizeLongestSide
 
-from qai_hub_models.models._shared.sam.app import SAMApp, SAMInputImageLayout
-from qai_hub_models.models._shared.sam.utils import show_image
 from qai_hub_models.models.sam.model import (
     BASE_MODEL_TYPE,
     MODEL_ASSET_VERSION,
     MODEL_ID,
     SAM,
 )
+from qai_hub_models.models.templates.sam.app import SAMApp, SAMInputImageLayout
+from qai_hub_models.models.templates.sam.utils import show_image
 from qai_hub_models.utils.args import (
     demo_model_components_from_cli_args,
     get_model_cli_parser,

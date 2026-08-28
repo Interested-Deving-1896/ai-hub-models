@@ -5,16 +5,16 @@
 
 import pytest
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
-    run_imagenet_classifier_test,
-    run_imagenet_classifier_trace_test,
-)
 from qai_hub_models.models.efficientnet_b4.demo import main as demo_main
 from qai_hub_models.models.efficientnet_b4.model import (
     EFFICIENTNET_B4_TRANSFORM,
     MODEL_ASSET_VERSION,
     MODEL_ID,
     EfficientNetB4,
+)
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
+    run_imagenet_classifier_test,
+    run_imagenet_classifier_trace_test,
 )
 
 

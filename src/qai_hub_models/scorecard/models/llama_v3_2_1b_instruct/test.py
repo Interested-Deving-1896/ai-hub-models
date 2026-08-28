@@ -12,14 +12,6 @@ import pytest
 import torch
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.common import get_qdc_api_token
-from qai_hub_models.models._shared.llm.llm_helpers import (
-    log_perf_on_device_result,
-)
-from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_CONTEXT_LENGTH,
-)
 from qai_hub_models.models.llama_v3_2_1b_instruct import Model
 from qai_hub_models.models.llama_v3_2_1b_instruct.demo import llama_3_2_1b_chat_demo
 from qai_hub_models.models.llama_v3_2_1b_instruct.model import (
@@ -28,6 +20,14 @@ from qai_hub_models.models.llama_v3_2_1b_instruct.model import (
     Llama3_2_1B_PreSplit,
     Llama3_2_1B_QuantizablePreSplit,
     QuantizedSplitModelWrapper,
+)
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.common import get_qdc_api_token
+from qai_hub_models.models.templates.llm.llm_helpers import (
+    log_perf_on_device_result,
+)
+from qai_hub_models.models.templates.llm.model import (
+    DEFAULT_CONTEXT_LENGTH,
 )
 from qai_hub_models.scorecard import (
     ScorecardCompilePath,
@@ -252,7 +252,7 @@ def test_qdc(
     if not (genie_bundle_path / "genie_config.json").exists():
         pytest.fail("The genie bundle does not exist.")
 
-    from qai_hub_models.models._shared.llm.qdc.genie_jobs import (
+    from qai_hub_models.models.templates.llm.qdc.genie_jobs import (
         _USE_DEFAULT_PROMPTS,
         submit_genie_bundle_to_qdc_device,
     )

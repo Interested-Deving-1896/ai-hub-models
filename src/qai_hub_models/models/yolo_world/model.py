@@ -18,19 +18,19 @@ from ultralytics.nn.text_model import build_text_model as build_clip_text_model
 
 from qai_hub_models import Precision, SampleInputsType
 from qai_hub_models.datasets.coco import CocoDataset
-from qai_hub_models.models._shared.common import replace_module_recursively
-from qai_hub_models.models._shared.detection.detection_evaluator import (
+from qai_hub_models.models.openai_clip.model import patched_in_projection_packed
+from qai_hub_models.models.templates.common import replace_module_recursively
+from qai_hub_models.models.templates.detection.detection_evaluator import (
     DetectionEvaluator,
 )
-from qai_hub_models.models._shared.ultralytics.detect_patches import (
+from qai_hub_models.models.templates.ultralytics.detect_patches import (
     patch_ultralytics_detection_head,
 )
-from qai_hub_models.models._shared.ultralytics.patches import (
+from qai_hub_models.models.templates.ultralytics.patches import (
     BNContrastiveHeadInf,
     MaxSigmoidAttnBlockInf,
 )
-from qai_hub_models.models._shared.yolo.model import Yolo, yolo_detect_postprocess
-from qai_hub_models.models.openai_clip.model import patched_in_projection_packed
+from qai_hub_models.models.templates.yolo.model import Yolo, yolo_detect_postprocess
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

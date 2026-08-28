@@ -6,14 +6,14 @@ from __future__ import annotations
 
 import sys
 
-from qai_hub_models.models._shared.llm.evaluate import llm_evaluate
-from qai_hub_models.models._shared.llm.model import LLM_QNN
 from qai_hub_models.models.llama_v3_2_1b_instruct.model import (
     FPSplitModelWrapper,
     Llama3_2_1B_PreSplit,
     Llama3_2_1B_QuantizablePreSplit,
     QuantizedSplitModelWrapper,
 )
+from qai_hub_models.models.templates.llm.evaluate import llm_evaluate
+from qai_hub_models.models.templates.llm.model import LLM_QNN
 
 if __name__ == "__main__":
     use_presplit = "--use-presplit" in sys.argv

@@ -22,10 +22,10 @@ from qai_hub_models.extern.mmengine import (
     patch_mmengine_pkgresources,
     patch_mmengine_torch_load_no_weights_only,
 )
-from qai_hub_models.models._shared.detection.coco_detection_evaluator import (
+from qai_hub_models.models.templates.detection.coco_detection_evaluator import (
     COCODetectionEvaluator,
 )
-from qai_hub_models.models._shared.yolo.model import Yolo
+from qai_hub_models.models.templates.yolo.model import Yolo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
 from qai_hub_models.utils.base_model import SerializationSettings

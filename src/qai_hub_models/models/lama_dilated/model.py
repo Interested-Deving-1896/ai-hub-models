@@ -13,10 +13,10 @@ from qai_hub.client import Device
 from typing_extensions import Self
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.repaint.model import RepaintModel
 from qai_hub_models.models.lama_dilated.external_repos.lama.saicinpainting.training.trainers.default import (
     DefaultInpaintingTrainingModule,
 )
+from qai_hub_models.models.templates.repaint.model import RepaintModel
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_json,

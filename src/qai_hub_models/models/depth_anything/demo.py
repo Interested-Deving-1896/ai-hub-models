@@ -4,12 +4,12 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.depth_estimation.demo import depth_estimation_demo
 from qai_hub_models.models.depth_anything.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     DepthAnything,
 )
+from qai_hub_models.models.templates.depth_estimation.demo import depth_estimation_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 INPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

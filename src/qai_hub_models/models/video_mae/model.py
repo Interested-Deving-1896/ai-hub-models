@@ -16,7 +16,7 @@ from qai_hub_models.datasets.kinetics400 import (
     preprocess_video_224,
     read_video_per_second,
 )
-from qai_hub_models.models._shared.video_classifier.model import (
+from qai_hub_models.models.templates.video_classifier.model import (
     INPUT_VIDEO_PATH,
     KineticsClassifier,
 )

@@ -17,7 +17,7 @@ from sam3.model import box_ops
 from sam3.model.data_misc import interpolate
 from torchvision.transforms import v2
 
-from qai_hub_models.models._shared.sam.app import SAMInputImageLayout
+from qai_hub_models.models.templates.sam.app import SAMInputImageLayout
 from qai_hub_models.utils.bounding_box_processing import batched_nms
 from qai_hub_models.utils.draw import draw_box_from_xyxy
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs

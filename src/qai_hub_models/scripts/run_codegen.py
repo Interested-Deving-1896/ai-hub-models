@@ -235,25 +235,25 @@ def _generate_external_repos_init(
     return file_path
 
 
-def _generate_shared_external_repos(environment: Environment) -> list[str]:
-    """Generate __init__.py for each _shared/*/manifest.yaml that declares external_repos."""
-    shared_dir = QAIHM_MODELS_ROOT / "_shared"
-    if not shared_dir.exists():
+def _generate_template_external_repos(environment: Environment) -> list[str]:
+    """Generate __init__.py for each templates/*/manifest.yaml that declares external_repos."""
+    templates_dir = QAIHM_MODELS_ROOT / "templates"
+    if not templates_dir.exists():
         return []
 
     template = environment.get_template("external_repos_init_template.j2")
     generated = []
-    for shared_folder in sorted(shared_dir.iterdir()):
-        manifest_path = shared_folder / "manifest.yaml"
+    for template_folder in sorted(templates_dir.iterdir()):
+        manifest_path = template_folder / "manifest.yaml"
         if not manifest_path.exists():
             continue
         manifest = QAIHMModelManifest.from_yaml(manifest_path)
         if not manifest.external_repos:
             continue
-        external_repos_dir = shared_folder / "external_repos"
+        external_repos_dir = template_folder / "external_repos"
         os.makedirs(external_repos_dir, exist_ok=True)
         file_contents = template.render(
-            shared_name=shared_folder.name,
+            template_name=template_folder.name,
             header=HEADER,
         )
         file_path = external_repos_dir / "__init__.py"
@@ -396,9 +396,9 @@ def main() -> None:
     models = args.models if args.models else MODEL_IDS
     modified_files = []
 
-    # Generate shared external repos __init__.py files
+    # Generate template external repos __init__.py files
     if args.all:
-        modified_files.extend(_generate_shared_external_repos(environment))
+        modified_files.extend(_generate_template_external_repos(environment))
 
     for model in models:
         try:

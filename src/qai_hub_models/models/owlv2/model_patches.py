@@ -18,7 +18,7 @@ from transformers.models.owlv2.modeling_owlv2 import (
     Owlv2MLP,
 )
 
-from qai_hub_models.models._shared.owl.model_patches import (
+from qai_hub_models.models.templates.owl.model_patches import (
     MASK_FILL,
     _patched_class_prediction_head_forward,
     _patched_expand_mask,

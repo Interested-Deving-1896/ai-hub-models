@@ -32,15 +32,15 @@ from qai_hub_models import (
     SampleInputsType,
     TargetRuntime,
 )
-from qai_hub_models.models._shared.llm._utils import (
-    _set_matmul_second_input_to_8b,
-    _set_tensors_to_output_8b_sym,
-)
 from qai_hub_models.models.pi05.dataset import LiberoDataset
 from qai_hub_models.models.pi05.model_adaptation import (
     GemmaMLPSplitLinear,
     SHAGemmaExpertAttention,
     apply_rope_direct,
+)
+from qai_hub_models.models.templates.llm._utils import (
+    _set_matmul_second_input_to_8b,
+    _set_tensors_to_output_8b_sym,
 )
 from qai_hub_models.utils.aimet.aimet_dummy_model import zip_aimet_model
 from qai_hub_models.utils.aimet.config_loader import get_aimet_config_path

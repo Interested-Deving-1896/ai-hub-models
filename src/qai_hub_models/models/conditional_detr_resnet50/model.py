@@ -12,10 +12,10 @@ from qai_hub_models import (
     Precision,
     TargetRuntime,
 )
-from qai_hub_models.models._shared.detection.detection_evaluator import (
+from qai_hub_models.models.templates.detection.detection_evaluator import (
     DetectionEvaluator,
 )
-from qai_hub_models.models._shared.detr.model import DETR
+from qai_hub_models.models.templates.detr.model import DETR
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
 
 MODEL_ID = __name__.split(".")[-2]

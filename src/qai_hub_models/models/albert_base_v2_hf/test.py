@@ -8,13 +8,13 @@ from typing import cast
 
 from transformers import PreTrainedTokenizer
 
-from qai_hub_models.models._shared.bert_hf.app import (
-    BaseBertApp,
-)
 from qai_hub_models.models.albert_base_v2_hf.demo import DEMO_TEXT
 from qai_hub_models.models.albert_base_v2_hf.demo import main as demo_main
 from qai_hub_models.models.albert_base_v2_hf.model import (
     AlbertBaseV2Hf,
+)
+from qai_hub_models.models.templates.bert_hf.app import (
+    BaseBertApp,
 )
 
 

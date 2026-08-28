@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.sam.app import SAMApp as App
+from qai_hub_models.models.templates.sam.app import SAMApp as App
 
 from .model import MODEL_ID
 from .model import MobileSAM as Model

@@ -9,7 +9,7 @@ import torch
 from typing_extensions import Self
 
 from qai_hub_models.extern.basicsr.archs.rrdbnet_arch import RRDBNet
-from qai_hub_models.models._shared.super_resolution.model import (
+from qai_hub_models.models.templates.super_resolution.model import (
     SuperResolutionModel,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_torch

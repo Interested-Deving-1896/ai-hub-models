@@ -82,7 +82,6 @@ sys.meta_path.insert(0, _finder)
 # These imports must come after the mock finder is installed because they
 # transitively import from mocked packages (transformers, timm, etc.)
 from qai_hub_models.datasets.imagenet import ImagenetDataset  # noqa: E402
-from qai_hub_models.models._shared.llm.export import get_llm_parser  # noqa: E402
 from qai_hub_models.models.llama_v3_1_8b_instruct import (  # noqa: E402
     QuantizedSplitModelWrapper as LlamaModel,
 )
@@ -91,6 +90,7 @@ from qai_hub_models.models.qwen2_7b_instruct import Model as Qwen2Model  # noqa:
 from qai_hub_models.models.resnet18 import MODEL_ID as RESNET_MODEL_ID  # noqa: E402
 from qai_hub_models.models.resnet18 import Model as ResnetModel  # noqa: E402
 from qai_hub_models.models.swin_tiny import Model as SwinModel  # noqa: E402
+from qai_hub_models.models.templates.llm.export import get_llm_parser  # noqa: E402
 from qai_hub_models.models.whisper_base import Model as WhisperModel  # noqa: E402
 from qai_hub_models.utils.args import (  # noqa: E402
     demo_model_from_cli_args,

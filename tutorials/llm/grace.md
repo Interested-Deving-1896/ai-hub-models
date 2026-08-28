@@ -60,11 +60,11 @@ quantization-related degradations.
 The current version is Grace2:
 
 * Language: English
-* Samples: [100 prompts](../../src/qai_hub_models/models/_shared/llm/grader/grace2.jsonl) (across 10 categories)
+* Samples: [100 prompts](../../src/qai_hub_models/models/templates/llm/grader/grace2.jsonl) (across 10 categories)
 * Grader: Qwen3.6-35B-A3B
 
 Please find the grading rubric in
-[grader.py](../../src/qai_hub_models/models/_shared/llm/grader/grader.py). We
+[grader.py](../../src/qai_hub_models/models/templates/llm/grader/grader.py). We
 publish results to [AI Hub Models](https://aihub.qualcomm.com/models). These
 numbers can also be found in `numerics.yaml` files in the
 [ai-hub-models](https://github.com/qualcomm/ai-hub-models) repository.

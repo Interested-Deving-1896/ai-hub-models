@@ -4,9 +4,9 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.yolo.demo import yolo_detection_demo
 from qai_hub_models.models.rtmdet.app import RTMDetApp
 from qai_hub_models.models.rtmdet.model import MODEL_ASSET_VERSION, MODEL_ID, RTMDet
+from qai_hub_models.models.templates.yolo.demo import yolo_detection_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

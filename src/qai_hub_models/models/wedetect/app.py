@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
-from qai_hub_models.models._shared.wedetect.app import WeDetectApp
+from qai_hub_models.models.templates.wedetect.app import WeDetectApp
 from qai_hub_models.models.wedetect.external_repos import EXTERNAL_REPO_PATHS
 
 

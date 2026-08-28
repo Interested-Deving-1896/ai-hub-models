@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.video_classifier.demo import kinetics_classifier_demo
 from qai_hub_models.models.resnet_mixed.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     ResNetMixed,
+)
+from qai_hub_models.models.templates.video_classifier.demo import (
+    kinetics_classifier_demo,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 

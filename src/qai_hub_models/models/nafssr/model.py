@@ -12,12 +12,12 @@ from torchvision import transforms
 from typing_extensions import Self
 
 from qai_hub_models import SampleInputsType
-from qai_hub_models.models._shared.nafnet.model import (
+from qai_hub_models.models.nafssr.dataset import Flickr1024Dataset
+from qai_hub_models.models.nafssr.evaluator import StereoEvaluator
+from qai_hub_models.models.templates.nafnet.model import (
     NAFNetModelBase,
     _load_nafnet_source_model,
 )
-from qai_hub_models.models.nafssr.dataset import Flickr1024Dataset
-from qai_hub_models.models.nafssr.evaluator import StereoEvaluator
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_image,

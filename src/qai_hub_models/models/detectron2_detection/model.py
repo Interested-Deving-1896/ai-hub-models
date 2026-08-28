@@ -18,10 +18,10 @@ from qai_hub_models import (
     TargetRuntime,
 )
 from qai_hub_models.datasets.coco import Coco180Dataset, CocoDataset
-from qai_hub_models.models._shared.detection.detection_evaluator import (
+from qai_hub_models.models.templates.detection.detection_evaluator import (
     DetectionEvaluator,
 )
-from qai_hub_models.models._shared.detectron2.model import Detectron2
+from qai_hub_models.models.templates.detectron2.model import Detectron2
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

@@ -12,14 +12,14 @@ from transformers import AutoModel
 from typing_extensions import Self
 
 from qai_hub_models import SampleInputsType
-from qai_hub_models.models._shared.bert_hf.model_patches import (
-    patch_get_extended_attention_mask,
-)
 from qai_hub_models.models.minilm_v2.dataset import (
     MiniLMAmazonCounterfactualDataset,
 )
 from qai_hub_models.models.minilm_v2.evaluator import (
     SentenceEmbeddingEvaluator,
+)
+from qai_hub_models.models.templates.bert_hf.model_patches import (
+    patch_get_extended_attention_mask,
 )
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

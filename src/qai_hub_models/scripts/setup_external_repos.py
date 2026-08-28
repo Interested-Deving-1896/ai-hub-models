@@ -23,7 +23,7 @@ from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.external_repo import setup_external_repos
 from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_MODELS_ROOT
 
-SHARED_DIR = QAIHM_MODELS_ROOT / "_shared"
+TEMPLATES_DIR = QAIHM_MODELS_ROOT / "templates"
 
 
 def main() -> None:
@@ -40,26 +40,26 @@ def main() -> None:
         "--all",
         "-a",
         action="store_true",
-        help="Setup external repos for all models and shared repos.",
+        help="Setup external repos for all models and templates.",
     )
     args = parser.parse_args()
 
     failed = []
 
-    if args.all and SHARED_DIR.exists():
-        for shared_folder in sorted(SHARED_DIR.iterdir()):
-            manifest_path = shared_folder / "manifest.yaml"
+    if args.all and TEMPLATES_DIR.exists():
+        for template_folder in sorted(TEMPLATES_DIR.iterdir()):
+            manifest_path = template_folder / "manifest.yaml"
             if not manifest_path.exists():
                 continue
             manifest = QAIHMModelManifest.from_yaml(manifest_path)
             if not manifest.external_repos:
                 continue
-            print(f"Setting up shared external repo: {shared_folder.name}...")
+            print(f"Setting up template external repo: {template_folder.name}...")
             try:
-                setup_external_repos(shared_folder)
+                setup_external_repos(template_folder)
             except Exception as e:
                 print(f"  FAILED: {e}")
-                failed.append(f"_shared/{shared_folder.name}")
+                failed.append(f"templates/{template_folder.name}")
 
     models = args.models if args.models else MODEL_IDS
     for model_id in models:

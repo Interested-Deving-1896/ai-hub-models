@@ -68,7 +68,7 @@ PUBLIC_BENCH_MODELS = os.path.join(
     PY_PACKAGE_SRC_ROOT, "scorecard", "static", "pytorch_bench_models_float.txt"
 )
 
-# Repo-relative dir the LLM compile/qdc tests write genie bundles to (must match GENIE_BUNDLES_ROOT in qai_hub_models.models._shared.llm.test).
+# Repo-relative dir the LLM compile/qdc tests write genie bundles to (must match GENIE_BUNDLES_ROOT in qai_hub_models.models.templates.llm.test).
 GENIE_BUNDLES_ROOT = os.path.join(REPO_ROOT, "genie_bundles")
 
 # Requirements Path

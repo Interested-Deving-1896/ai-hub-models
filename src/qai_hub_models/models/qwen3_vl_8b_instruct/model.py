@@ -12,14 +12,14 @@ from qai_hub_models import Precision
 # LLMIOType is re-exported from this module so the CLI input-spec parser can
 # resolve the inherited get_input_spec's "llm_io_type" annotation, which it
 # looks up in the concrete model's module.
-from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.common import LLMIOType  # noqa: F401
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     SplitForwardMixin,  # noqa: F401
 )
-from qai_hub_models.models._shared.qwen3_vl.model import (
+from qai_hub_models.models.templates.qwen3_vl.model import (
     Qwen3VLCollectionBase,
     Qwen3VLPartBase,
     Qwen3VLPreSplitBase,

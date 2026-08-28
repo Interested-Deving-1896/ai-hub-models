@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.yolo.demo import yolo_pose_estimation_demo
+from qai_hub_models.models.templates.yolo.demo import yolo_pose_estimation_demo
 from qai_hub_models.models.yolov11_pose.app import YoloV11PoseApp
 from qai_hub_models.models.yolov11_pose.model import (
     MODEL_ASSET_VERSION,

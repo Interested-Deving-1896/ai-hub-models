@@ -11,10 +11,10 @@ from typing_extensions import Self
 from ultralytics.models.yolo import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import SegmentationModel
 
-from qai_hub_models.models._shared.ultralytics.segmentation_model import (
+from qai_hub_models.models.templates.ultralytics.segmentation_model import (
     UltralyticsMulticlassSegmentor,
 )
-from qai_hub_models.models._shared.yolo.model import YoloSegEvalMixin
+from qai_hub_models.models.templates.yolo.model import YoloSegEvalMixin
 
 MODEL_ASSET_VERSION = 1
 MODEL_ID = __name__.split(".")[-2]

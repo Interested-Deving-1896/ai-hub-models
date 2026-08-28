@@ -108,7 +108,7 @@ For models with quantized weights and floating-point activations (`w4`):
  * Genie SDK defaults to -1000 as the stand-in for -∞ because the NPU runtime does not handle -∞ well.
  * For Qwen 2.5, -1000 is insufficient. In such cases, the attention mask must be scaled inside the network to align with Genie’s behavior.
 
-See `QWEN2_ATTENTION_MULTIPLIER` in `_shared/qwen2/model.py` for an example of this scaling.
+See `QWEN2_ATTENTION_MULTIPLIER` in `templates/qwen2/model.py` for an example of this scaling.
 
 ## Model Adaptations
 
@@ -194,7 +194,7 @@ In this example the parts will look like this:
 
 Each part and each sequence-length variant is compiled separately using **AI Hub**. After compilation, the **AR-1** and **AR-128** variants for each part are linked together to form a context binary with shared weights. These linked parts are then downloaded into your Genie bundle.
 
-The compile and link job submissions are implemented in `_shared/llm/export.py` and typically does not require modification for new LLM architectures.
+The compile and link job submissions are implemented in `templates/llm/export.py` and typically does not require modification for new LLM architectures.
 
 ## AI Hub Model Code Structure
 
@@ -202,8 +202,8 @@ The compile and link job submissions are implemented in `_shared/llm/export.py` 
 
 Three important file locations:
 
- * `qai_hub_models/models/_shared/llm`: Code shared by all LLMs.
- * `qai_hub_models/models/_shared/llama3`: Code specific to the LLM family (e.g., Llama 3).
+ * `qai_hub_models/models/templates/llm`: Code shared by all LLMs (the LLM template).
+ * `qai_hub_models/models/templates/llama3`: Code specific to the LLM family (e.g., Llama 3).
  * `qai_hub_models/models/llama_v3_2_3b_instruct`: Code specific to the model variant.
 
 Key files across these three locations:
@@ -236,7 +236,7 @@ In all files under `my_new_model`:
  * Rename `llama_v3_2_3b_instruct` → `my_new_model`
  * Rename `Llama3_2_3B` → `MyNewModel`
 
-If you are onboarding a new family that should support multiple variants, copy and rename a new shared folder as well.
+If you are onboarding a new family that should support multiple variants, copy and rename a new template folder as well.
 
 ### Remove S3 Checkpoints
 
@@ -250,7 +250,7 @@ These checkpoints normally fetch from an AI Hub Models S3 bucket. Removing them 
 
 ### Make Necessary Modifications
 
-Update `model_adaptations.py` (in the shared folder) to handle:
+Update `model_adaptations.py` (in the template folder) to handle:
 
  * Attention class changes for **Split-Head Attention** (**SHA**).
  * Positional encoding adaptations.

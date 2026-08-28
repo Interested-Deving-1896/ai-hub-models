@@ -12,12 +12,12 @@ from typing_extensions import Self
 
 from qai_hub_models import Precision
 from qai_hub_models.datasets.imagenet import ImagenetDataset, ImagenetteDataset
-from qai_hub_models.models._shared.imagenet_classifier.model import (
-    TEST_IMAGENET_IMAGE,
-    ImagenetClassifier,
-)
 from qai_hub_models.models.efficientnet_lite4.external_repos.efficientnet_lite4.efficientnet_lite import (
     build_efficientnet_lite,
+)
+from qai_hub_models.models.templates.imagenet_classifier.model import (
+    TEST_IMAGENET_IMAGE,
+    ImagenetClassifier,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetSplit

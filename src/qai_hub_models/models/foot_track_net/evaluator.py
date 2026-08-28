@@ -12,8 +12,8 @@ import torch
 # podm comes from the object-detection-metrics pip package
 from podm.metrics import BoundingBox
 
-from qai_hub_models.models._shared.detection.detection_evaluator import mAPEvaluator
 from qai_hub_models.models.foot_track_net.app import postprocess
+from qai_hub_models.models.templates.detection.detection_evaluator import mAPEvaluator
 
 
 class FootTrackNetEvaluator(mAPEvaluator):

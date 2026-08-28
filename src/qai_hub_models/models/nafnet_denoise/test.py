@@ -8,7 +8,6 @@ import warnings
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.nafnet.app import NAFNetApp
 from qai_hub_models.models.nafnet_denoise.demo import main as demo_main
 from qai_hub_models.models.nafnet_denoise.model import (
     IMAGE_ADDRESS,
@@ -16,6 +15,7 @@ from qai_hub_models.models.nafnet_denoise.model import (
     MODEL_ID,
     NafNetDeNoise,
 )
+from qai_hub_models.models.templates.nafnet.app import NAFNetApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.image_processing import preprocess_PIL_image
 

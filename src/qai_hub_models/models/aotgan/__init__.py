@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.repaint.app import (
+from qai_hub_models.models.templates.repaint.app import (
     RepaintMaskApp as App,
 )
 

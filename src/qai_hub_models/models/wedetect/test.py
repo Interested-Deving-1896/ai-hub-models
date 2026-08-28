@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from qai_hub_models.models._shared.wedetect.app import tokenize_class_names
+from qai_hub_models.models.templates.wedetect.app import tokenize_class_names
 from qai_hub_models.models.wedetect.app import WeDetectModelApp
 from qai_hub_models.models.wedetect.demo import main as demo_main
 from qai_hub_models.models.wedetect.model import (

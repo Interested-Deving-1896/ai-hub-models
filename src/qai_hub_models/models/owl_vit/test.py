@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.owl.app import OwlApp
 from qai_hub_models.models.owl_vit.demo import DEFAULT_TEXT_QUERIES, IMAGE_ADDRESS
 from qai_hub_models.models.owl_vit.demo import main as demo_main
 from qai_hub_models.models.owl_vit.model import (
@@ -15,6 +14,7 @@ from qai_hub_models.models.owl_vit.model import (
     MODEL_ID,
     OwlViT,
 )
+from qai_hub_models.models.templates.owl.app import OwlApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.test_helpers import assert_most_close
 

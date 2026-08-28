@@ -5,15 +5,15 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.gemma4.model import DEFAULT_USER_PROMPT, END_TOKENS
-from qai_hub_models.models._shared.llm.demo import llm_chat_demo
-from qai_hub_models.models._shared.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.models.gemma_4_e4b_it.model import (
     HF_REPO_NAME,
     MODEL_ID,
     FPSplitModelWrapper,
     QuantizedSplitModelWrapper,
 )
+from qai_hub_models.models.templates.gemma4.model import DEFAULT_USER_PROMPT, END_TOKENS
+from qai_hub_models.models.templates.llm.demo import llm_chat_demo
+from qai_hub_models.models.templates.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 
 HF_REPO_URL = f"https://huggingface.co/{HF_REPO_NAME}"

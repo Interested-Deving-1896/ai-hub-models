@@ -10,7 +10,7 @@ from transformers import LevitForImageClassification
 from typing_extensions import Self
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 

@@ -22,14 +22,14 @@ from qai_hub_models import (
     TargetRuntime,
 )
 from qai_hub_models.datasets.sav import SaVDataset
-from qai_hub_models.models._shared.sam.utils import copy_configs
-from qai_hub_models.models._shared.sam2.model import (
+from qai_hub_models.models.templates.sam.utils import copy_configs
+from qai_hub_models.models.templates.sam2.model import (
     SAM2Decoder as SAM2DecoderBase,
 )
-from qai_hub_models.models._shared.sam2.model import (
+from qai_hub_models.models.templates.sam2.model import (
     SAM2Encoder as SAM2EncoderBase,
 )
-from qai_hub_models.models._shared.sam2.model import (
+from qai_hub_models.models.templates.sam2.model import (
     SAM2Loader as SAM2LoaderBase,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset

@@ -2,11 +2,11 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-from qai_hub_models.models._shared.pipertts.test_utils import (
-    pipertts_synthesize_and_verify,
-)
 from qai_hub_models.models.pipertts_en.demo import main as demo_main
 from qai_hub_models.models.pipertts_en.model import PiperTTS_EN
+from qai_hub_models.models.templates.pipertts.test_utils import (
+    pipertts_synthesize_and_verify,
+)
 from qai_hub_models.models.whisper_large_v3_turbo.model import WhisperLargeV3Turbo
 
 

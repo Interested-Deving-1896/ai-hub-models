@@ -8,7 +8,7 @@ from __future__ import annotations
 import torchvision.models as tv_models
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.deeplab.model import DeepLabV3Model
+from qai_hub_models.models.templates.deeplab.model import DeepLabV3Model
 
 MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 2

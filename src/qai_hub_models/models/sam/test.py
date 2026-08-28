@@ -12,7 +12,6 @@ from segment_anything import SamPredictor
 from segment_anything.utils.onnx import SamOnnxModel
 from segment_anything.utils.transforms import ResizeLongestSide
 
-from qai_hub_models.models._shared.sam.app import SAMApp, SAMInputImageLayout
 from qai_hub_models.models.sam.demo import IMAGE_ADDRESS
 from qai_hub_models.models.sam.demo import main as demo_main
 from qai_hub_models.models.sam.model import (
@@ -20,6 +19,7 @@ from qai_hub_models.models.sam.model import (
     SAM,
     SAMLoader,
 )
+from qai_hub_models.models.templates.sam.app import SAMApp, SAMInputImageLayout
 from qai_hub_models.utils.asset_loaders import load_image
 from qai_hub_models.utils.test_helpers import assert_most_close
 

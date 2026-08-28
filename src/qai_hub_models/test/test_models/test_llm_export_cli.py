@@ -16,8 +16,8 @@ import pytest
 import torch
 
 from qai_hub_models import Precision, QAIRTVersion, TargetRuntime
-from qai_hub_models.models._shared.llm import export
-from qai_hub_models.models._shared.llm.model import LLM_AIMETOnnx
+from qai_hub_models.models.templates.llm import export
+from qai_hub_models.models.templates.llm.model import LLM_AIMETOnnx
 from qai_hub_models.utils.args import QAIHMArgumentParser
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.model_cache import CacheMode
@@ -31,7 +31,7 @@ TEST_HUB_DEVICES: list[tuple[str | None, str | None, str, str, bool]] = [
     (None, "snapdragon-x-elite", "v73", "60", True),
     ("RB3 Gen 2", None, "v68", "35", False),
 ]
-EXPORT = "qai_hub_models.models._shared.llm.export"
+EXPORT = "qai_hub_models.models.templates.llm.export"
 
 
 class DummyMockModel(LLM_AIMETOnnx):

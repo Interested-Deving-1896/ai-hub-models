@@ -6,14 +6,14 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.cityscapes_segmentation.app import (
-    CityscapesSegmentationApp,
-)
 from qai_hub_models.models.hrnet_w48_ocr.demo import main as demo_main
 from qai_hub_models.models.hrnet_w48_ocr.model import (
     HRNET_W48_OCR,
     MODEL_ASSET_VERSION,
     MODEL_ID,
+)
+from qai_hub_models.models.templates.cityscapes_segmentation.app import (
+    CityscapesSegmentationApp,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.test_helpers import (

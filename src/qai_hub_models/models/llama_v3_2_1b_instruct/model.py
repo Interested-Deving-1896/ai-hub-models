@@ -6,7 +6,7 @@
 Llama 3.2 1B Instruct - PreSplit-Part architecture for LLM deployment.
 
 The generic PreSplit/Part/Collection machinery lives in
-``qai_hub_models.models._shared.llama3.model``. This module supplies the
+``qai_hub_models.models.templates.llama3.model``. This module supplies the
 1B-specific architecture constants and the small concrete subclasses
 (Part classes + the decorated Collection) that the ``add_component``
 decorator requires.
@@ -21,21 +21,21 @@ from qai_hub_models import Precision
 # LLMIOType is re-exported from this module so the CLI input-spec parser can
 # resolve the inherited get_input_spec's "llm_io_type" annotation, which it
 # looks up in the concrete model's module.
-from qai_hub_models.models._shared.llama3.model import (
+from qai_hub_models.models.templates.llama3.model import (
     LlamaPartBase,
     LlamaPreSplitBase,
     LlamaPreSplitCollectionBase,
     LlamaQuantizablePreSplitBase,
 )
-from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.common import LLMIOType  # noqa: F401
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_CONTEXT_LENGTHS as GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import SplitForwardMixin
-from qai_hub_models.models._shared.lm_driver.generator import (
+from qai_hub_models.models.templates.llm.model import SplitForwardMixin
+from qai_hub_models.models.templates.lm_driver.generator import (
     HubCompatibleGenerator,
 )
 

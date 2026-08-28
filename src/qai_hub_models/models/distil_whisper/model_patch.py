@@ -15,7 +15,7 @@ from transformers.models.whisper.modeling_whisper import (
     WhisperModel,
 )
 
-from qai_hub_models.models._shared.hf_whisper.model_adaptation import (
+from qai_hub_models.models.templates.hf_whisper.model_adaptation import (
     QcWhisperDecoder,
     QcWhisperEncoder,
     SHAAttention,

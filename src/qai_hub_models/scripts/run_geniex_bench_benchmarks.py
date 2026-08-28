@@ -16,7 +16,7 @@ from pathlib import Path
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.configs.model_metadata import ModelMetadata
-from qai_hub_models.models._shared.llm.common import (
+from qai_hub_models.models.templates.llm.common import (
     DEFAULT_RETRIES,
     JobOutcome,
     JobRecord,
@@ -26,16 +26,16 @@ from qai_hub_models.models._shared.llm.common import (
     poll_and_retry,
     save_job,
 )
-from qai_hub_models.models._shared.llm.grader.grace import (
+from qai_hub_models.models.templates.llm.grader.grace import (
     load_eval_prompts,
     select_balanced,
 )
-from qai_hub_models.models._shared.llm.perf_collection import (
+from qai_hub_models.models.templates.llm.perf_collection import (
     load_release_assets_for_model,
     record_perf_scope,
     update_perf_yaml,
 )
-from qai_hub_models.models._shared.llm.qdc.geniex_jobs import (
+from qai_hub_models.models.templates.llm.qdc.geniex_jobs import (
     GenieXBenchMetrics,
     collect_geniex_bench_result,
     save_eval_metadata_json,
@@ -815,7 +815,7 @@ def _eval_prompts_for_device(
 ) -> list[str] | None:
     """Restrict the accuracy eval to the default LLM scorecard device.
 
-    Mirrors the genie path (see ``_shared/llm/test.py``): eval is expensive
+    Mirrors the genie path (see ``templates/llm/test.py``): eval is expensive
     (~100 prompts x per-prompt DSP attach), so run it only on
     ``DEFAULT_QDC_DEVICE`` (cs_x_elite) and leave the other devices
     doing perf only.

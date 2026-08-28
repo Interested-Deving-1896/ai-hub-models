@@ -8,9 +8,9 @@ from typing import Any
 
 import pytest
 
-from qai_hub_models.models._shared.llm.llm_helpers import create_genie_config
-from qai_hub_models.models._shared.qwen2_vl.model import get_vlm_config
 from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import HF_REPO_NAME
+from qai_hub_models.models.templates.llm.llm_helpers import create_genie_config
+from qai_hub_models.models.templates.qwen2_vl.model import get_vlm_config
 
 
 @pytest.mark.unmarked

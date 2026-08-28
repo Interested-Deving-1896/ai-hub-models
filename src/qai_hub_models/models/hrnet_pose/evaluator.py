@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.models._shared.pose.pose_evaluator import CocoKeypointsPoseEvaluator
-from qai_hub_models.models._shared.pose.pose_utils import get_final_preds
+from qai_hub_models.models.templates.pose.pose_evaluator import (
+    CocoKeypointsPoseEvaluator,
+)
+from qai_hub_models.models.templates.pose.pose_utils import get_final_preds
 
 
 class HRNetPoseEvaluator(CocoKeypointsPoseEvaluator):

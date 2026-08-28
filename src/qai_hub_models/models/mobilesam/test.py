@@ -12,7 +12,6 @@ from mobile_sam import SamPredictor
 from mobile_sam.utils.onnx import SamOnnxModel
 from mobile_sam.utils.transforms import ResizeLongestSide
 
-from qai_hub_models.models._shared.sam.app import SAMApp, SAMInputImageLayout
 from qai_hub_models.models.mobilesam.demo import IMAGE_ADDRESS
 from qai_hub_models.models.mobilesam.demo import main as demo_main
 from qai_hub_models.models.mobilesam.model import (
@@ -20,6 +19,7 @@ from qai_hub_models.models.mobilesam.model import (
     MobileSAM,
     MobileSAMLoader,
 )
+from qai_hub_models.models.templates.sam.app import SAMApp, SAMInputImageLayout
 from qai_hub_models.utils.asset_loaders import load_image
 from qai_hub_models.utils.test_helpers import assert_most_close
 

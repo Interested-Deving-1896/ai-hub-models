@@ -17,7 +17,7 @@ from sam2.modeling.sam2_base import SAM2Base as Sam2
 from torch.utils.data import DataLoader
 
 from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
-from qai_hub_models.models._shared.sam2.model_patches import (
+from qai_hub_models.models.templates.sam2.model_patches import (
     mask_postprocessing,
 )
 from qai_hub_models.utils.base_app import CollectionAppQuantizeProtocol

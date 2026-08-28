@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.selfie_segmentation.app import (
+from qai_hub_models.models.templates.selfie_segmentation.app import (
     SelfieSegmentationApp as App,
 )
 

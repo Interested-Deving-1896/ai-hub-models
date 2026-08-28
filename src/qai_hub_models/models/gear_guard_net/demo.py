@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.gear_guard_net.demo import gear_guard_demo
 from qai_hub_models.models.gear_guard_net.app import GearGuardNetApp
 from qai_hub_models.models.gear_guard_net.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     GearGuardNet,
 )
+from qai_hub_models.models.templates.gear_guard_net.demo import gear_guard_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 INPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

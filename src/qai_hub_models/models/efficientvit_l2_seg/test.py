@@ -6,14 +6,14 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.cityscapes_segmentation.app import (
-    CityscapesSegmentationApp,
-)
 from qai_hub_models.models.efficientvit_l2_seg.demo import main as demo_main
 from qai_hub_models.models.efficientvit_l2_seg.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     EfficientViT,
+)
+from qai_hub_models.models.templates.cityscapes_segmentation.app import (
+    CityscapesSegmentationApp,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.test_helpers import (

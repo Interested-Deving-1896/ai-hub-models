@@ -5,8 +5,6 @@
 
 import pytest
 
-from qai_hub_models.models._shared.deeplab.app import DeepLabV3App
-from qai_hub_models.models._shared.deeplab.model import NUM_CLASSES
 from qai_hub_models.models.deeplabv3_plus_mobilenet.demo import INPUT_IMAGE_ADDRESS
 from qai_hub_models.models.deeplabv3_plus_mobilenet.demo import main as demo_main
 from qai_hub_models.models.deeplabv3_plus_mobilenet.model import (
@@ -14,6 +12,8 @@ from qai_hub_models.models.deeplabv3_plus_mobilenet.model import (
     MODEL_ID,
     DeepLabV3PlusMobilenet,
 )
+from qai_hub_models.models.templates.deeplab.app import DeepLabV3App
+from qai_hub_models.models.templates.deeplab.model import NUM_CLASSES
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_image,

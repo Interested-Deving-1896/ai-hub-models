@@ -8,7 +8,7 @@ from __future__ import annotations
 import torch
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.detr.model import DETR
+from qai_hub_models.models.templates.detr.model import DETR
 from qai_hub_models.utils.base_model import SerializationSettings
 
 MODEL_ID = __name__.split(".")[-2]

@@ -41,7 +41,7 @@ on:
           - dev
 
       run_eval:
-        description: 'Run on-device evaluation with default prompts. To use custom prompts, run locally via CLI: python -m qai_hub_models.models._shared.llm.qdc.genie_jobs --eval-prompts <path-to-jsonl>'
+        description: 'Run on-device evaluation with default prompts. To use custom prompts, run locally via CLI: python -m qai_hub_models.models.templates.llm.qdc.genie_jobs --eval-prompts <path-to-jsonl>'
         default: true
         type: boolean
 
@@ -197,7 +197,7 @@ jobs:
       run: |
         source ${{ env.VENV_PATH }}/bin/activate
         cd $GITHUB_WORKSPACE
-        python -m qai_hub_models.models._shared.llm.qdc.genie_jobs submit --jobs-file "$JOBS_FILE"
+        python -m qai_hub_models.models.templates.llm.qdc.genie_jobs submit --jobs-file "$JOBS_FILE"
 
     - name: Collect LLM Performance Results
       id: run_tests
@@ -216,7 +216,7 @@ jobs:
         source ${{ env.VENV_PATH }}/bin/activate
         cd $GITHUB_WORKSPACE
         mkdir -p "$GITHUB_WORKSPACE/test-results"
-        python -m qai_hub_models.models._shared.llm.qdc.genie_jobs collect \
+        python -m qai_hub_models.models.templates.llm.qdc.genie_jobs collect \
           --jobs-file "$JOBS_FILE" \
           --junit-xml "$GITHUB_WORKSPACE/test-results/models-junit-llm_perf.xml"
 

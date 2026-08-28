@@ -11,8 +11,6 @@ import pytest
 import torch
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.models.qwen2_5_vl_7b_instruct import (
     MODEL_ID,
     VisionEncoder,
@@ -31,6 +29,8 @@ from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
 from qai_hub_models.models.qwen2_5_vl_7b_instruct.quantize import (
     quantize_vision_encoder,
 )
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 from qai_hub_models.utils.export.context import resolve_recipe_dir
 from qai_hub_models.utils.export.dispatch import select_pipeline

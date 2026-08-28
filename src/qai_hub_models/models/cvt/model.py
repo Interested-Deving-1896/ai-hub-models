@@ -19,12 +19,12 @@ from qai_hub_models import (
     TargetRuntime,
 )
 from qai_hub_models.datasets.nuscenes import NuscenesBevCVTDataset
-from qai_hub_models.models._shared.cvt_gkt.nuscenes_bev_evaluator import (
-    NuscenesBevSegmentationEvaluator,
-)
 from qai_hub_models.models.cvt.external_repos.cross_view_transformers.cross_view_transformer.common import (
     remove_prefix,
     setup_network,
+)
+from qai_hub_models.models.templates.cvt_gkt.nuscenes_bev_evaluator import (
+    NuscenesBevSegmentationEvaluator,
 )
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,

@@ -14,8 +14,8 @@ from typing_extensions import Self
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.tensor_spec import TensorSpec
-from qai_hub_models.models._shared.yolo.model import DEFAULT_YOLO_IMAGE_INPUT_HW, Yolo
-from qai_hub_models.models._shared.yolo.utils import detect_postprocess_split_input
+from qai_hub_models.models.templates.yolo.model import DEFAULT_YOLO_IMAGE_INPUT_HW, Yolo
+from qai_hub_models.models.templates.yolo.utils import detect_postprocess_split_input
 from qai_hub_models.models.yolov7.external_repos.yolov7.models.experimental import (
     attempt_load,
 )

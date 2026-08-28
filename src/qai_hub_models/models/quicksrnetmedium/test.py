@@ -5,14 +5,14 @@
 
 import numpy as np
 
-from qai_hub_models.models._shared.super_resolution.app import SuperResolutionApp
-from qai_hub_models.models._shared.super_resolution.model import IMAGE_ADDRESS
 from qai_hub_models.models.quicksrnetmedium.demo import main as demo_main
 from qai_hub_models.models.quicksrnetmedium.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     QuickSRNetMedium,
 )
+from qai_hub_models.models.templates.super_resolution.app import SuperResolutionApp
+from qai_hub_models.models.templates.super_resolution.model import IMAGE_ADDRESS
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.test_helpers import (
     assert_most_same,

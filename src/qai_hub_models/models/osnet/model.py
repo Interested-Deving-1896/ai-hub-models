@@ -15,7 +15,6 @@ from typing_extensions import Self
 from qai_hub_models import Precision
 from qai_hub_models.datasets.reid.entire_id import ENTIReIDDataset
 from qai_hub_models.datasets.reid.market1501 import Market1501Dataset
-from qai_hub_models.models._shared.reid.reid_evaluator import ReIDEvaluator
 from qai_hub_models.models.osnet.external_repos.deep_person_reid.torchreid.models.osnet import (
     osnet_ibn_x1_0,
     osnet_x0_5,
@@ -23,6 +22,7 @@ from qai_hub_models.models.osnet.external_repos.deep_person_reid.torchreid.model
     osnet_x0_75,
     osnet_x1_0,
 )
+from qai_hub_models.models.templates.reid.reid_evaluator import ReIDEvaluator
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

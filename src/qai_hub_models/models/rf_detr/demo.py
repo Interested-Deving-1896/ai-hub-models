@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.detr.demo import detr_demo
 from qai_hub_models.models.rf_detr.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     RF_DETR,
 )
+from qai_hub_models.models.templates.detr.demo import detr_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

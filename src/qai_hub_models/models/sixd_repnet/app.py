@@ -15,8 +15,8 @@ import numpy as np
 import torch
 from PIL import Image
 
-from qai_hub_models.models._shared.imagenet_classifier.app import preprocess_image
 from qai_hub_models.models.sixd_repnet.model import SCORE_THRESHOLD
+from qai_hub_models.models.templates.imagenet_classifier.app import preprocess_image
 from qai_hub_models.utils.bounding_box_processing import batched_nms
 from qai_hub_models.utils.image_processing import numpy_image_to_torch
 from qai_hub_models.utils.image_processing_3d import rotation_matrix_to_euler

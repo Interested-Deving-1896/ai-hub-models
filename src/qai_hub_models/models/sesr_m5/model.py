@@ -9,8 +9,8 @@ from pathlib import Path
 
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.sesr.common import _load_sesr_source_model
-from qai_hub_models.models._shared.super_resolution.model import (
+from qai_hub_models.models.templates.sesr.common import _load_sesr_source_model
+from qai_hub_models.models.templates.super_resolution.model import (
     DEFAULT_SCALE_FACTOR,
     SuperResolutionModel,
     validate_scale_factor,

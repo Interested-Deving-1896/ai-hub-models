@@ -33,18 +33,18 @@ def _write_requirements(folder: Path, body: str = "somepkg==1.0\n") -> None:
 
 @pytest.fixture
 def fake_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Redirect DATASETS_ROOT / SHARED_ROOT / MODELS_ROOT to a scratch tree.
+    """Redirect DATASETS_ROOT / TEMPLATES_ROOT / MODELS_ROOT to a scratch tree.
 
     Also stubs MODEL_IDS so ``plan_install`` accepts our fake models. Returns
     the temp root; individual tests populate the subfolders they need.
     """
     datasets = tmp_path / "datasets"
-    shared = tmp_path / "models" / "_shared"
+    templates = tmp_path / "models" / "templates"
     models = tmp_path / "models"
     datasets.mkdir(parents=True)
-    shared.mkdir(parents=True)
+    templates.mkdir(parents=True)
     monkeypatch.setattr(install_mod, "DATASETS_ROOT", datasets)
-    monkeypatch.setattr(install_mod, "SHARED_ROOT", shared)
+    monkeypatch.setattr(install_mod, "TEMPLATES_ROOT", templates)
     monkeypatch.setattr(install_mod, "MODELS_ROOT", models)
     monkeypatch.setattr(install_mod, "MODEL_IDS", {"root_model", "leaf_model"})
     monkeypatch.setattr(install_mod, "_has_cuda_gpu", lambda: False)
@@ -67,17 +67,17 @@ class TestBuildInstallOrder:
         """
         _write_manifest(fake_tree / "datasets" / "ds1", "")
         _write_manifest(
-            fake_tree / "models" / "_shared" / "shared1",
+            fake_tree / "models" / "templates" / "template1",
             "datasets:\n  - ds1\n",
         )
         _write_manifest(
             fake_tree / "models" / "root_model",
-            "templates:\n  - shared1\n",
+            "templates:\n  - template1\n",
         )
         order = build_install_order(Node(NodeKind.MODEL, "root_model"))
         assert order == [
             Node(NodeKind.DATASET, "ds1"),
-            Node(NodeKind.TEMPLATE, "shared1"),
+            Node(NodeKind.TEMPLATE, "template1"),
             Node(NodeKind.MODEL, "root_model"),
         ]
 
@@ -85,11 +85,11 @@ class TestBuildInstallOrder:
         """A dataset reached via two paths appears exactly once in the plan."""
         _write_manifest(fake_tree / "datasets" / "shared_ds", "")
         _write_manifest(
-            fake_tree / "models" / "_shared" / "t1",
+            fake_tree / "models" / "templates" / "t1",
             "datasets:\n  - shared_ds\n",
         )
         _write_manifest(
-            fake_tree / "models" / "_shared" / "t2",
+            fake_tree / "models" / "templates" / "t2",
             "datasets:\n  - shared_ds\n",
         )
         _write_manifest(
@@ -168,7 +168,7 @@ class TestBuildInstallOrder:
     def test_models_field_ignored_on_non_model_nodes(self, fake_tree: Path) -> None:
         """A stray ``models:`` on a template/dataset manifest is not traversed."""
         _write_manifest(
-            fake_tree / "models" / "_shared" / "t",
+            fake_tree / "models" / "templates" / "t",
             "models:\n  - leaf_model\n",
         )
         _write_manifest(
@@ -181,11 +181,11 @@ class TestBuildInstallOrder:
     def test_cycle_is_broken(self, fake_tree: Path) -> None:
         """A cycle between two templates doesn't loop forever."""
         _write_manifest(
-            fake_tree / "models" / "_shared" / "a",
+            fake_tree / "models" / "templates" / "a",
             "templates:\n  - b\n",
         )
         _write_manifest(
-            fake_tree / "models" / "_shared" / "b",
+            fake_tree / "models" / "templates" / "b",
             "templates:\n  - a\n",
         )
         _write_manifest(
@@ -327,7 +327,7 @@ class TestPlanInstall:
     def test_only_model_manifest_carries_pip_commands(self, fake_tree: Path) -> None:
         """pre/post pip commands on template/dataset manifests are ignored."""
         _write_manifest(
-            fake_tree / "models" / "_shared" / "t",
+            fake_tree / "models" / "templates" / "t",
             "pre_pip_install_commands:\n  - command: pip install ignored\n",
         )
         _write_manifest(

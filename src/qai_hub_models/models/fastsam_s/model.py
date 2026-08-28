@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.fastsam.model import Fast_SAM
+from qai_hub_models.models.templates.fastsam.model import Fast_SAM
 
 MODEL_ID = __name__.split(".")[-2]
 DEFAULT_WEIGHTS = "FastSAM-s.pt"

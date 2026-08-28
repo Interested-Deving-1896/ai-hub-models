@@ -10,11 +10,11 @@ import psutil
 import torch
 from mobile_sam.utils.transforms import ResizeLongestSide
 
-from qai_hub_models.models._shared.sam.app import SAMApp, SAMInputImageLayout
 from qai_hub_models.models.mobilesam.model import (
     DEFAULT_MODEL_TYPE,
     MobileSAM,
 )
+from qai_hub_models.models.templates.sam.app import SAMApp, SAMInputImageLayout
 from qai_hub_models.models.track_anything.app import TrackAnythingApp
 from qai_hub_models.models.track_anything.model import (
     MODEL_ASSET_VERSION,

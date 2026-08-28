@@ -11,13 +11,13 @@ from typing_extensions import Self
 
 from qai_hub_models import Precision
 from qai_hub_models.datasets.imagenet import ImagenetDataset, ImagenetteDataset
-from qai_hub_models.models._shared.efficientvit.external_repos.efficientvit.efficientvit.cls_model_zoo import (
+from qai_hub_models.models.templates.efficientvit.external_repos.efficientvit.efficientvit.cls_model_zoo import (
     create_cls_model,
 )
-from qai_hub_models.models._shared.efficientvit.litemla_patch import (
+from qai_hub_models.models.templates.efficientvit.litemla_patch import (
     apply_attention_denominator_floor,
 )
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_dataset import BaseDataset, DatasetSplit
 from qai_hub_models.utils.image_processing import make_imagenet_transform

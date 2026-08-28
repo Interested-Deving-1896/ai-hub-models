@@ -11,13 +11,13 @@ import torch
 from PIL.Image import Image
 from transformers import SegformerForSemanticSegmentation
 
-from qai_hub_models.models._shared.segmentation.app import SegmentationApp
 from qai_hub_models.models.segformer_base.demo import OUTPUT_IMAGE_ADDRESS
 from qai_hub_models.models.segformer_base.demo import main as demo_main
 from qai_hub_models.models.segformer_base.model import (
     INPUT_IMAGE_ADDRESS,
     SegformerBase,
 )
+from qai_hub_models.models.templates.segmentation.app import SegmentationApp
 from qai_hub_models.utils.asset_loaders import load_image
 from qai_hub_models.utils.image_processing import (
     normalize_image_transform,

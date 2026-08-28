@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.centernet.test_utils import assert_detections_close
 from qai_hub_models.models.centernet_3d.app import CenterNet3DApp
 from qai_hub_models.models.centernet_3d.demo import main as demo_main
 from qai_hub_models.models.centernet_3d.model import (
@@ -15,6 +14,7 @@ from qai_hub_models.models.centernet_3d.model import (
     MODEL_ID,
     CenterNet3D,
 )
+from qai_hub_models.models.templates.centernet.test_utils import assert_detections_close
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_image,

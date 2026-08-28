@@ -13,7 +13,7 @@ env:
   SOURCE_REPO: https://github.com/qualcomm/aimet.git
   SOURCE_BRANCH: develop
   SOURCE_DIR: GenAILab/qai_hub_lm/models
-  TARGET_DIR: src/qai_hub_models/models/_shared/lm_driver
+  TARGET_DIR: src/qai_hub_models/models/templates/lm_driver
 
 jobs:
   sync:
@@ -73,7 +73,7 @@ jobs:
           PR_REF_NAME: dev/qaihm_bot/sync-lm-driver-${{ github.run_id }}
         run: |
           git checkout -b "$PR_REF_NAME"
-          git add src/qai_hub_models/models/_shared/lm_driver/
+          git add src/qai_hub_models/models/templates/lm_driver/
           git commit -m "Sync lm_driver from AIMET develop
 
           Automated subtree sync of GenAILab/qai_hub_lm/models from
@@ -97,7 +97,7 @@ jobs:
               base: 'main',
               body: [
                 '## Summary',
-                '- Automated sync of `src/qai_hub_models/models/_shared/lm_driver/` from AIMET',
+                '- Automated sync of `src/qai_hub_models/models/templates/lm_driver/` from AIMET',
                 '- Source: `GenAILab/qai_hub_lm/models/` on `develop` branch',
                 '',
                 'This PR was created automatically by the sync-lm-driver workflow.',

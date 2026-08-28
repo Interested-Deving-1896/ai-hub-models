@@ -8,10 +8,10 @@ from __future__ import annotations
 import torch
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.deeplab.model import NUM_CLASSES, DeepLabV3Model
 from qai_hub_models.models.deeplabv3_plus_mobilenet.external_repos.pytorch_deeplab_xception.modeling.deeplab import (
     DeepLab,
 )
+from qai_hub_models.models.templates.deeplab.model import NUM_CLASSES, DeepLabV3Model
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 MODEL_ID = __name__.split(".")[-2]

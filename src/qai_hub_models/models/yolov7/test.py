@@ -6,7 +6,7 @@
 import numpy as np
 import torch
 
-from qai_hub_models.models._shared.yolo.utils import detect_postprocess
+from qai_hub_models.models.templates.yolo.utils import detect_postprocess
 from qai_hub_models.models.yolov7.app import YoloV7DetectionApp
 from qai_hub_models.models.yolov7.demo import IMAGE_ADDRESS
 from qai_hub_models.models.yolov7.demo import main as demo_main

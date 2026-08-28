@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.video_classifier.app import (
+from qai_hub_models.models.templates.video_classifier.app import (
     KineticsClassifierApp as App,
 )
 

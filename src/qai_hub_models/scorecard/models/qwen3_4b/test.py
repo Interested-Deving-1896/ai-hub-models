@@ -11,8 +11,6 @@ import pytest
 import torch
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.models.qwen3_4b import Model
 from qai_hub_models.models.qwen3_4b.demo import qwen3_4b_chat_demo
 from qai_hub_models.models.qwen3_4b.model import (
@@ -22,6 +20,8 @@ from qai_hub_models.models.qwen3_4b.model import (
     Qwen3_4B_PreSplit,
     Qwen3_4B_QuantizablePreSplit,
 )
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,

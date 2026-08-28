@@ -5,15 +5,15 @@
 
 import pytest
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
-    run_imagenet_classifier_test,
-    run_imagenet_classifier_trace_test,
-)
 from qai_hub_models.models.repvit.demo import main as demo_main
 from qai_hub_models.models.repvit.model import (
     MODEL_ID,
     REPVIT_TRANSFORM,
     RepViT,
+)
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
+    run_imagenet_classifier_test,
+    run_imagenet_classifier_trace_test,
 )
 
 

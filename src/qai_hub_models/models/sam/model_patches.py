@@ -10,7 +10,7 @@ from segment_anything.modeling.image_encoder import Attention as SAMEncoderAtten
 from segment_anything.modeling.image_encoder import get_rel_pos
 from torch import nn
 
-from qai_hub_models.models._shared.sam.model_patches import Conv2DInplaceLinear
+from qai_hub_models.models.templates.sam.model_patches import Conv2DInplaceLinear
 
 
 class SplitHeadSAMEncoderAttention(nn.Module):

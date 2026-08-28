@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.super_resolution.demo import super_resolution_demo
 from qai_hub_models.models.quicksrnetmedium.model import MODEL_ID, QuickSRNetMedium
+from qai_hub_models.models.templates.super_resolution.demo import super_resolution_demo
 
 
 # Run QuickSRNet end-to-end on a sample image.

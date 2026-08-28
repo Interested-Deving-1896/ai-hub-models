@@ -16,7 +16,7 @@ from mobile_sam.modeling.transformer import TwoWayAttentionBlock, TwoWayTransfor
 from mobile_sam.utils.onnx import SamOnnxModel
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.sam.model_patches import (
+from qai_hub_models.models.templates.sam.model_patches import (
     Conv2DInplaceLinearSAMMaskDecoderMLP,
     Conv2DInplaceLinearSAMTransformerMLPBlock,
     SplitHeadSAMDecoderAttention,

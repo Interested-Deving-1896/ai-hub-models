@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 from qai_hub_models.datasets.common_voice import TTSLanguage
-from qai_hub_models.models._shared.pipertts.model import (
+from qai_hub_models.models.templates.pipertts.model import (
     PiperTTS,
 )
 

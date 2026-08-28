@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.qwen3_vl.model import (
+from qai_hub_models.models.templates.qwen3_vl.model import (
     Qwen3VLPositionProcessor as PositionProcessor,
 )
 

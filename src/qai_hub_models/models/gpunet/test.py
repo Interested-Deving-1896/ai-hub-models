@@ -5,12 +5,12 @@
 
 import pytest
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
+from qai_hub_models.models.gpunet.demo import main as demo_main
+from qai_hub_models.models.gpunet.model import MODEL_ASSET_VERSION, MODEL_ID, GPUNet
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
     run_imagenet_classifier_test,
     run_imagenet_classifier_trace_test,
 )
-from qai_hub_models.models.gpunet.demo import main as demo_main
-from qai_hub_models.models.gpunet.model import MODEL_ASSET_VERSION, MODEL_ID, GPUNet
 
 
 def test_task() -> None:

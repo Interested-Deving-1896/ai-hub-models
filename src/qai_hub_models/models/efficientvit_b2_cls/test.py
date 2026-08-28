@@ -6,14 +6,16 @@
 import pytest
 import torch
 
-from qai_hub_models.models._shared.imagenet_classifier.app import ImagenetClassifierApp
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
+from qai_hub_models.models.efficientvit_b2_cls.demo import main as demo_main
+from qai_hub_models.models.efficientvit_b2_cls.model import EfficientViT
+from qai_hub_models.models.templates.imagenet_classifier.app import (
+    ImagenetClassifierApp,
+)
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
     TEST_IMAGENET_CLASS,
     TEST_IMAGENET_IMAGE,
     run_imagenet_classifier_trace_test,
 )
-from qai_hub_models.models.efficientvit_b2_cls.demo import main as demo_main
-from qai_hub_models.models.efficientvit_b2_cls.model import EfficientViT
 from qai_hub_models.utils.asset_loaders import load_image
 from qai_hub_models.utils.image_processing import IMAGENET_TRANSFORM
 

@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import torch
 
-from qai_hub_models.models._shared.pose.pose_evaluator import CocoBodyPoseEvaluator
+from qai_hub_models.models.templates.pose.pose_evaluator import CocoBodyPoseEvaluator
 from qai_hub_models.utils.image_processing import denormalize_coordinates_affine
 
 

@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.depth_estimation.demo import depth_estimation_demo
 from qai_hub_models.models.midas.model import MODEL_ASSET_VERSION, MODEL_ID, Midas
+from qai_hub_models.models.templates.depth_estimation.demo import depth_estimation_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 # Demo image comes from https://github.com/pytorch/hub/raw/master/images/dog.jpg

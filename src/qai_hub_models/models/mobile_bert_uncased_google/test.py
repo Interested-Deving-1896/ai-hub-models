@@ -8,13 +8,13 @@ from typing import cast
 
 from transformers import PreTrainedTokenizer
 
-from qai_hub_models.models._shared.bert_hf.app import (
-    BaseBertApp,
-)
 from qai_hub_models.models.mobile_bert_uncased_google.demo import DEMO_TEXT
 from qai_hub_models.models.mobile_bert_uncased_google.demo import main as demo_main
 from qai_hub_models.models.mobile_bert_uncased_google.model import (
     MobileBertUncasedGoogle,
+)
+from qai_hub_models.models.templates.bert_hf.app import (
+    BaseBertApp,
 )
 
 

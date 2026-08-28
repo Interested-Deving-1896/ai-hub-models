@@ -70,7 +70,7 @@ LLM_GROUPS: list[list[str]] = [
     ],
 ]
 
-# Shared dirs route to their representative export file:
+# Template dirs route to their representative export file:
 # llm/llama3→llama, qwen3/qwen2→qwen, qwen2_vl/qwen3_vl/vlm→qwen_vl,
 # gemma4→gemma4, lm_driver→all three reps.
 LLAMA_REPRESENTATIVE_EXPORT_FILE = (
@@ -85,31 +85,32 @@ PI05_REPRESENTATIVE_EXPORT_FILE = "src/qai_hub_models/models/pi05/export.py"
 PRECOMPILED_REPRESENTATIVE_EXPORT_FILE = (
     "src/qai_hub_models/models/qwen2_7b_instruct/export.py"
 )
-_SHARED_DIR = Path(REPO_ROOT, "src/qai_hub_models/models/_shared")
+_TEMPLATES_DIR = Path(REPO_ROOT, "src/qai_hub_models/models/templates")
 _LLAMA_REP_FILES = sorted(
     p.relative_to(REPO_ROOT).as_posix()
     for sub in ("llm", "llama3")
-    for p in (_SHARED_DIR / sub).rglob("*.py")
+    for p in (_TEMPLATES_DIR / sub).rglob("*.py")
 )
 _QWEN_REP_FILES = sorted(
     p.relative_to(REPO_ROOT).as_posix()
     for sub in ("qwen3", "qwen2")
-    for p in (_SHARED_DIR / sub).rglob("*.py")
+    for p in (_TEMPLATES_DIR / sub).rglob("*.py")
 )
 _QWEN_VL_REP_FILES = sorted(
     p.relative_to(REPO_ROOT).as_posix()
     for sub in ("qwen2_vl", "qwen3_vl", "vlm")
-    for p in (_SHARED_DIR / sub).rglob("*.py")
+    for p in (_TEMPLATES_DIR / sub).rglob("*.py")
 )
 _GEMMA4_REP_FILES = sorted(
-    p.relative_to(REPO_ROOT).as_posix() for p in (_SHARED_DIR / "gemma4").rglob("*.py")
+    p.relative_to(REPO_ROOT).as_posix()
+    for p in (_TEMPLATES_DIR / "gemma4").rglob("*.py")
 )
 _LM_DRIVER_REP_FILES = sorted(
     p.relative_to(REPO_ROOT).as_posix()
-    for p in (_SHARED_DIR / "lm_driver").rglob("*.py")
+    for p in (_TEMPLATES_DIR / "lm_driver").rglob("*.py")
 )
 
-# Utils used only by LLM text + LLM VL shared code.
+# Utils used only by LLM text + LLM VL template code.
 _LLM_TEXT_AND_VL_UTILS = [
     "src/qai_hub_models/utils/system_info.py",
 ]
@@ -340,7 +341,7 @@ def resolve_affected_models(
     for f in affected_files:
         file_path = Path(f)
         # Only consider directories directly in the top-level `models/` folder
-        # (i.e. ignore `models/_shared`)
+        # (i.e. ignore `models/templates`)
         if str(file_path.parent.parent) == PY_PACKAGE_RELATIVE_MODELS_ROOT:
             if file_path.name not in [
                 "model.py",
@@ -383,10 +384,10 @@ def resolve_affected_models(
 
 def _expand_diff_to_seed_py_files(diff_path: str) -> list[str]:
     """
-    Map a changed patches-diff path (under models/<X>/ or models/_shared/<Y>/) to
+    Map a changed patches-diff path (under models/<X>/ or models/templates/<Y>/) to
     a list of .py seed files whose "change" should trigger the same downstream
     tests. For a top-level model, seed model.py so model + export tests run. For
-    a _shared component, seed every .py in that component so the DFS finds every
+    a templates component, seed every .py in that component so the DFS finds every
     dependent model.
     """
     parts = Path(diff_path).parts
@@ -397,9 +398,9 @@ def _expand_diff_to_seed_py_files(diff_path: str) -> list[str]:
     tail = parts[models_idx + 1 :]
     if not tail:
         return []
-    if tail[0] == "_shared" and len(tail) >= 2:
-        shared_dir = Path(PY_PACKAGE_MODELS_ROOT, "_shared", tail[1])
-        return [p.relative_to(REPO_ROOT).as_posix() for p in shared_dir.rglob("*.py")]
+    if tail[0] == "templates" and len(tail) >= 2:
+        template_dir = Path(PY_PACKAGE_MODELS_ROOT, "templates", tail[1])
+        return [p.relative_to(REPO_ROOT).as_posix() for p in template_dir.rglob("*.py")]
     model_py_rel = Path(PY_PACKAGE_RELATIVE_MODELS_ROOT, tail[0], "model.py")
     if Path(REPO_ROOT, model_py_rel).exists():
         return [model_py_rel.as_posix()]

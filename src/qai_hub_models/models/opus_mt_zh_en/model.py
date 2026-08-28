@@ -8,10 +8,10 @@ from __future__ import annotations
 import os
 
 from qai_hub_models.configs.model_metadata import ModelMetadata
-from qai_hub_models.models._shared.opus_mt.model import (
+from qai_hub_models.models.templates.opus_mt.model import (
     OpusMT,
 )
-from qai_hub_models.models._shared.opus_mt.utils import (
+from qai_hub_models.models.templates.opus_mt.utils import (
     write_opus_mt_supplementary_files,
 )
 

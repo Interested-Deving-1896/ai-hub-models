@@ -10,7 +10,7 @@ import torch
 from ultralytics.models import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import OBBModel
 
-from qai_hub_models.models._shared.ultralytics.obb_patches import (
+from qai_hub_models.models.templates.ultralytics.obb_patches import (
     patch_ultralytics_obb_head,
 )
 from qai_hub_models.models.yolov8_obb.app import YoloV8OBBApp

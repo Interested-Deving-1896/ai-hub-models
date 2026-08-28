@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.sam2.test_utils import run_sam2_numerical_test
 from qai_hub_models.models.sam2.demo import IMAGE_ADDRESS
 from qai_hub_models.models.sam2.demo import main as demo_main
 from qai_hub_models.models.sam2.model import DEFAULT_MODEL_TYPE, SAM2, SAM2Loader
+from qai_hub_models.models.templates.sam2.test_utils import run_sam2_numerical_test
 
 
 def test_e2e_numerical() -> None:

@@ -6,7 +6,7 @@ import nltk
 from typing_extensions import Self
 
 from qai_hub_models.datasets.common_voice import TTSLanguage
-from qai_hub_models.models._shared.melotts.model import (
+from qai_hub_models.models.templates.melotts.model import (
     BertWrapper,
     Decoder,
     Encoder,

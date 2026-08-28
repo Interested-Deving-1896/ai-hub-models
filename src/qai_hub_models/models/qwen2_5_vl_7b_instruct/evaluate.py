@@ -4,8 +4,6 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-from qai_hub_models.models._shared.llm.evaluate import llm_evaluate
-from qai_hub_models.models._shared.llm.model import LLM_QNN
 from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     DEFAULT_IMAGE_HEIGHT,
     DEFAULT_IMAGE_WIDTH,
@@ -14,6 +12,8 @@ from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     Qwen2_5_VL_7B_QuantizablePreSplit,
     Qwen2_5_VL_7B_VisionEncoder,
 )
+from qai_hub_models.models.templates.llm.evaluate import llm_evaluate
+from qai_hub_models.models.templates.llm.model import LLM_QNN
 
 if __name__ == "__main__":
     llm_evaluate(

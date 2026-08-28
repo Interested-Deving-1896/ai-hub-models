@@ -17,8 +17,8 @@ import torch
 
 import qai_hub_models.models.llama_v3_2_3b_instruct_ssd as _model_module
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.llm.test import stub_llm_checkpoint_resolution
 from qai_hub_models.models.llama_v3_2_3b_instruct_ssd import MODEL_ID, Model
+from qai_hub_models.models.templates.llm.test import stub_llm_checkpoint_resolution
 from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,

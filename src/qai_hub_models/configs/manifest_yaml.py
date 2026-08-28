@@ -39,7 +39,7 @@ from qai_hub_models.configs.proto_helpers import (
 # configs normally does not import from models, but lm_schema is a self-contained,
 # dependency-light (pydantic-only) island -- not model code -- so the manifest can
 # validate its lm_quantization_details block against it without a real layer inversion.
-from qai_hub_models.models._shared.lm_schema import PrecisionSchema, Recipe
+from qai_hub_models.models.templates.lm_schema import PrecisionSchema, Recipe
 from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
@@ -267,7 +267,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     A single manifest.yaml lives at three altitudes:
       * Full model folder — carries the website-facing metadata plus
         build/export config. The website-facing block is required here.
-      * ``_shared/<name>/`` template — carries dependencies (``templates:``)
+      * ``templates/<name>/`` template — carries dependencies (``templates:``)
         and optional external repo config only.
       * ``datasets/<name>/`` — carries dependencies (``templates:``) only.
 
@@ -277,15 +277,15 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     """
 
     # =============================================================================
-    # Shared/dataset dependencies
+    # Template/dataset dependencies
     # =============================================================================
 
-    # Names of other _shared/ folders this manifest depends on.
-    # Used by shared templates and dataset manifests; empty for model manifests.
+    # Names of other templates/ folders this manifest depends on.
+    # Used by template and dataset manifests; empty for model manifests.
     templates: list[str] = Field(default_factory=list)
 
     # Names of datasets/ folders this manifest depends on.
-    # Used by shared templates and dataset manifests; empty for model manifests.
+    # Used by template and dataset manifests; empty for model manifests.
     datasets: list[str] = Field(default_factory=list)
 
     # =============================================================================
@@ -1068,7 +1068,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     def is_full_model_manifest(self) -> bool:
         """True if this manifest describes a model in ``models/<id>/``.
 
-        False for ``_shared/<name>/`` templates and ``datasets/<name>/``
+        False for ``templates/<name>/`` templates and ``datasets/<name>/``
         entries, which only declare dependencies (``templates:``) and
         optional external repo config. Determined by ``id`` matching a
         known model in the repo.
@@ -1086,7 +1086,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         lives in ``test_manifest_yamls.py::_check_website_facing`` and
         runs per-model in CI.
 
-        Shared and dataset manifests only need their ``templates:`` /
+        Template and dataset manifests only need their ``templates:`` /
         ``external_repos:`` fields to be well-formed and skip the
         ``is_full_model_manifest`` block entirely.
         """

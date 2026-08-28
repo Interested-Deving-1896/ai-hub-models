@@ -7,12 +7,12 @@ import numpy as np
 import torch
 import torchvision.models as tv_models
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (  # noqa: F401
+from qai_hub_models.models.swinv2_base.demo import main as demo_main
+from qai_hub_models.models.swinv2_base.model import MODEL_ID, SwinV2Base
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (  # noqa: F401
     imagenet_sample_torch,
     run_imagenet_classifier_test,
 )
-from qai_hub_models.models.swinv2_base.demo import main as demo_main
-from qai_hub_models.models.swinv2_base.model import MODEL_ID, SwinV2Base
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 
 

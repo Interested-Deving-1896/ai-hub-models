@@ -13,11 +13,11 @@ import torch
 from diffusers import AutoencoderKL, ControlNetModel, UNet2DConditionModel
 from transformers import CLIPTextModel, CLIPTokenizer
 
-from qai_hub_models.models._shared.diffusion.controlnet import (
+from qai_hub_models.models.templates.diffusion.controlnet import (
     ControlNetQuantizableBase,
     ControlUnetQuantizableBase,
 )
-from qai_hub_models.models._shared.diffusion.stable_diffusion import (
+from qai_hub_models.models.templates.diffusion.stable_diffusion import (
     StableDiffusionBase,
     TextEncoderQuantizableBase,
     VaeDecoderQuantizableBase,

@@ -10,7 +10,7 @@ import torch
 from ultralytics.models import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import DetectionModel
 
-from qai_hub_models.models._shared.yolo.model import yolo_detect_postprocess
+from qai_hub_models.models.templates.yolo.model import yolo_detect_postprocess
 from qai_hub_models.models.yolov9_det.app import YoloV9DetectionApp
 from qai_hub_models.models.yolov9_det.demo import IMAGE_ADDRESS
 from qai_hub_models.models.yolov9_det.demo import main as demo_main

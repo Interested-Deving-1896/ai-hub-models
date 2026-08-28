@@ -19,7 +19,7 @@ REQS_FILENAME = "requirements.txt"
 RELEASE_EXCLUDED_PACKAGES = ["scripts"]
 
 # Dirs under models/ that are not model packages but should be kept.
-RELEASE_WHITELISTED_MODELS_PACKAGES = ["_shared", "utils"]
+RELEASE_WHITELISTED_MODELS_PACKAGES = ["templates", "utils"]
 
 # When QAIHM_RELEASE_BUILD=1, exclude unpublished models and development files.
 IS_RELEASE_BUILD = os.environ.get("QAIHM_RELEASE_BUILD", "0").lower() in [

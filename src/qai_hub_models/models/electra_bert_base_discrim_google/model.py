@@ -12,12 +12,12 @@ from transformers import ElectraForPreTraining, ElectraTokenizer
 from typing_extensions import Self
 
 from qai_hub_models.datasets.wikitext import ElectraWikiTextMasked
-from qai_hub_models.models._shared.bert_hf.model import BertModelBase
-from qai_hub_models.models._shared.bert_hf.model_patches import (
-    patch_get_extended_attention_mask,
-)
 from qai_hub_models.models.electra_bert_base_discrim_google.evaluator import (
     ElectraDiscriminatorEvaluator,
+)
+from qai_hub_models.models.templates.bert_hf.model import BertModelBase
+from qai_hub_models.models.templates.bert_hf.model_patches import (
+    patch_get_extended_attention_mask,
 )
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

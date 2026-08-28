@@ -13,11 +13,11 @@ from transformers import Owlv2ForObjectDetection
 from typing_extensions import Self
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.owl.model import (
+from qai_hub_models.models.owlv2.model_patches import apply_patches, prepare_conv
+from qai_hub_models.models.templates.owl.model import (
     Owl,
     owl_postprocess,
 )
-from qai_hub_models.models.owlv2.model_patches import apply_patches, prepare_conv
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator

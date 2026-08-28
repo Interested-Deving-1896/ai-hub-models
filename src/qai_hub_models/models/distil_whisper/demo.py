@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.hf_whisper.demo import hf_whisper_demo
 from qai_hub_models.models.distil_whisper.model import MODEL_ID, DistilWhisper
+from qai_hub_models.models.templates.hf_whisper.demo import hf_whisper_demo
 
 
 def main(is_test: bool = False) -> None:

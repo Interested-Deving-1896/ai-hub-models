@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.segmentation.app import (
+from qai_hub_models.models.templates.segmentation.app import (
     SegmentationApp as App,
 )
 

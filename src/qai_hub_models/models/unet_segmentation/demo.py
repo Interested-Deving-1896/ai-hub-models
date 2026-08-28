@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.segmentation.demo import segmentation_demo
+from qai_hub_models.models.templates.segmentation.demo import segmentation_demo
 from qai_hub_models.models.unet_segmentation.model import IMAGE_ADDRESS, MODEL_ID, UNet
 
 

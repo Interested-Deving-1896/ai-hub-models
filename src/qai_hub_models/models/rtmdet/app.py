@@ -9,8 +9,8 @@ from collections.abc import Sequence
 
 import torch
 
-from qai_hub_models.models._shared.yolo.app import YoloObjectDetectionApp
 from qai_hub_models.models.rtmdet.model import RTMDet
+from qai_hub_models.models.templates.yolo.app import YoloObjectDetectionApp
 
 
 def decode_rtmdet_heads(

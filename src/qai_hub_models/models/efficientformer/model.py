@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.models.efficientformer.external_repos.efficientformer.models.efficientformer import (
     efficientformer_l1,
 )
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_torch
 
 MODEL_ID = __name__.split(".")[-2]

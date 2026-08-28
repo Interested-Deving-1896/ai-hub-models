@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.imagenet_classifier.demo import imagenet_demo
 from qai_hub_models.models.efficientnet_v2_s.model import (
     EFFICIENTNET_V2_S_TRANSFORM,
     MODEL_ID,
     EfficientNetV2s,
 )
+from qai_hub_models.models.templates.imagenet_classifier.demo import imagenet_demo
 
 
 def main(is_test: bool = False) -> None:

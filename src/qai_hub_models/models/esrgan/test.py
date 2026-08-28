@@ -6,10 +6,10 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.super_resolution.app import SuperResolutionApp
 from qai_hub_models.models.esrgan.demo import IMAGE_ADDRESS
 from qai_hub_models.models.esrgan.demo import main as demo_main
 from qai_hub_models.models.esrgan.model import ESRGAN, MODEL_ASSET_VERSION, MODEL_ID
+from qai_hub_models.models.templates.super_resolution.app import SuperResolutionApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 
 OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

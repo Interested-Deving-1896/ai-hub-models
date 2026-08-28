@@ -5,12 +5,12 @@
 
 import pytest
 
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
+from qai_hub_models.models.mnasnet05.demo import main as demo_main
+from qai_hub_models.models.mnasnet05.model import MODEL_ID, MNASNet05
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
     run_imagenet_classifier_test,
     run_imagenet_classifier_trace_test,
 )
-from qai_hub_models.models.mnasnet05.demo import main as demo_main
-from qai_hub_models.models.mnasnet05.model import MODEL_ID, MNASNet05
 
 
 def test_task() -> None:

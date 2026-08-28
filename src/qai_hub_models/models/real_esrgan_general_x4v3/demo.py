@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.super_resolution.demo import super_resolution_demo
 from qai_hub_models.models.real_esrgan_general_x4v3.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     Real_ESRGAN_General_x4v3,
 )
+from qai_hub_models.models.templates.super_resolution.demo import super_resolution_demo
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 WEIGHTS_HELP_MSG = "RealESRGAN checkpoint `.pth` name from the Real-ESRGAN repo. Can be set to any of the model names defined here: https://github.com/xinntao/Real-ESRGAN/blob/master/docs/model_zoo.md to automatically download the file instead."

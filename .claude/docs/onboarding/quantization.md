@@ -4,7 +4,7 @@ How to add quantized precision support (e.g., w8a8) to a model.
 
 ## Prerequisites
 
-You need a dataset and evaluator. Check if existing ones fit your task (browse `qai_hub_models/datasets/` and the evaluators inside `qai_hub_models/models/_shared/<name>/` or per-model folders). If you need new ones, see `.claude/docs/onboarding/datasets-and-evaluators.md`.
+You need a dataset and evaluator. Check if existing ones fit your task (browse `qai_hub_models/datasets/` and the evaluators inside `qai_hub_models/models/templates/<name>/` or per-model folders). If you need new ones, see `.claude/docs/onboarding/datasets-and-evaluators.md`.
 
 ## Steps
 

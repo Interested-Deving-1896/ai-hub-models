@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.llm.demo import llm_chat_demo
-from qai_hub_models.models._shared.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.models.falcon_v3_7b_instruct.model import (
     END_TOKENS,
     HF_REPO_NAME,
@@ -15,6 +13,8 @@ from qai_hub_models.models.falcon_v3_7b_instruct.model import (
     Falcon3_7B_PreSplit,
     QuantizedSplitModelWrapper,
 )
+from qai_hub_models.models.templates.llm.demo import llm_chat_demo
+from qai_hub_models.models.templates.llm.model import LLM_QNN, LLM_AIMETOnnx, LLMBase
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 
 

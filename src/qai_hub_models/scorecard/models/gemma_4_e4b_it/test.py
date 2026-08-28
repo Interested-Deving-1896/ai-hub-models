@@ -10,11 +10,6 @@ import pytest
 import torch
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_CONTEXT_LENGTH,
-    DEFAULT_SEQUENCE_LENGTH,
-)
 from qai_hub_models.models.gemma_4_e4b_it.demo import gemma_4_e4b_it_chat_demo
 from qai_hub_models.models.gemma_4_e4b_it.model import (
     MODEL_ID,
@@ -22,6 +17,11 @@ from qai_hub_models.models.gemma_4_e4b_it.model import (
     Gemma4_E4B_PreSplit,
     Gemma4_E4B_QuantizablePreSplit,
     QuantizedSplitModelWrapper,
+)
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.model import (
+    DEFAULT_CONTEXT_LENGTH,
+    DEFAULT_SEQUENCE_LENGTH,
 )
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 

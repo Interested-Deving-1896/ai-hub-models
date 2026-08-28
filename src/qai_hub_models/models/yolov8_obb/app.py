@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.models._shared.yolo.app import YoloOBBApp
+from qai_hub_models.models.templates.yolo.app import YoloOBBApp
 
 
 class YoloV8OBBApp(YoloOBBApp):

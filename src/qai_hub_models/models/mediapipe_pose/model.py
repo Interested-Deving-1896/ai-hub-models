@@ -11,17 +11,17 @@ import torch
 from typing_extensions import Self
 
 from qai_hub_models import Precision, SampleInputsType
-from qai_hub_models.models._shared.mediapipe.external_repos import EXTERNAL_REPO_PATHS
-from qai_hub_models.models._shared.mediapipe.external_repos.mediapipe.blazepose import (
+from qai_hub_models.models.mediapipe_pose.dataset import HumanPosesDataset
+from qai_hub_models.models.templates.mediapipe.external_repos import EXTERNAL_REPO_PATHS
+from qai_hub_models.models.templates.mediapipe.external_repos.mediapipe.blazepose import (
     BlazePose,
 )
-from qai_hub_models.models._shared.mediapipe.external_repos.mediapipe.blazepose_landmark import (
+from qai_hub_models.models.templates.mediapipe.external_repos.mediapipe.blazepose_landmark import (
     BlazePoseLandmark,
 )
-from qai_hub_models.models._shared.mediapipe.utils import (
+from qai_hub_models.models.templates.mediapipe.utils import (
     mediapipe_detector_postprocess,
 )
-from qai_hub_models.models.mediapipe_pose.dataset import HumanPosesDataset
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_numpy,

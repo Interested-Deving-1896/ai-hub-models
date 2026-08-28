@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from qai_hub_models.models._shared.llm.model import SingleSlotCacheMixin
+from qai_hub_models.models.templates.llm.model import SingleSlotCacheMixin
 
 CHECKPOINT = "org/model-name"
 

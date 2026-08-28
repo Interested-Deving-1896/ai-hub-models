@@ -15,9 +15,9 @@ from torch.utils.data import DataLoader
 from transformers import AutoProcessor
 
 from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
-from qai_hub_models.models._shared.owl.app import OwlApp
 from qai_hub_models.models.owlv2.model import OwlV2
 from qai_hub_models.models.protocols import ExecutableModelProtocol
+from qai_hub_models.models.templates.owl.app import OwlApp
 from qai_hub_models.utils.base_app import (
     CollectionAppEvaluateProtocol,
     CollectionAppQuantizeProtocol,

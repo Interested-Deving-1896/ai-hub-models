@@ -12,7 +12,7 @@ import cv2
 import lmdb
 import torch
 
-from qai_hub_models.models._shared.nafnet.lmdb_helpers import (
+from qai_hub_models.models.templates.nafnet.lmdb_helpers import (
     get_image_from_lmdb,
     paired_paths_from_lmdb,
 )

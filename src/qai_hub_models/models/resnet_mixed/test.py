@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.video_classifier.app import KineticsClassifierApp
 from qai_hub_models.models.resnet_mixed.demo import INPUT_VIDEO_PATH
 from qai_hub_models.models.resnet_mixed.demo import main as demo_main
 from qai_hub_models.models.resnet_mixed.model import ResNetMixed
+from qai_hub_models.models.templates.video_classifier.app import KineticsClassifierApp
 
 
 def test_task() -> None:

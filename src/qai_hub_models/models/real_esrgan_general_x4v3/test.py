@@ -5,7 +5,6 @@
 
 import numpy as np
 
-from qai_hub_models.models._shared.super_resolution.app import SuperResolutionApp
 from qai_hub_models.models.real_esrgan_general_x4v3.demo import IMAGE_ADDRESS
 from qai_hub_models.models.real_esrgan_general_x4v3.demo import main as demo_main
 from qai_hub_models.models.real_esrgan_general_x4v3.model import (
@@ -13,6 +12,7 @@ from qai_hub_models.models.real_esrgan_general_x4v3.model import (
     MODEL_ID,
     Real_ESRGAN_General_x4v3,
 )
+from qai_hub_models.models.templates.super_resolution.app import SuperResolutionApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 
 OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

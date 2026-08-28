@@ -21,26 +21,26 @@ from qai_hub_models import Precision
 # looks up in the concrete model's module.
 from qai_hub_models.datasets import instantiate_dataset
 from qai_hub_models.datasets.wikitext import WikiText, WikiTextJapanese
-from qai_hub_models.models._shared.llama3.model import (
+from qai_hub_models.models.templates.llama3.model import (
     LlamaPartBase,
     LlamaPreSplitBase,
     LlamaPreSplitCollectionBase,
     LlamaQuantizablePreSplitBase,
 )
-from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
-from qai_hub_models.models._shared.llm.generator_factory import make_generator
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.common import LLMIOType  # noqa: F401
+from qai_hub_models.models.templates.llm.generator_factory import make_generator
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_CONTEXT_LENGTH,
     DEFAULT_SEQUENCE_LENGTH,
     SplitForwardMixin,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_CONTEXT_LENGTHS as GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.models._shared.lm_driver.generator import (
+from qai_hub_models.models.templates.lm_driver.generator import (
     HubCompatibleGenerator,
 )
 from qai_hub_models.utils.base_dataset import DatasetSplit

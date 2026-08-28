@@ -3,10 +3,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.mediapipe.test_utils import (
-    assert_landmarks_close,
-    landmarks_from_raw_output,
-)
 from qai_hub_models.models.mediapipe_hand_gesture.app import MediaPipeHandGestureApp
 from qai_hub_models.models.mediapipe_hand_gesture.demo import INPUT_IMAGE_ADDRESS
 from qai_hub_models.models.mediapipe_hand_gesture.demo import main as demo_main
@@ -14,6 +10,10 @@ from qai_hub_models.models.mediapipe_hand_gesture.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     MediaPipeHandGesture,
+)
+from qai_hub_models.models.templates.mediapipe.test_utils import (
+    assert_landmarks_close,
+    landmarks_from_raw_output,
 )
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,

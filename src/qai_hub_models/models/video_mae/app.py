@@ -13,8 +13,8 @@ from qai_hub_models.datasets.kinetics400 import (
     VIDEOMAE_NUM_CROPS,
     preprocess_video_224,
 )
-from qai_hub_models.models._shared.video_classifier.app import KineticsClassifierApp
-from qai_hub_models.models._shared.video_classifier.model import KineticsClassifier
+from qai_hub_models.models.templates.video_classifier.app import KineticsClassifierApp
+from qai_hub_models.models.templates.video_classifier.model import KineticsClassifier
 
 
 class VideoMAEApp(KineticsClassifierApp):

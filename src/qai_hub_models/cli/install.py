@@ -15,7 +15,7 @@ Dependencies are declared in each folder's ``manifest.yaml``:
   - Model manifests (``models/<id>/manifest.yaml``) may declare
     ``datasets``, ``templates``, ``models`` (cross-model), plus the pre/post
     pip command lists.
-  - Shared-template manifests (``models/_shared/<name>/manifest.yaml``)
+  - Template manifests (``models/templates/<name>/manifest.yaml``)
     may declare ``datasets`` and ``templates`` transitively.
   - Dataset manifests (``datasets/<name>/manifest.yaml``) may declare
     ``datasets``.
@@ -40,7 +40,7 @@ from qai_hub_models.utils.export.context import looks_like_path
 from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_PACKAGE_ROOT
 
 DATASETS_ROOT = QAIHM_PACKAGE_ROOT / "datasets"
-SHARED_ROOT = QAIHM_PACKAGE_ROOT / "models" / "_shared"
+TEMPLATES_ROOT = QAIHM_PACKAGE_ROOT / "models" / "templates"
 MODELS_ROOT = QAIHM_PACKAGE_ROOT / "models"
 
 _NVIDIA_SMI_TIMEOUT_SECONDS = 5
@@ -75,7 +75,7 @@ class Node:
         if self.kind is NodeKind.DATASET:
             return DATASETS_ROOT / self.name
         if self.kind is NodeKind.TEMPLATE:
-            return SHARED_ROOT / self.name
+            return TEMPLATES_ROOT / self.name
         return MODELS_ROOT / self.name
 
     @property
@@ -425,7 +425,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="qai-hub-models install",
         description="Install the dependencies for a model, "
-        "including its declared datasets, shared templates, and cross-model deps.",
+        "including its declared datasets, templates, and cross-model deps.",
     )
     parser.add_argument(
         "target",

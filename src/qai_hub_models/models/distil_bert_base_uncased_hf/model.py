@@ -11,7 +11,7 @@ import torch
 from transformers import AutoModelForMaskedLM, DistilBertTokenizer
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.bert_hf.model import BaseBertModel
+from qai_hub_models.models.templates.bert_hf.model import BaseBertModel
 from qai_hub_models.utils.base_model import SerializationSettings
 
 MODEL_ID = __name__.split(".")[-2]

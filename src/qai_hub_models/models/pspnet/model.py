@@ -10,18 +10,18 @@ from typing_extensions import Self
 
 from qai_hub_models import SampleInputsType
 from qai_hub_models.datasets.ade20k import ADE10SegmentationDataset
-from qai_hub_models.models._shared.cityscapes_segmentation.model import (
-    CityscapesSegmentor,
-)
-from qai_hub_models.models._shared.segmentation.segmentation_evaluator import (
-    SegmentationOutputEvaluator,
-)
 from qai_hub_models.models.pspnet.external_repos import EXTERNAL_REPO_PATHS
 from qai_hub_models.models.pspnet.external_repos.semseg.model.pspnet import (
     PSPNet as PSPNetImpl,
 )
 from qai_hub_models.models.pspnet.external_repos.semseg.util import (
     config as semseg_config,
+)
+from qai_hub_models.models.templates.cityscapes_segmentation.model import (
+    CityscapesSegmentor,
+)
+from qai_hub_models.models.templates.segmentation.segmentation_evaluator import (
+    SegmentationOutputEvaluator,
 )
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,

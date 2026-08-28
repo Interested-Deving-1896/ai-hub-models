@@ -11,11 +11,11 @@ import torch
 from typing_extensions import Self
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.selfie_segmentation.model import SelfieSegmentor
 from qai_hub_models.models.sinet.dataset import EG1800SegmentationDataset
 from qai_hub_models.models.sinet.external_repos.ext_portrait_segmentation.models.SINet import (
     SINet as SINetModel,
 )
+from qai_hub_models.models.templates.selfie_segmentation.model import SelfieSegmentor
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_torch
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_model import SerializationSettings

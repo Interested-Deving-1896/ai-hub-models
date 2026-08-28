@@ -12,7 +12,7 @@ op* is responsible, without any training or full-model re-quantization — using
 only inference jobs against the already-exported ONNX and encodings.
 
 It is built for the shared PreSplit/Part LLM export scheme in
-`models/_shared/llm` (Qwen3, Llama-family, etc.). The tap discovery is
+`models/templates/llm` (Qwen3, Llama-family, etc.). The tap discovery is
 **pure-topology** and works for any standard pre-norm transformer; the
 model-specific pieces are small, documented contracts (see
 [Extending](#extending-to-a-new-model)).

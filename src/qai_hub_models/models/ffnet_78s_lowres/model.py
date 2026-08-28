@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.cityscapes_segmentation.ffnet_model import (
+from qai_hub_models.models.templates.cityscapes_segmentation.ffnet_model import (
     FFNetLowRes,
 )
 

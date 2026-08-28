@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.yolo.app import (
+from qai_hub_models.models.templates.yolo.app import (
     YoloSegmentationApp as App,
 )
 

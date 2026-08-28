@@ -25,12 +25,12 @@ import torch
 from transformers import AutoConfig
 from transformers.models.llama import LlamaConfig
 
-from qai_hub_models.models._shared.llm.export import export_model
 from qai_hub_models.models.llama_v3_2_3b_instruct.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     Llama3_2_3B,
 )
+from qai_hub_models.models.templates.llm.export import export_model
 from qai_hub_models.utils.input_spec import InputSpec, make_torch_inputs
 from qai_hub_models.utils.model_cache import CacheMode
 from qai_hub_models.utils.onnx.helpers import (

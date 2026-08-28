@@ -6,8 +6,8 @@
 Qwen3-0.6B - PreSplit-Part architecture for LLM deployment.
 
 The generic PreSplit/Part/Collection machinery lives in
-``qai_hub_models.models._shared.llm.model`` (family-agnostic) and
-``qai_hub_models.models._shared.qwen3.model`` (Qwen3-coupled: RoPE embedding,
+``qai_hub_models.models.templates.llm.model`` (family-agnostic) and
+``qai_hub_models.models.templates.qwen3.model`` (Qwen3-coupled: RoPE embedding,
 dynamo encoding adaptation, explicit head_dim, attention-mask multiply, and the
 tied-embedding encoding fix). This module supplies the 0.6B-specific architecture
 constants and the small concrete subclasses (Part classes + the Collection,
@@ -28,21 +28,21 @@ import logging
 # resolve the inherited get_input_spec's "llm_io_type" annotation, which it
 # looks up in the concrete model's module.
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.qwen3_0_6b.dataset import InterleavedGeneratedWikitext
+from qai_hub_models.models.templates.llm.common import LLMIOType  # noqa: F401
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     SplitForwardMixin,
 )
-from qai_hub_models.models._shared.lm_driver.generator import HubCompatibleGenerator
-from qai_hub_models.models._shared.qwen3.model import (
+from qai_hub_models.models.templates.lm_driver.generator import HubCompatibleGenerator
+from qai_hub_models.models.templates.qwen3.model import (
     Qwen3PartBase,
     Qwen3PreSplitBase,
     Qwen3PreSplitCollectionBase,
     Qwen3QuantizablePreSplitBase,
 )
-from qai_hub_models.models.qwen3_0_6b.dataset import InterleavedGeneratedWikitext
 
 logger = logging.getLogger(__name__)
 

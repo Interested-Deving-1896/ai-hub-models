@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.pipertts.app import (
+from qai_hub_models.models.templates.pipertts.app import (
     PiperTTSApp as App,
 )
 

@@ -21,7 +21,6 @@ from qai_hub_models import (
     Precision,
     TargetRuntime,
 )
-from qai_hub_models.models._shared.common import replace_module_recursively
 from qai_hub_models.models.mask2former.dataset import CocoPanopticSegmentationDataset
 from qai_hub_models.models.mask2former.evaluator import (
     PanopticSegmentationEvaluator,
@@ -32,6 +31,7 @@ from qai_hub_models.models.mask2former.model_patches import (
     PatchedSwinLayer,
     PatchedSwinSelfAttention,
 )
+from qai_hub_models.models.templates.common import replace_module_recursively
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
 from qai_hub_models.utils.base_model import BaseModel

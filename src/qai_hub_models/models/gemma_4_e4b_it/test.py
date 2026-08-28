@@ -5,7 +5,7 @@
 """Tests for Gemma4-E4B.
 
 The KV-cache layout assertions are shared with E2B; the helpers live in
-_shared/gemma4/test_utils.py and are driven here with E4B's geometry (GQA).
+templates/gemma4/test_utils.py and are driven here with E4B's geometry (GQA).
 """
 
 from __future__ import annotations
@@ -15,17 +15,6 @@ from typing import Any
 import pytest
 from transformers import AutoConfig
 
-from qai_hub_models.models._shared.gemma4.test_utils import (
-    KVLayoutConfig,
-    assert_dual_rope_schema_matches_runtime,
-    assert_embedding_lut_is_written_blockwise,
-    assert_gqa_emits_twice_the_kv_tensors_of_mqa,
-    assert_kv_input_tensors_have_batch_dim_one,
-    assert_kv_key_value_inner_shapes,
-    assert_kv_output_tensors_use_per_head_naming,
-    assert_kv_tensor_count_scales_with_num_kv_heads,
-)
-from qai_hub_models.models._shared.llm.llm_helpers import create_genie_config
 from qai_hub_models.models.gemma_4_e4b_it.model import (
     GLOBAL_HEAD_DIM,
     HEAD_DIM,
@@ -39,6 +28,17 @@ from qai_hub_models.models.gemma_4_e4b_it.model import (
     SLIDING_WINDOW_PATTERN,
     Gemma4_E4B_PreSplit,
 )
+from qai_hub_models.models.templates.gemma4.test_utils import (
+    KVLayoutConfig,
+    assert_dual_rope_schema_matches_runtime,
+    assert_embedding_lut_is_written_blockwise,
+    assert_gqa_emits_twice_the_kv_tensors_of_mqa,
+    assert_kv_input_tensors_have_batch_dim_one,
+    assert_kv_key_value_inner_shapes,
+    assert_kv_output_tensors_use_per_head_naming,
+    assert_kv_tensor_count_scales_with_num_kv_heads,
+)
+from qai_hub_models.models.templates.llm.llm_helpers import create_genie_config
 
 KV_LAYOUT_CFG = KVLayoutConfig(
     num_hidden_layers=NUM_LAYERS,

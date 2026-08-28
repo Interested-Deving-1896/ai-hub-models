@@ -8,7 +8,7 @@ from __future__ import annotations
 import timm
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 
 MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 1

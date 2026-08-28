@@ -14,8 +14,8 @@ from qai_hub.client import DatasetEntries
 from torch.utils.data import DataLoader
 
 from qai_hub_models.datasets import DatasetSplit, instantiate_dataset
-from qai_hub_models.models._shared.yolo.app import YoloWorldPromptDetectionApp
 from qai_hub_models.models.protocols import ExecutableModelProtocol
+from qai_hub_models.models.templates.yolo.app import YoloWorldPromptDetectionApp
 from qai_hub_models.models.yolo_world.model import YoloWorldTextEncoder
 from qai_hub_models.utils.base_app import (
     CollectionAppEvaluateProtocol,

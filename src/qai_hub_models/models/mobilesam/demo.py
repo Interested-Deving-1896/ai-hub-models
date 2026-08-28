@@ -7,14 +7,14 @@
 import torch
 from mobile_sam.utils.transforms import ResizeLongestSide
 
-from qai_hub_models.models._shared.sam.app import SAMApp, SAMInputImageLayout
-from qai_hub_models.models._shared.sam.utils import show_image
 from qai_hub_models.models.mobilesam.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     SMALL_MODEL_TYPE,
     MobileSAM,
 )
+from qai_hub_models.models.templates.sam.app import SAMApp, SAMInputImageLayout
+from qai_hub_models.models.templates.sam.utils import show_image
 from qai_hub_models.utils.args import (
     demo_model_components_from_cli_args,
     get_model_cli_parser,

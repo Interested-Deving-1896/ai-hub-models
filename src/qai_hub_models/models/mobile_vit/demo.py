@@ -7,14 +7,14 @@
 import torch
 
 from qai_hub_models import TargetRuntime
-from qai_hub_models.models._shared.imagenet_classifier.test_utils import (
-    TEST_IMAGENET_IMAGE,
-)
 from qai_hub_models.models.mobile_vit.app import MobileVITApp
 from qai_hub_models.models.mobile_vit.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     MobileVIT,
+)
+from qai_hub_models.models.templates.imagenet_classifier.test_utils import (
+    TEST_IMAGENET_IMAGE,
 )
 from qai_hub_models.utils.args import (
     demo_model_from_cli_args,

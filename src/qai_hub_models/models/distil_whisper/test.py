@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.hf_whisper.app import HfWhisperApp
-from qai_hub_models.models._shared.hf_whisper.test_utils import (
-    load_sample_audio_input,
-    run_test_wrapper_numerics,
-)
 from qai_hub_models.models.distil_whisper.demo import main as demo_main
 from qai_hub_models.models.distil_whisper.model import (
     DistilWhisper,
+)
+from qai_hub_models.models.templates.hf_whisper.app import HfWhisperApp
+from qai_hub_models.models.templates.hf_whisper.test_utils import (
+    load_sample_audio_input,
+    run_test_wrapper_numerics,
 )
 
 

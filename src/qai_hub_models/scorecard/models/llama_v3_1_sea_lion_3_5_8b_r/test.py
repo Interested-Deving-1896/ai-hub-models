@@ -11,8 +11,6 @@ import pytest
 import torch
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.models.llama_v3_1_sea_lion_3_5_8b_r import Model
 from qai_hub_models.models.llama_v3_1_sea_lion_3_5_8b_r.demo import (
     llama_3_1_sea_lion_chat_demo,
@@ -24,6 +22,8 @@ from qai_hub_models.models.llama_v3_1_sea_lion_3_5_8b_r.model import (
     Llama3_1_SEALION_3_5_8B_R_QuantizablePreSplit,
     QuantizedSplitModelWrapper,
 )
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.model import DEFAULT_CONTEXT_LENGTH
 from qai_hub_models.scorecard import (
     ScorecardCompilePath,
     ScorecardDevice,

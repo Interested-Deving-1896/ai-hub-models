@@ -12,7 +12,7 @@ Shallow first pass. Try w8a8; if unreasonable, try w8a16; if both fail, revert t
 - `validate-on-device` passed on the float recipe.
 - `model.py` implements `get_evaluator()`, `get_eval_dataset_classes()`, `get_calibration_dataset_cls()`, and the returned dataset class exists (either under `qai_hub_models/datasets/` listed in `manifest.yaml`'s `datasets:`, or as a local `dataset.py` in the recipe folder — both are fine).
 
-If the dataset/evaluator is missing, prompt the user to wire an existing one from `qai_hub_models/datasets/` + `_shared/…` or author new ones (see `.claude/docs/onboarding/datasets-and-evaluators.md`). Once wired, rerun `validate-on-device` at float, then come back.
+If the dataset/evaluator is missing, prompt the user to wire an existing one from `qai_hub_models/datasets/` + `templates/…` or author new ones (see `.claude/docs/onboarding/datasets-and-evaluators.md`). Once wired, rerun `validate-on-device` at float, then come back.
 
 ## Command
 

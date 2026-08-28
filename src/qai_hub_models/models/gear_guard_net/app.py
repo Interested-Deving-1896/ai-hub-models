@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 import torch
 
-from qai_hub_models.models._shared.gear_guard_net import BodyDetectionApp
+from qai_hub_models.models.templates.gear_guard_net import BodyDetectionApp
 from qai_hub_models.utils.labels import get_class_names
 
 # Define color map for gear guard classes

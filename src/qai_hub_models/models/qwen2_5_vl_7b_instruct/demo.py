@@ -4,9 +4,6 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-from qai_hub_models.models._shared.llm.demo import llm_chat_demo
-from qai_hub_models.models._shared.llm.model import LLM_QNN
-from qai_hub_models.models._shared.qwen2_vl.model import DEFAULT_USER_PROMPT, END_TOKENS
 from qai_hub_models.models.qwen2_5_vl_7b_instruct import MODEL_ID
 from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     HF_REPO_NAME,
@@ -14,6 +11,12 @@ from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     Qwen2_5_VL_7B_PreSplit,
     Qwen2_5_VL_7B_QuantizablePreSplit,
     Qwen2_5_VL_7B_VisionEncoder,
+)
+from qai_hub_models.models.templates.llm.demo import llm_chat_demo
+from qai_hub_models.models.templates.llm.model import LLM_QNN
+from qai_hub_models.models.templates.qwen2_vl.model import (
+    DEFAULT_USER_PROMPT,
+    END_TOKENS,
 )
 from qai_hub_models.utils.checkpoint import CheckpointSpec
 

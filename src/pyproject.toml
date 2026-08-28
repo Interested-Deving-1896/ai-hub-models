@@ -53,7 +53,7 @@ exclude = 'src/qai_hub_models/extern/.*|src/qai_hub_models/models/llama_v2_7b_ch
 [tool.mypy]
 ignore_missing_imports = true
 warn_unused_ignores = true
-exclude = ["models/.*/external_repos/.*/", "models/_shared/.*/external_repos/.*/"]
+exclude = ["models/.*/external_repos/.*/", "models/templates/.*/external_repos/.*/"]
 
 [tool.pytest.ini_options]
 tmp_path_retention_policy = "failed"
@@ -95,15 +95,15 @@ check_untyped_defs = true
 implicit_reexport = false
 
 [[tool.mypy.overrides]]
-module = "qai_hub_models.models._shared.llm.sha_dynamic_kvcache"
+module = "qai_hub_models.models.templates.llm.sha_dynamic_kvcache"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "qai_hub_models.models._shared.lm_driver.*"
+module = "qai_hub_models.models.templates.lm_driver.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "qai_hub_models.models._shared.lm_schema.*"
+module = "qai_hub_models.models.templates.lm_schema.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -111,5 +111,5 @@ module = "qai_hub_models.models.*.external_repos.*"
 implicit_reexport = true
 
 [[tool.mypy.overrides]]
-module = "qai_hub_models.models._shared.*.external_repos.*"
+module = "qai_hub_models.models.templates.*.external_repos.*"
 implicit_reexport = true

@@ -10,11 +10,11 @@ from pathlib import Path
 import torch
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.cityscapes_segmentation.model import (
-    CityscapesSegmentor,
-)
 from qai_hub_models.models.pidnet.external_repos.pidnet import (
     models as pidnet_models,
+)
+from qai_hub_models.models.templates.cityscapes_segmentation.model import (
+    CityscapesSegmentor,
 )
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 

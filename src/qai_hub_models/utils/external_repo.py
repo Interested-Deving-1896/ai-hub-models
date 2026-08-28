@@ -143,12 +143,12 @@ def _cache_namespace(external_repos_path: Path) -> str:
     ----------
     external_repos_path
         Absolute path to the external_repos directory, e.g.
-        ``.../models/gkt/external_repos`` or ``.../_shared/centernet/external_repos``.
+        ``.../models/gkt/external_repos`` or ``.../templates/centernet/external_repos``.
 
     Returns
     -------
     str
-        Cache namespace, e.g. ``"models/gkt"`` or ``"shared/centernet"``.
+        Cache namespace, e.g. ``"models/gkt"`` or ``"templates/centernet"``.
 
     Raises
     ------
@@ -163,8 +163,8 @@ def _cache_namespace(external_repos_path: Path) -> str:
         )
     idx = parts.index("external_repos")
     parent = parts[idx - 1]
-    is_shared = idx >= 2 and parts[idx - 2] == "_shared"
-    return str(Path("shared" if is_shared else "models", parent))
+    is_template = idx >= 2 and parts[idx - 2] == "templates"
+    return str(Path("templates" if is_template else "models", parent))
 
 
 def get_cache_dir(external_repos_path: Path, repo_name: str, content_hash: str) -> Path:

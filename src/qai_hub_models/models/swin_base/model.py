@@ -10,9 +10,9 @@ import torchvision.models as tv_models
 from torchvision.models.swin_transformer import PatchMerging, ShiftedWindowAttention
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.common import replace_module_recursively
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
-from qai_hub_models.models._shared.swin.swin_transformer import (
+from qai_hub_models.models.templates.common import replace_module_recursively
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.swin.swin_transformer import (
     AutoSplitLinear,
     ShiftedWindowAttentionInf,
 )

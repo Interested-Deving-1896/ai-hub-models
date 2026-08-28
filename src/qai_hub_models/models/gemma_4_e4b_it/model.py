@@ -14,21 +14,21 @@ from __future__ import annotations
 import logging
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.gemma4.model import (
+from qai_hub_models.models.templates.gemma4.model import (
     Gemma4PartBase,
     Gemma4PreSplitBase,
     Gemma4PreSplitCollectionBase,
     Gemma4QuantizablePreSplitBase,
 )
-from qai_hub_models.models._shared.gemma4.vision_encoder import Gemma4VisionEncoder
-from qai_hub_models.models._shared.llm.common import LLMIOType  # noqa: F401
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.gemma4.vision_encoder import Gemma4VisionEncoder
+from qai_hub_models.models.templates.llm.common import LLMIOType  # noqa: F401
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_CONTEXT_LENGTHS as GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import (
+from qai_hub_models.models.templates.llm.model import (
     DEFAULT_EXPORT_SEQUENCE_LENGTHS as GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS,
 )
-from qai_hub_models.models._shared.llm.model import SplitForwardMixin
+from qai_hub_models.models.templates.llm.model import SplitForwardMixin
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,7 @@ class Gemma4_E4B_QuantizablePreSplit(
     num_kv_shared_layers = NUM_KV_SHARED_LAYERS
     # Must be set on the Quantizable path too (its _get_output_spec derives the
     # KV tensor name prefixes from it and would otherwise default to pattern-5,
-    # mismatching E4B's pattern-6). See _shared/gemma4/model.py for details.
+    # mismatching E4B's pattern-6). See templates/gemma4/model.py for details.
     sliding_window_pattern = SLIDING_WINDOW_PATTERN
     model_id = MODEL_ID
     model_asset_version = MODEL_ASSET_VERSION

@@ -29,11 +29,11 @@ Key requirements:
 
 ## Evaluators
 
-Check for existing evaluators before writing a new one. Evaluators live either in a shared folder under `qai_hub_models/models/_shared/<name>/` (when reused by more than one model) or in the model folder itself.
+Check for existing evaluators before writing a new one. Evaluators live either in a template folder under `qai_hub_models/models/templates/<name>/` (when reused by more than one model) or in the model folder itself.
 
 ### Writing a New Evaluator
 
-Inherit from `BaseEvaluator` in `qai_hub_models/utils/base_evaluator.py`. Place the new evaluator next to the model that uses it (or in a shared folder if it will be reused). Look at existing evaluators for the pattern.
+Inherit from `BaseEvaluator` in `qai_hub_models/utils/base_evaluator.py`. Place the new evaluator next to the model that uses it (or in a template folder if it will be reused). Look at existing evaluators for the pattern.
 
 Key requirements:
 - `add_batch()` accumulates metrics comparing model output to ground truth

@@ -18,7 +18,7 @@ from sam3.model.text_encoder_ve import ResidualAttentionBlock
 from sam3.model.vitdet import concat_rel_pos
 from torch import nn
 
-from qai_hub_models.models._shared.sam.model_patches import Conv2DInplaceLinear
+from qai_hub_models.models.templates.sam.model_patches import Conv2DInplaceLinear
 
 
 class SAM3Normalize(nn.Module):

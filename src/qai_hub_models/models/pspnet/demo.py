@@ -4,12 +4,12 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.segmentation.demo import segmentation_demo
 from qai_hub_models.models.pspnet.model import (
     INPUT_IMAGE_ADDRESS,
     MODEL_ID,
     PSPNet,
 )
+from qai_hub_models.models.templates.segmentation.demo import segmentation_demo
 
 
 def main(is_test: bool = False) -> None:

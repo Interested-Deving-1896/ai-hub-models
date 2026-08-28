@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.segmentation.app import SegmentationApp
 from qai_hub_models.models.pspnet.demo import main as demo_main
 from qai_hub_models.models.pspnet.model import (
     INPUT_IMAGE_ADDRESS,
@@ -14,6 +13,7 @@ from qai_hub_models.models.pspnet.model import (
     MODEL_ID,
     PSPNet,
 )
+from qai_hub_models.models.templates.segmentation.app import SegmentationApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 from qai_hub_models.utils.image_processing import (
     pil_resize_pad,

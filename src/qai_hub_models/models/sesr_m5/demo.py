@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.super_resolution.demo import super_resolution_demo
 from qai_hub_models.models.sesr_m5.model import MODEL_ID, SESR_M5
+from qai_hub_models.models.templates.super_resolution.demo import super_resolution_demo
 
 
 # Run SESR_M5 end-to-end on a sample image.

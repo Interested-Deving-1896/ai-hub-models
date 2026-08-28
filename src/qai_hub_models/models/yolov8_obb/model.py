@@ -16,10 +16,10 @@ from ultralytics.nn.tasks import OBBModel
 from qai_hub_models import Precision
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.configs.tensor_spec import TensorSpec
-from qai_hub_models.models._shared.ultralytics.obb_patches import (
+from qai_hub_models.models.templates.ultralytics.obb_patches import (
     patch_ultralytics_obb_head,
 )
-from qai_hub_models.models._shared.yolo.model import (
+from qai_hub_models.models.templates.yolo.model import (
     Yolo,
     yolo_obb_postprocess,
 )

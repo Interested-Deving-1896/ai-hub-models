@@ -12,14 +12,14 @@ from qai_hub.client import Device
 from typing_extensions import Self
 
 from qai_hub_models import Precision, SampleInputsType, TargetRuntime
-from qai_hub_models.models._shared.detection.detection_evaluator import (
+from qai_hub_models.models.templates.detection.detection_evaluator import (
     DetectionEvaluator,
 )
-from qai_hub_models.models._shared.wedetect.constants import (
+from qai_hub_models.models.templates.wedetect.constants import (
     DEFAULT_NUM_CLASSES,
     TEXT_EMBEDDING_DIM,
 )
-from qai_hub_models.models._shared.wedetect.model import (
+from qai_hub_models.models.templates.wedetect.model import (
     BaseDetector,
     BaseTextEncoder,
     load_wedetect_model,

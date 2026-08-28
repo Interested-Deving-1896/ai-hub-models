@@ -9,7 +9,7 @@ from collections.abc import Callable, Collection
 
 import torch
 
-from qai_hub_models.models._shared.detection.detection_evaluator import (
+from qai_hub_models.models.templates.detection.detection_evaluator import (
     DetectionEvaluator,
 )
 

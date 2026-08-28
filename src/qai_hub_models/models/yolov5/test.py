@@ -10,10 +10,10 @@ import torch
 from ultralytics.models import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import DetectionModel
 
-from qai_hub_models.models._shared.ultralytics.detect_patches import (
+from qai_hub_models.models.templates.ultralytics.detect_patches import (
     patch_ultralytics_detection_head,
 )
-from qai_hub_models.models._shared.yolo.model import yolo_detect_postprocess
+from qai_hub_models.models.templates.yolo.model import yolo_detect_postprocess
 from qai_hub_models.models.yolov5.demo import IMAGE_ADDRESS
 from qai_hub_models.models.yolov5.demo import main as demo_main
 from qai_hub_models.models.yolov5.model import (

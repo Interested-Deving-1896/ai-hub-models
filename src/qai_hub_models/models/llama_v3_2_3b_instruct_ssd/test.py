@@ -9,12 +9,12 @@ from typing import Any
 import pytest
 from transformers import AutoConfig
 
-from qai_hub_models.models._shared.llm.llm_helpers import create_genie_config
-from qai_hub_models.models._shared.llm_ssd.model import apply_ssd_engine_overrides
 from qai_hub_models.models.llama_v3_2_3b_instruct_ssd.model import (
     HF_REPO_NAME,
     NUM_SPLITS,
 )
+from qai_hub_models.models.templates.llm.llm_helpers import create_genie_config
+from qai_hub_models.models.templates.llm_ssd.model import apply_ssd_engine_overrides
 
 
 @pytest.mark.unmarked

@@ -7,10 +7,6 @@ import numpy as np
 import pytest
 import torch
 
-from qai_hub_models.models._shared.mediapipe.test_utils import (
-    assert_landmarks_close,
-    landmarks_from_raw_output,
-)
 from qai_hub_models.models.mediapipe_face.app import MediaPipeFaceApp
 from qai_hub_models.models.mediapipe_face.demo import INPUT_IMAGE_ADDRESS
 from qai_hub_models.models.mediapipe_face.demo import main as demo_main
@@ -18,6 +14,10 @@ from qai_hub_models.models.mediapipe_face.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     MediaPipeFace,
+)
+from qai_hub_models.models.templates.mediapipe.test_utils import (
+    assert_landmarks_close,
+    landmarks_from_raw_output,
 )
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,

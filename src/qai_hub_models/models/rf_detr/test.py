@@ -5,7 +5,6 @@
 
 import pytest
 
-from qai_hub_models.models._shared.detr.app import DETRApp
 from qai_hub_models.models.rf_detr.demo import main as demo_main
 from qai_hub_models.models.rf_detr.model import (
     MODEL_ASSET_VERSION,
@@ -14,6 +13,7 @@ from qai_hub_models.models.rf_detr.model import (
     SUPPORTED_VARIANTS,
     VARIANT_RESOLUTION,
 )
+from qai_hub_models.models.templates.detr.app import DETRApp
 from qai_hub_models.utils.args import get_model_cli_parser, model_from_cli_args
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 

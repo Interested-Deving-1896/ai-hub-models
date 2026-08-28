@@ -60,7 +60,7 @@ def perf_dir(tmp_path: Path) -> Iterator[Path]:
         mock.patch.object(mod, "QAIHM_MODELS_ROOT", tmp_path),
         mock.patch("qai_hub_models.scorecard.perf_yaml.QAIHM_MODELS_ROOT", tmp_path),
         mock.patch(
-            "qai_hub_models.models._shared.llm.perf_collection.QAIHM_MODELS_ROOT",
+            "qai_hub_models.models.templates.llm.perf_collection.QAIHM_MODELS_ROOT",
             tmp_path,
         ),
         mock.patch(

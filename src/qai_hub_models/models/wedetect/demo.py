@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from qai_hub_models.models._shared.wedetect.demo import wedetect_detection_demo
+from qai_hub_models.models.templates.wedetect.demo import wedetect_detection_demo
 from qai_hub_models.models.wedetect.app import WeDetectModelApp
 from qai_hub_models.models.wedetect.model import (
     MODEL_ASSET_VERSION,

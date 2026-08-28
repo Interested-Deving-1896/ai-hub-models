@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 
 
-from qai_hub_models.models._shared.yolo.demo import yolo_detection_demo
+from qai_hub_models.models.templates.yolo.demo import yolo_detection_demo
 from qai_hub_models.models.yolov3.app import YoloV3DetectionApp
 from qai_hub_models.models.yolov3.model import MODEL_ASSET_VERSION, MODEL_ID, YoloV3
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset

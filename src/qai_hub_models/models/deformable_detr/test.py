@@ -5,13 +5,13 @@
 
 import pytest
 
-from qai_hub_models.models._shared.detr.app import DETRApp
 from qai_hub_models.models.deformable_detr.demo import main as demo_main
 from qai_hub_models.models.deformable_detr.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     DeformableDETR,
 )
+from qai_hub_models.models.templates.detr.app import DETRApp
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
 
 IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(

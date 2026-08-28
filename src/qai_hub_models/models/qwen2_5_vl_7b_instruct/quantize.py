@@ -11,16 +11,6 @@ from pathlib import Path
 
 import torch
 
-from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_CALIBRATION_SEQ_LEN,
-    DEFAULT_CONTEXT_LENGTH,
-)
-from qai_hub_models.models._shared.llm.quantize import (
-    quantize,
-    resolve_quantize_recipe,
-    save_command_args,
-)
-from qai_hub_models.models._shared.vlm.quantize import resolve_veg_calibration_samples
 from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     DEFAULT_IMAGE_HEIGHT,
     DEFAULT_IMAGE_WIDTH,
@@ -31,6 +21,16 @@ from qai_hub_models.models.qwen2_5_vl_7b_instruct.model import (
     Qwen2_5_VL_7B_QuantizablePreSplit,
     Qwen2_5_VL_7B_VisionEncoder,
 )
+from qai_hub_models.models.templates.llm.model import (
+    DEFAULT_CALIBRATION_SEQ_LEN,
+    DEFAULT_CONTEXT_LENGTH,
+)
+from qai_hub_models.models.templates.llm.quantize import (
+    quantize,
+    resolve_quantize_recipe,
+    save_command_args,
+)
+from qai_hub_models.models.templates.vlm.quantize import resolve_veg_calibration_samples
 
 
 def quantize_vision_encoder(

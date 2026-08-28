@@ -8,7 +8,7 @@ from typing import cast
 import numpy as np
 from PIL.Image import fromarray
 
-from qai_hub_models.models._shared.segmentation.app import SegmentationApp
+from qai_hub_models.models.templates.segmentation.app import SegmentationApp
 from qai_hub_models.models.unet_segmentation.demo import main as demo_main
 from qai_hub_models.models.unet_segmentation.model import (
     IMAGE_ADDRESS,

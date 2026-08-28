@@ -11,8 +11,8 @@ import torch
 from ultralytics.models import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import SegmentationModel
 
-from qai_hub_models.models._shared.yolo.app import YoloSegmentationApp
-from qai_hub_models.models._shared.yolo.model import yolo_segment_postprocess
+from qai_hub_models.models.templates.yolo.app import YoloSegmentationApp
+from qai_hub_models.models.templates.yolo.model import yolo_segment_postprocess
 from qai_hub_models.models.yolov11_seg.demo import IMAGE_ADDRESS, OUTPUT_IMAGE_ADDRESS
 from qai_hub_models.models.yolov11_seg.demo import main as demo_main
 from qai_hub_models.models.yolov11_seg.model import YoloV11Segmentor

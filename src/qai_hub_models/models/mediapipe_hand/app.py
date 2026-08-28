@@ -13,7 +13,6 @@ import numpy as np
 import torch
 from PIL.Image import Image
 
-from qai_hub_models.models._shared.mediapipe.app import MediaPipeApp
 from qai_hub_models.models.mediapipe_hand.model import (
     DETECT_DSCALE,
     DETECT_DXY,
@@ -23,6 +22,7 @@ from qai_hub_models.models.mediapipe_hand.model import (
     ROTATION_VECTOR_OFFSET_RADS,
     WRIST_CENTER_KEYPOINT_INDEX,
 )
+from qai_hub_models.models.templates.mediapipe.app import MediaPipeApp
 from qai_hub_models.utils.base_collection_model import CollectionModel
 from qai_hub_models.utils.bounding_box_processing import (
     compute_box_affine_crop_resize_matrix,

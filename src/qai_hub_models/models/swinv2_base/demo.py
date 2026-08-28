@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.imagenet_classifier.demo import imagenet_demo
 from qai_hub_models.models.swinv2_base.model import MODEL_ID, SwinV2Base
+from qai_hub_models.models.templates.imagenet_classifier.demo import imagenet_demo
 
 
 def main(is_test: bool = False) -> None:

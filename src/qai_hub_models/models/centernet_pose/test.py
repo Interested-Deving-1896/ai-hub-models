@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from qai_hub_models.models._shared.centernet.test_utils import assert_detections_close
 from qai_hub_models.models.centernet_pose.app import CenterNetPoseApp
 from qai_hub_models.models.centernet_pose.demo import main as demo_main
 from qai_hub_models.models.centernet_pose.model import (
@@ -15,6 +14,7 @@ from qai_hub_models.models.centernet_pose.model import (
     MODEL_ID,
     CenterNetPose,
 )
+from qai_hub_models.models.templates.centernet.test_utils import assert_detections_close
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_image,

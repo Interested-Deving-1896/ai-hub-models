@@ -9,7 +9,7 @@ from collections.abc import Callable
 import torch
 from PIL import Image
 
-from qai_hub_models.models._shared.cvt_gkt.app import CVT_GKTApp
+from qai_hub_models.models.templates.cvt_gkt.app import CVT_GKTApp
 
 
 class CVTApp(CVT_GKTApp):

@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.deeplab.demo import deeplabv3_demo
-from qai_hub_models.models._shared.deeplab.model import NUM_CLASSES
 from qai_hub_models.models.deeplabv3_resnet50.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
     DeepLabV3_ResNet50,
 )
+from qai_hub_models.models.templates.deeplab.demo import deeplabv3_demo
+from qai_hub_models.models.templates.deeplab.model import NUM_CLASSES
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 
 # Demo image comes from https://github.com/pytorch/hub/raw/master/images/deeplab1.png

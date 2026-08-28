@@ -7,10 +7,6 @@ from __future__ import annotations
 import pytest
 import torch
 
-from qai_hub_models.models._shared.llm import test
-from qai_hub_models.models._shared.llm.model import (
-    DEFAULT_CONTEXT_LENGTH,
-)
 from qai_hub_models.models.qwen3_vl_8b_instruct import (
     MODEL_ID,
     VisionEncoder,
@@ -21,6 +17,10 @@ from qai_hub_models.models.qwen3_vl_8b_instruct.model import (
     HF_REPO_NAME,
     Qwen3_VL_8B_PreSplit,
     Qwen3_VL_8B_QuantizablePreSplit,
+)
+from qai_hub_models.models.templates.llm import test
+from qai_hub_models.models.templates.llm.model import (
+    DEFAULT_CONTEXT_LENGTH,
 )
 
 DEFAULT_EVAL_SEQLEN = [2048, 128, 1]

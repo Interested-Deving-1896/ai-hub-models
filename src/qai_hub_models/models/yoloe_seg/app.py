@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
-from qai_hub_models.models._shared.yolo.app import (
+from qai_hub_models.models.templates.yolo.app import (
     YoloSegmentationApp,
 )
 from qai_hub_models.utils.draw import create_color_map

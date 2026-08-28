@@ -8,7 +8,7 @@ from __future__ import annotations
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.bert_hf.model import BaseBertModel
+from qai_hub_models.models.templates.bert_hf.model import BaseBertModel
 
 MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 1

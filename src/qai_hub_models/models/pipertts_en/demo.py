@@ -2,8 +2,8 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-from qai_hub_models.models._shared.pipertts.app import DEFAULT_TEXTS, PiperTTSApp
 from qai_hub_models.models.pipertts_en.model import PiperTTS_EN
+from qai_hub_models.models.templates.pipertts.app import DEFAULT_TEXTS, PiperTTSApp
 from qai_hub_models.utils.args import get_model_cli_parser, model_from_cli_args
 
 

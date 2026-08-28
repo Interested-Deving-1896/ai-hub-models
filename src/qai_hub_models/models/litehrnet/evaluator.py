@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import torch
 
-from qai_hub_models.models._shared.pose.pose_evaluator import CocoBodyPoseEvaluator
 from qai_hub_models.models.litehrnet.app import refine_and_transform_keypoints
+from qai_hub_models.models.templates.pose.pose_evaluator import CocoBodyPoseEvaluator
 
 
 class LiteHRNetPoseEvaluator(CocoBodyPoseEvaluator):

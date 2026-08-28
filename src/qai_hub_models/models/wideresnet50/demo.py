@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.imagenet_classifier.demo import imagenet_demo
+from qai_hub_models.models.templates.imagenet_classifier.demo import imagenet_demo
 from qai_hub_models.models.wideresnet50.model import MODEL_ID, WideResNet50
 
 

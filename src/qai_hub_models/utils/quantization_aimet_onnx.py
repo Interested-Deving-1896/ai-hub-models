@@ -40,7 +40,7 @@ from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
 
 from qai_hub_models import Precision, SampleInputsType
-from qai_hub_models.models._shared.lm_schema import (
+from qai_hub_models.models.templates.lm_schema import (
     AdaScaleSpec,
     CalibrationSpec,
     DatasetSpec,

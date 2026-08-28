@@ -11,7 +11,7 @@ This module provides:
 - Collection class for deploying the model as 2 splits
 """
 
-from qai_hub_models.models._shared.llm.model import SplitForwardMixin
+from qai_hub_models.models.templates.llm.model import SplitForwardMixin
 
 from .model import (
     DEFAULT_PRECISION,

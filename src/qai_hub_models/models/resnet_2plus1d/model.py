@@ -10,7 +10,7 @@ from typing import Any
 import torchvision.models as tv_models
 from typing_extensions import Self
 
-from qai_hub_models.models._shared.video_classifier.model import (
+from qai_hub_models.models.templates.video_classifier.model import (
     KineticsClassifier,
     SimpleAvgPool,
 )

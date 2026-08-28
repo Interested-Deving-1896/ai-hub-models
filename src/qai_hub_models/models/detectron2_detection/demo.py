@@ -7,12 +7,12 @@ from __future__ import annotations
 
 from PIL.Image import Image
 
-from qai_hub_models.models._shared.detectron2.model import IMAGE_ADDRESS
 from qai_hub_models.models.detectron2_detection.app import Detectron2DetectionApp
 from qai_hub_models.models.detectron2_detection.model import (
     MODEL_ID,
     Detectron2Detection,
 )
+from qai_hub_models.models.templates.detectron2.model import IMAGE_ADDRESS
 from qai_hub_models.utils.args import (
     add_output_dir_arg,
     demo_model_components_from_cli_args,

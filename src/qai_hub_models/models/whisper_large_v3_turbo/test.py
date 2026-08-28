@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.hf_whisper.test_utils import (
+from qai_hub_models.models.templates.hf_whisper.test_utils import (
     run_test_transcribe,
     run_test_wrapper_numerics,
 )

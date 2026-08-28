@@ -10,7 +10,7 @@ import torchvision.models as tv_models
 from typing_extensions import Self
 
 from qai_hub_models import Precision
-from qai_hub_models.models._shared.imagenet_classifier.model import ImagenetClassifier
+from qai_hub_models.models.templates.imagenet_classifier.model import ImagenetClassifier
 from qai_hub_models.utils.base_model import SerializationSettings
 
 MODEL_ID = __name__.split(".")[-2]
