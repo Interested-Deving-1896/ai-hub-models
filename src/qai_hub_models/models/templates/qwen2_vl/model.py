@@ -25,7 +25,12 @@ from typing import TYPE_CHECKING, Any
 
 import onnx
 import torch
-from transformers import AutoProcessor, PretrainedConfig, PreTrainedTokenizer
+from transformers import (
+    AutoProcessor,
+    PretrainedConfig,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerBase,
+)
 from transformers.models.qwen2_5_vl import modeling_qwen2_5_vl
 
 from qai_hub_models.models.templates.llm.common import LLMIOType
@@ -61,19 +66,10 @@ from qai_hub_models.utils.system_info import has_recommended_memory
 
 logger = logging.getLogger(__name__)
 
-# Chat format constants (same as Qwen2)
-START_HEADER = "<|im_start|>"
-END_HEADER = "<|im_end|>"
-SYSTEM_ID = "system"
-ASSISTANT_ID = "assistant"
-USER_ID = "user"
 END_TOKENS = {"<|im_end|>", "<|endoftext|>"}
 
 DEFAULT_PROMPT_CONTEXT = "You are a helpful AI assistant."
 DEFAULT_USER_PROMPT = "Give me a short introduction to large language model."
-
-# Vision token placeholder (Qwen2.5-VL format)
-VISION_PLACEHOLDER = "<|vision_start|><|image_pad|><|vision_end|>"
 
 
 def _vlm_eval_dataset_classes() -> list[type[BaseDataset]]:
@@ -416,11 +412,14 @@ class Qwen2VLTextBase(Qwen2Base):
         return torch.nn.functional.embedding(input_ids, embedding_weights)
 
     @staticmethod
-    def get_input_prompt_with_tags(
+    def get_input_prompt_with_tags(  # type: ignore[override]
         user_input_prompt: str | None = None,
         system_context_prompt: str | None = None,
-        include_image: bool | int = True,  # type: ignore[override]
+        include_image: bool | int = False,
         enable_thinking: bool = False,
+        tokenizer: PreTrainedTokenizerBase | None = None,
+        add_generation_prompt: bool = True,
+        continue_final_message: bool = False,
         **kwargs: Any,
     ) -> str:
         """
@@ -428,6 +427,7 @@ class Qwen2VLTextBase(Qwen2Base):
 
         Overrides the base class to use Qwen2.5-VL's ChatML format and
         include vision placeholder tokens when processing images.
+        Uses the tokenizer's chat template with structured content for images.
 
         Parameters
         ----------
@@ -439,10 +439,17 @@ class Qwen2VLTextBase(Qwen2Base):
             Whether to include vision placeholder tokens in the prompt.
             Pass ``True`` or ``1`` for a single image, an ``int > 1`` for
             multiple images, or ``False``/``0`` for text-only.
-            Defaults to True.
+            Defaults to False.
         enable_thinking
-            Whether to enable thinking mode. Qwen2.5-VL doesn't have native
-            thinking mode, so this parameter is ignored.
+            Ignored. Qwen2.5-VL has no native thinking mode; accepted for
+            compatibility with the base class.
+        tokenizer
+            Required. The tokenizer to use for applying the chat template.
+        add_generation_prompt
+            Whether to append the assistant turn header.
+            Defaults to True.
+        continue_final_message
+            Whether to continue the final message instead of starting a new one.
             Defaults to False.
         **kwargs
             Additional arguments (ignored, for compatibility with base class).
@@ -453,25 +460,30 @@ class Qwen2VLTextBase(Qwen2Base):
             Formatted prompt string with ChatML tags and optional
             vision placeholders.
         """
+        if tokenizer is None:
+            raise ValueError("tokenizer is required for get_input_prompt_with_tags")
         if user_input_prompt is None:
             user_input_prompt = DEFAULT_USER_PROMPT
         if system_context_prompt is None:
             system_context_prompt = DEFAULT_PROMPT_CONTEXT
 
-        # For VLM, include one placeholder per image
         num_images = int(include_image) if isinstance(include_image, (bool, int)) else 0
-        if num_images > 0:
-            placeholders = "\n".join(VISION_PLACEHOLDER for _ in range(num_images))
-            user_content = f"{placeholders}\n{user_input_prompt}"
-        else:
-            user_content = user_input_prompt
+        content: list[dict[str, str]] = [{"type": "image"} for _ in range(num_images)]
+        content.append({"type": "text", "text": user_input_prompt})
 
-        return f"""{START_HEADER}{SYSTEM_ID}
-{system_context_prompt}{END_HEADER}
-{START_HEADER}{USER_ID}
-{user_content}{END_HEADER}
-{START_HEADER}{ASSISTANT_ID}
-"""
+        messages: list[dict[str, Any]] = []
+        if system_context_prompt:
+            messages.append({"role": "system", "content": system_context_prompt})
+        messages.append({"role": "user", "content": content})
+
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=add_generation_prompt,
+            continue_final_message=continue_final_message,
+        )
+        assert isinstance(prompt, str)
+        return prompt
 
     def _verify_ckpt(self) -> None:
         """Verify checkpoint is compatible with Qwen2.5-VL."""

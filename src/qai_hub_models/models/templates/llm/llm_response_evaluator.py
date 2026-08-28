@@ -235,14 +235,8 @@ class LLMResponseEvaluator(LLMEvaluator):
         generator.generation_config = cfg  # type: ignore[attr-defined, unused-ignore]
         return cfg
 
-    def _decode_response(self, output_ids: torch.Tensor, prompt_len: int | None) -> str:
-        """Decode generated tokens, stripping the prompt prefix when present.
-
-        For ``inputs_embeds`` paths HF's ``generate`` returns only the new
-        tokens, so ``prompt_len`` is ``None``.
-        """
-        if prompt_len is None:
-            return self.tokenizer.decode(output_ids, skip_special_tokens=True)  # type: ignore[return-value, unused-ignore]
+    def _decode_response(self, output_ids: torch.Tensor, prompt_len: int) -> str:
+        """Decode only the newly generated tokens, stripping the prompt prefix."""
         new_tokens = output_ids[prompt_len:]
         return self.tokenizer.decode(new_tokens, skip_special_tokens=True)  # type: ignore[return-value, unused-ignore]
 
@@ -286,16 +280,17 @@ class LLMResponseEvaluator(LLMEvaluator):
                             pixel_values=pixel_values,
                             image_grid_thw=image_grid_thw,
                         )
-                    response = self._decode_response(output_ids[0], prompt_len=None)
                 else:
                     with torch.no_grad():
                         output_ids = generator.generate(  # type: ignore[operator, misc, attr-defined, unused-ignore]
                             inputs=input_ids,
                             attention_mask=attention_mask,
                         )
-                    response = self._decode_response(
-                        output_ids[0], prompt_len=input_ids.shape[1]
-                    )
+                # Both paths pass input_ids, so generate() returns prompt + new
+                # tokens; the prompt must be sliced off before grading.
+                response = self._decode_response(
+                    output_ids[0], prompt_len=input_ids.shape[1]
+                )
 
                 self.responses.append(
                     GeneratedResponse(
