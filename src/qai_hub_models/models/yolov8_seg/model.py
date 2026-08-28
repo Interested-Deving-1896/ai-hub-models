@@ -33,7 +33,7 @@ DEFAULT_WEIGHTS = "yolov8n-seg.pt"
 class YoloV8Segmentor(UltralyticsMulticlassSegmentor, YoloSegEvalMixin):
     @classmethod
     def from_pretrained(
-        cls, ckpt_name: str = DEFAULT_WEIGHTS, precision: Precision = Precision.float
+        cls, ckpt_name: str = DEFAULT_WEIGHTS, precision: Precision | None = None
     ) -> Self:
         if ckpt_name not in SUPPORTED_WEIGHTS:
             raise ValueError(
@@ -42,3 +42,13 @@ class YoloV8Segmentor(UltralyticsMulticlassSegmentor, YoloSegEvalMixin):
             )
         model = cast(SegmentationModel, ultralytics_YOLO(ckpt_name).model)
         return cls(model, precision)
+
+    def get_hub_quantize_options(
+        self, precision: Precision, other_options: str | None = None
+    ) -> str:
+        # tf_enhanced (the AUTO default at w8a8) clips the boundary outliers mask
+        # mAP depends on, costing 1.2 mAP versus min_max.
+        options = other_options or ""
+        if "--range_scheme" in options:
+            return options
+        return options + " --range_scheme min_max"
