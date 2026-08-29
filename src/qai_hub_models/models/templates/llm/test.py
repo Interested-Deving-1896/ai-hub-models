@@ -1131,7 +1131,12 @@ def collect_llm_perf_job(
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
         tps, prefill_tps, ttft, eval_results, outcome, reason = (
             collect_genie_bundle_result(
-                api_token, hub_device_name, job_id, eval_prompts=eval_prompts
+                api_token,
+                hub_device_name,
+                job_id,
+                eval_prompts=eval_prompts,
+                save_logs_dir=os.path.join(output_dir, "qdc_logs"),
+                log_label=f"{key}_{job_id}",
             )
         )
         return (tps, prefill_tps, ttft, eval_results), outcome, reason

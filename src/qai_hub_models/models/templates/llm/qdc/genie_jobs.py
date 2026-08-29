@@ -852,6 +852,8 @@ def collect_genie_bundle_result(
     device: str,
     job_id: str,
     eval_prompts: list[str] | None | object = None,
+    save_logs_dir: str | None = None,
+    log_label: str | None = None,
 ) -> tuple[
     float | None,
     float | None,
@@ -865,7 +867,9 @@ def collect_genie_bundle_result(
     Returns ``(tps, prefill_tps, ttft, eval_results, outcome, reason)``.
     On non-SUCCESS outcomes, the metric fields are None and ``reason`` is
     a human-readable failure description. eval_prompts is only consulted
-    on success to attach prompt text to the parsed outputs.
+    on success to attach prompt text to the parsed outputs. ``save_logs_dir``,
+    when set, is where every job's logs are archived for diagnosis (success and
+    failure alike), named by ``log_label``.
     """
     prompts_to_use = _resolve_eval_prompts(eval_prompts)
     genie_job = GenieQDCJobs(
@@ -893,6 +897,7 @@ def collect_genie_bundle_result(
             else JobOutcome.RETRYABLE_UNSUCCESSFUL
         )
         logger.error("[result=%s] %s", job_result, reason)
+        genie_job.save_job_logs(job_id, save_logs_dir, label=log_label)
         return None, None, None, [], outcome, reason
 
     genie_job.log_upload_status(job_id)
@@ -907,6 +912,10 @@ def collect_genie_bundle_result(
         )
         logger.error("[empty logs] %s", reason)
         return None, None, None, [], JobOutcome.RETRYABLE_EMPTY_LOGS, reason
+
+    # Archive before parsing so a green job's logs are kept too -- they are the
+    # baseline a later failure gets read against.
+    genie_job.save_job_logs(job_id, save_logs_dir, job_log_files, label=log_label)
 
     tps, prefill_tps, ttft = genie_job.compute_metrics(job_log_files)
 
@@ -927,6 +936,7 @@ def submit_genie_bundle_to_qdc_device(
     eval_prompts: list[str] | None | object = None,
     num_trials: int = 25,
     model_id: str | None = None,
+    save_logs_dir: str | None = None,
 ) -> tuple[float | None, float | None, float | None, list[dict]]:
     """
     Submit a Genie bundle to QDC for execution on the specified device.
@@ -960,7 +970,9 @@ def submit_genie_bundle_to_qdc_device(
 
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
         tps, prefill_tps, ttft, eval_results, outcome, reason = (
-            collect_genie_bundle_result(api_token, device, job_id, eval_prompts)
+            collect_genie_bundle_result(
+                api_token, device, job_id, eval_prompts, save_logs_dir
+            )
         )
         return (tps, prefill_tps, ttft, eval_results), outcome, reason
 

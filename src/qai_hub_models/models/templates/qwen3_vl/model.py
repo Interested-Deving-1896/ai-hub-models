@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import functools
 import gc
 import itertools
 import json
@@ -1962,6 +1963,67 @@ class Qwen3VLSplitForwardMixin(SplitForwardMixin):
 # ---------------------------------------------------------------------------
 
 
+@functools.lru_cache(maxsize=4)
+def _cached_processor(hf_repo_name: str) -> Any:
+    """Load an HF processor once per repo; bundle writing needs it several times."""
+    return AutoProcessor.from_pretrained(hf_repo_name)
+
+
+def _embed_chat_template(
+    bundle_dir: Path, checkpoint_path: Path, hf_repo_name: str
+) -> None:
+    """Embed the chat template into the bundle's tokenizer_config.json.
+
+    Qwen3-VL ships its template on the processor (chat_template.json), so the
+    quantized checkpoint's tokenizer_config.json carries none and copying that
+    file leaves the bundle with no template at all. Genie's minja engine and
+    the host-side eval-prompt builders both read chat_template from
+    tokenizer_config.json, so it has to land there rather than as a sidecar.
+    """
+    tok_cfg_path = bundle_dir / "tokenizer_config.json"
+    # No tokenizer_config.json means the template has nowhere to live, which is the
+    # template-less bundle this guards against -- fail rather than return quietly.
+    if not tok_cfg_path.exists():
+        raise ValueError(
+            f"tokenizer_config.json is missing from the bundle for {hf_repo_name}; "
+            "cannot embed a chat template."
+        )
+    with open(tok_cfg_path, encoding="utf-8") as f:
+        tok_cfg = json.load(f)
+    if tok_cfg.get("chat_template"):
+        return
+
+    template: str | None = None
+    for name in ("chat_template.json", "chat_template.jinja"):
+        src = checkpoint_path / name
+        if not src.exists():
+            continue
+        raw = src.read_text(encoding="utf-8")
+        if name.endswith(".json"):
+            # A malformed sidecar must fall through to the next source, not raise.
+            parsed = json.loads(raw)
+            template = parsed.get("chat_template") if isinstance(parsed, dict) else None
+        else:
+            template = raw
+        if template:
+            break
+
+    if not template:
+        template = getattr(_cached_processor(hf_repo_name), "chat_template", None)
+
+    # Shipping a template-less bundle is a hard load failure under minja and
+    # silently collapses eval to empty responses, so fail the export instead.
+    if not template:
+        raise ValueError(
+            f"No chat template found for {hf_repo_name} (checked the checkpoint "
+            "and the processor); the Genie bundle could not render a chat turn."
+        )
+
+    tok_cfg["chat_template"] = template
+    with open(tok_cfg_path, "w", encoding="utf-8") as f:
+        json.dump(tok_cfg, f, indent=2, ensure_ascii=False)
+
+
 class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
     """Collection base for Qwen3-VL deployment.
 
@@ -2070,6 +2132,7 @@ class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
             if src.exists():
                 shutil.copy(src, output_dir / name)
                 metadata.supplementary_files[name] = f"Model {name} from checkpoint."
+        _embed_chat_template(output_dir, checkpoint_path, self._hf_repo_name)
 
         # --- Sample prompt (text-only; vision prompt is assembled at runtime) ---
         tokenizer = get_tokenizer(self._hf_repo_name)
@@ -2115,9 +2178,7 @@ class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
                 break
 
         if image_processor is None:
-            image_processor = AutoProcessor.from_pretrained(
-                self._hf_repo_name
-            ).image_processor
+            image_processor = _cached_processor(self._hf_repo_name).image_processor
 
         assert image_processor.patch_size == self.vision_patch_size, (
             f"HF image_processor.patch_size ({image_processor.patch_size}) "
@@ -2377,7 +2438,7 @@ class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
         img_resized = img.resize((self.default_image_width, self.default_image_height))
 
         # Patchify + normalize via HF processor
-        proc = AutoProcessor.from_pretrained(self._hf_repo_name)
+        proc = _cached_processor(self._hf_repo_name)
         tokenizer = get_tokenizer(self._hf_repo_name)
         dummy_text = Qwen3VLTextBase.get_input_prompt_with_tags(
             user_input_prompt="",

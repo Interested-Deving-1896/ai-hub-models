@@ -4,11 +4,14 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import pathlib
 import random
 import shutil
 import sys
+import tempfile
 import time
 import uuid
 import zipfile
@@ -66,6 +69,10 @@ QDC_REST_TIMEOUT = 120
 QDC_JOB_LIMIT = 3
 # Default timeout for job status polling (in seconds)
 DEFAULT_JOB_TIMEOUT = 21600  # 6 hours
+
+# Log-upload poll budget when salvaging logs from an already-failed job. Short on
+# purpose: the job is lost either way, so waiting out DEFAULT_JOB_TIMEOUT is wasted.
+FAILED_JOB_LOG_TIMEOUT = 300  # 5 minutes
 # Polling interval for job status checks (in seconds)
 POLL_INTERVAL = 30
 # Backoff schedule for retrying a *failed* QDC call (distinct from the steady
@@ -715,6 +722,87 @@ class QDCJobs:
             )
             return False
 
+    def save_job_logs(
+        self,
+        job_id: str,
+        save_logs_dir: str | None,
+        job_log_files: list | None = None,
+        label: str | None = None,
+    ) -> int:
+        """Best-effort: archive one QDC job's logs into a single zip; return the count.
+
+        Kept for successful and failed jobs alike. A green job's logs are the
+        baseline a red one is read against, and the collectors used to return on a
+        non-Successful result before reaching the download path -- so the one case
+        that needs logs kept none, leaving the device-side reason (a rejected genie
+        config key, an exhausted context window) reachable only by re-pulling the
+        job by hand with a pool token.
+
+        Everything for a job lands in one ``<label or job_id>.zip`` holding the log
+        files themselves, rather than a directory of individually-zipped files that
+        each need unwrapping. Never raises: a log-fetch problem must not replace a
+        real failure reason. When ``job_log_files`` is not supplied the listing is
+        fetched here, polling log upload only briefly so a failed job cannot stall
+        the collector for hours.
+
+        Parameters
+        ----------
+        job_id
+            ID of the job whose logs to archive.
+        save_logs_dir
+            Directory to write the zip into. No-op when None.
+        job_log_files
+            Already-fetched listing to reuse; fetched here when None.
+        label
+            Base name for the zip. Defaults to the job id.
+
+        Returns
+        -------
+        int
+            Number of log files successfully archived.
+        """
+        if not save_logs_dir:
+            return 0
+        saved = 0
+        try:
+            os.makedirs(save_logs_dir, exist_ok=True)
+            if job_log_files is None:
+                with contextlib.suppress(TimeoutError):
+                    self.log_upload_status(job_id, timeout=FAILED_JOB_LOG_TIMEOUT)
+                job_log_files = self.get_job_log_files(job_id)
+            if not job_log_files:
+                return 0
+            with tempfile.TemporaryDirectory() as tmpdir:
+                staged = os.path.join(tmpdir, "logs")
+                for job_log in job_log_files:
+                    target = os.path.join(tmpdir, f"{uuid.uuid4().hex}.zip")
+                    if not self.try_download_job_log_files(job_log.filename, target):
+                        continue
+                    dest = os.path.join(staged, job_log.filename)
+                    os.makedirs(os.path.dirname(dest), exist_ok=True)
+                    # QDC serves each log as a zip; unwrap it so the archive holds
+                    # readable files. A non-zip payload is kept as-is.
+                    try:
+                        _safe_extract_zip(target, os.path.dirname(dest))
+                    except (zipfile.BadZipFile, ValueError):
+                        shutil.move(target, dest)
+                    saved += 1
+                if saved:
+                    create_zip(
+                        os.path.join(save_logs_dir, f"{label or job_id}.zip"), staged
+                    )
+        except Exception as err:
+            # Type only, never the message (see _matched_retryable_status_code).
+            print(
+                f"[QDC] could not save logs for job {job_id} "
+                f"({type(err).__name__}); any failure reason still stands.",
+                file=sys.stderr,
+            )
+            return 0
+        if saved:
+            print(f"[QDC] archived {saved} log file(s) for job {job_id}")
+        return saved
+
     def upload_file(self, file_path: str, artifact_type: ArtifactType) -> str:
         """Upload a file to QDC.
 
@@ -741,6 +829,17 @@ class QDCJobs:
             lambda: qdc_api.upload_file(self.client, file_path, artifact_type),
             f"upload_file({file_path})",
         )
+
+
+def _safe_extract_zip(zip_path: str, dest_dir: str) -> None:
+    """Extract a device log archive, rejecting zip-slip members."""
+    safe_root = pathlib.Path(dest_dir).resolve()
+    with zipfile.ZipFile(zip_path) as zf:
+        for member in zf.namelist():
+            dest = (safe_root / member).resolve()
+            if not str(dest).startswith(str(safe_root) + os.sep):
+                raise ValueError(f"Zip slip detected in log archive: {member}")
+        zf.extractall(safe_root)
 
 
 def create_zip(zip_path: str, source_dir: str | os.PathLike) -> None:

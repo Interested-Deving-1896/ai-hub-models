@@ -1812,8 +1812,10 @@ class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
         else:
             _tok_src = self.hf_repo_name
         tokenizer = AutoTokenizer.from_pretrained(_tok_src)
+        # Thinking off, as for eval prompts: an unbounded trace can exhaust the context
+        # window mid-sweep. Non-thinking templates ignore the unused kwarg.
         sample_prompt = self.fp_presplit_cls.get_input_prompt_with_tags(
-            tokenizer=tokenizer
+            tokenizer=tokenizer, enable_thinking=False
         )
         # Save tokenizer and config from HuggingFace (skip if already present)
         if not (output_path / "tokenizer.json").exists():

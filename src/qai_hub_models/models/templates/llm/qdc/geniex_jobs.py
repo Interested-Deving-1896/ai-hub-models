@@ -7,7 +7,6 @@ from __future__ import annotations
 import importlib
 import json
 import os
-import pathlib
 import re
 import shutil
 import tempfile
@@ -27,6 +26,7 @@ from qai_hub_models.models.templates.llm.model import LLMBase
 from qai_hub_models.models.templates.llm.qdc.qdc_jobs import (
     QDCDevice,
     QDCJobs,
+    _safe_extract_zip,
     create_zip,
 )
 from qai_hub_models.scorecard import ScorecardProfilePath
@@ -40,17 +40,6 @@ DEFAULT_LLM_SYSTEM_PROMPT = LLMBase.default_system_prompt
 # (<stem>-<vX.Y.Z>.<ext>); the unversioned mirror is refreshed on every
 # stable tag and is used when no version is pinned.
 _S3_BASE = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex"
-
-
-def _safe_extract_zip(zip_path: str, dest_dir: str) -> None:
-    """Extract a device log archive, rejecting zip-slip members (mirrors genie_jobs)."""
-    safe_root = pathlib.Path(dest_dir).resolve()
-    with zipfile.ZipFile(zip_path) as zf:
-        for member in zf.namelist():
-            dest = (safe_root / member).resolve()
-            if not str(dest).startswith(str(safe_root) + os.sep):
-                raise ValueError(f"Zip slip detected in log archive: {member}")
-        zf.extractall(safe_root)
 
 
 def _bench_url(platform_stem: str, ext: str, version: str | None) -> str:
@@ -908,6 +897,7 @@ def collect_geniex_bench_result(
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
     save_logs_dir: str | None = None,
+    log_label: str | None = None,
 ) -> tuple[list[GenieXBenchMetrics], list[dict], JobOutcome, str | None]:
     """Poll a submitted geniex-bench job and download+parse logs on success.
 
@@ -916,6 +906,7 @@ def collect_geniex_bench_result(
     carries the failure description on a non-SUCCESS outcome. eval_prompts
     is only consulted on success to attach the human-readable prompt text
     to each parsed output (run_perf=False yields eval-only results).
+    ``log_label`` names the per-job log archive written under ``save_logs_dir``.
     """
     geniex_job = GenieXBenchQDCJobs(
         api_key=api_token,
@@ -937,6 +928,7 @@ def collect_geniex_bench_result(
             else JobOutcome.RETRYABLE_UNSUCCESSFUL
         )
         print(f"[result={job_result}] {reason}")
+        geniex_job.save_job_logs(job_id, save_logs_dir, label=log_label)
         return [], [], outcome, reason
 
     geniex_job.log_upload_status(job_id)
@@ -952,21 +944,20 @@ def collect_geniex_bench_result(
         print(f"[empty logs] {reason}")
         return [], [], JobOutcome.RETRYABLE_EMPTY_LOGS, reason
 
+    # Archive the logs before parsing, so they survive whatever verdict follows:
+    # a 'Successful' job can still be failed below (e.g. no eval output), and its
+    # logs are what explains why.
+    geniex_job.save_job_logs(job_id, save_logs_dir, job_log_files, label=log_label)
+
     metrics = (
-        geniex_job.compute_metrics(
-            job_log_files,
-            save_results_dir=save_results_dir,
-            save_logs_dir=save_logs_dir,
-        )
+        geniex_job.compute_metrics(job_log_files, save_results_dir=save_results_dir)
         if run_perf
         else []
     )
     # eval_prompts holds the raw questions so compute_eval_results labels each
     # output with the human-readable prompt (not the templated form).
     eval_results = (
-        geniex_job.compute_eval_results(
-            job_log_files, eval_prompts, save_logs_dir=save_logs_dir
-        )
+        geniex_job.compute_eval_results(job_log_files, eval_prompts)
         if eval_prompts
         else []
     )

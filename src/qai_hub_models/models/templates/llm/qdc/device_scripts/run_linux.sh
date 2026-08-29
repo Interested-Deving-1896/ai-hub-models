@@ -81,7 +81,11 @@ if [ -d "$PROMPT_DIR" ]; then
     for prompt_file in "$PROMPT_DIR"/prompt_*.txt; do
         idx=$(basename "$prompt_file" | sed 's/prompt_\([0-9]*\)\.txt/\1/')
         echo "===EVAL_IDX_${idx}===" | tee -a "$EVAL_OUTPUT_FILE"
-        genie_retry genie-t2t-run -c genie_config.json --prompt_file "$prompt_file" 2>&1 | tee -a "$EVAL_OUTPUT_FILE"
+        # One prompt exhausting the context must not discard every other response;
+        # the grader scores a missing response as empty.
+        genie_retry genie-t2t-run -c genie_config.json --prompt_file "$prompt_file" 2>&1 | tee -a "$EVAL_OUTPUT_FILE" || {
+            echo "[EVAL_FAILED] prompt ${idx}" | tee -a "$EVAL_OUTPUT_FILE"
+        }
         # Short inter-prompt cooldown to keep the HTP from thermal-throttling.
         sleep 3
     done

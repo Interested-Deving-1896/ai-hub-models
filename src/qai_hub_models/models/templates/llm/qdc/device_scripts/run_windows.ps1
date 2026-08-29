@@ -105,7 +105,14 @@ if (Test-Path $PromptDir) {
     foreach ($promptFile in $promptFiles) {
         $idx = [regex]::Match($promptFile.Name, 'prompt_(\d+)\.txt').Groups[1].Value
         "===EVAL_IDX_${idx}===" | Out-File -FilePath $EvalOutputFile -Append -Encoding utf8
-        Invoke-GenieRetry -GenieArgs @("-c", "genie_config.json", "--prompt_file", $promptFile.FullName) -OutFile $EvalOutputFile
+        # One prompt exhausting the context must not discard every other response;
+        # the grader scores a missing response as empty.
+        try {
+            Invoke-GenieRetry -GenieArgs @("-c", "genie_config.json", "--prompt_file", $promptFile.FullName) -OutFile $EvalOutputFile
+        } catch {
+            "[EVAL_FAILED] $($_.Exception.Message)" | Out-File -FilePath $EvalOutputFile -Append -Encoding utf8
+            Write-Host "Invoke-GenieRetry: eval prompt $idx failed; continuing with the rest."
+        }
         # Short inter-prompt cooldown to keep the HTP from thermal-throttling.
         Start-Sleep -Seconds 3
     }

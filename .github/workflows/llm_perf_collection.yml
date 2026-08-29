@@ -228,6 +228,16 @@ jobs:
         path: ${{ env.JOBS_FILE }}
         if-no-files-found: ignore
 
+    # One archive per QDC job, kept for successful and failed jobs alike -- a
+    # failed job's device-side reason is otherwise unrecoverable without a pool token.
+    - name: Upload QDC device logs
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: qdc-logs-genie-${{ matrix.pool }}
+        path: ${{ github.workspace }}/**/qdc_logs/**/*.zip
+        if-no-files-found: ignore
+
     - name: Upload perf.yaml updates
       id: upload-perf-updates
       if: ${{ !cancelled() }}
