@@ -347,9 +347,20 @@ jobs:
           Bash(grep:*),
           Bash(mkdir:*)
         prompt: |
-          The QAI Hub Models nightly tests have failed. Analyze the failures and post findings.
+          The QAI Hub Models nightly tests have failed. Analyze the failures and
+          emit your analysis for downstream posting.
 
           Read .claude/skills/nightly-analyze/SKILL.md and follow its process exactly.
+
+          IMPORTANT — Step 5 changed: you do NOT call `gh issue comment` yourself.
+          Your `GITHUB_TOKEN` is repo-scoped and cannot write to
+          qcom-ai-hub/tetracode (retrying will 404 and burn turns). Instead:
+            1. Write the full comment markdown to `/tmp/breeze_comment.md` (flat,
+               NOT `/tmp/claude/...`).
+            2. Emit it via
+               `python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment.md`
+          A downstream `post_breeze_comment` job recovers the file from this
+          job's log and posts to every URL in ISSUE_URLS.
 
           Context variables for the skill:
           - RUN_ID: ${{ github.run_id }}
@@ -384,10 +395,56 @@ jobs:
         additional_permissions: "actions: read"
         sub_category: "nightly-analysis"
 
+    post_breeze_comment:
+        if: ${{ needs.breeze-nightly-analysis.result == 'success' && needs.notify_failure.result == 'success' && github.event_name == 'schedule' }}
+        name: Post Breeze Comment to Tetracode
+        needs: [notify_failure, breeze-nightly-analysis]
+        runs-on: [tetra-ubuntu-2204, self-hosted]
+        permissions:
+            contents: read
+            actions: read
+        steps:
+        - uses: actions/checkout@v7
+
+        - uses: actions/setup-python@v7
+          with:
+              python-version: '3.10'
+
+        - name: Recover Breeze comment from agent job log
+          env:
+              GH_TOKEN: ${{ github.token }}
+          run: |
+              mkdir -p /tmp/breeze
+              AGENT_JOB_ID=$(gh api \
+                  "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" \
+                  --jq '.jobs[] | select(.name | contains("nightly-analyst")) | .id' \
+                  | head -n1)
+              echo "Agent job id: $AGENT_JOB_ID"
+              gh api --allow-escape-sequences \
+                  "repos/${{ github.repository }}/actions/jobs/$AGENT_JOB_ID/logs" \
+                  > /tmp/breeze/agent.log
+              python3 scripts/breeze_nightly/extract_comment_from_log.py \
+                  /tmp/breeze/agent.log /tmp/breeze/comment.md
+
+        - name: Post comment to each tetracode issue
+          env:
+              GH_TOKEN: ${{ secrets.STAGING_GH_TOKEN }}
+              ISSUE_URLS: ${{ needs.notify_failure.outputs.issue_urls }}
+          run: |
+              if [ -z "$ISSUE_URLS" ]; then
+                  echo "::warning::No issue URLs; skipping."
+                  exit 0
+              fi
+              printf '%b\n' "$ISSUE_URLS" | while IFS= read -r URL; do
+                  [ -z "$URL" ] && continue
+                  echo "Posting Breeze comment to $URL"
+                  gh issue comment "$URL" --body-file /tmp/breeze/comment.md
+              done
+
     notify_slack:
         if: ${{ always() && needs.notify_failure.result == 'success' && github.event_name == 'schedule' }}
         name: Notify Slack
-        needs: [notify_failure, breeze-nightly-analysis]
+        needs: [notify_failure, breeze-nightly-analysis, post_breeze_comment]
         runs-on: [tetra-ubuntu-2204, self-hosted]
         steps:
         - name: Send Slack Notification

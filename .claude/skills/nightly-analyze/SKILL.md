@@ -205,27 +205,31 @@ Use `.claude/triage/` files for routing. Key decision process:
 
 **NEVER assign to a specific person — the czar rotates weekly.**
 
-## Step 5: Post Comment on GitHub Issue (~3 tool calls)
+## Step 5: Emit Comment for Downstream Posting (~2 tool calls)
 
-1. Find today's nightly failure issue(s):
+You do NOT post the comment directly. The Breeze runner's `GITHUB_TOKEN` is
+repo-scoped to `ai-hub-models-internal` and cannot write to
+`qcom-ai-hub/tetracode` — `gh issue comment` will 404 and burn turns. Instead,
+a separate `post_breeze_comment` job (with `STAGING_GH_TOKEN`) recovers your
+comment from this job's log and posts it to every URL in `ISSUE_URLS`.
 
-   **Preferred:** Use the `ISSUE_URLS` context variable (passed from the workflow). It contains the
-   exact issue URL(s) created by the notify_failure job for THIS run. Extract the issue number from
-   the URL (e.g., `https://github.com/qcom-ai-hub/tetracode/issues/19062` → `19062`) and post there.
+Your only post step from here is a two-command emit:
 
-   **Fallback (only if ISSUE_URLS is empty or unavailable):**
+1. Write the full comment markdown (format below) to a flat `/tmp/` file:
    ```
-   gh issue list --repo qcom-ai-hub/tetracode \
-     --search "[QAIHM Nightly]" \
-     --label "p3" --label "ai-hub-models" \
-     --state open --limit 5 --json number,title,createdAt
+   Write /tmp/breeze_comment.md
    ```
-   There may be two issues: "[QAIHM Nightly] Test Failures" and "[QAIHM Nightly] Workbench Job Failures".
-   Post your analysis on the most relevant issue (test issue for test failures, workbench issue for job failures).
-   If both exist and your analysis covers both, post on the test failures issue.
-   If not found, retry once after 30 seconds.
+   NOT `/tmp/claude/...` — subdirectory writes under `/tmp/` are blocked by the
+   sandbox. Flat filename only.
 
-2. Post the comment using the format below. Keep it under 65,000 characters.
+2. Emit the file base64-encoded between recovery markers (ONE Bash call):
+   ```
+   python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment.md
+   ```
+
+That's the entire post-step from your side. Do NOT call `gh issue comment` or
+`gh api /repos/qcom-ai-hub/tetracode/...` — you don't have the credentials, and
+retries will exhaust the turn cap. Keep the comment under 65,000 characters.
 
 ## Output Format
 
