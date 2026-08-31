@@ -64,9 +64,10 @@
         Rendered YAML metadata for a Hugging Face model card. When set, it is
         emitted first inside ``---`` fences. Only ``upload-to-hf`` passes this;
         ``generate-files`` leaves the on-disk README without front matter.
-    hf_repo_id : str, optional
-        Hugging Face repo id the card is being published to. When set, a "Use
-        this recipe" section shows how to register and run it.
+    hf_register_cmd : str, optional
+        Rendered ``qai-hub-models register`` command for a published recipe.
+        When set, it is added to the setup step so the recipe is fetched before
+        anything tries to use it.
 #}
 {% macro render(
     model_name,
@@ -106,7 +107,7 @@
     genie_url="",
     is_external=False,
     hf_front_matter=None,
-    hf_repo_id=None
+    hf_register_cmd=None
 ) %}
 {% if hf_front_matter %}---
 {{ hf_front_matter }}---
@@ -127,18 +128,6 @@
 {% if not is_external %}
 {{ download_assets(model_name, model_assets_shareable, default_runtime, default_precision) }}
 {% endif %}
-{% if hf_repo_id %}
-
-## Use this recipe
-
-Register it under a short name, then run it locally or compile it for a device:
-
-```bash
-qai-hub-models register {{ hf_repo_id }}
-qai-hub-models demo {{ model_id }}
-qai-hub-models export {{ model_id }}
-```
-{% endif %}
 {% if additional_readme_section %}
 
 {{ additional_readme_section }}
@@ -155,7 +144,7 @@ This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from t
 {% endif %}
 {% if include_example_and_usage %}
 
-{{ example_and_usage(model_id, model_package, supported_precisions, has_on_target_demo, has_machine_gated_entries, python_version_gte, python_version_lt, readme_install_system_deps, readme_export_device=readme_export_device, local_device_deployment=local_device_deployment, default_runtime=default_runtime, default_precision=default_precision, separate_quantize_script=separate_quantize_script, is_external=is_external) }}
+{{ example_and_usage(model_id, model_package, supported_precisions, has_on_target_demo, has_machine_gated_entries, python_version_gte, python_version_lt, readme_install_system_deps, readme_export_device=readme_export_device, local_device_deployment=local_device_deployment, default_runtime=default_runtime, default_precision=default_precision, separate_quantize_script=separate_quantize_script, is_external=is_external, hf_register_cmd=hf_register_cmd) }}
 {% endif %}
 
 {{ license(model_name, license_url) }}

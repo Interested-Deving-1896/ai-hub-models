@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from qai_hub_models.cli.generate_files import write_readme
+from qai_hub_models.cli.generate_files import _hf_register_cmd, write_readme
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 
 _MINIMAL_MANIFEST = """\
@@ -206,3 +206,77 @@ class TestInternalReadme:
         assert "qai-hub-models install my_model" in readme
         assert 'pip install "qai-hub-models[my-model]"' not in readme
         assert 'pip install "qai-hub-models[my_model]"' not in readme
+
+
+class TestPublishedCardRegisterStep:
+    """A published card must fetch the recipe before anything uses it."""
+
+    def test_no_register_line_without_a_repo_id(self, tmp_path: Path) -> None:
+        """`generate-files` writes the on-disk README, which nobody registers."""
+        recipe = tmp_path / "my_model"
+        manifest = _write_recipe(recipe)
+        readme = write_readme(recipe, manifest).read_text()
+        assert "qai-hub-models register" not in readme
+
+    def test_register_sits_in_the_setup_step(self, tmp_path: Path) -> None:
+        """Order matters: install the package, fetch the recipe, then use it."""
+        recipe = tmp_path / "my_model"
+        manifest = _write_recipe(recipe)
+        readme = write_readme(
+            recipe, manifest, hf_repo_id="someone/my_model"
+        ).read_text()
+
+        pip = readme.index("pip install qai-hub-models")
+        register = readme.index("qai-hub-models register someone/my_model")
+        install = readme.index("qai-hub-models install my_model")
+        demo = readme.index("qai-hub-models demo my_model")
+        export = readme.index("qai-hub-models export my_model")
+        assert pip < register < install < demo < export
+
+        # One register line, in the setup step -- not a second copy up top.
+        assert readme.count("qai-hub-models register") == 1
+        assert register < readme.index("Configure Qualcomm")
+
+    def test_a_repo_id_does_not_disturb_the_plain_install_block(
+        self, tmp_path: Path
+    ) -> None:
+        """The published card adds lines; it must not reflow the shared ones.
+
+        The register step is conditional inside `package_instructions`, and a
+        careless `{% if %}` there changed the blank lines around the code fence
+        for all 219 in-tree cards. This pins the unpublished rendering.
+        """
+        recipe = tmp_path / "my_model"
+        manifest = _write_recipe(recipe)
+        plain = write_readme(recipe, manifest).read_text()
+
+        assert (
+            "pip install qai-hub-models\n"
+            "qai-hub-models install my_model\n"
+            "```\n"
+            "\n"
+            "### 2. Configure" in plain
+        )
+
+    def test_alias_is_omitted_when_the_repo_name_already_matches(self) -> None:
+        assert (
+            _hf_register_cmd("someone/my_model", "my_model")
+            == "qai-hub-models register someone/my_model"
+        )
+
+    def test_alias_is_added_when_the_repo_name_differs(self) -> None:
+        """Every later command says `my_model`, so the alias has to be that."""
+        assert (
+            _hf_register_cmd("someone/my-model-v2", "my_model")
+            == "qai-hub-models register someone/my-model-v2 --alias my_model"
+        )
+
+    def test_alias_is_added_when_no_alias_can_be_derived(self) -> None:
+        """`default_alias` raises rather than mangling; --alias is then required."""
+        assert (
+            _hf_register_cmd("someone/Weird.Name!", "my_model")
+            == "qai-hub-models register someone/Weird.Name! --alias my_model"
+        )
+
+    def test_no_repo_id_means_no_command(self) -> None:
+        assert _hf_register_cmd(None, "my_model") is None

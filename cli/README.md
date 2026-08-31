@@ -67,6 +67,46 @@ the full flag list of any command.
 
 These commands require the full `qai_hub_models` package (`pip install qai_hub_models`).
 
+### Recipe aliases
+
+`register` gives a recipe folder a short name usable anywhere a `<target>` is
+accepted, so you don't retype paths. It also accepts a Hugging Face repo id,
+which it downloads first — community recipes live in their authors' own
+namespaces and are listed by tag:
+
+| Browse | URL |
+| --- | --- |
+| Everything published | <https://huggingface.co/models?other=qai-hub-models> |
+| Most downloaded | <https://huggingface.co/models?other=qai-hub-models&sort=downloads> |
+| Most liked | <https://huggingface.co/models?other=qai-hub-models&sort=likes> |
+| Newest | <https://huggingface.co/models?other=qai-hub-models&sort=created> |
+| Recently updated | <https://huggingface.co/models?other=qai-hub-models&sort=modified> |
+
+The sidebar's task, library, and license facets narrow that list further, and
+`&pipeline_tag=image-classification` (or `&search=yolo`) composes with the tag —
+so `?other=qai-hub-models&pipeline_tag=object-detection&sort=downloads` is "the
+most-downloaded community detectors".
+
+| Command           | Purpose                                                     | Example                                                           |
+| ----------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| `register`        | Name a local recipe folder, or download one from Hugging Face | `qai-hub-models register ashwmurt/yolov8_pose` |
+| `unregister`      | Drop an alias                                               | `qai-hub-models unregister my_yolo`                               |
+| `list-registered` | Show every alias and where it points                        | `qai-hub-models list-registered`                                  |
+
+A target that exists on disk is always treated as a folder. Otherwise a single
+`<owner>/<name>` is treated as a Hugging Face repo id — ids only, not URLs — and
+downloaded to `~/.qaihm/cli/recipes/<alias>/`. The repo is checked for a
+`manifest.yaml` before anything is downloaded, so a wrong id fails immediately
+rather than after a full fetch. The repo-id form needs the full
+`qai_hub_models` package; the local-folder form does not.
+
+`--version <tag|branch|commit>` pins a specific version. `upload-to-hf` tags
+each upload `v1`, `v2`, … so `--version v2` gets that exact version; without the
+flag you get the latest.
+
+Aliases work as `export` / `evaluate` targets. `install` and `generate-files`
+need a path or a built-in model id.
+
 ### Catalog
 
 | Command    | Purpose                                                   | Example                                              |

@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from qai_hub_models_cli.registry import default_alias
 
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
@@ -73,6 +74,41 @@ def _write_external_repos_init(folder: Path, manifest: QAIHMModelManifest) -> Pa
     return init_path
 
 
+def _hf_register_cmd(hf_repo_id: str | None, model_id: str | None) -> str | None:
+    """Render the ``register`` line for a published recipe, or None if not one.
+
+    Every later command on the card addresses the recipe as *model_id*, so the
+    registered alias has to be exactly that. ``register`` derives the alias from
+    the repo name, which need not match: the repo is named after the recipe
+    *folder* (or whatever ``--repo-id`` said), while *model_id* comes from the
+    manifest. ``--alias`` is added only when the derived name would differ, so
+    the common case stays uncluttered.
+
+    Parameters
+    ----------
+    hf_repo_id
+        Hugging Face repo id, or None when not rendering a published card.
+    model_id
+        Target the rest of the card uses, i.e. the manifest id.
+
+    Returns
+    -------
+    str | None
+        The command, or None if *hf_repo_id* is None.
+    """
+    if hf_repo_id is None:
+        return None
+    try:
+        derived: str | None = default_alias(hf_repo_id)
+    except ValueError:
+        derived = None
+    # A manifest with no id renders a card with no target to pin an alias to.
+    alias_flag = (
+        "" if derived == model_id or model_id is None else f" --alias {model_id}"
+    )
+    return f"qai-hub-models register {hf_repo_id}{alias_flag}"
+
+
 def write_readme(
     folder: Path,
     manifest: QAIHMModelManifest,
@@ -103,8 +139,8 @@ def write_readme(
         Rendered YAML metadata for a Hugging Face model card. Left None by
         ``generate-files`` so the on-disk README carries no front matter.
     hf_repo_id
-        Hugging Face repo id. When set, the card gains a section showing how to
-        register and run the published recipe.
+        Hugging Face repo id. When set, the setup step gains the ``register``
+        command that fetches the published recipe.
 
     Returns
     -------
@@ -164,7 +200,7 @@ def write_readme(
             "readme_install_system_deps": manifest.readme_install_system_deps,
             "is_external": is_external,
             "hf_front_matter": hf_front_matter,
-            "hf_repo_id": hf_repo_id,
+            "hf_register_cmd": _hf_register_cmd(hf_repo_id, manifest.id),
         }
     )
 

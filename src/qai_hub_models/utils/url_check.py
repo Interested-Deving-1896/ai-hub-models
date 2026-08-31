@@ -48,8 +48,10 @@ def _save_url_cache(cache: dict[str, float]) -> None:
 
 
 def _make_url_check_session() -> requests.Session:
-    """Create a Session that retries on 502 and connection failures."""
-    retry = Retry(total=4, backoff_factor=1, status_forcelist=[502])
+    """Create a Session that retries on 502/503/504 and connection failures."""
+    # S3 throttles a burst of HEADs with 503; without these in the forcelist a
+    # transient server error is reported as a missing asset.
+    retry = Retry(total=4, backoff_factor=1, status_forcelist=[502, 503, 504])
     adapter = requests.adapters.HTTPAdapter(max_retries=retry)
     session = requests.Session()
     session.mount("https://", adapter)

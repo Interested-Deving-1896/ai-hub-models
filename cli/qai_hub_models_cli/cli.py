@@ -97,6 +97,7 @@ from qai_hub_models_cli.proto_helpers.release_assets import (
 )
 from qai_hub_models_cli.proto_helpers.tool_versions import format_tool_versions
 from qai_hub_models_cli.registry import (
+    default_alias,
     load_registry,
     register_alias,
     resolve_alias,
@@ -571,12 +572,6 @@ def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
     if target not in MODEL_IDS:
         aliased_folder = resolve_alias(target)
         if aliased_folder is not None:
-            if script in ("install", "generate-files"):
-                sys.exit(
-                    f"`{CLI_NAME} {script}` does not support registered "
-                    "folders; pass a built-in model id or a folder path "
-                    "directly instead."
-                )
             resolved_target = aliased_folder
 
     from qai_hub_models.cli.dispatch import run_model_script
@@ -774,10 +769,16 @@ def add_upload_to_hf_parser(
 
 def _run_register(args: argparse.Namespace) -> None:
     try:
-        stored = register_alias(args.name, args.folder, force=args.force)
+        name = args.alias or default_alias(args.target)
+        stored = register_alias(
+            name,
+            args.target,
+            force=args.force,
+            revision=args.version,
+        )
     except (ValueError, FileNotFoundError) as e:
         sys.exit(str(e))
-    print(f"Registered {args.name!r} -> {stored}")
+    print(f"Registered {name!r} -> {stored}")
 
 
 def add_register_parser(
@@ -785,17 +786,40 @@ def add_register_parser(
 ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         "register",
-        help="Register a name for a local model folder.",
+        help="Register a name for a local model folder or a HuggingFace recipe.",
         description="Register a short name for a standalone model folder so it "
         "can be used with `demo` / `export` / `evaluate` in place of the full "
-        "folder path.",
+        "folder path. The target is either a local folder or a HuggingFace repo "
+        "id (e.g. ashwmurt/yolov8_pose), which is downloaded first. The name "
+        "defaults to the folder or repo name; --alias overrides it.",
     )
-    parser.add_argument("name", type=str, help="Alias to register (e.g. my_yolo).")
-    parser.add_argument("folder", type=str, help="Path to the model folder.")
+    parser.add_argument(
+        "target",
+        type=str,
+        help="Path to the model folder, or a HuggingFace repo id "
+        "(<owner>/<name>). Local folders take precedence.",
+    )
+    parser.add_argument(
+        "--alias",
+        type=str,
+        default=None,
+        help="Name to register under, if you do not want the default. The "
+        "default is the folder or repo name, lowercased with '-' and '.' "
+        "folded to '_' (ashwmurt/yolov8-pose -> yolov8_pose). Pass --alias to "
+        "shorten it, avoid a collision, or keep two revisions side by side.",
+    )
     parser.add_argument(
         "--force",
         action="store_true",
         help="Overwrite an existing registration for this name.",
+    )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default=None,
+        help="Version to download when the target is a HuggingFace repo id: a "
+        "tag (v2), branch, or commit. Uploads are tagged v1, v2, ... so --version "
+        "v2 gets that exact one. Defaults to the latest. Ignored for local folders.",
     )
     parser.set_defaults(func=_run_register)
     return parser

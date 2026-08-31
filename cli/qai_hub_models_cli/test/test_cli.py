@@ -6,6 +6,7 @@ import argparse
 import sys
 import types
 from importlib.metadata import PackageNotFoundError
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -150,6 +151,28 @@ def test_dispatch_help_flag_exits_zero_on_stdout(
     assert "export <target>" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(
+    "script", ["demo", "export", "evaluate", "install", "generate-files"]
+)
+def test_dispatch_resolves_a_registered_alias_for_every_command(script: str) -> None:
+    """A registered folder is a valid target for every recipe command.
+
+    ``install`` and ``generate-files`` used to refuse one, even though both
+    resolve an absolute folder path — which is exactly what ``resolve_alias``
+    returns. That left a registered recipe with no way to install its deps.
+    """
+    mock_run = MagicMock()
+    folder = Path("/recipes/my_recipe")
+    with (
+        patch("qai_hub_models_cli.cli._check_version_match"),
+        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch("qai_hub_models_cli.cli.resolve_alias", return_value=folder),
+        patch.dict(sys.modules, _stub_heavy_modules(set(), run_model_script=mock_run)),
+    ):
+        main([script, "my_recipe"])
+    mock_run.assert_called_once_with(model_id=folder, script=script, forwarded=[])
+
+
 def test_dispatch_builtin_id_wins_over_alias() -> None:
     """A registered alias must not shadow a built-in model id.
 
@@ -173,3 +196,51 @@ def test_dispatch_builtin_id_wins_over_alias() -> None:
     mock_run.assert_called_once_with(
         model_id="mobilenet_v2", script="export", forwarded=[]
     )
+
+
+# ── register ────────────────────────────────────────────────────────
+
+
+class TestRegisterAlias:
+    """`register <target> [--alias]` derives the name unless one is given."""
+
+    def _run(self, argv: list[str]) -> MagicMock:
+        mock_register = MagicMock(return_value="/tmp/recipe")
+        with (
+            patch("qai_hub_models_cli.cli._check_version_match"),
+            patch("qai_hub_models_cli.cli.register_alias", mock_register),
+        ):
+            main(argv)
+        return mock_register
+
+    def test_derives_the_name_from_the_target(self) -> None:
+        mock = self._run(["register", "ashwmurt/yolov8_pose"])
+        assert mock.call_args.args == ("yolov8_pose", "ashwmurt/yolov8_pose")
+
+    def test_alias_overrides_the_derived_name(self) -> None:
+        mock = self._run(["register", "ashwmurt/yolov8_pose", "--alias", "my_yolo"])
+        assert mock.call_args.args == ("my_yolo", "ashwmurt/yolov8_pose")
+
+    def test_version_is_forwarded_as_the_hf_revision(self) -> None:
+        mock = self._run(["register", "ashwmurt/yolov8_pose", "--version", "v2"])
+        assert mock.call_args.kwargs["revision"] == "v2"
+
+    def test_no_version_means_latest(self) -> None:
+        mock = self._run(["register", "ashwmurt/yolov8_pose"])
+        assert mock.call_args.kwargs["revision"] is None
+
+    def test_prints_the_name_it_registered(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._run(["register", "ashwmurt/yolov8_pose"])
+        assert "'yolov8_pose'" in capsys.readouterr().out
+
+    def test_an_underivable_name_exits_before_registering(self) -> None:
+        mock_register = MagicMock()
+        with (
+            patch("qai_hub_models_cli.cli._check_version_match"),
+            patch("qai_hub_models_cli.cli.register_alias", mock_register),
+            pytest.raises(SystemExit, match="--alias"),
+        ):
+            main(["register", "owner/mod:el!"])
+        mock_register.assert_not_called()

@@ -100,7 +100,7 @@ CATEGORIES = (
 
 REQUIRED_FILES = ("__init__.py", "model.py", "manifest.yaml")
 OPTIONAL_FILES = {
-    "demo.py": "recipe has no demo.py; consumers cannot run python -m <folder>.demo.",
+    "demo.py": "recipe has no demo.py; consumers cannot run qai-hub-models demo <folder>.",
     "test.py": "recipe has no test.py; consumers cannot run pytest <folder>/test.py.",
 }
 REQUIRED_INIT_EXPORTS = ("MODEL_ID", "Model")

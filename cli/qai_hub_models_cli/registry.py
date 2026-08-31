@@ -33,6 +33,47 @@ REGISTRY_PATH_ENVVAR = "QAIHM_CLI_REGISTRY_PATH"
 
 _NAME_RE = re.compile(r"^[a-z0-9_]+$")
 
+# An HF repo id: exactly one slash, and no leading "." / "~" / "/" that would
+# mark it as a filesystem path. URLs are deliberately not accepted.
+_HF_REPO_ID_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
+
+
+def default_alias(target: str) -> str:
+    """Derive an alias from *target* -- its folder name or HF repo name.
+
+    Aliases are stricter than HF repo names, so ``-`` and ``.`` fold to ``_``.
+    Anything left that an alias cannot hold is an error rather than a silent
+    rewrite, since the alias is what the user types from then on.
+
+    Parameters
+    ----------
+    target
+        A local folder path or a HuggingFace repo id.
+
+    Returns
+    -------
+    str
+        The derived alias.
+
+    Raises
+    ------
+    ValueError
+        If no valid alias can be derived from *target*.
+    """
+    expanded = Path(target).expanduser()
+    tail = (
+        expanded.resolve().name
+        if expanded.is_dir()
+        else target.rstrip("/").split("/")[-1]
+    )
+    alias = tail.replace("-", "_").replace(".", "_").lower()
+    if not _NAME_RE.fullmatch(alias):
+        raise ValueError(
+            f"Cannot derive a name from {target!r}. Pass one explicitly with "
+            f"--alias <name> (must match {_NAME_RE.pattern})."
+        )
+    return alias
+
 
 def _default_registry_path() -> Path:
     return Path(LOCAL_STORE_DEFAULT_PATH) / "cli" / "registry.json"
@@ -67,6 +108,9 @@ def _registry_lock(timeout: float = _LOCK_TIMEOUT_SECONDS) -> Iterator[None]:
     Without it, two concurrent registers each read the file, each add their own
     alias, and whichever writes last silently drops the other -- ``os.replace``
     makes the write atomic but does nothing about a lost update.
+
+    Downloads deliberately happen outside the lock, since holding it across a
+    multi-GB fetch would block other registers for minutes.
 
     Parameters
     ----------
@@ -120,7 +164,7 @@ def _assert_name_free(name: str, entries: dict[str, str], force: bool) -> None:
     if name in entries and not force:
         raise ValueError(
             f"{name!r} is already registered to {entries[name]}. "
-            "Use --force to overwrite."
+            "Use --force to overwrite, or --alias to pick another name."
         )
 
 
@@ -134,12 +178,59 @@ def _save_registry(entries: dict[str, str]) -> None:
     os.replace(tmp, path)
 
 
-def register_alias(name: str, folder: str, force: bool = False) -> Path:
-    """Register ``name`` -> resolved ``folder``. Returns the absolute path stored.
+def _recipe_download_dir(name: str) -> Path:
+    return Path(LOCAL_STORE_DEFAULT_PATH) / "cli" / "recipes" / name
+
+
+def _resolve_target(name: str, target: str, revision: str | None) -> Path:
+    """Resolve a ``register`` target to a local folder, downloading if needed.
+
+    Local folders win and are checked first, so the common case needs no
+    network access and no heavy package. Only the HF-repo-id branch requires
+    ``qai_hub_models``, which owns the ``huggingface_hub`` dependency.
+    """
+    expanded = Path(target).expanduser()
+    if expanded.is_dir():
+        return expanded.resolve()
+
+    # Not on disk: an `org/name` shape is an HF repo id. Checked after the
+    # directory test because `looks_like_path` would claim any string with a "/".
+    if _HF_REPO_ID_RE.fullmatch(target):
+        if not is_heavy_package_installed():
+            raise ValueError(
+                f"Registering the HuggingFace repo {target!r} requires the "
+                "qai-hub-models package. Install it with `pip install "
+                "qai-hub-models`, or pass a local folder path instead."
+            )
+        from qai_hub_models.cli.hf_pull import download_recipe_from_hf
+
+        return download_recipe_from_hf(
+            target,
+            _recipe_download_dir(name),
+            revision=revision,
+        )
+
+    raise FileNotFoundError(
+        f"{target!r} is neither a local directory nor a HuggingFace repo id "
+        "of the form <owner>/<name>."
+    )
+
+
+def register_alias(
+    name: str,
+    target: str,
+    force: bool = False,
+    revision: str | None = None,
+) -> Path:
+    """Register ``name`` -> resolved ``target``. Returns the absolute path stored.
+
+    ``target`` is either a local folder or a HuggingFace repo id. A repo id is
+    downloaded into the local store first, pinned to ``revision`` when one is
+    given.
 
     Raises ``ValueError`` if ``name`` is invalid, collides with a built-in
     model id, or is already registered without ``force``. Raises
-    ``FileNotFoundError`` if ``folder`` doesn't exist or isn't a directory,
+    ``FileNotFoundError`` if ``target`` is neither a directory nor a repo id,
     and ``TimeoutError`` if another process holds the registry lock.
     """
     if not _NAME_RE.fullmatch(name):
@@ -153,12 +244,14 @@ def register_alias(name: str, folder: str, force: bool = False) -> Path:
 
         if name in MODEL_IDS:
             raise ValueError(
-                f"{name!r} is a built-in model id; pick a different alias."
+                f"{name!r} is a built-in model id; pick a different name with "
+                "--alias <name>."
             )
 
-    resolved = Path(folder).expanduser().resolve()
-    if not resolved.is_dir():
-        raise FileNotFoundError(f"Not a directory: {resolved}")
+    # Checked before resolving too, so a collision fails in a second rather
+    # than after a multi-GB download.
+    _assert_name_free(name, load_registry(), force)
+    resolved = _resolve_target(name, target, revision)
 
     with _registry_lock():
         entries = load_registry()

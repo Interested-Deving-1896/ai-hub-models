@@ -73,15 +73,29 @@ Qualcomm AI Hub Models uses [Qualcomm AI Hub Workbench](https://workbench.aihub.
     target,
     has_machine_gated_entries=False,
     python_version_gte=None,
-    python_version_lt=None
+    python_version_lt=None,
+    hf_register_cmd=None
 ) -%}
+{% if hf_register_cmd %}
+Install the base package, fetch this recipe from Hugging Face, then use the
+`qai-hub-models` CLI to install the recipe's dependencies:
+{% else %}
 Install the base package, then use the `qai-hub-models` CLI to install this
 recipe's dependencies:
+{% endif %}
 ```bash
 # NOTE: {{ python_version_gte or '3.10' }} <= PYTHON_VERSION < {{ python_version_lt or '3.14' }} is supported.
 pip install qai-hub-models
+{% if hf_register_cmd %}
+{{ hf_register_cmd }}
+{% endif %}
 qai-hub-models install {{ target }}
 ```
+{%- if hf_register_cmd %}
+
+`register` downloads the recipe and names it `{{ target }}`, which is how every
+command below refers to it.
+{%- endif %}
 {%- if has_machine_gated_entries %}
 
 For {{ model_id }}, some additional functionality can be faster or is available
@@ -225,7 +239,8 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
     default_runtime=None,
     default_precision=None,
     separate_quantize_script=False,
-    is_external=False
+    is_external=False,
+    hf_register_cmd=None
 ) -%}
 {%- set step = namespace(num=1) -%}
 {# Header levels shift one deeper when nesting under a single "## Export" parent. #}
@@ -252,7 +267,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 {% endif %}
 {{ h_step }} {{ step.num }}. Install the package
 {% set step.num = step.num + 1 %}
-{{ package_instructions(model_id, cli_target, has_machine_gated_entries, python_version_gte, python_version_lt) }}
+{{ package_instructions(model_id, cli_target, has_machine_gated_entries, python_version_gte, python_version_lt, hf_register_cmd=hf_register_cmd) }}
 
 {{ h_step }} {{ step.num }}. Configure Qualcomm® AI Hub Workbench
 {{ configure_aihub() }}
