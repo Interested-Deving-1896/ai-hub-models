@@ -1,57 +1,57 @@
-id: tcxmem_torchscript
-hub_model_id: mmd4xvdwm
-hub_input_dataset_id: dv914zjx9
-type: TORCHSCRIPT
 bu_owner: ai_hub
-sponsors:
-- qai-hub-models-contributors
-- shobitha@qti.qualcomm.com
+channel_first_outputs:
+- output_0
+- output_1
+- output_2
 context: Moving model from bench to AI Hub Models Scorecard
-source: Sent from Lightricks
 domain: Computer Vision
-use_case: Video Classification
-tags:
-- backbone
 enabled_devices:
 - default
+hub_input_dataset_id: dv914zjx9
+hub_input_dataset_ids_automated:
+  dev: dp7lr01j7
+  prod: dv914zjx9
+hub_model_id: mmd4xvdwm
+hub_model_ids_automated:
+  dev: mn1k46dvm
+  prod: mmd4xvdwm
+id: tcxmem_torchscript
 input_specs:
-- name: frames
+- dtype: float32
+  name: frames
   shape:
   - 5
   - 3
   - 352
   - 352
-  dtype: float32
-- name: keys
+- dtype: float32
+  name: keys
   shape:
   - 1
   - 64
   - 484
-  dtype: float32
-- name: value
+- dtype: float32
+  name: value
   shape:
   - 1
   - 256
   - 484
-  dtype: float32
-- name: shrinkage
+- dtype: float32
+  name: shrinkage
   shape:
   - 1
   - 1
   - 484
-  dtype: float32
 output_names:
 - output_0
 - output_1
 - output_2
 - output_3
-channel_first_outputs:
-- output_0
-- output_1
-- output_2
-hub_model_ids_automated:
-  prod: mmd4xvdwm
-  dev: mn1k46dvm
-hub_input_dataset_ids_automated:
-  prod: dv914zjx9
-  dev: dp7lr01j7
+source: Sent from Lightricks
+sponsors:
+- qai-hub-models-contributors
+- shobitha@qti.qualcomm.com
+tags:
+- backbone
+type: TORCHSCRIPT
+use_case: Video Classification

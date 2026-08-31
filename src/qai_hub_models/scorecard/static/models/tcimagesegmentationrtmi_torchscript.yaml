@@ -1,37 +1,37 @@
-id: tcimagesegmentationrtmi_torchscript
-hub_model_id: mn1eg7lzm
-hub_input_dataset_id: dp7ld8kw2
-type: TORCHSCRIPT
 bu_owner: ai_hub
-sponsors:
-- qai-hub-models-contributors
-- shobitha@qti.qualcomm.com
+channel_first_inputs:
+- x
 context: Moving model from bench to AI Hub Models Scorecard
-source: https://github.com/qcom-ai-hub/tetracode-customers/blob/main/microsoft/image_segmentation/rtmi_3x_torch.py
 domain: Computer Vision
-use_case: Semantic Segmentation
-tags:
-- backbone
 enabled_devices:
 - default
+hub_input_channel_last_dataset_ids_automated:
+  dev: d6786kkm2
+  prod: dp7l8yv49
+hub_input_dataset_id: dp7ld8kw2
+hub_input_dataset_ids_automated:
+  dev: dp7lk41w9
+  prod: dp7ld8kw2
+hub_model_id: mn1eg7lzm
+hub_model_ids_automated:
+  dev: mnz18pgzq
+  prod: mn1eg7lzm
+id: tcimagesegmentationrtmi_torchscript
 input_specs:
-- name: x
+- dtype: float32
+  name: x
   shape:
   - 1
   - 4
   - 96
   - 176
-  dtype: float32
 output_names:
 - output_0
-channel_first_inputs:
-- x
-hub_model_ids_automated:
-  prod: mn1eg7lzm
-  dev: mnz18pgzq
-hub_input_dataset_ids_automated:
-  prod: dp7ld8kw2
-  dev: dp7lk41w9
-hub_input_channel_last_dataset_ids_automated:
-  prod: dp7l8yv49
-  dev: d6786kkm2
+source: https://github.com/qcom-ai-hub/tetracode-customers/blob/main/microsoft/image_segmentation/rtmi_3x_torch.py
+sponsors:
+- qai-hub-models-contributors
+- shobitha@qti.qualcomm.com
+tags:
+- backbone
+type: TORCHSCRIPT
+use_case: Semantic Segmentation

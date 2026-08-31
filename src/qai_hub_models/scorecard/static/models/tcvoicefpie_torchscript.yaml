@@ -1,25 +1,23 @@
-id: tcvoicefpie_torchscript
-hub_model_id: mn0lk8o9n
-hub_input_dataset_id: do7mr15m9
-type: TORCHSCRIPT
 bu_owner: ai_hub
-sponsors:
-- qai-hub-models-contributors
-- shobitha@qti.qualcomm.com
 context: Moving model from bench to AI Hub Models Scorecard
-source: customer/microsoft/voice/AlignCRUSE/run_inference.py
 domain: Audio
-use_case: Speech Recognition
-tags:
-- backbone
 enabled_devices:
 - default
+hub_input_dataset_id: do7mr15m9
+hub_input_dataset_ids_automated:
+  dev: dd9pzvgn7
+  prod: do7mr15m9
+hub_model_id: mn0lk8o9n
+hub_model_ids_automated:
+  dev: mn1w2g0zm
+  prod: mn0lk8o9n
+id: tcvoicefpie_torchscript
 input_specs:
-- name: x
+- dtype: float32
+  name: x
   shape:
   - 1
   - 482
-  dtype: float32
 output_names:
 - output_0
 - output_1
@@ -51,9 +49,11 @@ output_names:
 - output_27
 - output_28
 - output_29
-hub_model_ids_automated:
-  prod: mn0lk8o9n
-  dev: mn1w2g0zm
-hub_input_dataset_ids_automated:
-  prod: do7mr15m9
-  dev: dd9pzvgn7
+source: customer/microsoft/voice/AlignCRUSE/run_inference.py
+sponsors:
+- qai-hub-models-contributors
+- shobitha@qti.qualcomm.com
+tags:
+- backbone
+type: TORCHSCRIPT
+use_case: Speech Recognition

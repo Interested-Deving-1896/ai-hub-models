@@ -1,60 +1,60 @@
-id: hcatlightrackbackbonecomplete_torchscript
-hub_model_id: mqy68rx9m
-hub_input_dataset_id: dx9e6xe47
-type: TORCHSCRIPT
 bu_owner: ai_hub
-sponsors:
-- qai-hub-models-contributors
-- shobitha@qti.qualcomm.com
+channel_first_inputs:
+- x
+- feature_template
 context: Moving model from bench to AI Hub Models Scorecard
-source: Unknown
 domain: Computer Vision
-use_case: Object Detection
-tags:
-- backbone
 enabled_devices:
 - default
+hub_input_channel_last_dataset_ids_automated:
+  dev: dv95zkke9
+  prod: dz2rrx1l2
+hub_input_dataset_id: dx9e6xe47
+hub_input_dataset_ids_automated:
+  dev: dw26wmre7
+  prod: dx9e6xe47
+hub_model_id: mqy68rx9m
+hub_model_ids_automated:
+  dev: mn0j7e7zm
+  prod: mqy68rx9m
+id: hcatlightrackbackbonecomplete_torchscript
 input_specs:
-- name: x
+- dtype: float32
+  name: x
   shape:
   - 1
   - 3
   - 256
   - 256
-  dtype: float32
-- name: feature_template
+- dtype: float32
+  name: feature_template
   shape:
   - 1
   - 96
   - 8
   - 8
-  dtype: float32
-- name: pos_template
+- dtype: float32
+  name: pos_template
   shape:
   - 1
   - 256
   - 8
   - 8
-  dtype: float32
-- name: pos_search
+- dtype: float32
+  name: pos_search
   shape:
   - 1
   - 256
   - 16
   - 16
-  dtype: float32
 output_names:
 - output_0
 - output_1
-channel_first_inputs:
-- x
-- feature_template
-hub_model_ids_automated:
-  prod: mqy68rx9m
-  dev: mn0j7e7zm
-hub_input_dataset_ids_automated:
-  prod: dx9e6xe47
-  dev: dw26wmre7
-hub_input_channel_last_dataset_ids_automated:
-  prod: dz2rrx1l2
-  dev: dv95zkke9
+source: Unknown
+sponsors:
+- qai-hub-models-contributors
+- shobitha@qti.qualcomm.com
+tags:
+- backbone
+type: TORCHSCRIPT
+use_case: Object Detection
