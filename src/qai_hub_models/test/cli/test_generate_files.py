@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from qai_hub_models.cli.generate_files import _write_readme
+from qai_hub_models.cli.generate_files import write_readme
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 
 _MINIMAL_MANIFEST = """\
@@ -76,7 +76,7 @@ class TestExternalReadme:
     def test_writes_without_status(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme_path = _write_readme(recipe, manifest)
+        readme_path = write_readme(recipe, manifest)
         assert readme_path == recipe / "README.md"
         assert readme_path.exists()
 
@@ -84,14 +84,14 @@ class TestExternalReadme:
         """A bare name resolves as a cwd folder, so no ./ prefix is advertised."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models install my_model" in readme
         assert "./my_model/" not in readme
 
     def test_uses_bare_folder_name_for_export(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models export my_model" in readme
         assert "./my_model/" not in readme
 
@@ -99,7 +99,7 @@ class TestExternalReadme:
         """`qai-hub-models demo`, not a python -m module path."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models demo my_model" in readme
         assert "python -m" not in readme
 
@@ -107,14 +107,14 @@ class TestExternalReadme:
         """--quantize is a redundant alias for --precision; it must not be advertised."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, precisions="- float\n- w8a8\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "--quantize" not in readme
 
     def test_no_catalog_quickstart_commands(self, tmp_path: Path) -> None:
         """``qai-hub-models info/perf/numerics/fetch`` need a catalog id — external skips."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models info " not in readme
         assert "qai-hub-models perf " not in readme
         assert "qai-hub-models numerics " not in readme
@@ -124,13 +124,13 @@ class TestExternalReadme:
         """Quick Start duplicates Setup + Run CLI Demo + Export for external — drop it."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "## Quick Start" not in readme
 
     def test_no_catalog_model_page_link(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         # The title link (aihub.qualcomm.com/models/<id>) is catalog-only.
         # The generic workbench.aihub.qualcomm.com landing link is still
         # fine to reference elsewhere.
@@ -140,7 +140,7 @@ class TestExternalReadme:
         """UNSET is external's normal state; do not render the pending/unpublished banner."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe)
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "[!WARNING]" not in readme
 
     def test_missing_headline_raises(self, tmp_path: Path) -> None:
@@ -157,7 +157,7 @@ class TestExternalReadme:
         )
         manifest = QAIHMModelManifest.from_yaml(manifest_path)
         with pytest.raises(ValueError, match="headline"):
-            _write_readme(recipe, manifest)
+            write_readme(recipe, manifest)
 
 
 class TestInternalReadme:
@@ -166,7 +166,7 @@ class TestInternalReadme:
     def test_uses_bare_model_id_for_export(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models export my_model" in readme
         assert "qai-hub-models export ./my_model/" not in readme
 
@@ -174,14 +174,14 @@ class TestInternalReadme:
         """In-tree cards use the same CLI command, with the bare model id."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models demo my_model" in readme
         assert "python -m qai_hub_models.models.my_model.demo" not in readme
 
     def test_includes_catalog_quickstart(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models info " in readme
         assert "qai-hub-models perf " in readme
         assert "qai-hub-models numerics " in readme
@@ -189,20 +189,20 @@ class TestInternalReadme:
     def test_includes_catalog_model_page_link(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "aihub.qualcomm.com/models/my_model" in readme
 
     def test_pending_shows_warning_banner(self, tmp_path: Path) -> None:
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "[!WARNING]" in readme
 
     def test_install_uses_cli_not_extras(self, tmp_path: Path) -> None:
         """Setup uses ``qai-hub-models install <id>``, not ``pip install "qai-hub-models[<id>]"``."""
         recipe = tmp_path / "my_model"
         manifest = _write_recipe(recipe, status_line="status: pending\n")
-        readme = _write_readme(recipe, manifest).read_text()
+        readme = write_readme(recipe, manifest).read_text()
         assert "qai-hub-models install my_model" in readme
         assert 'pip install "qai-hub-models[my-model]"' not in readme
         assert 'pip install "qai-hub-models[my_model]"' not in readme

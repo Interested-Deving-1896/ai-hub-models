@@ -63,6 +63,7 @@ the full flag list of any command.
 | `install` | Install a recipe's dependency graph (its `requirements.txt` and pre/post pip commands, leaf-first) | `qai-hub-models install my_model` |
 | `generate-files` | Regenerate a recipe's auto-generated files (`README.md`, `external_repos/__init__.py`) | `qai-hub-models generate-files my_model` |
 | `validate` | Check a recipe for authoring errors — folder shape, manifest schema, model code, URLs | `qai-hub-models validate my_model` |
+| `upload-to-hf` | Publish a recipe — its source and a generated model card — to Hugging Face as `<your-hf-username>/<folder-name>`, public and tagged `qai-hub-models`. Each upload makes the repo an exact copy of the folder. `--private` creates it private to review first. Its target is always read as a **folder**, not a model id | `qai-hub-models upload-to-hf my_model` |
 
 These commands require the full `qai_hub_models` package (`pip install qai_hub_models`).
 

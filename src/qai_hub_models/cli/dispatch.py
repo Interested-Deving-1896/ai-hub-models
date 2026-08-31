@@ -19,6 +19,7 @@ from typing import cast
 
 from qai_hub_models.cli.generate_files import main as generate_files_main
 from qai_hub_models.cli.install import main as install_main
+from qai_hub_models.cli.upload_to_hf import main as upload_to_hf_main
 from qai_hub_models.cli.validate import main as validate_main
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.utils.args import evaluate_parser, export_parser
@@ -101,7 +102,7 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         with a folder before this is called.
     script
         Script name: ``"demo"``, ``"export"``, ``"evaluate"``, ``"install"``,
-        ``"generate-files"``, or ``"validate"``.
+        ``"generate-files"``, ``"validate"``, or ``"upload-to-hf"``.
     forwarded
         Argv tail handed to the target's parser.
     """
@@ -115,6 +116,10 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
 
     if script == "validate":
         validate_main([str(model_id), *forwarded])
+        return
+
+    if script == "upload-to-hf":
+        upload_to_hf_main([str(model_id), *forwarded])
         return
 
     source_dir = resolve_recipe_dir(model_id)
@@ -154,5 +159,5 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
 
     raise ValueError(
         "This function currently only supports demo, evaluate, export, install, "
-        "generate-files, and validate."
+        "generate-files, validate, and upload-to-hf."
     )

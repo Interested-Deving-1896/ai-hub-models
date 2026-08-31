@@ -60,6 +60,13 @@
         Whether pre-exported assets may be shared. When True, a "Download
         pre-exported assets" section is added near the top. Derived from the
         negation of ``restrict_model_sharing`` in manifest.yaml.
+    hf_front_matter : str, optional
+        Rendered YAML metadata for a Hugging Face model card. When set, it is
+        emitted first inside ``---`` fences. Only ``upload-to-hf`` passes this;
+        ``generate-files`` leaves the on-disk README without front matter.
+    hf_repo_id : str, optional
+        Hugging Face repo id the card is being published to. When set, a "Use
+        this recipe" section shows how to register and run it.
 #}
 {% macro render(
     model_name,
@@ -97,8 +104,14 @@
     geniex_url="",
     geniex_quickstart_url="",
     genie_url="",
-    is_external=False
+    is_external=False,
+    hf_front_matter=None,
+    hf_repo_id=None
 ) %}
+{% if hf_front_matter %}---
+{{ hf_front_matter }}---
+
+{% endif %}
 {% if model_status != "published" and not is_external %}
 > [!WARNING]
 > {{ unpublished_model_warning }}
@@ -113,6 +126,18 @@
 
 {% if not is_external %}
 {{ download_assets(model_name, model_assets_shareable, default_runtime, default_precision) }}
+{% endif %}
+{% if hf_repo_id %}
+
+## Use this recipe
+
+Register it under a short name, then run it locally or compile it for a device:
+
+```bash
+qai-hub-models register {{ hf_repo_id }}
+qai-hub-models demo {{ model_id }}
+qai-hub-models export {{ model_id }}
+```
 {% endif %}
 {% if additional_readme_section %}
 

@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import argparse
+import io
 import sys
 import types
 from pathlib import Path
 from unittest.mock import Mock, patch
+
+import pytest
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.cli.dispatch import (
@@ -18,6 +21,7 @@ from qai_hub_models.cli.dispatch import (
     build_export_parser_for,
     run_model_script,
 )
+from qai_hub_models.cli.upload_to_hf import build_parser as build_upload_parser
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.utils.base_model import BaseModel
 
@@ -282,6 +286,83 @@ def test_evaluate_parser_uses_export_paths() -> None:
         kwargs = mock_evaluate_parser.call_args.kwargs
         assert kwargs["supported_precision_runtimes"] is export_paths
         assert kwargs["supported_precision_runtimes"] is not testing_paths
+
+
+class TestRecipeCommandHelp:
+    """`<cmd> --help` with no target should show real flags where it can.
+
+    Lives in the heavy suite because it imports the heavy-side parsers, which
+    the lean suite's conftest deliberately blocks.
+    """
+
+    def test_every_recipe_command_gets_one_or_the_other(self) -> None:
+        """No recipe command falls through both branches."""
+        from qai_hub_models_cli.cli import _RECIPE_COMMANDS, _print_recipe_command_help
+
+        for script in _RECIPE_COMMANDS:
+            stream = io.StringIO()
+            _print_recipe_command_help(script, stream)
+            assert stream.getvalue().strip(), script
+
+    @pytest.mark.parametrize(
+        ("script", "expected_flag"),
+        [
+            ("upload-to-hf", "--private"),
+            ("install", "--dry-run"),
+            ("validate", "--no-install"),
+            ("generate-files", "target"),
+        ],
+    )
+    def test_static_commands_print_their_real_flags(
+        self, capsys: pytest.CaptureFixture[str], script: str, expected_flag: str
+    ) -> None:
+        from qai_hub_models_cli.cli import _print_recipe_command_help
+
+        _print_recipe_command_help(script)
+        out = capsys.readouterr().out
+        assert expected_flag in out
+        assert f"qai-hub-models {script}" in out
+
+    @pytest.mark.parametrize("script", ["export", "evaluate"])
+    def test_recipe_dependent_commands_explain_why_they_cannot(
+        self, capsys: pytest.CaptureFixture[str], script: str
+    ) -> None:
+        """export/evaluate flags come from the recipe, so say that rather than
+        pretending a flag list exists.
+        """
+        from qai_hub_models_cli.cli import _print_recipe_command_help
+
+        _print_recipe_command_help(script)
+        out = capsys.readouterr().out
+        assert "come from the recipe" in out
+        assert f"qai-hub-models {script} <target> --help" in out
+
+    def test_upload_to_hf_help_says_the_target_is_a_folder(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It reads the target as a folder; advertising ids would be wrong."""
+        from qai_hub_models_cli.cli import _print_recipe_command_help
+
+        _print_recipe_command_help("upload-to-hf")
+        out = capsys.readouterr().out
+        assert "not a model id" in out
+
+
+def test_dispatch_upload_to_hf_forwards_argv() -> None:
+    """upload-to-hf resolves its own target, so dispatch must not pre-resolve it."""
+    forwarded = ["--dry-run", "--no-tag"]
+    # Parsed for real: main is mocked below, so nothing else here would notice
+    # if one of these flags were removed from the command.
+    build_upload_parser().parse_args(["my_model", *forwarded])
+
+    with (
+        patch("qai_hub_models.cli.dispatch.upload_to_hf_main") as mock_main,
+        patch("qai_hub_models.cli.dispatch.resolve_recipe_dir") as mock_resolve,
+    ):
+        run_model_script("./my_model/", "upload-to-hf", forwarded)
+
+    mock_main.assert_called_once_with(["./my_model/", *forwarded])
+    mock_resolve.assert_not_called()
 
 
 class TestDispatchDemo:

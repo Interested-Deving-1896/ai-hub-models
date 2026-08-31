@@ -25,22 +25,30 @@ def _subcommand_choices(parser: argparse.ArgumentParser) -> set[str]:
 
 
 def _stub_heavy_modules(
-    model_ids: set[str], run_model_script: MagicMock | None = None
+    model_ids: set[str],
+    run_model_script: MagicMock | None = None,
+    static_help: bool = False,
 ) -> dict[str, types.ModuleType]:
-    """Patch the heavy ``qai_hub_models`` modules the dispatch code imports."""
+    """Patch the heavy ``qai_hub_models`` modules the dispatch code imports.
+
+    ``static_help`` is what ``print_command_help`` returns: False stands for a
+    command whose flags come from the resolved recipe, so the lean CLI prints
+    its own hint instead.
+    """
     path_helpers = types.ModuleType("qai_hub_models.utils.path_helpers")
     path_helpers.MODEL_IDS = model_ids  # type: ignore[attr-defined]
-    stubs = {
+    dispatch = types.ModuleType("qai_hub_models.cli.dispatch")
+    dispatch.run_model_script = run_model_script or MagicMock()  # type: ignore[attr-defined]
+    command_help = types.ModuleType("qai_hub_models.cli.command_help")
+    command_help.print_command_help = lambda script, stream: static_help  # type: ignore[attr-defined]
+    return {
         "qai_hub_models": types.ModuleType("qai_hub_models"),
         "qai_hub_models.utils": types.ModuleType("qai_hub_models.utils"),
         "qai_hub_models.utils.path_helpers": path_helpers,
+        "qai_hub_models.cli": types.ModuleType("qai_hub_models.cli"),
+        "qai_hub_models.cli.dispatch": dispatch,
+        "qai_hub_models.cli.command_help": command_help,
     }
-    if run_model_script is not None:
-        dispatch = types.ModuleType("qai_hub_models.cli.dispatch")
-        dispatch.run_model_script = run_model_script  # type: ignore[attr-defined]
-        stubs["qai_hub_models.cli"] = types.ModuleType("qai_hub_models.cli")
-        stubs["qai_hub_models.cli.dispatch"] = dispatch
-    return stubs
 
 
 @pytest.mark.parametrize(
@@ -106,16 +114,40 @@ def test_dispatch_forwards_remaining_args_to_model_parser(script: str) -> None:
     )
 
 
-def test_dispatch_missing_model_arg_exits_with_usage_hint() -> None:
-    """`export` (no target) exits with our usage hint, not argparse's generic error."""
+def test_dispatch_missing_model_arg_exits_with_usage_hint(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`export` (no target) prints our usage hint as a usage error.
+
+    Stderr and exit 2, matching argparse, since a missing argument is an error
+    rather than a help request.
+    """
     with (
         patch("qai_hub_models_cli.cli._check_version_match"),
         patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch.dict(sys.modules, _stub_heavy_modules(set())),
         pytest.raises(SystemExit) as exc_info,
     ):
         main(["export"])
-    assert "Usage:" in str(exc_info.value)
-    assert "export <target>" in str(exc_info.value)
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "Usage:" in err
+    assert "export <target>" in err
+
+
+def test_dispatch_help_flag_exits_zero_on_stdout(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`export -h` is a help request, so stdout and exit 0."""
+    with (
+        patch("qai_hub_models_cli.cli._check_version_match"),
+        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch.dict(sys.modules, _stub_heavy_modules(set())),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        main(["export", "-h"])
+    assert exc_info.value.code == 0
+    assert "export <target>" in capsys.readouterr().out
 
 
 def test_dispatch_builtin_id_wins_over_alias() -> None:

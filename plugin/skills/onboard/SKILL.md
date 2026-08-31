@@ -277,6 +277,7 @@ Every command takes a `<target>`: either a **folder name or path** (`my_model`) 
 | `qai-hub-models export <target> [args...]` | Compile + profile on AI Hub. Flags: `--target-runtime`, `--device`, `--precision`, … `--help` for the full list. |
 | `qai-hub-models evaluate <target> [args...]` | Accuracy eval using `get_evaluator()` and `get_eval_dataset_classes()`. |
 | `qai-hub-models demo <target> [args...]` | Runs the recipe's `demo.py`. Locally in PyTorch by default; `--eval-mode on-device` runs it on a hosted device. |
+| `qai-hub-models upload-to-hf <target>` | Publishes the recipe source + model card to your own Hugging Face namespace, public and tagged `qai-hub-models`. `--help` for the flags. |
 
 Legacy `python -m qai_hub_models.models.<id>.export` / `.evaluate` paths are being phased out.
 

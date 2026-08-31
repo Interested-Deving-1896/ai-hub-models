@@ -134,9 +134,10 @@ Throughout the session, stay within the boundaries defined by the permissions ab
 
 After permissions are configured, ask the user what they're working on and load the appropriate resource:
 
-- **Authoring a new model recipe** → read `plugin/skills/onboard/SKILL.md` (or invoke `/ai-hub-models:onboard`). Onboarding is the *first* of three sequential authoring skills — after it's green, the user runs `/ai-hub-models:validate-on-device`, and then (optionally) `/ai-hub-models:add-quantization`.
+- **Authoring a new model recipe** → read `plugin/skills/onboard/SKILL.md` (or invoke `/ai-hub-models:onboard`). Onboarding is the *first* of three sequential authoring skills — after it's green, the user runs `/ai-hub-models:validate-on-device`, then (optionally) `/ai-hub-models:add-quantization`.
 - **Validating an already-authored float recipe on device** → `/ai-hub-models:validate-on-device` (`plugin/skills/validate-on-device/SKILL.md`).
 - **Adding quantization to a float recipe** → `/ai-hub-models:add-quantization` (`plugin/skills/add-quantization/SKILL.md`).
+- **Publishing a recipe to HuggingFace** → `qai-hub-models upload-to-hf <recipe_folder>`; run it with `--help` for the flags. There is no skill for this — the command documents itself.
 - **Running a HuggingFace model on device** (export, compile, profile on Snapdragon) → read `.claude/docs/hf_onboarding/guide.md`
 - **Testing, CI, environment config** → read `.claude/docs/repo-reference.md`
 - **Something else** → explore the repo structure and existing models as needed
@@ -157,6 +158,8 @@ Model authoring is broken into three sequential skills, each packaged as part of
 1. **`/ai-hub-models:onboard`** (`plugin/skills/onboard/SKILL.md`) — author the recipe (`model.py`, `manifest.yaml`, etc.) and iterate until `qai-hub-models validate` is green. Ships `supported_precisions: [float]`. No Workbench jobs.
 2. **`/ai-hub-models:validate-on-device`** (`plugin/skills/validate-on-device/SKILL.md`) — compile + profile the float recipe on device via `qai-hub-models export --target-runtime qnn_dlc --precision float`, then check torch and on-device accuracy if an evaluator is wired. Iterates on failures using `.claude/docs/on-device-debugging.md`.
 3. **`/ai-hub-models:add-quantization`** (`plugin/skills/add-quantization/SKILL.md`) — try `w8a8`, fall back to `w8a16`, or give up cleanly. Requires the recipe already have a dataset + evaluator wired.
+
+Publishing is deliberately not a skill: `qai-hub-models upload-to-hf <recipe_folder>` publishes the recipe source plus a generated model card to the contributor's own HF namespace (`<username>/<folder-name>`), tagged `qai-hub-models` so it is listed at https://huggingface.co/models?other=qai-hub-models. Its `--help` and its error messages carry the details (token setup, versioning, ownership), and it does not require any of the skills above to have been run.
 
 For in-tree recipes (Qualcomm-catalog-bound), `onboard-internal` (`plugin/skills/onboard-internal/SKILL.md`) is the delta over `onboard`.
 

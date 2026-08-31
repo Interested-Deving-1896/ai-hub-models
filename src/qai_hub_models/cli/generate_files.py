@@ -73,8 +73,14 @@ def _write_external_repos_init(folder: Path, manifest: QAIHMModelManifest) -> Pa
     return init_path
 
 
-def _write_readme(folder: Path, manifest: QAIHMModelManifest) -> Path:
-    """Render the model README from the manifest into ``<folder>/README.md``.
+def write_readme(
+    folder: Path,
+    manifest: QAIHMModelManifest,
+    out_dir: Path | None = None,
+    hf_front_matter: str | None = None,
+    hf_repo_id: str | None = None,
+) -> Path:
+    """Render the model README from the manifest into ``<out_dir>/README.md``.
 
     Standalone / external recipes (``status: unset``) get an external-flavored
     README whose commands take the folder name (``qai-hub-models install
@@ -83,6 +89,27 @@ def _write_readme(folder: Path, manifest: QAIHMModelManifest) -> Path:
     workbench.aihub.qualcomm.com model-page link, and the unpublished
     warning banner. In-tree recipes get the existing catalog-flavored
     README.
+
+    Parameters
+    ----------
+    folder
+        Recipe folder the manifest came from.
+    manifest
+        Parsed manifest driving every template variable.
+    out_dir
+        Where to write README.md. Defaults to *folder*; ``upload-to-hf``
+        points it at a staging directory instead.
+    hf_front_matter
+        Rendered YAML metadata for a Hugging Face model card. Left None by
+        ``generate-files`` so the on-disk README carries no front matter.
+    hf_repo_id
+        Hugging Face repo id. When set, the card gains a section showing how to
+        register and run the published recipe.
+
+    Returns
+    -------
+    Path
+        The README path written.
     """
     # The scripts package (and its templates) is not available in release
     # builds, so import here to avoid failures: generate-files is dev-only.
@@ -136,10 +163,12 @@ def _write_readme(folder: Path, manifest: QAIHMModelManifest) -> Path:
             "local_device_deployment": manifest.local_device_deployment,
             "readme_install_system_deps": manifest.readme_install_system_deps,
             "is_external": is_external,
+            "hf_front_matter": hf_front_matter,
+            "hf_repo_id": hf_repo_id,
         }
     )
 
-    readme_path = folder / "README.md"
+    readme_path = (out_dir or folder) / "README.md"
     readme_path.write_text(template.module.render(**template_vars))  # type: ignore[attr-defined]
     return readme_path
 
@@ -165,12 +194,11 @@ def generate_files(target: str) -> list[Path]:
     init_path = _write_external_repos_init(folder, manifest)
     if manifest.external_repos:
         written.append(init_path)
-    written.append(_write_readme(folder, manifest))
+    written.append(write_readme(folder, manifest))
     return written
 
 
-def main(argv: list[str] | None = None) -> None:
-    """Entry point called from the lean-CLI dispatcher."""
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="qai-hub-models generate-files",
         description=(
@@ -186,7 +214,12 @@ def main(argv: list[str] | None = None) -> None:
             "(e.g. yolov8_det). The folder must contain a manifest.yaml."
         ),
     )
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Entry point called from the lean-CLI dispatcher."""
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     written = generate_files(args.target)
     for path in written:
         print(f"wrote {path}")

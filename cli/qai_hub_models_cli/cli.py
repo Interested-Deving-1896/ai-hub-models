@@ -518,7 +518,29 @@ _RECIPE_COMMANDS = (
     "install",
     "generate-files",
     "validate",
+    "upload-to-hf",
 )
+
+
+def _print_recipe_command_help(script: str, stream: Any = None) -> None:
+    """Print the best help available for a recipe command given no target."""
+    stream = stream or sys.stdout
+
+    from qai_hub_models.cli.command_help import print_command_help
+
+    # False means the command builds its parser from the resolved recipe, so a
+    # flag list can only be shown for a specific target.
+    if print_command_help(script, stream):
+        return
+
+    print(
+        f"Usage: {CLI_NAME} {script} <target> [args...]\n"
+        f"  <target> — recipe folder path (my_model) or model id (yolov8_det).\n"
+        f"{script}'s options come from the recipe itself, so they can only be "
+        f"listed for a specific target:\n"
+        f"  {CLI_NAME} {script} <target> --help",
+        file=stream,
+    )
 
 
 def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
@@ -534,11 +556,11 @@ def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
     operate on folders and ids, not on manifest lookups.
     """
     if not raw_args or raw_args[0] in ("-h", "--help"):
-        sys.exit(
-            f"Usage: {CLI_NAME} {script} <target> [args...]\n"
-            f"  <target> — recipe folder path (my_model) or model id (yolov8_det).\n"
-            f"Run `{CLI_NAME} {script} <target> --help` for the target's options."
-        )
+        # `-h` is a successful help request: stdout, exit 0. A missing target is
+        # a usage error, so follow argparse and use stderr with exit 2.
+        help_requested = bool(raw_args)
+        _print_recipe_command_help(script, sys.stdout if help_requested else sys.stderr)
+        sys.exit(0 if help_requested else 2)
     target, forwarded = raw_args[0], list(raw_args[1:])
 
     from qai_hub_models.utils.path_helpers import MODEL_IDS
@@ -722,6 +744,29 @@ def add_generate_files_parser(
             "inside a recipe folder from its manifest.yaml. Run this after editing "
             "manifest.yaml so downstream files stay in sync. <target> is a recipe "
             "folder path (my_model) or an installed model id (yolov8_det)."
+        ),
+        args=[("target", str)],
+    )
+
+
+def add_upload_to_hf_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    return add_qaihm_required_help_only_parser(
+        subparsers,
+        name="upload-to-hf",
+        helpmsg="Publish a recipe folder to Hugging Face under your own namespace.",
+        description=(
+            f"Run `{CLI_NAME} upload-to-hf <target>` to publish a recipe folder "
+            "-- its source and a generated model card -- to Hugging Face as "
+            "<your-hf-username>/<folder-name>. Repos are public and tagged "
+            "`qai-hub-models`, which lists "
+            "them at https://huggingface.co/models?other=qai-hub-models; pass "
+            "--private to review one first. Each upload is tagged v1, v2, ... so "
+            "any version can be fetched later with `register --version`. "
+            "<target> is always read as a recipe folder -- a path (my_model) "
+            "or the name of a folder in the current directory (my_model) -- "
+            "never as a built-in model id."
         ),
         args=[("target", str)],
     )
@@ -1600,6 +1645,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_evaluate_parser(subparsers)
     add_install_parser(subparsers)
     add_generate_files_parser(subparsers)
+    add_upload_to_hf_parser(subparsers)
     add_register_parser(subparsers)
     add_unregister_parser(subparsers)
     add_list_registered_parser(subparsers)
@@ -1622,6 +1668,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "evaluate",
             "generate-files",
             "validate",
+            "upload-to-hf",
             "register",
             "unregister",
             "list-registered",

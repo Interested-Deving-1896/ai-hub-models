@@ -1530,9 +1530,9 @@ def _render_json(report: Report) -> str:
     return json.dumps(payload, indent=2)
 
 
-def build_parser(prog: str = "qai-hub-models validate") -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog=prog,
+        prog="qai-hub-models validate",
         description=(
             "Run the local recipe report card: folder shape, manifest, "
             "requirements.txt vs. base package, model imports, torch forward "

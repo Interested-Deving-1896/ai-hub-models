@@ -415,13 +415,7 @@ def install_model(target: str, dry_run: bool = False, assume_yes: bool = False) 
             _run(argv, dry_run)
 
 
-def main(argv: list[str] | None = None) -> None:
-    """Entry point called from the lean-CLI dispatcher.
-
-    Kept intentionally tiny — the lean CLI resolves the model id and
-    forwards the remaining args here. Options mirror ``pip install`` where
-    they overlap.
-    """
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="qai-hub-models install",
         description="Install the dependencies for a model, "
@@ -446,7 +440,17 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Skip the [y/N] confirmation prompt and run the plan immediately.",
     )
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Entry point called from the lean-CLI dispatcher.
+
+    Kept intentionally tiny — the lean CLI resolves the model id and
+    forwards the remaining args here. Options mirror ``pip install`` where
+    they overlap.
+    """
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     try:
         install_model(args.target, dry_run=args.dry_run, assume_yes=args.yes)
     except InstallAborted as exc:
