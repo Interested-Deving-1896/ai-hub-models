@@ -376,6 +376,10 @@ class TestDispatchDemo:
         recipe_module = types.ModuleType("fake_model")
 
         with (
+            patch.dict(
+                sys.modules,
+                {"fake_model": recipe_module, "fake_model.demo": demo_module},
+            ),
             patch(
                 "qai_hub_models.cli.dispatch.resolve_recipe_dir",
                 return_value=Path("/tmp/fake_model"),
@@ -383,10 +387,6 @@ class TestDispatchDemo:
             patch(
                 "qai_hub_models.cli.dispatch.import_recipe_module",
                 return_value=recipe_module,
-            ),
-            patch(
-                "qai_hub_models.cli.dispatch.importlib.import_module",
-                return_value=demo_module,
             ),
             patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=confirm),
         ):
