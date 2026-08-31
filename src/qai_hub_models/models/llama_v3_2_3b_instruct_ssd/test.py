@@ -88,7 +88,7 @@ def test_create_genie_config() -> None:
                         "rope-theta": 500000,
                         "rope-scaling": {
                             "rope-type": "llama3",
-                            "factor": 8.0,
+                            "factor": 32.0,
                             "low-freq-factor": 1.0,
                             "high-freq-factor": 4.0,
                             "original-max-position-embeddings": 8192,
