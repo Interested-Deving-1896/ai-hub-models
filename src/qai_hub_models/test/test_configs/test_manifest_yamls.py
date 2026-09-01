@@ -382,9 +382,9 @@ class TestStandaloneComponentsValidation:
         return manifest
 
     def test_llm_with_standalone_component_is_valid(self) -> None:
-        manifest = self._manifest({"vision_encoder": "Vision Encoder"})
+        manifest = self._manifest({"vision_encoder": "Vision-Encoder"})
         manifest.validate_standalone_components()
-        assert manifest.perf_component_key("vision_encoder") == "Vision Encoder"
+        assert manifest.perf_component_key("vision_encoder") == "Vision-Encoder"
 
     def test_non_llm_rejected(self) -> None:
         manifest = self._manifest({"encoder": "Encoder"}, model_type_llm=False)

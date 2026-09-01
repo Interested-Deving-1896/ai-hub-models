@@ -23,7 +23,7 @@ from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
 
 BACKBONE = "Qwen2.5-VL-7B-Instruct"
-STANDALONE = "Vision Encoder"
+STANDALONE = "Vision-Encoder"
 PRECISION = Precision.w4a16
 PATH = ScorecardProfilePath.GENIEX_QAIRT
 
