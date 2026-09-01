@@ -10,7 +10,7 @@ from collections.abc import Sequence
 import torchvision.models as tv_models
 from typing_extensions import Self
 
-from qai_hub_models.models.fcn_resnet50.dataset import CocoVocSegDataset
+from qai_hub_models.models.templates.deeplab.dataset import CocoVocSegDataset
 from qai_hub_models.models.templates.deeplab.model import DeepLabV3Model
 from qai_hub_models.utils.base_dataset import BaseDataset
 
@@ -32,6 +32,3 @@ class FCN_ResNet50(DeepLabV3Model):
     @classmethod
     def get_eval_dataset_classes(cls) -> Sequence[type[BaseDataset]]:
         return [CocoVocSegDataset]
-
-    def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        return CocoVocSegDataset

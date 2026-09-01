@@ -13,6 +13,7 @@ import torch
 from qai_hub_models import SampleInputsType
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.datasets.pascal_voc import VOCSegmentationDataset
+from qai_hub_models.models.templates.deeplab.dataset import CocoVocSegDataset
 from qai_hub_models.models.templates.segmentation.segmentation_evaluator import (
     SegmentationOutputEvaluator,
 )
@@ -121,7 +122,10 @@ class DeepLabV3Model(BaseModel):
         return [VOCSegmentationDataset]
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        return VOCSegmentationDataset
+        # Pascal VOC is non-commercial, so it can't ship as calibration data.
+        # Calibrate from COCO (CC-BY, auto-downloadable) remapped to VOC labels;
+        # eval stays on VOC (fetched from private S3 for CI).
+        return CocoVocSegDataset
 
     def write_supplementary_files(
         self,
