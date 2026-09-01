@@ -160,9 +160,6 @@ def generate_and_write_model_readme(model_id: str) -> Path:
             # Flags
             "include_example_and_usage": not manifest.skip_example_usage,
             "has_on_target_demo": manifest.has_on_target_demo,
-            "readme_export_device": manifest.default_device
-            if manifest.requires_aot_prepare
-            else None,
             "local_device_deployment": manifest.local_device_deployment,
             # System-level dependencies installation instructions
             "readme_install_system_deps": manifest.readme_install_system_deps,

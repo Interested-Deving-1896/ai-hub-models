@@ -193,9 +193,6 @@ def write_readme(
             "python_version_lt": manifest.python_version_less_than,
             "include_example_and_usage": not manifest.skip_example_usage,
             "has_on_target_demo": manifest.has_on_target_demo,
-            "readme_export_device": manifest.default_device
-            if manifest.requires_aot_prepare
-            else None,
             "local_device_deployment": manifest.local_device_deployment,
             "readme_install_system_deps": manifest.readme_install_system_deps,
             "is_external": is_external,

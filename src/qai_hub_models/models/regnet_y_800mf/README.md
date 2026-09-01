@@ -65,7 +65,7 @@ To run the model on Qualcomm® devices, you must export the model for use with a
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 Use the following command to export the model:
 ```bash
-qai-hub-models export regnet_y_800mf --target-runtime tflite --precision float
+qai-hub-models export regnet_y_800mf
 ```
 Additional options are documented with the `--help` option.
 

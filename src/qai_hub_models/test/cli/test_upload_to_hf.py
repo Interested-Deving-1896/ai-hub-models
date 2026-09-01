@@ -21,7 +21,6 @@ from qai_hub_models.cli import upload_to_hf as mod
 from qai_hub_models.cli.hf_common import (
     COMMUNITY_ORG_NAME,
     COMMUNITY_TAG,
-    COMMUNITY_TAG_POPULAR_URL,
     COMMUNITY_TAG_SEARCH_URL,
 )
 from qai_hub_models.cli.upload_to_hf import (
@@ -279,8 +278,8 @@ class TestFrontMatter:
         assert "license: bsd-3-clause" in _hf_front_matter(manifest)
 
     def test_tags_stay_block_style_after_a_flow_list_dump(self, tmp_path: Path) -> None:
-        """``to_yaml(flow_lists=True)`` mutates ruamel's representer registry
-        process-wide, which used to flip this front matter to flow style.
+        """``to_yaml(flow_lists=True)`` used to mutate ruamel's representer
+        registry process-wide, flipping this front matter to flow style.
         """
         manifest = _write_recipe(tmp_path / "my_model")
         manifest.to_yaml(tmp_path / "flow.yaml", flow_lists=True)
@@ -884,18 +883,6 @@ class TestVisibility:
         out = capsys.readouterr().out
         assert COMMUNITY_TAG_SEARCH_URL in out
         assert COMMUNITY_ORG_NAME not in out
-
-    def test_advertises_how_to_sort_the_index(
-        self, tmp_path: Path, hf_api: Any, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The tag search is the index, so browsing it has to be discoverable."""
-        recipe = tmp_path / "my_model"
-        _write_recipe(recipe)
-        upload_to_hf(str(recipe), assume_yes=True)
-
-        out = capsys.readouterr().out
-        assert COMMUNITY_TAG_POPULAR_URL in out
-        assert "&sort=likes" in out
 
     def test_claims_ownership_only_for_the_default_namespace(
         self, tmp_path: Path, hf_api: Any, capsys: pytest.CaptureFixture[str]

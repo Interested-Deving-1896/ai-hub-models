@@ -36,7 +36,7 @@ This is based on the implementation of {{ model_name }} found [here]({{ source_r
 {%- if is_hf_readme -%}
 This repository contains pre-exported model files optimized for Qualcomm® devices. You can use the [Qualcomm® AI Hub Models]({{ qaihm_model_url }}) library to export with custom configurations.
 {%- elif is_external -%}
-This is a standalone recipe compatible with the [Qualcomm® AI Hub Models](https://github.com/quic/ai-hub-models) CLI — it can be installed, compiled, and evaluated on real Snapdragon devices via [Qualcomm® AI Hub Workbench](https://workbench.aihub.qualcomm.com).
+This is a standalone recipe compatible with the [Qualcomm® AI Hub Models](https://github.com/quic/ai-hub-models) CLI — it can be compiled and evaluated on real Snapdragon devices via [Qualcomm® AI Hub Workbench](https://workbench.aihub.qualcomm.com).
 {%- else -%}
 This repository contains scripts for optimized on-device export suitable to run on Qualcomm® devices.
 {%- endif %}{% if not is_external %} More details on model performance across various devices, can be found [here]({{ '#performance-summary' if is_hf_readme else model_url }}).{% endif %}
@@ -199,27 +199,19 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
         Text describing system-level dependencies to install.
     is_hf_readme : bool, optional
         Whether generating for Hugging Face (default: False).
-    readme_export_device : str, optional
-        When set, appends ``--device "<value>"`` to the export command. Resolved
-        from the global default device when ``requires_aot_prepare`` is set in
-        manifest.yaml.
     local_device_deployment : bool, optional
         When set, the Setup / Verify with CLI Demo / Export the model artifact
         sections are nested (one level deeper) under a single "## Export"
         parent. Used by genie LLM models whose local-device deployment section
         links to the "#export" anchor.
-    default_runtime : str, optional
-        CLI runtime name (e.g., "tflite") rendered into the sample
-        ``qai-hub-models export`` command as ``--target-runtime <default_runtime>``.
     default_precision : str, optional
-        CLI precision name (e.g., "float") rendered into the sample
-        ``qai-hub-models export`` command. For quantize-job models it becomes
-        ``--precision``; for separate_quantize_script models it becomes the
-        ``--checkpoint DEFAULT_<PRECISION>`` suffix.
+        CLI precision name (e.g., "float"). Only rendered for
+        separate_quantize_script models, as the ``--checkpoint
+        DEFAULT_<PRECISION>`` suffix and the quantize step's ``--precision``.
     separate_quantize_script : bool, optional
         If True, render a pre-quantized ``--checkpoint DEFAULT_<PRECISION>`` export
-        command with an optional quantize-your-own step, instead of the single
-        ``--precision`` export command.
+        command with an optional quantize-your-own step, instead of the plain
+        export command.
     is_external : bool, optional
         Whether the recipe is standalone (folder-path CLI target) vs.
         installed catalog model (bare-id CLI target).
@@ -234,9 +226,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
     python_version_lt=None,
     readme_install_system_deps=None,
     is_hf_readme=False,
-    readme_export_device=None,
     local_device_deployment=False,
-    default_runtime=None,
     default_precision=None,
     separate_quantize_script=False,
     is_external=False,
@@ -294,7 +284,7 @@ TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 {% if separate_quantize_script %}
 Export the pre-quantized model (published on AI Hub) for on-device deployment:
 ```bash
-qai-hub-models export {{ cli_target }} --checkpoint DEFAULT_{{ default_precision | upper }} --target-runtime {{ default_runtime }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
+qai-hub-models export {{ cli_target }} --checkpoint DEFAULT_{{ default_precision | upper }}
 ```
 `--checkpoint` also accepts `DEFAULT` (the model's default precision){% if supported_precisions and supported_precisions|length > 1 %} or any of
 {%- for p in supported_precisions %} `DEFAULT_{{ p | upper }}`{{ ',' if not loop.last }}{% endfor %}{% endif %}.
@@ -302,12 +292,12 @@ qai-hub-models export {{ cli_target }} --checkpoint DEFAULT_{{ default_precision
 Optionally, quantize your own variant first and export the resulting checkpoint:
 ```bash
 python -m {{ quantize_module }}.quantize --precision {{ default_precision }} --output-dir ./quantized_checkpoint
-qai-hub-models export {{ cli_target }} --checkpoint ./quantized_checkpoint --target-runtime {{ default_runtime }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
+qai-hub-models export {{ cli_target }} --checkpoint ./quantized_checkpoint
 ```
 {% else %}
 Use the following command to export the model:
 ```bash
-qai-hub-models export {{ cli_target }}{{ ' --target-runtime ' ~ default_runtime if default_runtime else '' }}{{ ' --precision ' ~ default_precision if default_precision else '' }}{{ ' --device "' ~ readme_export_device ~ '"' if readme_export_device else '' }}
+qai-hub-models export {{ cli_target }}
 ```
 {% endif %}
 Additional options are documented with the `--help` option.

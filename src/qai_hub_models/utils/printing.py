@@ -22,6 +22,7 @@ from qai_hub_models import TargetRuntime
 from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.utils.compare import METRICS_FUNCTIONS, generate_comparison_metrics
 from qai_hub_models.utils.device import OperatingSystem, OperatingSystemType
+from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT
 from qai_hub_models.utils.qai_hub_helpers import get_device_and_chipset_name
 
 _INFO_DASH = "-" * 60
@@ -193,11 +194,18 @@ def print_on_target_demo_cmd(
         target_model_id.append(target_model.model_id)
 
     target_model_id_str = ",".join(target_model_id)
+    # An in-tree folder's name is its model id; a standalone recipe needs the
+    # path, which dispatch resolves the same way.
+    target = (
+        model_folder.name
+        if model_folder.parent == QAIHM_MODELS_ROOT.resolve()
+        else model_folder
+    )
     print(
         f"\nRun compiled model{'s' if len(target_model_id) > 1 else ''} on a hosted device on sample data using:"
     )
     print(
-        f"python {model_folder / 'demo.py'} --eval-mode on-device --hub-model-id {target_model_id_str} ",
+        f"qai-hub-models demo {target} --eval-mode on-device --hub-model-id {target_model_id_str} ",
         end="",
     )
     device_name, chipset = get_device_and_chipset_name(device)

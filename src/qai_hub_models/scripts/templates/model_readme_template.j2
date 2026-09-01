@@ -53,9 +53,6 @@
         Maximum Python version.
     readme_install_system_deps : str, optional
         Text describing system-level dependencies to install.
-    readme_export_device : str, optional
-        When set, appends ``--device "<value>"`` to the README export command.
-        Derived from ``requires_aot_prepare`` in manifest.yaml.
     model_assets_shareable : bool, optional
         Whether pre-exported assets may be shared. When True, a "Download
         pre-exported assets" section is added near the top. Derived from the
@@ -91,7 +88,6 @@
     python_version_gte=None,
     python_version_lt=None,
     readme_install_system_deps=None,
-    readme_export_device=None,
     local_device_deployment=False,
     model_status="published",
     unpublished_model_warning="",
@@ -144,7 +140,7 @@ This model is compatible with the Qualcomm Voice AI SDK. Download the SDK from t
 {% endif %}
 {% if include_example_and_usage %}
 
-{{ example_and_usage(model_id, model_package, supported_precisions, has_on_target_demo, has_machine_gated_entries, python_version_gte, python_version_lt, readme_install_system_deps, readme_export_device=readme_export_device, local_device_deployment=local_device_deployment, default_runtime=default_runtime, default_precision=default_precision, separate_quantize_script=separate_quantize_script, is_external=is_external, hf_register_cmd=hf_register_cmd) }}
+{{ example_and_usage(model_id, model_package, supported_precisions, has_on_target_demo, has_machine_gated_entries, python_version_gte, python_version_lt, readme_install_system_deps, local_device_deployment=local_device_deployment, default_precision=default_precision, separate_quantize_script=separate_quantize_script, is_external=is_external, hf_register_cmd=hf_register_cmd) }}
 {% endif %}
 
 {{ license(model_name, license_url) }}

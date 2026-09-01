@@ -64,7 +64,7 @@ To run the model on Qualcomm® devices, you must export the model for use with a
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 Use the following command to export the model:
 ```bash
-qai-hub-models export zipformer --target-runtime qnn_context_binary --precision float --device "Samsung Galaxy S25 (Family)"
+qai-hub-models export zipformer
 ```
 Additional options are documented with the `--help` option.
 

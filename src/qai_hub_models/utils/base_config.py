@@ -102,6 +102,16 @@ class BaseQAIHMConfig(BaseModel):
         """
         yaml = ruamel.yaml.YAML()
 
+        # add_representer is a classmethod, so registering on yaml.representer
+        # would reconfigure every RoundTripRepresenter in the process, not just
+        # this dump. A throwaway subclass gets its own registry (ruamel copies on
+        # first write), so register new representers on _Representer, not on
+        # yaml.representer.
+        class _Representer(RoundTripRepresenter):
+            pass
+
+        yaml.Representer = _Representer
+
         # build_and_test.py uses simplistic YAML readers that can't read strings on multiple lines.
         # Make sure strings aren't dumped to multiple lines in the YAML.
         yaml.width = 4096
@@ -112,7 +122,7 @@ class BaseQAIHMConfig(BaseModel):
                 return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
             return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
-        yaml.representer.add_representer(str, _yaml_repr_str)
+        _Representer.add_representer(str, _yaml_repr_str)
 
         # Enable flow style for lists if requested
         if flow_lists:
@@ -122,7 +132,7 @@ class BaseQAIHMConfig(BaseModel):
                     "tag:yaml.org,2002:seq", data, flow_style=True
                 )
 
-            yaml.representer.add_representer(list, _yaml_repr_list)
+            _Representer.add_representer(list, _yaml_repr_list)
 
         # Render via pydantic_yaml first (handles JSON-mode serializers, custom
         # types, etc.), then re-parse and recursively sort every mapping's keys

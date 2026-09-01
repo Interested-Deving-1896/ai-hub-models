@@ -95,6 +95,27 @@ class TestExternalReadme:
         assert "qai-hub-models export my_model" in readme
         assert "./my_model/" not in readme
 
+    def test_export_command_relies_on_defaults(self, tmp_path: Path) -> None:
+        """The sample export command carries no flags.
+
+        ``export`` resolves precision, runtime and device from the manifest
+        itself, so spelling them out only invited readers to edit values that
+        are already correct.
+        """
+        recipe = tmp_path / "my_model"
+        manifest = _write_recipe(recipe)
+        readme = write_readme(recipe, manifest).read_text()
+        export_lines = [
+            line
+            for line in readme.splitlines()
+            if line.startswith("qai-hub-models export ")
+        ]
+        assert export_lines
+        for line in export_lines:
+            assert "--target-runtime" not in line
+            assert "--precision" not in line
+            assert "--device" not in line
+
     def test_demo_uses_the_cli_command(self, tmp_path: Path) -> None:
         """`qai-hub-models demo`, not a python -m module path."""
         recipe = tmp_path / "my_model"

@@ -60,12 +60,10 @@ from huggingface_hub import (
     whoami,
 )
 from huggingface_hub.utils import HFValidationError, validate_repo_id
-from ruamel.yaml.representer import RoundTripRepresenter
 
 from qai_hub_models.cli.generate_files import write_readme
 from qai_hub_models.cli.hf_common import (
     COMMUNITY_TAG,
-    COMMUNITY_TAG_POPULAR_URL,
     COMMUNITY_TAG_SEARCH_URL,
 )
 from qai_hub_models.configs._info_yaml_enums import MODEL_LICENSE, MODEL_STATUS
@@ -250,25 +248,6 @@ def _ignore_external_repo_clones(directory: str, entries: list[str]) -> set[str]
     )
 
 
-class _BlockListRepresenter(RoundTripRepresenter):
-    """Representer that always writes lists block-style.
-
-    ``BaseQAIHMConfig.to_yaml(flow_lists=True)`` registers a flow-style list
-    representer via ruamel's ``add_representer`` *classmethod*, which mutates
-    ``RoundTripRepresenter`` for the whole process. Front matter must not depend
-    on whether some earlier call in this process happened to do that, so it gets
-    its own registry.
-    """
-
-
-_BlockListRepresenter.add_representer(
-    list,
-    lambda dumper, data: dumper.represent_sequence(
-        "tag:yaml.org,2002:seq", data, flow_style=False
-    ),
-)
-
-
 def _hf_front_matter(manifest: QAIHMModelManifest) -> str:
     """Render the model card's YAML front matter.
 
@@ -287,7 +266,6 @@ def _hf_front_matter(manifest: QAIHMModelManifest) -> str:
 
     stream = StringIO()
     yaml = ruamel.yaml.YAML()
-    yaml.Representer = _BlockListRepresenter
     yaml.dump(metadata, stream=stream)
     return stream.getvalue()
 
@@ -585,14 +563,9 @@ def _print_next_steps(
         )
     listed = "Once public it is" if private else "It is public and"
     print(
-        f"\n{listed} tagged `{COMMUNITY_TAG}`, alongside every other community "
-        f"recipe at\n"
-        f"  {COMMUNITY_TAG_SEARCH_URL}\n"
-        "That listing is the index -- no org membership, review, or curation "
-        "step. It sorts and filters server-side, e.g.\n"
-        f"  {COMMUNITY_TAG_POPULAR_URL}\n"
-        "and &sort=likes, &sort=created, &sort=modified, &sort=trending, plus "
-        "the task/library/license facets in the sidebar."
+        f"\n{listed} tagged `{COMMUNITY_TAG}`, listed alongside every other "
+        f"community recipe at\n"
+        f"  {COMMUNITY_TAG_SEARCH_URL}"
     )
 
 
