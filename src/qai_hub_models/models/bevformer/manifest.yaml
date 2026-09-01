@@ -1,0 +1,63 @@
+name: BEVFormer
+id: bevformer
+status: pending
+status_reason: "https://jira-dc3.qualcomm.com/browse/AUTOSP-6491"
+headline: Transform temporal multi-view images into a unified bird's eye scene.
+domain: Computer Vision
+use_case: Driver Assistance
+tags:
+  - bu-auto
+description: Bevformer is a SOTA model of interest to the Auto BU.
+research_paper: https://arxiv.org/abs/2203.17270
+research_paper_title: "BEVFormer: Learning Bird's-Eye-View Representation from Multi-Camera Images via Spatiotemporal Transformers"
+license: https://github.com/fundamentalvision/BEVFormer/blob/master/LICENSE
+source_repo: https://github.com/fundamentalvision/BEVFormer/
+external_repos:
+  bevformer:
+    repo_url: https://github.com/fundamentalvision/BEVFormer.git
+    commit_sha: 66b65f3a1f58caf0507cb2a971b9c0e7f842376c
+    patches_filename: bevformertiny_minimal.diff
+technical_details:
+  Model checkpoint: bevformer_tiny_deformable_optimized_exp_86_epoch_24.pth
+  Input resolution: 6 x 3 x 480 x 800
+  Number of parameters: 27M
+  Model size: 120 MB
+  Input preprocessing: Images must be ImageNet mean/std normalized before inference; the model does not normalize internally.
+applicable_scenarios:
+  - Object Detection
+related_models:
+  - simple_bev_cam
+form_factors:
+  - Phone
+  - Tablet
+  - IoT
+has_static_banner: true
+has_animated_banner: true
+license_type: apache-2.0
+# nuScenes is declared for metadata/discovery; it is not yet consumed for
+# accuracy eval (Phase 1 is export-only: no evaluator, scorecard skip_evaluate).
+# Wiring the nuScenes evaluator is tracked for a later phase.
+dataset:
+  - nuscenes
+datasets:
+  - nuscenes
+has_on_target_demo: true
+supported_precisions:
+  - float
+disabled_paths:
+  float:
+    tflite:
+      scorecard_failure: 'Failing jobs: j56d7rlnp'
+# mmcv 1.7.0 and mmdet3d 1.0.0rc4 are both source builds whose setup.py imports
+# pkg_resources, which setuptools 82.0.0 removed. Neither declares a
+# build-system, so an isolated PEP 517 build pulls the newest setuptools (>=82)
+# and dies with "No module named 'pkg_resources'". Install pre-82 setuptools +
+# wheel first, then build both --no-build-isolation so they see it. mmdet3d also
+# declares a wrong numba==0.53.0 pin (py<=3.9 only) that conflicts with our numba
+# 0.59.1, so --no-deps (its real runtime deps are pinned in requirements.txt).
+# Building mmcv here (not letting the main [bevformer] install resolve it) is
+# what keeps it out of an isolated build env.
+pre_pip_install_commands:
+- pip install wheel "setuptools<82.0.0"
+- pip install mmcv==1.7.0 --no-deps --no-build-isolation
+- pip install git+https://github.com/open-mmlab/mmdetection3d.git@v1.0.0rc4 --no-deps --no-build-isolation
