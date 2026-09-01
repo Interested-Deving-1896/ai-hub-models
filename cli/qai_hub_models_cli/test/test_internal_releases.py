@@ -4,6 +4,7 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -123,6 +124,23 @@ def test_fetch_end_to_end_s3(
 
     mock_download.assert_called_once()
     assert mock_download.call_args[0][0] == s3_url
+
+
+def _subcommand_names(parser: argparse.ArgumentParser) -> set[str]:
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return set(action.choices.keys())
+    return set()
+
+
+def test_validate_aws_subcommand_hidden_when_aws_extra_missing() -> None:
+    """Gate closes when the [internal] extra is not installed."""
+    from qai_hub_models_cli.cli import _build_parser
+
+    with patch("qai_hub_models_cli.cli._AWS_EXTRA_AVAILABLE", False):
+        parser = _build_parser()
+
+    assert "validate_aws_credentials" not in _subcommand_names(parser)
 
 
 def test_internal_cache_dir_separate_from_public() -> None:

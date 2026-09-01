@@ -14,7 +14,6 @@ from typing import Any
 from packaging.version import Version
 from prettytable import PrettyTable
 
-from qai_hub_models_cli._internal.utils import is_internal_repo, use_internal_releases
 from qai_hub_models_cli.args import (
     RUNTIME_VALUES,
     add_asset_filter_args,
@@ -113,6 +112,17 @@ from qai_hub_models_cli.versions import (
     print_upgrade_notice,
     version_flag,
 )
+
+# Detect the [internal] extra by trying to import the AWS module. The module
+# raises ImportError when boto3 is missing, so this flag captures the actual
+# precondition for the validate_aws_credentials subcommand — reliably across
+# editable, wheel, and non-devrelease installs.
+try:
+    from qai_hub_models_cli._internal import aws as _aws_module  # noqa: F401
+
+    _AWS_EXTRA_AVAILABLE = True
+except ImportError:
+    _AWS_EXTRA_AVAILABLE = False
 
 
 def _check_version_match() -> None:
@@ -1674,7 +1684,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_unregister_parser(subparsers)
     add_list_registered_parser(subparsers)
     add_validate_parser(subparsers)
-    if use_internal_releases() or is_internal_repo():
+    if _AWS_EXTRA_AVAILABLE:
         add_validate_aws_parser(subparsers)
 
     sections = {
