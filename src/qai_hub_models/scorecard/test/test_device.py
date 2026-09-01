@@ -7,6 +7,7 @@ from qai_hub_models.scorecard.device import (
     compute_peer_chipsets,
     cs_universal,
 )
+from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 
 
 def test_exactly_one_default() -> None:
@@ -64,3 +65,19 @@ def test_extended_supported_chipsets_pairs_compute() -> None:
     assert ScorecardDevice.get("cs_x2_elite").extended_supported_chipsets == {
         "qualcomm-snapdragon-x2-elite"
     }
+
+
+def test_geniex_qairt_excluded_for_automotive() -> None:
+    """GenieX (QAIRT) assets are not published for automotive devices, but Genie still is."""
+    for device_name in (
+        "cs_auto_lemans_8775",
+        "cs_auto_monaco_7255",
+        "cs_auto_makena_8295",
+    ):
+        device = ScorecardDevice.get(device_name)
+        assert ScorecardProfilePath.GENIEX_QAIRT not in device.profile_paths
+        assert ScorecardProfilePath.GENIE in device.profile_paths
+        assert (
+            ScorecardProfilePath.GENIEX_QAIRT.compile_path not in device.compile_paths
+        )
+        assert ScorecardProfilePath.GENIE.compile_path in device.compile_paths

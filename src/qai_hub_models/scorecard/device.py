@@ -501,9 +501,8 @@ class ScorecardDevice(HubDeviceAttributes):
                 InferenceEngine.QNN,
                 InferenceEngine.TFLITE,
             ]
-            paths_to_test.extend(
-                [ScorecardProfilePath.GENIE, ScorecardProfilePath.GENIEX_QAIRT]
-            )
+            # GenieX is not published for automotive devices.
+            paths_to_test.extend([ScorecardProfilePath.GENIE])
         elif self.form_factor == FormFactor.XR:
             inference_engines_to_test = [InferenceEngine.QNN, InferenceEngine.TFLITE]
         elif self.form_factor == FormFactor.COMPUTE:
