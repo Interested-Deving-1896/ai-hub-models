@@ -21,7 +21,6 @@ from qai_hub_models.configs.tensor_spec import TensorSpec
 from qai_hub_models.models.templates.yolo.model import Yolo
 from qai_hub_models.models.templates.yolo.utils import detect_postprocess_split_input
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
-from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.input_spec import OutputSpec
 
 MODEL_ID = __name__.split(".")[-2]
@@ -48,9 +47,6 @@ class YoloX(Yolo):
 
         super().__init__(
             model=yolox_source_model,
-            serialization_settings=SerializationSettings(
-                use_pt2=False, check_trace=False
-            ),
         )
         self.model: YOLOX
         self.yolox_meshgrid = meshgrid

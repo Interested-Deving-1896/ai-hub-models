@@ -64,8 +64,11 @@ def bev_pool_v2(
     out = out.reshape(-1, c)
 
     # Apply 3D indices to sort/permute directly
-    feat_selected = feat[ranks_feat.reshape(-1, 1)[..., 0], :].reshape(W, H, -1, c)
-    depth_selected = depth[ranks_depth].reshape(W, H, -1, 1)
+    # .long() on the index tensors: ONNX Gather/GatherND reject int32 indices.
+    feat_selected = feat[ranks_feat.reshape(-1, 1)[..., 0].long(), :].reshape(
+        W, H, -1, c
+    )
+    depth_selected = depth[ranks_depth.long()].reshape(W, H, -1, 1)
     weighted_feat = feat_selected * depth_selected
 
     change_points = interval_starts[1:] + 1
@@ -86,7 +89,8 @@ def bev_pool_v2(
     first_elem = segment_sums[0:1, :]  # Keep dims for ONNX compatibility
     segment_sums = torch.cat([first_elem, diffs], dim=0)
 
-    scatter_indices = ranks_bev[interval_starts]
+    # int64 because ONNX ScatterND/GatherND only accept int64 indices.
+    scatter_indices = ranks_bev[interval_starts].long()
 
     out[scatter_indices, :] = segment_sums
 
@@ -163,6 +167,11 @@ class LSSViewTransformerOptimized(BaseModule):
         self.grid_lower_bound = torch.tensor([cfg[0] for cfg in [x, y, z]])
         self.grid_interval = torch.tensor([cfg[2] for cfg in [x, y, z]])
         self.grid_size = torch.tensor([(cfg[1] - cfg[0]) / cfg[2] for cfg in [x, y, z]])
+        # Concrete Python values for the traced forward: indexing a tensor
+        # element there is data-dependent under torch.export. Keep the floats
+        # too, so `weights` below stays float and does not change ranks_bev.
+        self.grid_size_floats = tuple(self.grid_size.tolist())
+        self.grid_size_ints = tuple(int(v) for v in self.grid_size_floats)
 
     def create_frustum(
         self, depth_cfg: tuple[float, ...], input_size: tuple[int, int], downsample: int
@@ -328,7 +337,10 @@ class LSSViewTransformerOptimized(BaseModule):
             # Combined seperate comparison.
             kept = (_coor >= 0) & (_coor < self.grid_size.reshape(1, 3, 1, 1))
             kept = kept.sum(dim=1, keepdim=True)
-            kept = kept == torch.full(kept.shape, 3)
+            # Compare against the scalar, not a filled tensor: the ONNX
+            # exporter types that constant as float and Equal then fails
+            # Workbench's shape inference.
+            kept = kept == 3
 
             # changed gather to mul for optimization.
             _coor = _coor * kept
@@ -337,13 +349,8 @@ class LSSViewTransformerOptimized(BaseModule):
 
             # get tensors from the same voxel next to each other
             # Combine seperate mul.
-            weights = torch.tensor(
-                [
-                    self.grid_size[2],
-                    self.grid_size[0],
-                    self.grid_size[1] * self.grid_size[0],
-                ]
-            )
+            gx, gy, gz = self.grid_size_floats
+            weights = torch.tensor([gz, gx, gy * gx])
             ranks_bev = (_coor * weights.reshape(1, 3, 1, 1)).sum(dim=1, keepdim=True)
 
             rd_list.append(ranks_depth)
@@ -459,12 +466,8 @@ class LSSViewTransformerOptimized(BaseModule):
         ) = self.voxel_pooling_prepare_v2(coor, feat)
 
         feat = feat.permute(0, 2, 3, 1)
-        bev_feat_shape = (
-            int(self.grid_size[2]),
-            int(self.grid_size[1]),
-            int(self.grid_size[0]),
-            feat.shape[-1],
-        )
+        gx, gy, gz = self.grid_size_ints
+        bev_feat_shape = (gz, gy, gx, feat.shape[-1])
 
         return bev_pool_v2(
             depth,

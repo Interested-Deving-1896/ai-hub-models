@@ -45,7 +45,7 @@ from qai_hub_models.utils.asset_loaders import (
 )
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.export.result import ComponentGroup
 from qai_hub_models.utils.image_processing import normalize_image_torchvision
 from qai_hub_models.utils.input_spec import InputSpec, IoType, OutputSpec, TensorSpec
@@ -196,11 +196,7 @@ class BEVDetPooler(BaseModel):
     """BEV pooling: geometry projection + voxel-index prep + pooling cumsum."""
 
     def __init__(self, img_view_transformer: BaseModule) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(
-                use_pt2=False, check_trace=False
-            )
-        )
+        super().__init__()
         self.img_view_transformer = img_view_transformer
 
     @classmethod

@@ -20,9 +20,13 @@ from qai_hub_models import (
 from qai_hub_models.models.statetransformer.external_repos.statetransformer.transformer4planning.models.backbone.str_base import (
     build_model_from_path,
 )
-from qai_hub_models.models.statetransformer.model_patch import custom_one_hot
+from qai_hub_models.models.statetransformer.model_patch import (
+    custom_one_hot,
+    patch_attention_mask_vmap,
+    patch_mixtral_moe,
+)
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import (
     InputSpec,
     IoType,
@@ -46,9 +50,7 @@ class StateTransformer(BaseModel):
     """
 
     def __init__(self, model: StateTransformer) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.model: torch.nn.Module = model
         self.encoder: torch.nn.Module = self.model.encoder
         self.embedding_to_hidden: torch.nn.Module = self.model.embedding_to_hidden
@@ -76,6 +78,8 @@ class StateTransformer(BaseModel):
         if isinstance(weights_path, CachedWebModelAsset):
             weights_path = weights_path.fetch(extract=True)
         model = build_model_from_path(str(weights_path))
+        patch_mixtral_moe(model)
+        patch_attention_mask_vmap()
         return cls(model)
 
     def forward(
@@ -144,8 +148,11 @@ class StateTransformer(BaseModel):
             "low_res_raster": low_res_raster,
             "context_actions": context_actions,
         }
-        F.one_hot = custom_one_hot if torch.jit.is_tracing() else F.one_hot
-        if not torch.jit.is_tracing():
+        # torch.jit.is_tracing() is False under torch.export, which would send
+        # serialization down the eager generate() path instead of this one.
+        serializing = torch.jit.is_tracing() or torch.compiler.is_exporting()
+        F.one_hot = custom_one_hot if serializing else F.one_hot
+        if not serializing:
             out_dict = self.generate(**prepared_data)
             return out_dict["traj_logits"], out_dict["traj_scores"]
         input_embeds, info_dict = self.encoder(is_training=False, **prepared_data)

@@ -22,7 +22,6 @@ from qai_hub_models.models.templates.yolo.model import (
     yolo_detect_postprocess,
 )
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.base_model import SerializationSettings
 from qai_hub_models.utils.input_spec import OutputSpec
 
 MODEL_ASSET_VERSION = 1
@@ -49,9 +48,6 @@ class YoloV8Detector(Yolo):
     ) -> None:
         super().__init__(
             model=model,
-            serialization_settings=SerializationSettings(
-                use_pt2=False, check_trace=False
-            ),
         )
         self.include_postprocessing = include_postprocessing
         self.split_output = split_output

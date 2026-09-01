@@ -19,6 +19,9 @@ from qai_hub_models import (
 )
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.datasets.common_voice import CommonVoiceText, TTSLanguage
+from qai_hub_models.models.templates.pipertts.model_patch import (
+    patch_rational_quadratic_spline,
+)
 from qai_hub_models.models.templates.pipertts.pipertts_metadata_json import (
     write_pipertts_supplementary_files,
 )
@@ -32,10 +35,7 @@ from qai_hub_models.models.templates.voiceai_tts.t5_g2p import (
 from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
-from qai_hub_models.utils.base_model import (
-    BaseModel,
-    SerializationSettings,
-)
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, TensorSpec
 
 SAMPLE_RATE = 22050
@@ -65,6 +65,7 @@ SPEED = {
 
 @lru_cache(maxsize=1)
 def get_model(language: TTSLanguage) -> SynthesizerTrn:
+    patch_rational_quadratic_spline()
     model_path = CachedWebModelAsset(
         hf_models[language], "pipertts", 1, hf_models[language].split("/")[-1]
     ).fetch()
@@ -87,9 +88,7 @@ def get_model(language: TTSLanguage) -> SynthesizerTrn:
 
 class Encoder(BaseModel):
     def __init__(self, gen: SynthesizerTrn) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.gen = gen
 
     def get_input_spec(self) -> InputSpec:
@@ -166,9 +165,7 @@ class SDP(BaseModel):
     """Wrapper for the Piper encoder and duration predictor with deterministic behavior."""
 
     def __init__(self, gen: SynthesizerTrn, speed_adjustment: float = 1.0) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.gen = gen
         # Generate deterministic noise pattern
         self.register_buffer("sdp_noise_pattern", torch.ones(1, 2, MAX_SEQ_LEN) * 0.5)
@@ -266,9 +263,7 @@ class SDP(BaseModel):
 
 class Flow(BaseModel):
     def __init__(self, gen: SynthesizerTrn) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.flow = gen.flow
         hidden_channels = gen.hidden_channels
         self.register_buffer(
@@ -342,9 +337,7 @@ class Flow(BaseModel):
 
 class Decoder(BaseModel):
     def __init__(self, gen: SynthesizerTrn) -> None:
-        super().__init__(
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__()
         self.dec = gen.dec
 
     def forward(self, z: Tensor) -> Tensor:

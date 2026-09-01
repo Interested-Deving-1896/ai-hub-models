@@ -25,6 +25,31 @@ MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 1
 
 
+def untie_output_embeddings(model: Any) -> None:
+    """
+    Give the output embedding its own copy of the tied weight.
+
+    HF masked-LM heads tie the decoder weight to the input embedding. Under
+    torch.export the two consumers collapse onto one shared initializer, which
+    AIMET rejects during quantize with "shared parameter(s) with conflicting
+    consumer types". Cloning keeps the values identical while giving each
+    consumer its own initializer.
+
+    Parameters
+    ----------
+    model
+        A HuggingFace model whose output embedding may be tied to its input.
+    """
+    output_embeddings = model.get_output_embeddings()
+    if output_embeddings is None:
+        return
+    output_embeddings.weight = torch.nn.Parameter(
+        output_embeddings.weight.detach().clone()
+    )
+    if hasattr(model, "config"):
+        model.config.tie_word_embeddings = False
+
+
 class BertModelBase(BaseModel):
     """Shared constructor, compile options, and dataset plumbing for BERT models."""
 
