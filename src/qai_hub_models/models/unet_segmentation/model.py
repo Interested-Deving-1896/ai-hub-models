@@ -12,7 +12,10 @@ from qai_hub_models import Precision, SampleInputsType
 from qai_hub_models.models.templates.segmentation.segmentation_evaluator import (
     SegmentationOutputEvaluator,
 )
-from qai_hub_models.models.unet_segmentation.dataset import CarvanaDataset
+from qai_hub_models.models.unet_segmentation.dataset import (
+    CarvanaDataset,
+    UNetCalibrationDataset,
+)
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_image,
@@ -135,4 +138,4 @@ class UNet(BaseModel):
         return [CarvanaDataset]
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        return CarvanaDataset
+        return UNetCalibrationDataset

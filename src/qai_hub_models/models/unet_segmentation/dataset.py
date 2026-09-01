@@ -7,10 +7,13 @@ from __future__ import annotations
 
 import os
 
+import cv2
 import numpy as np
 import torch
 from PIL import Image
+from torchvision.datasets.coco import CocoDetection
 
+from qai_hub_models.datasets.coco.coco import CocoDatasetBase
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.base_dataset import (
     BaseDataset,
@@ -18,7 +21,12 @@ from qai_hub_models.utils.base_dataset import (
     DatasetSplit,
 )
 from qai_hub_models.utils.image_processing import app_to_net_image_inputs
+from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.private_asset_loaders import CachedPrivateDatasetAsset
+
+# COCO category names segmented as "vehicle"; collapsed to UNet's single
+# foreground class to mirror Carvana's car-vs-background masks.
+COCO_VEHICLE_CLASSES = ["car", "bus", "truck"]
 
 CARVANA_VERSION = 2
 CARVANA_DATASET_ID = "carvana"
@@ -146,4 +154,87 @@ class CarvanaDataset(BaseDataset):
         return DatasetMetadata(
             link="https://www.kaggle.com/competitions/carvana-image-masking-challenge",
             split_description="train split",
+        )
+
+
+class UNetCalibrationDataset(CocoDatasetBase):
+    """
+    Calibration-only dataset for UNet, sourced from MS COCO (CC-BY 4.0).
+
+    Carvana (the eval dataset) is Kaggle-competition licensed and non-commercial,
+    so it must not ship as calibration data. COCO's car/bus/truck instance masks
+    are collapsed into a single binary vehicle mask, matching UNet's 2-class
+    (foreground / background) output and Carvana's `__getitem__` contract.
+    Only images containing at least one vehicle are kept.
+
+    Calibration consumes only the image tensor (see utils/quantization.py); the
+    mask is returned solely to satisfy the (image, mask) dataloader contract.
+    """
+
+    def __init__(
+        self,
+        split: DatasetSplit = DatasetSplit.TRAIN,
+        input_spec: InputSpec | None = None,
+        max_train_samples: int = 2000,
+    ) -> None:
+        # UNet has no train download; calibrate from val2017 (auto-downloadable,
+        # no license wall) to keep `qai-hub-models export` self-service.
+        super().__init__(
+            split=DatasetSplit.VAL,
+            input_spec=input_spec,
+            max_train_samples=max_train_samples,
+        )
+        spec = input_spec or {}
+        self.input_height = spec["image"][0][2] if "image" in spec else 640
+        self.input_width = spec["image"][0][3] if "image" in spec else 1280
+
+        vehicle_cat_ids = set(self.coco.getCatIds(catNms=COCO_VEHICLE_CLASSES))
+        self.ids = [
+            img_id
+            for img_id in self.ids
+            if vehicle_cat_ids
+            & {
+                ann["category_id"]
+                for ann in self.coco.loadAnns(
+                    self.coco.getAnnIds(imgIds=img_id, iscrowd=False)
+                )
+            }
+        ]
+        if not self.ids:
+            raise ValueError("No COCO images with vehicle annotations found.")
+        self.vehicle_cat_ids = vehicle_cat_ids
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        image, target = CocoDetection.__getitem__(self, index)
+        image = image.convert("RGB").resize(
+            (self.input_width, self.input_height), Image.BILINEAR
+        )
+        _, img_tensor = app_to_net_image_inputs(image)
+        img_tensor = img_tensor.squeeze(0)
+
+        mask = np.zeros((self.input_height, self.input_width), dtype=np.uint8)
+        for annotation in target:
+            if annotation["category_id"] not in self.vehicle_cat_ids:
+                continue
+            ann_mask = cv2.resize(
+                self.coco.annToMask(annotation),
+                (self.input_width, self.input_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+            mask = np.maximum(mask, ann_mask)
+
+        return img_tensor, torch.from_numpy(mask).float()
+
+    def __len__(self) -> int:
+        return len(self.ids)
+
+    @staticmethod
+    def default_samples_per_job() -> int:
+        return 100
+
+    @staticmethod
+    def get_dataset_metadata() -> DatasetMetadata:
+        return DatasetMetadata(
+            link="https://cocodataset.org/",
+            split_description="val2017 vehicle subset (car/bus/truck)",
         )
