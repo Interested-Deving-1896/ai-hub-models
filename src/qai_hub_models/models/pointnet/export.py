@@ -13,6 +13,7 @@ import warnings
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.pointnet import MODEL_ID, Model
 from qai_hub_models.utils.args import export_parser
+from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.export.context import resolve_recipe_dir
 from qai_hub_models.utils.export.dispatch import select_pipeline
 
@@ -47,6 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace | None = None) -> None:
+    if not check_unpublished_model_warning():
+        return
     if args is None:
         warnings.warn(
             "Running `python -m qai_hub_models.models.pointnet.export` is "

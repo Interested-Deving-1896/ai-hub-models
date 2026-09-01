@@ -241,7 +241,6 @@ and many more.
 | [MobileSam](https://aihub.qualcomm.com/models/mobilesam) | `qai_hub_models.models.mobilesam` |
 | [PSPNet](https://aihub.qualcomm.com/models/pspnet) | `qai_hub_models.models.pspnet` |
 | [PidNet](https://aihub.qualcomm.com/models/pidnet) | `qai_hub_models.models.pidnet` |
-| [PointNet](https://aihub.qualcomm.com/models/pointnet) | `qai_hub_models.models.pointnet` |
 | [SINet](https://aihub.qualcomm.com/models/sinet) | `qai_hub_models.models.sinet` |
 | [SalsaNext](https://aihub.qualcomm.com/models/salsanext) | `qai_hub_models.models.salsanext` |
 | [Segformer-Base](https://aihub.qualcomm.com/models/segformer_base) | `qai_hub_models.models.segformer_base` |

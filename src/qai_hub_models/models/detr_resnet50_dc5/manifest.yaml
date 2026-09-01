@@ -5,6 +5,12 @@ applicable_scenarios:
 dataset:
 - detection-datasets/coco
 description: DETR is a machine learning model that can detect objects (trained on COCO dataset).
+disabled_paths:
+  w8a16_mixed_int16:
+    onnx:
+      scorecard_failure: 'Failing jobs: j5744weq5'
+    qnn_dlc:
+      scorecard_failure: 'Failing jobs: jgd33936p'
 domain: Computer Vision
 form_factors:
 - Phone

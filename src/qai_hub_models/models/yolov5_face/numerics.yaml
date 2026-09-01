@@ -1,0 +1,27 @@
+metrics:
+- dataset_link: https://huggingface.co/datasets/CUHK-CSE/wider_face
+  dataset_name: wider_face
+  dataset_split_description: validation split
+  device_metric:
+    Samsung Galaxy S25:
+      float:
+        onnx:
+          partial_metric: 91.7
+        qnn_dlc:
+          partial_metric: 91.7
+        tflite:
+          partial_metric: 91.7
+      w8a16:
+        onnx:
+          partial_metric: 90.7
+        qnn_dlc:
+          partial_metric: 90.8
+  metric_description: Easy-subset AP@IoU=0.5 on WIDER FACE validation split.
+  metric_enablement_threshold: 10.0
+  metric_name: Mean Average Precision
+  metric_range:
+    max: 100.0
+    min: 0.0
+  metric_unit: mAP@0.50
+  num_partial_samples: 100
+  partial_torch_metric: 91.7

@@ -1,3 +1,6 @@
+> [!WARNING]
+> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
+
 # [PointNet: Deep learning model for 3D object classification using point cloud data](https://aihub.qualcomm.com/models/pointnet)
 
 PointNet is a pioneering neural network architecture designed to directly consume unordered point cloud data for tasks such as classification and segmentation. It learns spatial features from raw 3D points without requiring voxelization or image projections.
