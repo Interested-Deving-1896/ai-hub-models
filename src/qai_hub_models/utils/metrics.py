@@ -299,6 +299,17 @@ GRACE2_GRADE = _grace_grade(2)
 # The current Grace version
 GRACE_GRADE = GRACE2_GRADE
 
+MEAN_ABSOLUTE_ERROR = _register_metric(
+    MetricMetadata(
+        name="Mean Absolute Error",
+        unit="MAE",
+        description="Per-pixel mean absolute error between predicted saliency map and binary ground truth mask.",
+        range=(0.0, 1.0),
+        float_vs_device_threshold=0.01,
+        higher_is_better=False,
+    )
+)
+
 RECALL_AT_1 = _register_metric(
     MetricMetadata(
         name="Recall@1",
