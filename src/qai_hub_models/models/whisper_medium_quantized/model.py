@@ -23,18 +23,18 @@ from transformers import WhisperConfig
 from typing_extensions import Self
 
 from qai_hub_models.configs.model_metadata import ModelMetadata
-from qai_hub_models.models._shared.hf_whisper.model import (
+from qai_hub_models.models.templates.hf_whisper.model import (
     TIKTOKEN_URL,
     HfWhisperDecoder,
     HfWhisperEncoder,
 )
-from qai_hub_models.models._shared.hf_whisper.utils import (
+from qai_hub_models.models.templates.hf_whisper.utils import (
     write_whisper_supplementary_files,
 )
-from qai_hub_models.models._shared.hf_whisper.whisper_metadata_json import (
+from qai_hub_models.models.templates.hf_whisper.whisper_metadata_json import (
     WhisperCapabilities,
 )
-from qai_hub_models.models._shared.hf_whisper_quantized.model import (
+from qai_hub_models.models.templates.hf_whisper_quantized.model import (
     WhisperDecoderQuantizableBase,
     WhisperEncoderQuantizableBase,
 )

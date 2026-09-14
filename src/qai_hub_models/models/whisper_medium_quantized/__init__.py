@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-from qai_hub_models.models._shared.hf_whisper.app import (
+from qai_hub_models.models.templates.hf_whisper.app import (
     HfWhisperApp as App,
 )
 

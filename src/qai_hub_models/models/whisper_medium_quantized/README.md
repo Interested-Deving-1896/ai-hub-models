@@ -70,7 +70,7 @@ Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more informat
 Run the following simple CLI demo to verify the model is working end to end:
 
 ```bash
-python -m qai_hub_models.models.whisper_medium_quantized.demo
+qai-hub-models demo whisper_medium_quantized
 ```
 More details on the CLI tool can be found with the `--help` option. See
 [demo.py](demo.py) for sample usage of the model including pre/post processing
@@ -82,7 +82,7 @@ To run the model on Qualcomm® devices, you must export the model for use with a
 TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
 Use the following command to export the model:
 ```bash
-qai-hub-models export whisper_medium_quantized --target-runtime qnn_context_binary --precision w8a16 --device "Samsung Galaxy S25 (Family)"
+qai-hub-models export whisper_medium_quantized
 ```
 Additional options are documented with the `--help` option.
 
