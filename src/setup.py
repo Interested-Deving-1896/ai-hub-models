@@ -116,14 +116,17 @@ def _get_excluded_package_data() -> dict[str, list[str]]:
 
 
 def _get_excluded_packages() -> list[str]:
+    # Patterns are matched with fnmatch, where `*` spans dots -- so a bare
+    # `<name>*` suffix would also exclude `<name>2`, `<name>_foo`, etc.
     excluded = ["qai_hub_models.*.external_repos.*"]
     if IS_RELEASE_BUILD:
-        excluded += [
-            f"qai_hub_models.{package}*" for package in RELEASE_EXCLUDED_PACKAGES
-        ]
-        excluded += [
-            f"qai_hub_models.models.{model}*" for model in _get_unpublished_models()
-        ]
+        for package in RELEASE_EXCLUDED_PACKAGES:
+            excluded += [f"qai_hub_models.{package}", f"qai_hub_models.{package}.*"]
+        for model in _get_unpublished_models():
+            excluded += [
+                f"qai_hub_models.models.{model}",
+                f"qai_hub_models.models.{model}.*",
+            ]
     return excluded
 
 

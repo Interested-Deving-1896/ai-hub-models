@@ -585,9 +585,13 @@ def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
             resolved_target = aliased_folder
 
     from qai_hub_models.cli.dispatch import run_model_script
+    from qai_hub_models.utils.export.context import RecipeSourceUnavailableError
 
     try:
         run_model_script(model_id=resolved_target, script=script, forwarded=forwarded)
+    except RecipeSourceUnavailableError:
+        # Already actionable; don't bury it in the generic support-email message.
+        raise
     except Exception as e:
         raise RuntimeError(
             f"\nSomething went wrong (an exception was thrown). Email us at ai-hub-support@qti.qualcomm.com for assistance.\n\n"

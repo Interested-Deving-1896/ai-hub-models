@@ -25,6 +25,10 @@ def _subcommand_choices(parser: argparse.ArgumentParser) -> set[str]:
     return set(subparsers_action.choices)
 
 
+class _StubRecipeSourceUnavailableError(Exception):
+    """Stands in for the heavy side's ``RecipeSourceUnavailableError``."""
+
+
 def _stub_heavy_modules(
     model_ids: set[str],
     run_model_script: MagicMock | None = None,
@@ -42,10 +46,14 @@ def _stub_heavy_modules(
     dispatch.run_model_script = run_model_script or MagicMock()  # type: ignore[attr-defined]
     command_help = types.ModuleType("qai_hub_models.cli.command_help")
     command_help.print_command_help = lambda script, stream: static_help  # type: ignore[attr-defined]
+    context = types.ModuleType("qai_hub_models.utils.export.context")
+    context.RecipeSourceUnavailableError = _StubRecipeSourceUnavailableError  # type: ignore[attr-defined]
     return {
         "qai_hub_models": types.ModuleType("qai_hub_models"),
         "qai_hub_models.utils": types.ModuleType("qai_hub_models.utils"),
         "qai_hub_models.utils.path_helpers": path_helpers,
+        "qai_hub_models.utils.export": types.ModuleType("qai_hub_models.utils.export"),
+        "qai_hub_models.utils.export.context": context,
         "qai_hub_models.cli": types.ModuleType("qai_hub_models.cli"),
         "qai_hub_models.cli.dispatch": dispatch,
         "qai_hub_models.cli.command_help": command_help,
@@ -113,6 +121,29 @@ def test_dispatch_forwards_remaining_args_to_model_parser(script: str) -> None:
         script=script,
         forwarded=["--target-runtime", "tflite"],
     )
+
+
+def test_dispatch_surfaces_source_unavailable_error(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A source-less recipe prints its own message, not the support-email text."""
+    mock_run = MagicMock(
+        side_effect=_StubRecipeSourceUnavailableError(
+            "this recipe cannot be exported here"
+        )
+    )
+    with (
+        patch("qai_hub_models_cli.cli._check_version_match"),
+        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch.dict(
+            sys.modules, _stub_heavy_modules({"sam3"}, run_model_script=mock_run)
+        ),
+        pytest.raises(SystemExit),
+    ):
+        main(["export", "sam3", "--help"])
+    out = capsys.readouterr().out
+    assert "this recipe cannot be exported here" in out
+    assert "ai-hub-support@qti.qualcomm.com" not in out
 
 
 def test_dispatch_missing_model_arg_exits_with_usage_hint(

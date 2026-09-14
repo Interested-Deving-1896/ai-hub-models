@@ -76,6 +76,10 @@ def looks_like_path(target: str) -> bool:
     )
 
 
+class RecipeSourceUnavailableError(Exception):
+    """A recipe folder holds metadata but no Python source."""
+
+
 def import_recipe_module(source_dir: Path) -> Any:
     """Import the recipe package at *source_dir* and return its module.
 
@@ -84,17 +88,37 @@ def import_recipe_module(source_dir: Path) -> Any:
     parent is added to ``sys.path`` so ``import <folder_name>`` works — and
     any sub-imports the recipe uses (e.g. ``<folder_name>.external_repos.<repo>``)
     resolve consistently.
+
+    Raises :class:`RecipeSourceUnavailableError` if the folder ships metadata
+    only.
     """
+    # Without this, a metadata-only folder imports as an implicit namespace
+    # package and every attribute lookup fails with a bare AttributeError.
+    if not (source_dir / "__init__.py").exists():
+        raise RecipeSourceUnavailableError(
+            f"Recipe `{source_dir.name}` has no Python source in this "
+            f"installation — {source_dir} has no __init__.py, so there is "
+            "nothing to export.\n"
+            "Some models are listed for their published metrics but ship no "
+            "recipe. Those metrics are still available via "
+            f"`qai-hub-models info/perf/numerics {source_dir.name}`; to export "
+            "this model, contact ai-hub-support@qti.qualcomm.com."
+        )
+
+    module_name = source_dir.name
     try:
         rel = source_dir.resolve().relative_to(QAIHM_MODELS_ROOT.resolve())
         if len(rel.parts) == 1:
-            return importlib.import_module(f"qai_hub_models.models.{rel.parts[0]}")
+            module_name = f"qai_hub_models.models.{rel.parts[0]}"
     except ValueError:
         pass
-    parent = str(source_dir.parent)
-    if parent not in sys.path:
-        sys.path.insert(0, parent)
-    return importlib.import_module(source_dir.name)
+
+    if module_name == source_dir.name:
+        parent = str(source_dir.parent)
+        if parent not in sys.path:
+            sys.path.insert(0, parent)
+
+    return importlib.import_module(module_name)
 
 
 def resolve_manifest(source_dir: Path) -> QAIHMModelManifest:

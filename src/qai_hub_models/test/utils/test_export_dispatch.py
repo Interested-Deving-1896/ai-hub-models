@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from qai_hub_models.utils.export.context import (
+    RecipeSourceUnavailableError,
     import_recipe_module,
     resolve_recipe_dir,
 )
@@ -108,6 +109,25 @@ def test_select_pipeline_binds_source_dir(tmp_path: Path) -> None:
     assert "source_dir" not in sig.parameters
 
 
+def test_import_recipe_module_rejects_metadata_only_folder(tmp_path: Path) -> None:
+    """A metadata-only recipe errors clearly instead of importing as a namespace pkg.
+
+    Some catalog entries ship manifest/README/perf with no recipe; those folders
+    used to import successfully and fail later on `.Model`.
+    """
+    models_root = tmp_path / "qai_hub_models" / "models"
+    folder = models_root / "sam3"
+    folder.mkdir(parents=True)
+    (folder / "manifest.yaml").write_text("id: sam3\n")
+    (folder / "README.md").write_text("")
+
+    with (
+        patch("qai_hub_models.utils.export.context.QAIHM_MODELS_ROOT", models_root),
+        pytest.raises(RecipeSourceUnavailableError, match="no Python source"),
+    ):
+        import_recipe_module(folder)
+
+
 def test_import_recipe_module_idempotent_sys_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -115,6 +135,7 @@ def test_import_recipe_module_idempotent_sys_path(
     monkeypatch.setattr(sys, "path", sys.path[:])
     folder = tmp_path / "standalone_recipe"
     folder.mkdir()
+    (folder / "__init__.py").write_text("")
 
     with patch(
         "qai_hub_models.utils.export.context.importlib.import_module",
@@ -134,6 +155,7 @@ def test_import_recipe_module_in_tree_short_circuits(
     models_root = tmp_path / "qai_hub_models" / "models"
     folder = models_root / "some_model"
     folder.mkdir(parents=True)
+    (folder / "__init__.py").write_text("")
 
     with (
         patch("qai_hub_models.utils.export.context.QAIHM_MODELS_ROOT", models_root),

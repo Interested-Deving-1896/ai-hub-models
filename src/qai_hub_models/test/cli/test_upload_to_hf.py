@@ -1179,7 +1179,10 @@ class TestUnchangedReupload:
         assert "Nothing changed" in out
         assert "still version v2" in out
         assert "--version v2" in out
-        assert "v3" not in out
+        # Not a bare "v3": the output embeds a random tmp path, and one that
+        # happened to be named tmpv0kv3hd8 failed this test in CI.
+        assert "version v3" not in out
+        hf_api["create_tag"].assert_not_called()
 
     def test_a_real_change_still_bumps_the_version(
         self, tmp_path: Path, hf_api: Any
