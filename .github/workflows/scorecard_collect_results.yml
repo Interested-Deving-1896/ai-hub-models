@@ -701,6 +701,7 @@ jobs:
       github_token_scope: organization
       base_allowed_tools: >-
         Read,
+        Write,
         Bash(gh:*),
         Bash(cat:*),
         Bash(git:*),
@@ -714,9 +715,18 @@ jobs:
         Bash(mkdir:*)
       prompt: |
         A scorecard has detected 2x+ performance and/or numerics regressions.
-        Analyze the regressions in depth and post a structured triage comment.
+        Analyze the regressions in depth and emit a structured triage comment.
 
         Read .claude/skills/scorecard-analyze/SKILL.md and follow its process exactly.
+
+        IMPORTANT — you do NOT post the comment yourself. Your `GITHUB_TOKEN` is
+        repo-scoped and cannot write to qcom-ai-hub/tetracode (attempts will fail
+        and retries will burn turns). Instead:
+          1. Write the full comment markdown to `/tmp/breeze_scorecard_comment.md`.
+          2. Emit it via
+             `python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_scorecard_comment.md`
+        A downstream `post_scorecard_breeze_comment` job recovers the file from
+        this job's log and posts it to ISSUE_URL.
 
         Context variables for the skill:
         - ISSUE_URL: ${{ needs.aggregate_scorecard_results.outputs.regression_issue_url }}
@@ -730,7 +740,7 @@ jobs:
         Your job: analyze perf and numerics regressions, classify their severity and
         trend (new/sustained/flaky), cluster by root cause, and soft-triage to teams.
 
-        IMPORTANT: You have a 40-turn limit. Be efficient:
+        IMPORTANT: You have a 50-turn limit. Be efficient:
         - Read SKILL.md first — it contains ALL instructions
         - Batch operations — never loop over regressions one-by-one
         - Target: finish in under 30 turns
@@ -749,7 +759,55 @@ jobs:
         - Scorecard artifacts available via: gh run download $RUN_ID -n "$ARTIFACT_NAME" -D /tmp/scorecard-artifacts
           Reads trend-report.json for per-regression NEW/SUSTAINED/FLAKY classification.
       bot_name: "breeze-code-action-agent[bot]"
-      max_turns: 40
+      max_turns: 50
       track_progress: false
+      # Required, not cosmetic: without it the job log carries no tool `stdout`
+      # entries, so post_scorecard_breeze_comment has nothing to recover.
+      show_full_output: true
       claude_output_mode: summary
       additional_permissions: "actions: read"
+
+  post_scorecard_breeze_comment:
+    name: Post Scorecard Breeze Comment to Tetracode
+    # Runs even when the agent job failed: if it emitted the comment before
+    # hitting the turn cap, the comment is still recoverable from its log.
+    if: ${{ always() && needs.scorecard-analysis.result != 'cancelled' && needs.aggregate_scorecard_results.outputs.regression_issue_url != '' }}
+    needs: [aggregate_scorecard_results, scorecard-analysis]
+    runs-on: [tetra-ubuntu-2204, self-hosted]
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Recover Breeze comment from agent job log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/breeze
+          AGENT_JOB_ID=$(gh api --paginate \
+            "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" \
+            --jq '.jobs[] | select(.name | contains("scorecard-analysis")) | .id' \
+            | head -n1)
+          if [ -z "$AGENT_JOB_ID" ]; then
+            echo "::error::Could not find scorecard-analysis job in run ${{ github.run_id }}"
+            exit 1
+          fi
+          echo "Agent job id: $AGENT_JOB_ID"
+          gh api \
+            "repos/${{ github.repository }}/actions/jobs/$AGENT_JOB_ID/logs" \
+            > /tmp/breeze/agent.log
+          python3 scripts/breeze_nightly/extract_comment_from_log.py \
+            /tmp/breeze/agent.log /tmp/breeze/comment.md
+
+      - name: Post comment to the regression issue
+        env:
+          GH_TOKEN: ${{ secrets.STAGING_GH_TOKEN }}
+          ISSUE_URL: ${{ needs.aggregate_scorecard_results.outputs.regression_issue_url }}
+        run: |
+          echo "Posting Breeze comment to $ISSUE_URL"
+          gh issue comment "$ISSUE_URL" --body-file /tmp/breeze/comment.md

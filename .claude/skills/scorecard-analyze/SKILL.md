@@ -1,7 +1,7 @@
 # Scorecard Regression Analysis
 
 Analyze scorecard performance and numerics regressions, classify by trend,
-cluster by root cause, and post a structured triage comment on the GitHub issue.
+cluster by root cause, and emit a structured triage comment for downstream posting.
 
 **Budget: You have ~35 tool calls. Be efficient. Batch queries. Do NOT read files one-by-one.**
 
@@ -25,6 +25,31 @@ Injected via the workflow prompt:
 - Use fully-qualified cross-repo references: `qcom-ai-hub/ai-hub-models-internal#N`
 - Keep the final comment under 65,000 characters
 - If a file is missing, note it and proceed with available data
+
+## Sandbox Gotchas
+
+Real constraints in the Breeze runner — ignoring them wastes turns on permission
+denials, which is how this agent hit its turn cap on 2026-09-14.
+
+- **Writing files**: use the `Write` tool. If it is denied, the only proven
+  fallback is a single Bash call with an explicit `-`:
+  ```
+  python3 - << 'PYEOF'
+  from pathlib import Path
+  Path("/tmp/breeze_scorecard_comment.md").write_text("""...""")
+  PYEOF
+  ```
+  Bare `python3 << 'EOF'` and `cat > file << 'EOF'` are both denied.
+- **No pipes in Bash**: `cmd | head -10` is denied because the matcher splits on
+  `|` and rechecks each side. Use the tool's own flags (`--limit`, `--jq`) or
+  `head -n 10 file.txt` against a saved file.
+- **No newline-chained commands**: `cmd > file\necho "exit: $?"` counts as
+  command chaining and is denied like `;` or `&&`. One command per Bash call.
+- **Quote `gh api` URLs containing `&`**: unquoted `&` is parsed as a background
+  operator and the command is split. Always `gh api "repos/o/n/x?a=1&b=2"`.
+- **Do not hunt for credentials.** `env`, `printenv`, and `ls ~/.config/gh` are
+  not allowlisted, and there is no token here that can write to tetracode. See
+  Step 5 — posting is not your job.
 
 ## Step 1: Load Regression Data (~4 tool calls)
 
@@ -150,17 +175,22 @@ Read `.claude/triage/teams.md` for team routing rules.
 gh issue list --repo qcom-ai-hub/tetracode --search "scorecard regression" --state open --limit 5 --json number,title,labels
 ```
 
-## Step 5: Post Structured Comment (~3 tool calls)
+## Step 5: Emit Comment for Downstream Posting (~2 tool calls)
 
-1. Extract issue number from ISSUE_URL (e.g., `https://github.com/qcom-ai-hub/tetracode/issues/19062` → `19062`).
+You do NOT post the comment. The Breeze runner's `GITHUB_TOKEN` is repo-scoped to
+`ai-hub-models-internal` and cannot write to `qcom-ai-hub/tetracode` — posting
+attempts will fail and retries will exhaust the turn cap. A separate
+`post_scorecard_breeze_comment` job (with `STAGING_GH_TOKEN`) recovers your
+comment from this job's log and posts it to `ISSUE_URL`.
 
-2. Build the comment body using the output format below.
+1. Write the comment markdown (format below) to `/tmp/breeze_scorecard_comment.md`.
 
-3. Post the comment:
+2. Emit it base64-encoded between recovery markers (ONE Bash call):
    ```
-   gh api repos/qcom-ai-hub/tetracode/issues/NUMBER/comments \
-     -X POST -f body="<comment_body>"
+   python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_scorecard_comment.md
    ```
+
+Do NOT call `gh issue comment` or `gh api .../qcom-ai-hub/tetracode/...`.
 
 **If the comment exceeds 65K characters:**
 - Truncate the detailed tables to top 10 entries per cluster

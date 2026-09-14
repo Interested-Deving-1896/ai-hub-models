@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
-"""Emit the nightly Breeze analyst comment base64-encoded with recovery markers.
+"""Emit a Breeze analyst comment base64-encoded with recovery markers.
 
-Written for the nightly-analyze Breeze agent Step 5. The Breeze allowlist
-permits `Bash(python3:*)` but not `echo` / `base64` / compound shell, so a
-single-command Python emit is the only reliable path. The downstream
-`post_breeze_comment` job recovers the file from this job's log with
+Used by the nightly-analyze and scorecard-analyze Breeze agents in their Step 5.
+The Breeze allowlist permits `Bash(python3:*)` but not `echo` / `base64` /
+compound shell, so a single-command Python emit is the only reliable path. The
+downstream poster job recovers the file from the agent job's log with
 `extract_comment_from_log.py` and posts it via `gh issue comment`.
 """
 
