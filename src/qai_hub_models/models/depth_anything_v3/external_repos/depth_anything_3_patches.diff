@@ -1,5 +1,8 @@
 # Replaces torch.cartesian_prod with meshgrid and removes einsum for export compatibility.
 # Also replaces data-dependent int(positions.max()) with the static n_tokens bound so torch.export succeeds.
+# Also drops the RoPE position/frequency caches: a tensor cached while a torch.export
+# FakeTensorMode is active persists on the shared module and taints later eager runs,
+# tripping GuardOnDataDependentSymNode (tetracode #21068). The tables are trivially cheap.
 #
 diff --git a/src/depth_anything_3/cfg.py b/src/depth_anything_3/cfg.py
 index 4607ff8..7c5c34b 100644
@@ -15,19 +18,96 @@ index 4607ff8..7c5c34b 100644
  
  
 diff --git a/src/depth_anything_3/model/dinov2/layers/rope.py b/src/depth_anything_3/model/dinov2/layers/rope.py
-index f75ba37..0bb027f 100644
+index f75ba37..5d4c5d6 100644
 --- a/src/depth_anything_3/model/dinov2/layers/rope.py
 +++ b/src/depth_anything_3/model/dinov2/layers/rope.py
-@@ -53,7 +53,7 @@ class PositionGetter:
-         if (height, width) not in self.position_cache:
-             y_coords = torch.arange(height, device=device)
-             x_coords = torch.arange(width, device=device)
--            positions = torch.cartesian_prod(y_coords, x_coords)
-+            positions = torch.stack(torch.meshgrid(y_coords, x_coords, indexing='ij'), dim=-1).reshape(-1, 2)
-             self.position_cache[height, width] = positions
+@@ -14,7 +14,7 @@
+ #         https://github.com/naver-ai/rope-vit
  
-         cached_positions = self.position_cache[height, width]
-@@ -180,7 +180,9 @@ class RotaryPositionEmbedding2D(nn.Module):
+ 
+-from typing import Dict, Tuple
++from typing import Tuple
+ import torch
+ import torch.nn as nn
+ import torch.nn.functional as F
+@@ -32,8 +32,7 @@ class PositionGetter:
+     """
+ 
+     def __init__(self):
+-        """Initializes the position generator with an empty cache."""
+-        self.position_cache: Dict[Tuple[int, int], torch.Tensor] = {}
++        """Initializes the position generator."""
+ 
+     def __call__(
+         self, batch_size: int, height: int, width: int, device: torch.device
+@@ -50,14 +49,14 @@ class PositionGetter:
+             Tensor of shape (batch_size, height*width, 2) containing y,x coordinates
+             for each position in the grid, repeated for each batch item.
+         """
+-        if (height, width) not in self.position_cache:
+-            y_coords = torch.arange(height, device=device)
+-            x_coords = torch.arange(width, device=device)
+-            positions = torch.cartesian_prod(y_coords, x_coords)
+-            self.position_cache[height, width] = positions
+-
+-        cached_positions = self.position_cache[height, width]
+-        return cached_positions.view(1, height * width, 2).expand(batch_size, -1, -1).clone()
++        # Recomputed each call, never cached: a tensor cached under a torch.export
++        # FakeTensorMode would persist and taint later eager runs (tetracode #21068).
++        y_coords = torch.arange(height, device=device)
++        x_coords = torch.arange(width, device=device)
++        positions = torch.stack(
++            torch.meshgrid(y_coords, x_coords, indexing="ij"), dim=-1
++        ).reshape(-1, 2)
++        return positions.view(1, height * width, 2).expand(batch_size, -1, -1).clone()
+ 
+ 
+ class RotaryPositionEmbedding2D(nn.Module):
+@@ -82,7 +82,6 @@ class RotaryPositionEmbedding2D(nn.Module):
+         super().__init__()
+         self.base_frequency = frequency
+         self.scaling_factor = scaling_factor
+-        self.frequency_cache: Dict[Tuple, Tuple[torch.Tensor, torch.Tensor]] = {}
+ 
+     def _compute_frequency_components(
+         self, dim: int, seq_len: int, device: torch.device, dtype: torch.dtype
+@@ -98,24 +97,19 @@ class RotaryPositionEmbedding2D(nn.Module):
+         Returns:
+             Tuple of (cosine, sine) tensors for frequency components.
+         """
+-        cache_key = (dim, seq_len, device, dtype)
+-        if cache_key not in self.frequency_cache:
+-            # Compute frequency bands
+-            exponents = torch.arange(0, dim, 2, device=device).float() / dim
+-            inv_freq = 1.0 / (self.base_frequency**exponents)
+-
+-            # Generate position-dependent frequencies
+-            positions = torch.arange(seq_len, device=device, dtype=inv_freq.dtype)
+-            angles = torch.einsum("i,j->ij", positions, inv_freq)
++        # Recomputed each call, never cached: a tensor cached under a torch.export
++        # FakeTensorMode would persist and taint later eager runs (tetracode #21068).
++        exponents = torch.arange(0, dim, 2, device=device).float() / dim
++        inv_freq = 1.0 / (self.base_frequency**exponents)
+ 
+-            # Compute and cache frequency components
+-            angles = angles.to(dtype)
+-            angles = torch.cat((angles, angles), dim=-1)
+-            cos_components = angles.cos().to(dtype)
+-            sin_components = angles.sin().to(dtype)
+-            self.frequency_cache[cache_key] = (cos_components, sin_components)
++        positions = torch.arange(seq_len, device=device, dtype=inv_freq.dtype)
++        angles = torch.einsum("i,j->ij", positions, inv_freq)
+ 
+-        return self.frequency_cache[cache_key]
++        angles = angles.to(dtype)
++        angles = torch.cat((angles, angles), dim=-1)
++        cos_components = angles.cos().to(dtype)
++        sin_components = angles.sin().to(dtype)
++        return cos_components, sin_components
+ 
+     @staticmethod
+     def _rotate_features(x: torch.Tensor) -> torch.Tensor:
+@@ -180,7 +175,9 @@ class RotaryPositionEmbedding2D(nn.Module):
          feature_dim = tokens.size(-1) // 2
  
          # Get frequency components

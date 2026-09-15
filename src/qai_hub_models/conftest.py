@@ -202,12 +202,7 @@ def pytest_configure(config: pytest.Config) -> None:
 # scorecard test when its root cause is tracked separately and there is no
 # benefit to blocking nightly on it. Prefer a real fix; only add here with a
 # link to the tracking issue or follow-up PR.
-_SKIP_TEST_FOR_MODEL: dict[tuple[str, str], str] = {
-    ("depth_anything_v3", "test_val_data_torch_smoke"): (
-        "torch.export symbolic-shape residue in depth_anything_v3/model.py "
-        "surfaces on the py3.10 compile-test lane; follow-up on PR #4407."
-    ),
-}
+_SKIP_TEST_FOR_MODEL: dict[tuple[str, str], str] = {}
 
 
 def pytest_collection_modifyitems(
