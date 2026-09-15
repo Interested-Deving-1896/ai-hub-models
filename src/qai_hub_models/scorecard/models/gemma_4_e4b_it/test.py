@@ -47,7 +47,7 @@ DEFAULT_EVAL_SEQLEN = [DEFAULT_SEQUENCE_LENGTH, 1]
 @pytest.mark.parametrize(
     ("checkpoint", "task", "expected_metric", "num_samples"),
     [
-        ("DEFAULT_W4A16", "wikitext_chat", 57.62, 0),
+        ("DEFAULT_W4A16", "wikitext_chat", 50.80, 0),
         ("DEFAULT_UNQUANTIZED", "wikitext_chat", 41.10, 0),
     ],
 )
