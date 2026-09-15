@@ -64,6 +64,8 @@ class OptimizedFlow:
         scores = torch.matmul(q.transpose(-2, -1), k) * self.attention_scale
 
         if mask is not None:
+            # remove the next line when https://jira-dc.qualcomm.com/jira/browse/AISW-203229 is resolved
+            mask = mask.expand_as(scores)
             scores.masked_fill_(mask == 0, -1e4)
 
         attn_output = torch.matmul(F.softmax(scores, dim=-1), v.transpose(-2, -1))

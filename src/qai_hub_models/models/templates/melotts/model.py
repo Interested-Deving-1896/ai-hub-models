@@ -546,9 +546,6 @@ class Flow(BaseModel):
         device: Device | None = None,
         context_graph_name: str | None = None,
     ) -> str:
-        other_compile_options += (
-            " -O2"  # Can be removed when JIRA AISW-177186 is resolved.
-        )
         if target_runtime.qairt_version_changes_compilation:
             other_compile_options += " --quantize_io  "
         return super().get_hub_compile_options(
