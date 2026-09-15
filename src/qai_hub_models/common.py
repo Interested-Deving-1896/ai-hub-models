@@ -404,7 +404,7 @@ class InferenceEngine(Enum):
     @property
     def default_qairt_version(self: InferenceEngine) -> QAIRTVersion:
         """Default QAIRT version used by this inference engine."""
-        qairt_version = "2.45"
+        qairt_version = "2.50"
 
         try:
             return QAIRTVersion(qairt_version)
@@ -726,7 +726,11 @@ class TargetRuntime(Enum):
 
         THIS MIGHT BE DIFFERENT THAN AI HUB's DEFAULT VERSION.
         """
-        if self == TargetRuntime.GENIE or self == TargetRuntime.GENIEX_QAIRT:  # noqa: PLR1714 | Can't merge comparisons and use assert_never
+        if (
+            self == TargetRuntime.GENIE  # noqa: PLR1714 | Can't merge comparisons and use assert_never
+            or self == TargetRuntime.GENIEX_QAIRT
+            or self == TargetRuntime.GENIEX_LLAMACPP
+        ):
             return QAIRTVersion("2.45")
         return self.inference_engine.default_qairt_version
 

@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+from qai_hub.client import Device
 from transformers import AutoModelForMaskedLM, MobileBertTokenizer
 
+from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.models.templates.bert_hf.model import BaseBertModel
 from qai_hub_models.models.templates.bert_hf.model_patches import (
     patch_get_extended_attention_mask,
@@ -31,3 +33,18 @@ class MobileBertUncasedGoogle(BaseBertModel):
         tokenizer = MobileBertTokenizer.from_pretrained(weights)
         model.mobilebert.get_extended_attention_mask = patch_get_extended_attention_mask
         return cls(model, tokenizer)
+
+    def get_hub_compile_options(
+        self,
+        target_runtime: TargetRuntime,
+        precision: Precision,
+        other_compile_options: str = "",
+        device: Device | None = None,
+        context_graph_name: str | None = None,
+    ) -> str:
+        # -O2 works around severe 2.50 numerical regressions (tetracode #21273).
+        if target_runtime == TargetRuntime.QNN_DLC:
+            other_compile_options += " -O2"
+        return super().get_hub_compile_options(
+            target_runtime, precision, other_compile_options, device, context_graph_name
+        )
