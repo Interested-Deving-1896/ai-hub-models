@@ -32,9 +32,9 @@ REDS_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     REDS_VERSION,
     "REDS-val300-lmdb.zip",
     installation_steps=[
-        "Download the REDS-val300-lmdb.zip ,file from https://drive.google.com/file/d/1_WPxX6mDSzdyigvie_OlpI-Dknz7RHKh/view",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.models.nafnet_deblur.dataset.REDSDataset --files /path/to/REDS-val300-lmdb.zip`",
+        "Download the REDS-val300-lmdb.zip file from https://drive.google.com/file/d/1_WPxX6mDSzdyigvie_OlpI-Dknz7RHKh/view",
     ],
+    configure_files=["REDS-val300-lmdb.zip"],
 )
 
 

@@ -31,11 +31,9 @@ ENTIRE_ID_PRIVATE_ASSET = CachedPrivateDatasetAsset(
         "Download the two sub-folders: bounding_box_test/ (gallery) and query/ (query images)",
         "Zip them together into a single archive, e.g.:\n"
         "    zip -r entire_id_data.zip bounding_box_test/ query/",
-        "Run: python -m qai_hub_models.scripts.configure_dataset "
-        "--class qai_hub_models.datasets.reid.entire_id.ENTIReIDDataset "
-        "--files /path/to/entire_id_data.zip",
     ],
     local_cache_extracted_path="entire_id_data",
+    configure_files=["entire_id_data.zip"],
 )
 
 

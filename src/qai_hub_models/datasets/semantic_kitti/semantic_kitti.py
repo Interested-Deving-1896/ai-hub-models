@@ -25,7 +25,11 @@ SEMANTIC_KITTI_INSTALLATION_STEPS = [
     "Open http://www.cvlibs.net/download.php?file=data_odometry_velodyne.zip, provide your Email address, and click the request download link button",
     "Download the data_odometry_velodyne.zip file by the link sent to your email.",
     "Download the data_odometry_labels.zip file at https://semantic-kitti.org/assets/data_odometry_labels.zip",
-    "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.semantic_kitti.semantic_kitti.SemanticKittiDataset --files /path/to/data_odometry_velodyne.zip /path/to/data_odometry_labels.zip`",
+]
+
+SEMANTIC_KITTI_CONFIGURE_FILES = [
+    "data_odometry_velodyne.zip",
+    "data_odometry_labels.zip",
 ]
 
 SEMANTIC_KITTI_LIDARS_ASSET = CachedPrivateDatasetAsset(
@@ -34,6 +38,7 @@ SEMANTIC_KITTI_LIDARS_ASSET = CachedPrivateDatasetAsset(
     SEMANTIC_KITTI_VERSION,
     "data/data_odometry_velodyne.zip",
     installation_steps=SEMANTIC_KITTI_INSTALLATION_STEPS,
+    configure_files=SEMANTIC_KITTI_CONFIGURE_FILES,
 )
 
 SEMANTIC_KITTI_GT_ASSET = CachedPrivateDatasetAsset(
@@ -42,6 +47,7 @@ SEMANTIC_KITTI_GT_ASSET = CachedPrivateDatasetAsset(
     SEMANTIC_KITTI_VERSION,
     "data/data_odometry_labels.zip",
     installation_steps=SEMANTIC_KITTI_INSTALLATION_STEPS,
+    configure_files=SEMANTIC_KITTI_CONFIGURE_FILES,
 )
 
 # Pick a single sequence for train and validation to save disk space

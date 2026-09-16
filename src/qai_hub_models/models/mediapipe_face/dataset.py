@@ -28,9 +28,11 @@ HUMAN_FACES_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     "data.zip",
     installation_steps=[
         "Download the dataset from https://www.kaggle.com/datasets/ashwingupta3012/human-face",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.models.mediapipe_face.dataset.HumanFacesDataset --files /path/to/zip`",
+        "Rename or copy the download so it is named human_faces.zip, e.g.:\n"
+        "    cp archive.zip human_faces.zip",
     ],
     local_cache_extracted_path="data/Humans",
+    configure_files=["human_faces.zip"],
 )
 
 

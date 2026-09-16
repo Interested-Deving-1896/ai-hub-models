@@ -5,10 +5,7 @@
 from __future__ import annotations
 
 import os
-import time
-from collections.abc import Callable
 from tempfile import TemporaryDirectory
-from typing import TypeVar
 
 import git  # noqa: TID251  We allow direct import of Git in scripts, since most users won't interact with them.
 from git.exc import (  # noqa: TID251  We allow direct import of Git in scripts, since most users won't interact with them.
@@ -16,12 +13,9 @@ from git.exc import (  # noqa: TID251  We allow direct import of Git in scripts,
 )
 from huggingface_hub import create_repo, create_tag, repo_exists, upload_folder
 
-CallableRetT = TypeVar("CallableRetT")
+from qai_hub_models.cli.hf_common import is_hf_api_timeout_error, timeout_retry
+
 HUGGINGFACE_ORG_NAME = "qualcomm"
-
-
-def is_hf_api_timeout_error(e: Exception) -> bool:
-    return isinstance(e, TimeoutError)
 
 
 def is_git_timeout_error(e: Exception) -> bool:
@@ -29,52 +23,6 @@ def is_git_timeout_error(e: Exception) -> bool:
         isinstance(e, GitCommandError)
         and "The requested URL returned error: 429" in e.stderr
     )
-
-
-def _timeout_retry(
-    do: Callable[[], CallableRetT],
-    max_retries: int,
-    is_timeout_error: Callable[[Exception], bool] = is_hf_api_timeout_error,
-) -> CallableRetT:
-    """
-    Execute the given callable and return the result.
-
-    If the callable returns a TimeoutError, it will be retried with increasingly large sleep times inbetween calls,
-    up to a max number of retries.
-
-    This is used as a workaround for Hugging Face 429 (too many requests!) errors when uploading many models in 1 session.
-
-    Parameters
-    ----------
-    do
-        Callable to do and retry as necessary. Typically you just use (lambda: exp) for this parameter.
-    max_retries
-        Maximum number of times to retry if we hit timeouts. do() would be executed a maximum of max_retries + 1 times, if it times out on each attempt.
-    is_timeout_error
-        Returns true if an error (thrown by "do()") is a timeout that should be retried.
-
-    Returns
-    -------
-    result : CallableRetT
-        Result from successful execution of do().
-
-    Raises
-    ------
-    Exception
-        If the allowed number of retries has been exhaused and do() has not succeeded.
-    """
-    for attempt_idx in range(max_retries + 1):
-        try:
-            return do()
-        except Exception as e:
-            if attempt_idx >= max_retries or not is_timeout_error(e):
-                raise  # No more retries available, so raise the timeout
-
-        if attempt_idx <= 1:
-            time.sleep(10**attempt_idx)  # 1, 10
-        else:
-            time.sleep(30 * (2**attempt_idx - 2))  # 30, 60, 120, ...
-    raise AssertionError()  # line is not reachable
 
 
 def commit_and_push_to_hf(
@@ -115,11 +63,11 @@ def commit_and_push_to_hf(
     version_tag = f"v{version}"
 
     # If this tag exists already, delete previous tag and associated commit.
-    if _timeout_retry(lambda: repo_exists(repo_id, token=hf_token), max_retries):
+    if timeout_retry(lambda: repo_exists(repo_id, token=hf_token), max_retries):
         with TemporaryDirectory() as tmpdir:
             # Bare clone the repo (include only the history and no actual files)
             # so we can manipulate the repo git history cheaply.
-            repo = _timeout_retry(
+            repo = timeout_retry(
                 lambda: git.Repo.clone_from(
                     f"https://oauth2:{hf_token}@huggingface.co/{repo_id}",
                     tmpdir,
@@ -143,14 +91,14 @@ def commit_and_push_to_hf(
                     # remove that commit from history so we can replace it.
                     previous_commit = main_branch.commit.parents[0]
                     repo.git.update_ref(main_branch.path, previous_commit.hexsha)
-                    _timeout_retry(
+                    timeout_retry(
                         lambda: remote.push(main_branch, force=True),
                         max_retries,
                         is_git_timeout_error,
                     )
                 # Delete the old tag.
                 repo.delete_tag(tag)
-                _timeout_retry(
+                timeout_retry(
                     lambda: remote.push(
                         refspec=f"refs/tags/{version_tag}", delete=True
                     ),
@@ -159,11 +107,11 @@ def commit_and_push_to_hf(
                 )
 
     # Upload new commit and tag.
-    _timeout_retry(
+    timeout_retry(
         lambda: create_repo(repo_id=repo_id, exist_ok=True, token=hf_token),
         max_retries,
     )
-    _timeout_retry(
+    timeout_retry(
         lambda: upload_folder(
             folder_path=str(release_root_path),
             repo_id=repo_id,
@@ -174,7 +122,7 @@ def commit_and_push_to_hf(
         ),
         max_retries,
     )
-    _timeout_retry(
+    timeout_retry(
         lambda: create_tag(repo_id=repo_id, tag=version_tag, token=hf_token),
         max_retries,
     )

@@ -37,6 +37,7 @@ GEARGUARD_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     GEARGUARD_DATASET_ID,
     GEARGUARD_DATASET_VERSION,
     f"data/{GEARGUARD_DATASET_DIR_NAME}.zip",
+    configure_files=[f"{GEARGUARD_DATASET_DIR_NAME}.zip"],
 )
 
 

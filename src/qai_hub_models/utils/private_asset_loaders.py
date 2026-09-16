@@ -92,7 +92,14 @@ class CachedPrivateAsset(CachedWebAsset):
 
 
 class UnfetchableDatasetError(Exception):
-    def __init__(self, dataset_name: str, installation_steps: list[str] | None) -> None:
+    def __init__(
+        self,
+        dataset_name: str,
+        installation_steps: list[str] | None,
+        dataset_cls: type | None = None,
+        *,
+        configure_files: list[str],
+    ) -> None:
         """
         Create an error for datasets that cannot be automatically fetched in code.
         These datasets often require a login, license agreement acceptance, etc., to download.
@@ -105,24 +112,84 @@ class UnfetchableDatasetError(Exception):
         installation_steps
             Steps required for a 3rd party user to install this dataset manually.
             If None, the dataset is assumed to be not publicly available.
+
+        dataset_cls
+            The dataset class being configured. When given, a final step naming
+            the exact ``configure-dataset`` command is generated and appended.
+            Supplied by :meth:`BaseDataset.download_data`, not by the asset:
+            assets are built at module scope, before the class exists, and one
+            asset may be shared by several dataset classes.
+
+        configure_files
+            The files ``configure()`` expects, in positional order. Named in the
+            generated command so the ordering is discoverable without reading
+            the source. Required and keyword-only, matching
+            :class:`CachedPrivateDatasetAsset`.
         """
         self.dataset_name = dataset_name
         self.installation_steps = installation_steps
+        self.dataset_cls = dataset_cls
+        self.configure_files = configure_files
         if installation_steps is None:
             super().__init__(
                 f"Dataset {dataset_name} is for Qualcomm-internal usage only. If you have reached this error message when running an export or evaluate script, please file an issue at https://github.com/qualcomm/ai-hub-models/issues."
             )
         else:
+            steps = list(installation_steps)
+            if dataset_cls is not None:
+                steps.append(
+                    f"Run `{configure_dataset_command(dataset_cls, configure_files)}`"
+                )
             super().__init__(
                 f"To use dataset {dataset_name}, you must download it manually. Follow these steps:\n"
-                + "\n".join(
-                    [f"{i + 1}. {step}" for i, step in enumerate(installation_steps)]
-                )
+                + "\n".join([f"{i + 1}. {step}" for i, step in enumerate(steps)])
             )
 
 
+def configure_dataset_command(dataset_cls: type, configure_files: list[str]) -> str:
+    """The ``configure-dataset`` invocation that configures *dataset_cls*.
+
+    The import path is read off the class at runtime, so it is correct for
+    in-tree datasets and for a standalone recipe's ``dataset.py`` alike -- in
+    the latter case ``__module__`` reflects however the recipe was imported.
+
+    Parameters
+    ----------
+    dataset_cls
+        The class to configure.
+
+    configure_files
+        The files ``configure()`` expects, in the order it consumes them.
+
+    Returns
+    -------
+    command : str
+        The command to run, ready to be pasted into a shell.
+
+    Raises
+    ------
+    ValueError
+        If *configure_files* is empty. ``--files`` takes one or more values, so
+        an empty list would print a command that cannot be run.
+    """
+    if not configure_files:
+        raise ValueError(
+            f"{dataset_cls.__name__} must declare the files its configure() "
+            "expects; got an empty list."
+        )
+    dotted = f"{dataset_cls.__module__}.{dataset_cls.__qualname__}"
+    return sample_command("configure-dataset", dotted, "--files", *configure_files)
+
+
 class CachedPrivateDatasetAsset(CachedPrivateAsset):
-    """Private S3 cached asset scoped to a dataset."""
+    """Private S3 cached asset scoped to a dataset.
+
+    ``configure_files`` names the files ``configure()`` expects, in positional
+    order. It is required and keyword-only: every dataset has an ordering, and
+    users only ever learn it from the generated ``configure-dataset`` command.
+    Every asset of a multi-file dataset carries the same full list, since
+    whichever asset fails first is the one that prints the command.
+    """
 
     def __init__(
         self,
@@ -133,6 +200,8 @@ class CachedPrivateDatasetAsset(CachedPrivateAsset):
         asset_config: ModelZooAssetConfig = ASSET_CONFIG,
         installation_steps: list[str] | None = None,
         local_cache_extracted_path: str | Path | None = None,
+        *,
+        configure_files: list[str],
     ) -> None:
         self.dataset_id = dataset_id
         self.dataset_version = dataset_version
@@ -150,6 +219,7 @@ class CachedPrivateDatasetAsset(CachedPrivateAsset):
             UnfetchableDatasetError(
                 dataset_name=dataset_id,
                 installation_steps=installation_steps,
+                configure_files=configure_files,
             ),
             local_cache_extracted_path=extracted,
         )

@@ -17,7 +17,12 @@ from qai_hub_models.utils.private_asset_loaders import (
     CachedPrivateAsset,
     CachedPrivateDatasetAsset,
     UnfetchableDatasetError,
+    configure_dataset_command,
 )
+
+
+class _FakeDataset:
+    """Stands in for a dataset class; only __module__/__qualname__ are read."""
 
 
 def _make_asset_config(tmpdir: str) -> ModelZooAssetConfig:
@@ -72,7 +77,9 @@ class TestUnfetchableDatasetError:
     """Tests for UnfetchableDatasetError."""
 
     def test_internal_only_message(self) -> None:
-        err = UnfetchableDatasetError("my_dataset", installation_steps=None)
+        err = UnfetchableDatasetError(
+            "my_dataset", installation_steps=None, configure_files=["data.zip"]
+        )
         assert err.dataset_name == "my_dataset"
         assert err.installation_steps is None
         msg = str(err)
@@ -81,7 +88,9 @@ class TestUnfetchableDatasetError:
 
     def test_manual_download_message(self) -> None:
         steps = ["Go to example.com", "Accept the license", "Download data.zip"]
-        err = UnfetchableDatasetError("coco", installation_steps=steps)
+        err = UnfetchableDatasetError(
+            "coco", installation_steps=steps, configure_files=["data.zip"]
+        )
         assert err.dataset_name == "coco"
         assert err.installation_steps == steps
         msg = str(err)
@@ -91,10 +100,73 @@ class TestUnfetchableDatasetError:
         assert "3. Download data.zip" in msg
 
     def test_is_exception(self) -> None:
-        err = UnfetchableDatasetError("ds", installation_steps=None)
+        err = UnfetchableDatasetError(
+            "ds", installation_steps=None, configure_files=["data.zip"]
+        )
         assert isinstance(err, Exception)
         with pytest.raises(UnfetchableDatasetError):
             raise err
+
+    def test_configure_files_are_named_in_order(self) -> None:
+        """The generated command spells the files out, so ordering is visible."""
+        err = UnfetchableDatasetError(
+            "kitti",
+            installation_steps=["Download the three archives"],
+            dataset_cls=_FakeDataset,
+            configure_files=["images.zip", "labels.zip", "calib.zip"],
+        )
+        assert (
+            "2. Run `qai-hub-models configure-dataset "
+            f"{_FakeDataset.__module__}._FakeDataset "
+            "--files images.zip labels.zip calib.zip`" in str(err)
+        )
+
+    def test_configure_files_is_required(self) -> None:
+        """No placeholder exists: a message must name real files or not be built."""
+        with pytest.raises(TypeError, match="configure_files"):
+            UnfetchableDatasetError(  # type: ignore[call-arg]
+                "ds", installation_steps=["Download it"], dataset_cls=_FakeDataset
+            )
+
+    def test_configure_files_ignored_without_a_class(self) -> None:
+        """No class means no command to print, so nothing is appended."""
+        err = UnfetchableDatasetError(
+            "ds", installation_steps=["Download it"], configure_files=["a.zip"]
+        )
+        assert "configure-dataset" not in str(err)
+        assert err.configure_files == ["a.zip"]
+
+    def test_configure_files_ignored_for_internal_only(self) -> None:
+        err = UnfetchableDatasetError(
+            "ds",
+            installation_steps=None,
+            dataset_cls=_FakeDataset,
+            configure_files=["a.zip"],
+        )
+        assert "configure-dataset" not in str(err)
+
+
+class TestConfigureDatasetCommand:
+    """Tests for configure_dataset_command()."""
+
+    def test_files_are_appended_in_given_order(self) -> None:
+        cmd = configure_dataset_command(_FakeDataset, ["first.zip", "second.zip"])
+        assert cmd.endswith("--files first.zip second.zip")
+
+    def test_order_is_preserved_not_sorted(self) -> None:
+        """Positional meaning is the whole point; sorting would corrupt it."""
+        cmd = configure_dataset_command(_FakeDataset, ["z.zip", "a.zip"])
+        assert cmd.endswith("--files z.zip a.zip")
+
+    def test_empty_list_is_rejected(self) -> None:
+        """`--files` takes one or more values, so an unrunnable command is a bug."""
+        with pytest.raises(ValueError, match="must declare the files"):
+            configure_dataset_command(_FakeDataset, [])
+
+    def test_caller_list_is_not_mutated(self) -> None:
+        files = ["a.zip"]
+        configure_dataset_command(_FakeDataset, files)
+        assert files == ["a.zip"]
 
 
 class TestCachedPrivateAssetInit:
@@ -279,6 +351,7 @@ class TestCachedPrivateDatasetAsset:
                 dataset_version=1,
                 filename="train.zip",
                 asset_config=cfg,
+                configure_files=["train.zip"],
             )
             expected = Path(tmpdir) / "datasets" / "coco" / "v1" / "train.zip"
             assert asset.local_cache_path == expected
@@ -293,6 +366,7 @@ class TestCachedPrivateDatasetAsset:
                 filename="train.zip",
                 asset_config=cfg,
                 local_cache_extracted_path="data",
+                configure_files=["train.zip"],
             )
             expected = Path(tmpdir) / "datasets" / "coco" / "v1" / "data"
             assert asset._local_cache_extracted_path == expected
@@ -306,6 +380,7 @@ class TestCachedPrivateDatasetAsset:
                 dataset_version=2,
                 filename="train.zip",
                 asset_config=cfg,
+                configure_files=["train.zip"],
             )
             # Default: strip extension from local_cache_path
             expected = Path(tmpdir) / "datasets" / "coco" / "v2" / "train"
@@ -320,10 +395,59 @@ class TestCachedPrivateDatasetAsset:
                 dataset_version=1,
                 filename="train.zip",
                 asset_config=cfg,
+                configure_files=["train.zip"],
             )
             assert isinstance(asset.access_denied_error, UnfetchableDatasetError)
             assert asset.access_denied_error.dataset_name == "coco"
             assert asset.access_denied_error.installation_steps is None
+
+    def test_configure_files_reach_the_error(self) -> None:
+        """The asset is where authors declare the ordering."""
+        with TemporaryDirectory() as tmpdir:
+            cfg = _make_asset_config(tmpdir)
+            asset = CachedPrivateDatasetAsset(
+                "datasets/ds/data.zip",
+                dataset_id="ds",
+                dataset_version=1,
+                filename="data.zip",
+                asset_config=cfg,
+                installation_steps=["Download both"],
+                configure_files=["images.zip", "labels.zip"],
+            )
+            assert isinstance(asset.access_denied_error, UnfetchableDatasetError)
+            assert asset.access_denied_error.configure_files == [
+                "images.zip",
+                "labels.zip",
+            ]
+
+    def test_configure_files_is_required(self) -> None:
+        """Every dataset has an ordering; omitting it is an authoring error."""
+        with TemporaryDirectory() as tmpdir:
+            cfg = _make_asset_config(tmpdir)
+            with pytest.raises(TypeError, match="configure_files"):
+                CachedPrivateDatasetAsset(  # type: ignore[call-arg]
+                    "datasets/ds/data.zip",
+                    dataset_id="ds",
+                    dataset_version=1,
+                    filename="data.zip",
+                    asset_config=cfg,
+                )
+
+    def test_configure_files_is_keyword_only(self) -> None:
+        """Keeps the positional signature stable for existing callers."""
+        with TemporaryDirectory() as tmpdir:
+            cfg = _make_asset_config(tmpdir)
+            with pytest.raises(TypeError):
+                CachedPrivateDatasetAsset(  # type: ignore[misc]
+                    "datasets/ds/data.zip",
+                    "ds",
+                    1,
+                    "data.zip",
+                    cfg,
+                    None,
+                    None,
+                    ["data.zip"],
+                )
 
     def test_access_denied_error_with_installation_steps(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -336,6 +460,7 @@ class TestCachedPrivateDatasetAsset:
                 filename="data.zip",
                 asset_config=cfg,
                 installation_steps=steps,
+                configure_files=["data.zip"],
             )
             assert isinstance(asset.access_denied_error, UnfetchableDatasetError)
             assert asset.access_denied_error.installation_steps == steps
@@ -353,6 +478,7 @@ class TestCachedPrivateDatasetAsset:
                 dataset_version=1,
                 filename="data.zip",
                 asset_config=cfg,
+                configure_files=["data.zip"],
             )
             with pytest.raises(UnfetchableDatasetError, match="Qualcomm-internal"):
                 asset.fetch()
@@ -371,6 +497,7 @@ class TestCachedPrivateDatasetAsset:
                 filename="data.zip",
                 asset_config=cfg,
                 installation_steps=["Go to example.com", "Download"],
+                configure_files=["data.zip"],
             )
             with pytest.raises(UnfetchableDatasetError, match="download it manually"):
                 asset.fetch()
@@ -384,6 +511,7 @@ class TestCachedPrivateDatasetAsset:
                 dataset_version=3,
                 filename="data.zip",
                 asset_config=cfg,
+                configure_files=["data.zip"],
             )
             assert asset.dataset_id == "my_ds"
             assert asset.dataset_version == 3
@@ -403,6 +531,7 @@ class TestCachedPrivateDatasetAsset:
                 dataset_version=1,
                 filename="data.zip",
                 asset_config=cfg,
+                configure_files=["data.zip"],
             )
             result = asset.fetch(extract=True, local_path=src_zip)
             expected_extracted = Path(tmpdir) / "datasets" / "ds" / "v1" / "data"

@@ -31,8 +31,8 @@ SIDD_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     "SIDD-val-lmdb.zip",
     installation_steps=[
         "Download the SIDD-val-lmdb.zip file from https://drive.google.com/file/d/1gZx_K2vmiHalRNOb1aj93KuUQ2guOlLp/view",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.models.nafnet_denoise.dataset.SIDDDataset --files /path/to/SIDD-val-lmdb.zip`",
     ],
+    configure_files=["SIDD-val-lmdb.zip"],
 )
 
 

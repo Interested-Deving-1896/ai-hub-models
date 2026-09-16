@@ -7,11 +7,13 @@ import sys
 import types
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from qai_hub_models_cli.cli import (
+    _build_parser,
     _check_version_match,
     main,
 )
@@ -275,3 +277,47 @@ class TestRegisterAlias:
         ):
             main(["register", "owner/mod:el!"])
         mock_register.assert_not_called()
+
+
+# ── top-level help completeness ─────────────────────────────────────
+
+
+def test_every_registered_subcommand_is_listed_in_help() -> None:
+    """A command missing from `sections` works but is invisible in --help.
+
+    `_GroupedHelpFormatter` renders only the names `sections` lists, so the two
+    hand-maintained lists in `_build_parser` can drift silently.
+    """
+    parser = _build_parser()
+    # formatter_class is a functools.partial carrying the sections table.
+    sections = cast(Any, parser.formatter_class).keywords["sections"]
+    listed = {name for names in sections.values() for name in names}
+    assert _subcommand_choices(parser) - listed == set()
+
+
+# ── configure-dataset ───────────────────────────────────────────────
+
+
+def test_configure_dataset_forwards_the_class_path_and_files() -> None:
+    """Its target is a dotted dataset class, not a recipe, so it must pass through."""
+    mock_run = MagicMock()
+    with (
+        patch("qai_hub_models_cli.cli._check_version_match"),
+        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch("qai_hub_models_cli.cli.resolve_alias", return_value=None),
+        patch.dict(sys.modules, _stub_heavy_modules(set(), run_model_script=mock_run)),
+    ):
+        main(
+            [
+                "configure-dataset",
+                "qai_hub_models.datasets.kitti.kitti.KittiDataset",
+                "--files",
+                "a.zip",
+                "b.zip",
+            ]
+        )
+    mock_run.assert_called_once_with(
+        model_id="qai_hub_models.datasets.kitti.kitti.KittiDataset",
+        script="configure-dataset",
+        forwarded=["--files", "a.zip", "b.zip"],
+    )

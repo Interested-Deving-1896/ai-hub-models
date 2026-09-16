@@ -36,8 +36,8 @@ SAV_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     f"{SAV_DIR_NAME}.tar",
     installation_steps=[
         "Download sav_val.tar from https://ai.meta.com/datasets/segment-anything-video-downloads/",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.sav.sav.SaVDataset --files /path/to/sav_val.tar`",
     ],
+    configure_files=[f"{SAV_DIR_NAME}.tar"],
 )
 
 

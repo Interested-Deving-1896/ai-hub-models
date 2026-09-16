@@ -36,8 +36,8 @@ NUSCENES_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     installation_steps=[
         "Create an account and login in https://www.nuscenes.org/nuscenes#download",
         "Download the v1.0-mini.tgz file from the website.",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.nuscenes.nuscenes.NuscenesDataset --files /path/to/v1.0-mini.tgz`",
     ],
+    configure_files=[f"{NUSCENE_FILE}.tgz"],
 )
 
 

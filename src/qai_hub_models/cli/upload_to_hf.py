@@ -65,6 +65,7 @@ from qai_hub_models.cli.generate_files import write_readme
 from qai_hub_models.cli.hf_common import (
     COMMUNITY_TAG,
     COMMUNITY_TAG_SEARCH_URL,
+    timeout_retry,
 )
 from qai_hub_models.configs._info_yaml_enums import MODEL_LICENSE, MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
@@ -173,10 +174,8 @@ def _assert_token_can_write(token: str) -> None:
         If the token's role is read-only.
     """
     # scripts isn't in the release wheel, so import here rather than at module load.
-    from qai_hub_models.scripts.utils.huggingface_push_helpers import _timeout_retry
-
     try:
-        info = _timeout_retry(lambda: whoami(token=token), 5)
+        info = timeout_retry(lambda: whoami(token=token), 5)
         role = info["auth"]["accessToken"]["role"]
     except Exception:
         return
@@ -348,10 +347,8 @@ def _stale_remote_files(
     list[str]
         Sorted remote paths to delete.
     """
-    from qai_hub_models.scripts.utils.huggingface_push_helpers import _timeout_retry
-
     staged = {str(p.relative_to(staging)) for p in staging.rglob("*") if p.is_file()}
-    remote = _timeout_retry(lambda: list_repo_files(repo_id, token=token), 5)
+    remote = timeout_retry(lambda: list_repo_files(repo_id, token=token), 5)
 
     stale = [
         path
@@ -363,10 +360,8 @@ def _stale_remote_files(
 
 def _hf_username(token: str | None) -> str | None:
     """Return the token's HuggingFace username, or None if it can't be read."""
-    from qai_hub_models.scripts.utils.huggingface_push_helpers import _timeout_retry
-
     try:
-        return str(_timeout_retry(lambda: whoami(token=token), 5)["name"])
+        return str(timeout_retry(lambda: whoami(token=token), 5)["name"])
     except Exception:
         return None
 
@@ -434,10 +429,8 @@ def _repo_creator(repo_id: str, token: str | None) -> str | None:
     ``list_repo_commits`` returns newest-first, so its last entry is the initial
     commit and its author is the person who created the repo.
     """
-    from qai_hub_models.scripts.utils.huggingface_push_helpers import _timeout_retry
-
     try:
-        commits = _timeout_retry(lambda: list_repo_commits(repo_id, token=token), 5)
+        commits = timeout_retry(lambda: list_repo_commits(repo_id, token=token), 5)
     except Exception:
         return None
     if not commits or not commits[-1].authors:
@@ -493,9 +486,7 @@ def _assert_may_overwrite(repo_id: str, token: str | None) -> None:
 
 def _repo_tags(repo_id: str, token: str | None) -> list[Any]:
     """Return the repo's existing tag refs."""
-    from qai_hub_models.scripts.utils.huggingface_push_helpers import _timeout_retry
-
-    refs = _timeout_retry(lambda: list_repo_refs(repo_id, token=token), 5)
+    refs = timeout_retry(lambda: list_repo_refs(repo_id, token=token), 5)
     return list(refs.tags)
 
 
@@ -620,8 +611,6 @@ def upload_to_hf(
         the recipe is in-tree rather than external, no token is available, or
         the destination repo already exists and was created by someone else.
     """
-    from qai_hub_models.scripts.utils.huggingface_push_helpers import _timeout_retry
-
     source_dir = _resolve_upload_dir(target)
     manifest = resolve_manifest(source_dir)
 
@@ -655,7 +644,7 @@ def upload_to_hf(
             print("\n--dry-run: nothing uploaded.")
             return None
 
-        exists = _timeout_retry(lambda: repo_exists(repo_id, token=resolved_token), 5)
+        exists = timeout_retry(lambda: repo_exists(repo_id, token=resolved_token), 5)
         # Before anything destructive: an update must be the owner's own.
         if exists:
             _assert_may_overwrite(repo_id, resolved_token)
@@ -688,7 +677,7 @@ def upload_to_hf(
 
         tag = None if no_tag else ("v1" if not exists else None)
 
-        _timeout_retry(
+        timeout_retry(
             lambda: create_repo(
                 repo_id=repo_id,
                 exist_ok=True,
@@ -704,7 +693,7 @@ def upload_to_hf(
             existing_tags = _repo_tags(repo_id, resolved_token)
             tag = _next_version_tag(existing_tags)
 
-        commit = _timeout_retry(
+        commit = timeout_retry(
             lambda: upload_folder(
                 repo_id=repo_id,
                 folder_path=str(staging),
@@ -732,7 +721,7 @@ def upload_to_hf(
     elif tag:
         new_tag = tag
         try:
-            _timeout_retry(
+            timeout_retry(
                 lambda: create_tag(
                     repo_id,
                     tag=new_tag,

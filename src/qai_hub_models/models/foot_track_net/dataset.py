@@ -29,6 +29,7 @@ FOOTTRACK_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     FOOTTRACK_DATASET_ID,
     FOOTTRACK_DATASET_VERSION,
     f"data/{FOOTTRACK_DATASET_DIR_NAME}.zip",
+    configure_files=[f"{FOOTTRACK_DATASET_DIR_NAME}.zip"],
 )
 
 CLASS_STR2IDX = {"face": "0", "person": "1", "hand": "2"}

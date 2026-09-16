@@ -36,7 +36,11 @@ GT_DIR_NAME = "train_masks"
 CARVANA_INSTALLATION_STEPS = [
     "Go to https://www.kaggle.com/c/carvana-image-masking-challenge and make an account",
     "Go to https://www.kaggle.com/c/carvana-image-masking-challenge/data and download `train.zip` and `train_masks.zip`",
-    "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.models.unet_segmentation.dataset.CarvanaDataset --files /path/to/train.zip /path/to/train_masks.zip",
+]
+
+CARVANA_CONFIGURE_FILES = [
+    "train.zip",
+    "train_masks.zip",
 ]
 
 CARVANA_IMAGES_ASSET = CachedPrivateDatasetAsset(
@@ -45,6 +49,7 @@ CARVANA_IMAGES_ASSET = CachedPrivateDatasetAsset(
     CARVANA_VERSION,
     f"data/{IMAGES_DIR_NAME}.zip",
     installation_steps=CARVANA_INSTALLATION_STEPS,
+    configure_files=CARVANA_CONFIGURE_FILES,
 )
 
 CARVANA_GT_ASSET = CachedPrivateDatasetAsset(
@@ -53,6 +58,7 @@ CARVANA_GT_ASSET = CachedPrivateDatasetAsset(
     CARVANA_VERSION,
     f"data/{GT_DIR_NAME}.zip",
     installation_steps=CARVANA_INSTALLATION_STEPS,
+    configure_files=CARVANA_CONFIGURE_FILES,
 )
 
 

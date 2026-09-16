@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import cast
 
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.cli.configure_dataset import main as configure_dataset_main
 from qai_hub_models.cli.generate_files import main as generate_files_main
 from qai_hub_models.cli.install import main as install_main
 from qai_hub_models.cli.upload_to_hf import main as upload_to_hf_main
@@ -144,10 +145,13 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         path string) or a bare installed model id (``"yolov8_det"``).
         Kept named ``model_id`` for call-site compatibility. The lean CLI
         rejects ``script="install"``/``"generate-files"``/``"validate"``
-        with a folder before this is called.
+        with a folder before this is called. For
+        ``script="configure-dataset"`` this is not a recipe at all but a
+        dotted dataset class path, forwarded verbatim.
     script
         Script name: ``"demo"``, ``"export"``, ``"evaluate"``, ``"install"``,
-        ``"generate-files"``, ``"validate"``, or ``"upload-to-hf"``.
+        ``"generate-files"``, ``"validate"``, ``"upload-to-hf"``, or
+        ``"configure-dataset"``.
     forwarded
         Argv tail handed to the target's parser.
     """
@@ -165,6 +169,12 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
 
     if script == "upload-to-hf":
         upload_to_hf_main([str(model_id), *forwarded])
+        return
+
+    # Not a recipe target: this one's first positional is a dotted dataset class
+    # path, which the lean CLI passes through untouched.
+    if script == "configure-dataset":
+        configure_dataset_main([str(model_id), *forwarded])
         return
 
     source_dir = resolve_recipe_dir(model_id)

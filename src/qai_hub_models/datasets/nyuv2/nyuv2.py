@@ -40,8 +40,8 @@ NYUV2_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     FILE_NAME,
     installation_steps=[
         "Download the dataset from https://www.kaggle.com/datasets/rmzhang0526/nyu-depth-v2-labeled",
-        f"Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.nyuv2.nyuv2.NYUV2Dataset --files /path/to/{FILE_NAME}`",
     ],
+    configure_files=[FILE_NAME],
 )
 
 

@@ -2,18 +2,27 @@
 # Copyright (c) 2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
-"""Guard the release wheel's package include/exclude lists.
+"""Guard the release wheel's package include/exclude lists, and what cites them.
+
+Two failure modes, both silent until a user hits them on PyPI.
 
 A published recipe whose source is dropped from the wheel still ships its
 metadata (setuptools keeps files of excluded sub-packages as data files of an
 ancestor package). The resulting metadata-only folder imports as an implicit
 namespace package, so failures surface far downstream as a bare
 ``AttributeError: module '...' has no attribute 'Model'``.
+
+Separately, shipped code may *name* an excluded package. ``configure_dataset``
+lived in ``qai_hub_models/scripts/``, and fourteen shipped dataset modules told
+users to run it, so a PyPI user who followed the printed instruction got
+``No module named qai_hub_models.scripts``. The reference was inside a string,
+so no import ever failed and nothing caught it.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import runpy
 import sys
 import types
@@ -26,6 +35,24 @@ import yaml
 
 SETUP_PY = Path(__file__).parents[2] / "setup.py"
 MODELS_ROOT = Path(__file__).parents[1] / "models"
+PACKAGE_ROOT = Path(__file__).parents[1]
+
+# Directories that are themselves excluded from release builds, or are test-only,
+# so a reference from inside them is fine.
+_SKIP_DIRS = {"scripts", "test"}
+
+# Pre-existing references, recorded so new ones fail. All three are dev-only
+# paths that cannot be reached from a release wheel:
+#   - cli/proto_api.py -- get_manifest_proto is for dev installs.
+#   - cli/generate_files.py -- "generate-files is dev-only".
+#   - models/templates/llm/llm_response_evaluator.py -- the reference is a
+#     subprocess argv for a separate hand-built `qaihm-dev-grader` venv, not an
+#     import here. Without that venv the code raises before spawning anything.
+_KNOWN_OFFENDERS = {
+    "cli/proto_api.py",
+    "cli/generate_files.py",
+    "models/templates/llm/llm_response_evaluator.py",
+}
 
 
 def _run_release_setup() -> tuple[dict[str, Any], dict[str, Any]]:
@@ -97,3 +124,60 @@ def test_release_excludes_are_not_prefix_globs(
         f"These patterns match sibling packages by prefix: {offenders}. "
         "Use both `<pkg>` and `<pkg>.*` instead of `<pkg>*`."
     )
+
+
+def _release_excluded_packages() -> list[str]:
+    """Read ``RELEASE_EXCLUDED_PACKAGES`` out of setup.py without importing it.
+
+    Parametrization happens at collection time, so this cannot use the
+    ``release_setup`` fixture; ``test_excluded_packages_regex_matches_setup_py``
+    checks the two agree.
+    """
+    text = SETUP_PY.read_text()
+    match = re.search(r"^RELEASE_EXCLUDED_PACKAGES = \[(.*?)\]", text, re.MULTILINE)
+    assert match, "RELEASE_EXCLUDED_PACKAGES not found in setup.py"
+    return re.findall(r"[\"']([^\"']+)[\"']", match.group(1))
+
+
+def _shipped_python_files() -> list[Path]:
+    return [
+        p
+        for p in PACKAGE_ROOT.rglob("*.py")
+        if not _SKIP_DIRS & set(p.relative_to(PACKAGE_ROOT).parts)
+    ]
+
+
+def test_excluded_packages_regex_matches_setup_py(
+    release_setup: tuple[dict[str, Any], dict[str, Any]],
+) -> None:
+    """The collection-time regex must agree with the executed setup.py."""
+    assert _release_excluded_packages() == release_setup[0]["RELEASE_EXCLUDED_PACKAGES"]
+
+
+@pytest.mark.parametrize("excluded", _release_excluded_packages())
+def test_shipped_code_does_not_reference_excluded_packages(excluded: str) -> None:
+    offenders: list[str] = []
+    needle = f"qai_hub_models.{excluded}"
+    for path in _shipped_python_files():
+        rel = path.relative_to(PACKAGE_ROOT).as_posix()
+        if rel in _KNOWN_OFFENDERS:
+            continue
+        for lineno, line in enumerate(
+            path.read_text(errors="ignore").splitlines(), start=1
+        ):
+            if needle in line:
+                offenders.append(f"{rel}:{lineno}: {line.strip()}")
+
+    assert not offenders, (
+        f"Shipped code references `{needle}`, which release builds exclude. "
+        "Users hitting this get ModuleNotFoundError on a PyPI install. Either "
+        "move the code into a shipped package, or add the file to "
+        "_KNOWN_OFFENDERS with a reason if the path is genuinely dev-only.\n"
+        + "\n".join(offenders)
+    )
+
+
+def test_known_offenders_all_still_exist() -> None:
+    """Keeps the allowlist from silently outliving the files it excuses."""
+    missing = [rel for rel in _KNOWN_OFFENDERS if not (PACKAGE_ROOT / rel).exists()]
+    assert not missing, f"Stale _KNOWN_OFFENDERS entries: {missing}"

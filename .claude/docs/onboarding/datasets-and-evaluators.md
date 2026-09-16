@@ -12,13 +12,15 @@ Check `qai_hub_models/datasets/` for existing datasets before writing a new one.
 
 ### Writing a New Dataset
 
-Inherit from `BaseDataset` in `qai_hub_models/datasets/common.py`. Look at existing datasets in the same directory for the pattern — they all implement the same interface.
+Inherit from `BaseDataset` in `qai_hub_models/utils/base_dataset.py`. Look at existing datasets under `qai_hub_models/datasets/` for the pattern — they all implement the same interface.
 
 Key requirements:
 - `__getitem__()` returns a `(model_input, ground_truth)` tensor pair. Include a docstring describing both tensors' shapes, dtypes, and value ranges.
 - `_download_data()` fetches data using `CachedWebDatasetAsset`
 - `_validate_data()` checks that data was downloaded correctly
-- Register the new dataset in `qai_hub_models/datasets/__init__.py`
+- There is no dataset registry to register with. A dataset is reached through the model class that returns it from `get_eval_dataset_classes()` / `get_calibration_dataset_cls()`, and its CLI-facing name is derived from the class name by `BaseDataset.dataset_name()`.
+- Only override `configure()` if the data genuinely needs manual setup (license wall, account, manual archive). When you do, the error raised on a failed fetch generates the `qai-hub-models configure-dataset` command itself — pass only the human download steps as `installation_steps`, never a hand-written command.
+- Every `CachedPrivateDatasetAsset` must pass `configure_files`: the filenames `configure()` expects, **in positional order**. It is required and keyword-only. They are spelled out in the generated command, which is the only way a user learns that `files[0]` is the images archive and `files[1]` the labels. For a multi-asset dataset every asset carries the same full list, since whichever one fails first prints the command. If the source serves a name you cannot predict, add a step telling the user to rename it (see `market1501`) and name that.
 
 **Fixed-size inputs**: All returned tensors must match the model's `input_spec` dimensions exactly. The calibration pipeline requires fixed-size inputs. Accept `input_spec` in `__init__()` and resize or center-crop each sample. Prefer resizing over cropping when applicable so the evaluator sees the full image content.
 

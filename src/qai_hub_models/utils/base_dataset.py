@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader, Dataset, Subset, default_collate
 
 from qai_hub_models.utils.input_spec import InputSpec
 from qai_hub_models.utils.kwarg_helpers import cli_friendly_class_name
+from qai_hub_models.utils.private_asset_loaders import UnfetchableDatasetError
 from qai_hub_models.utils.samplers import EveryNSampler
 
 __all__ = [
@@ -134,7 +135,18 @@ class BaseDataset(Dataset, Sized, ABC):
                 os.remove(self.dataset_path)
 
         print("Downloading data")
-        self._download_data()
+        try:
+            self._download_data()
+        except UnfetchableDatasetError as e:
+            # Rebuild with the concrete class so the message can name the exact
+            # `configure-dataset` command. This is the only place that knows it:
+            # the error is constructed at module scope with the asset.
+            raise UnfetchableDatasetError(
+                e.dataset_name,
+                e.installation_steps,
+                dataset_cls=type(self),
+                configure_files=e.configure_files,
+            ) from None
         print("Done downloading")
         if not self._validate_data():
             raise ValueError("Something went wrong during download.")

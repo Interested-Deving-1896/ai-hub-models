@@ -56,8 +56,8 @@ CELEBAHQ_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     "data.zip",
     installation_steps=[
         "Download `image.zip` from the Google Drive: https://www.kaggle.com/datasets/lamsimon/celebahq",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.celebahq.celebahq.CelebAHQDataset --files /path/to/celeba_hq.zip",
     ],
+    configure_files=["image.zip"],
 )
 
 

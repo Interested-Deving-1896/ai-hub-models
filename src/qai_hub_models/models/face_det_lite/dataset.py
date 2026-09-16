@@ -29,6 +29,7 @@ FACEDETLITE_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     FACEDETLITE_DATASET_ID,
     FACEDETLITE_DATASET_VERSION,
     "data/facedetlite_trainvaltest.zip",
+    configure_files=["facedetlite_trainvaltest.zip"],
 )
 
 

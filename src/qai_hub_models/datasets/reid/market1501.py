@@ -35,11 +35,9 @@ MARKET1501_PRIVATE_ASSET = CachedPrivateDatasetAsset(
         "Images follow the naming convention: "
         "<person_id>_c<camera_id>s<seq>_<frame>_<det>.jpg "
         "(e.g. 0001_c1s1_000151_01.jpg)",
-        "Run: python -m qai_hub_models.scripts.configure_dataset "
-        "--class qai_hub_models.datasets.reid.market1501.Market1501Dataset "
-        "--files /path/to/market1501_data.zip",
     ],
     local_cache_extracted_path="market1501_data",
+    configure_files=["market1501_data.zip"],
 )
 
 

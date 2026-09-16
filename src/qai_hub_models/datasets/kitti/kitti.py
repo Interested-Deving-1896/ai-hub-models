@@ -48,7 +48,12 @@ KITTI_INSTALLATION_STEPS = [
     "Download images from https://www.cvlibs.net/download.php?file=data_object_image_2.zip",
     "Download annotations from https://www.cvlibs.net/download.php?file=data_object_label_2.zip",
     "Download calibrations from https://www.cvlibs.net/download.php?file=data_object_calib.zip",
-    "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.kitti.kitti.KittiDataset --files /path/to/data_object_image_2.zip /path/to/data_object_label_2.zip /path/to/data_object_calib.zip`",
+]
+
+KITTI_CONFIGURE_FILES = [
+    "data_object_image_2.zip",
+    "data_object_label_2.zip",
+    "data_object_calib.zip",
 ]
 
 KITTI_IMAGES_ASSET = CachedPrivateDatasetAsset(
@@ -57,6 +62,7 @@ KITTI_IMAGES_ASSET = CachedPrivateDatasetAsset(
     KITTI_VERSION,
     f"{KITTI_IMAGES_DIR_NAME}.zip",
     installation_steps=KITTI_INSTALLATION_STEPS,
+    configure_files=KITTI_CONFIGURE_FILES,
 )
 
 KITTI_LABELS_ASSET = CachedPrivateDatasetAsset(
@@ -65,6 +71,7 @@ KITTI_LABELS_ASSET = CachedPrivateDatasetAsset(
     KITTI_VERSION,
     f"{KITTI_LABELS_DIR_NAME}.zip",
     installation_steps=KITTI_INSTALLATION_STEPS,
+    configure_files=KITTI_CONFIGURE_FILES,
 )
 
 KITTI_CALIBS_ASSET = CachedPrivateDatasetAsset(
@@ -73,6 +80,7 @@ KITTI_CALIBS_ASSET = CachedPrivateDatasetAsset(
     KITTI_VERSION,
     f"{KITTI_CALIBS_DIR_NAME}.zip",
     installation_steps=KITTI_INSTALLATION_STEPS,
+    configure_files=KITTI_CONFIGURE_FILES,
 )
 
 

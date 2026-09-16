@@ -6,7 +6,7 @@
 
 Kept out of :mod:`qai_hub_models.cli.dispatch` on purpose. Printing help must
 not pay for the export/evaluate pipelines dispatch imports -- scipy, sympy,
-sklearn and friends, roughly 1.4s -- when all it needs are four argument
+sklearn and friends, roughly 1.4s -- when all it needs are a handful of argument
 parsers.
 """
 
@@ -14,6 +14,9 @@ from __future__ import annotations
 
 from typing import TextIO
 
+from qai_hub_models.cli.configure_dataset import (
+    build_parser as configure_dataset_parser,
+)
 from qai_hub_models.cli.generate_files import build_parser as generate_files_parser
 from qai_hub_models.cli.install import build_parser as install_parser
 from qai_hub_models.cli.upload_to_hf import build_parser as upload_to_hf_parser
@@ -28,6 +31,7 @@ _STATIC_PARSERS = {
     "generate-files": generate_files_parser,
     "validate": validate_parser,
     "upload-to-hf": upload_to_hf_parser,
+    "configure-dataset": configure_dataset_parser,
 }
 
 

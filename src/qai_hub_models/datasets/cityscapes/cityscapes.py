@@ -26,7 +26,11 @@ CITYSCAPES_DATASET_ID = "cityscapes"
 CITYSCAPES_INSTALLATION_STEPS = [
     "Go to https://www.cityscapes-dataset.com/ and make an account",
     "Go to https://www.cityscapes-dataset.com/downloads/ and download `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`",
-    "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.datasets.cityscapes.cityscapes.CityscapesDataset --files /path/to/leftImg8bit_trainvaltest.zip /path/to/gtFine_trainvaltest.zip`",
+]
+
+CITYSCAPES_CONFIGURE_FILES = [
+    "leftImg8bit_trainvaltest.zip",
+    "gtFine_trainvaltest.zip",
 ]
 
 CITYSCAPES_IMAGES_ASSET = CachedPrivateDatasetAsset(
@@ -35,6 +39,7 @@ CITYSCAPES_IMAGES_ASSET = CachedPrivateDatasetAsset(
     CITYSCAPES_VERSION,
     "data/leftImg8bit_trainvaltest.zip",
     installation_steps=CITYSCAPES_INSTALLATION_STEPS,
+    configure_files=CITYSCAPES_CONFIGURE_FILES,
 )
 
 CITYSCAPES_GT_ASSET = CachedPrivateDatasetAsset(
@@ -43,6 +48,7 @@ CITYSCAPES_GT_ASSET = CachedPrivateDatasetAsset(
     CITYSCAPES_VERSION,
     "data/gtFine_trainvaltest.zip",
     installation_steps=CITYSCAPES_INSTALLATION_STEPS,
+    configure_files=CITYSCAPES_CONFIGURE_FILES,
 )
 
 # Map dataset class ids to model class ids

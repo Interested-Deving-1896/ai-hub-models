@@ -35,6 +35,7 @@ FACEATTRIB_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     FACEATTRIB_DATASET_ID,
     FACEATTRIB_DATASET_VERSION,
     f"data/{FACEATTRIB_DATASET_DIR_NAME}.zip",
+    configure_files=[f"{FACEATTRIB_DATASET_DIR_NAME}.zip"],
 )
 
 

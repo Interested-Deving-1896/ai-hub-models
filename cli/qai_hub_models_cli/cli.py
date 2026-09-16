@@ -530,6 +530,9 @@ _RECIPE_COMMANDS = (
     "generate-files",
     "validate",
     "upload-to-hf",
+    # Not recipe-scoped -- its target is a dotted dataset class path -- but it
+    # needs the same heavy-package gating and argv passthrough.
+    "configure-dataset",
 )
 
 
@@ -778,6 +781,30 @@ def add_upload_to_hf_parser(
             "never as a built-in model id."
         ),
         args=[("target", str)],
+    )
+
+
+def add_configure_dataset_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    return add_qaihm_required_help_only_parser(
+        subparsers,
+        name="configure-dataset",
+        helpmsg="Set up a dataset that must be downloaded manually.",
+        description=(
+            f"Run `{CLI_NAME} configure-dataset <dataset-class> --files ...` to "
+            "set up a dataset that cannot be downloaded automatically -- one "
+            "behind a login, a license agreement, or a manual archive "
+            "download. <dataset-class> is a dotted import path such as "
+            "qai_hub_models.datasets.kitti.kitti.KittiDataset; you do not need "
+            "to know it, because the error raised when a dataset cannot be "
+            "fetched prints the exact command to run, including the path. That "
+            "works for datasets in a standalone recipe folder too. Install the "
+            "model's dependencies first -- configuring a dataset runs the "
+            f"recipe's own code, so the order is `{CLI_NAME} install` -> "
+            f"`{CLI_NAME} configure-dataset` -> `{CLI_NAME} evaluate`."
+        ),
+        args=[("dataset_class", str)],
     )
 
 
@@ -1684,6 +1711,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_install_parser(subparsers)
     add_generate_files_parser(subparsers)
     add_upload_to_hf_parser(subparsers)
+    add_configure_dataset_parser(subparsers)
     add_register_parser(subparsers)
     add_unregister_parser(subparsers)
     add_list_registered_parser(subparsers)
@@ -1707,6 +1735,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "generate-files",
             "validate",
             "upload-to-hf",
+            "configure-dataset",
             "register",
             "unregister",
             "list-registered",

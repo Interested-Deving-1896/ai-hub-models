@@ -24,8 +24,8 @@ FLICKR_PRIVATE_ASSET = CachedPrivateDatasetAsset(
     "Flickr1024.zip",
     installation_steps=[
         "Download the Flickr1024.zip file from https://drive.google.com/file/d/1LQDUclNtNZWTT41NndISLGvjvuBbxeUs/view",
-        "Run `python -m qai_hub_models.scripts.configure_dataset --class qai_hub_models.models.nafssr.dataset.Flickr1024Dataset --files /path/to/Flickr1024.zip`",
     ],
+    configure_files=["Flickr1024.zip"],
 )
 
 
