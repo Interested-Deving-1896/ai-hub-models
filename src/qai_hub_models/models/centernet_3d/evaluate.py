@@ -17,7 +17,7 @@ from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
 from qai_hub_models.utils.export.context import resolve_recipe_dir
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
-    Precision.w8a16: [
+    Precision.w8a16_mixed_fp16: [
         TargetRuntime.QNN_CONTEXT_BINARY,
         TargetRuntime.PRECOMPILED_QNN_ONNX,
     ],

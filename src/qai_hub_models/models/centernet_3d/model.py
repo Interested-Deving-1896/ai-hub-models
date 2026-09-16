@@ -12,7 +12,7 @@ import torch
 from torch import nn
 from typing_extensions import Self
 
-from qai_hub_models import SampleInputsType
+from qai_hub_models import Precision, SampleInputsType
 from qai_hub_models.datasets.kitti import KittiDataset
 from qai_hub_models.models.centernet_3d.evaluator import KittiEvaluator
 from qai_hub_models.models.templates.centernet.external_repos.centernet.src.lib.models.decode import (
@@ -89,6 +89,11 @@ class CenterNet3D(CenterNet):
         model = super()._load_pose_net(ckpt_path, heads)
 
         return cls(model, ddd_decode)
+
+    def get_hub_litemp_percentage(self, _: Precision) -> float:
+        """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
+        # Sparse heatmap peaks need fp16; 10 is the smallest flip that closes the gap.
+        return 10
 
     def forward(
         self,

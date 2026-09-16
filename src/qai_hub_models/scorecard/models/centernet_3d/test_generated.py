@@ -69,7 +69,7 @@ from qai_hub_models.utils.validation import perform_runtime_model_validation
 #   Certain supported pairs may be excluded from this list if they are not enabled for testing.
 #   For example, models that allow JIT (on-device) compile will not test AOT runtimes; we assume that if it works on JIT it will work on AOT.
 ENABLED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
-    Precision.w8a16: [
+    Precision.w8a16_mixed_fp16: [
         TargetRuntime.QNN_CONTEXT_BINARY,
         TargetRuntime.PRECOMPILED_QNN_ONNX,
     ],
@@ -81,7 +81,7 @@ ENABLED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
 #   Certain supported pairs may be excluded from this list if they are not enabled for testing.
 #   For example, models that allow JIT (on-device) compile will not test AOT runtimes; we assume that if it works on JIT it will work on AOT.
 PASSING_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
-    Precision.w8a16: [
+    Precision.w8a16_mixed_fp16: [
         TargetRuntime.QNN_CONTEXT_BINARY,
         TargetRuntime.PRECOMPILED_QNN_ONNX,
     ],

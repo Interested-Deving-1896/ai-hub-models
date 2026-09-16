@@ -176,7 +176,9 @@ class KittiEvaluator(BaseEvaluator):
             difficultys=[0],
             num_parts=num_parts,
         )
-        return float(bbox) * 100
+        # eval_class -> get_mAP already scales to percent (kitti_utils.py), so do not
+        # scale again; formatted_accuracy() below prints the same value unscaled.
+        return float(bbox)
 
     def formatted_accuracy(self) -> str:
         num_parts = len(self.dt_annos) // 100 + 1

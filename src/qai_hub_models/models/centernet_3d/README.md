@@ -22,7 +22,7 @@ qai-hub-models perf CenterNet-3D
 qai-hub-models numerics CenterNet-3D
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch CenterNet-3D --runtime qnn_context_binary --precision w8a16
+qai-hub-models fetch CenterNet-3D --runtime qnn_context_binary --precision w8a16_mixed_fp16
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
