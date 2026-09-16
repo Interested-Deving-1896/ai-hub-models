@@ -74,6 +74,8 @@ class BaseBertApp:
         )
 
         predicted_token_id = self.model(input_ids, attention_mask, mask_idx)
+        if predicted_token_id.dim() > 1:
+            predicted_token_id = predicted_token_id.argmax(dim=-1)
 
         predicted_input_ids = input_ids[0].clone()
         predicted_input_ids[mask_idx] = predicted_token_id.to(torch.long)
