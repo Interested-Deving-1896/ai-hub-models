@@ -10,6 +10,37 @@ import torch
 from qai_hub_models.utils.bounding_box_processing import box_xywh_to_xyxy
 
 
+def make_grid(
+    nx: int,
+    ny: int,
+    *,
+    device: torch.device | None = None,
+    dtype: torch.dtype = torch.float32,
+) -> torch.Tensor:
+    """Create a YOLO grid in ``(1, 1, ny, nx, 2)`` layout.
+
+    Parameters
+    ----------
+    nx
+        Number of grid cells along the x axis.
+    ny
+        Number of grid cells along the y axis.
+    device
+        Device on which to create the grid.
+    dtype
+        Data type of the grid values.
+
+    Returns
+    -------
+    torch.Tensor
+        Grid containing ``(x, y)`` cell coordinates.
+    """
+    grid_y = torch.arange(ny, device=device, dtype=dtype)
+    grid_x = torch.arange(nx, device=device, dtype=dtype)
+    grid_y, grid_x = torch.meshgrid(grid_y, grid_x, indexing="ij")
+    return torch.stack((grid_x, grid_y), dim=-1).reshape(1, 1, ny, nx, 2)
+
+
 def box_transform_xywh2xyxy_split_input(
     xy: torch.Tensor, wh: torch.Tensor
 ) -> torch.Tensor:

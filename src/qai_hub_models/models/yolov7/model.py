@@ -15,7 +15,10 @@ from typing_extensions import Self
 from qai_hub_models import Precision
 from qai_hub_models.configs.tensor_spec import TensorSpec
 from qai_hub_models.models.templates.yolo.model import DEFAULT_YOLO_IMAGE_INPUT_HW, Yolo
-from qai_hub_models.models.templates.yolo.utils import detect_postprocess_split_input
+from qai_hub_models.models.templates.yolo.utils import (
+    detect_postprocess_split_input,
+    make_grid,
+)
 from qai_hub_models.models.yolov7.external_repos.yolov7.models.experimental import (
     attempt_load,
 )
@@ -251,7 +254,7 @@ class _YoloV7Detector(torch.nn.Module):  # YoloV7 Detection
         # TODO(13933) Revert once QNN issues with ReduceMax are fixed
         # Pad 1 class up to 2 to get NPU residence
         x = F.pad(x, (0, max(7 - self.no, 0)))
-        grid = self._make_grid(nx, ny)
+        grid = make_grid(nx, ny, device=x.device, dtype=x.dtype)
         y = x
 
         # Fp16 NPU only supports tensor math up to rank 4
@@ -304,11 +307,6 @@ class _YoloV7Detector(torch.nn.Module):  # YoloV7 Detection
             all_scores.append(scores)
 
         return torch.cat(all_xy, 1), torch.cat(all_wh, 1), torch.cat(all_scores, 1)
-
-    @staticmethod
-    def _make_grid(nx: int, ny: int) -> torch.Tensor:
-        yv, xv = torch.meshgrid([torch.arange(ny), torch.arange(nx)], indexing="ij")
-        return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).float()
 
 
 def _load_yolov7_source_model_from_weights(weights_name: str) -> torch.nn.Module:
