@@ -557,25 +557,28 @@ class QDCDeviceFarm(DeviceFarm):
             The submitted job's ID.
         """
         target_id = qdc_api.get_target_id(self.client, qdc_device.qdc_name)
-        return _call_with_retry(
-            lambda: qdc_api.submit_job(
-                public_api_client=self.client,
-                target_id=target_id,
-                job_name=job_name[:QDC_JOB_NAME_LIMIT],
-                external_job_id="ExJobId001",
-                job_type=JobType.AUTOMATED,
-                job_mode=JobMode.APPLICATION,
-                timeout=600,
-                test_framework=qdc_device.test_framework,
-                entry_script=entry_script,
-                job_artifacts=job_artifacts,
-                monkey_events=None,
-                monkey_session_timeout=None,
-                job_parameters=[JobSubmissionParameter.WIFIENABLED],
-            ),
-            f"submit_job({job_name})",
-            extra_retryable_codes=(400,),
-            max_retries=SUBMIT_MAX_RETRIES,
+        # submit_job returns job id as int, so we cast it to str
+        return str(
+            _call_with_retry(
+                lambda: qdc_api.submit_job(
+                    public_api_client=self.client,
+                    target_id=target_id,
+                    job_name=job_name[:QDC_JOB_NAME_LIMIT],
+                    external_job_id="ExJobId001",
+                    job_type=JobType.AUTOMATED,
+                    job_mode=JobMode.APPLICATION,
+                    timeout=600,
+                    test_framework=qdc_device.test_framework,
+                    entry_script=entry_script,
+                    job_artifacts=job_artifacts,
+                    monkey_events=None,
+                    monkey_session_timeout=None,
+                    job_parameters=[JobSubmissionParameter.WIFIENABLED],
+                ),
+                f"submit_job({job_name})",
+                extra_retryable_codes=(400,),
+                max_retries=SUBMIT_MAX_RETRIES,
+            )
         )
 
     def log_upload_status(
