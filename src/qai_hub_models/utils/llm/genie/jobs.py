@@ -845,6 +845,15 @@ def collect_genie_bundle(
             backend, job_log_files, prompts_to_use
         )
 
+    if tps is None:
+        reason = (
+            f"Job {job_id} on device '{hub_device_name}' reported result="
+            f"'{job_result}' but its logs contained no parseable performance "
+            f"metrics (missing/unreadable profile*.json)"
+        )
+        logger.error("[no metrics] %s", reason)
+        return None, None, None, eval_results, JobOutcome.RETRYABLE_EMPTY_LOGS, reason
+
     return tps, prefill_tps, ttft, eval_results, JobOutcome.SUCCESS, None
 
 
