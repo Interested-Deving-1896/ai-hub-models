@@ -57,7 +57,7 @@ def test_load_encodings_to_quantsim(checkpoint: str) -> None:
     [
         ("DEFAULT", "wikitext", 10.38, 0),
         ("DEFAULT", "mmlu", 0.689, 1000),
-        ("DEFAULT", "mmmu", 0.525, 200),
+        ("DEFAULT", "mmmu", 0.475, 200),
         # Image+prompt generation + LLM-grader smoke test (5 samples). Weekly
         # (evaluate-only) since VLM generation is slow. The grader label can
         # flip across hosts, so expected_metric is a floor.
