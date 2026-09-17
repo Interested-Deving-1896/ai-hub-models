@@ -200,6 +200,18 @@ class KittiDataset(BaseDataset):
     def __len__(self) -> int:
         return len(self.sample)
 
+    def _validate_data(self) -> bool:
+        # dataset_path is the parent of all three assets, so the base class default
+        # (just `dataset_path.exists()`) passes even if only one of them extracted.
+        for path in (
+            self.image2_data_path,
+            self.calib_data_path,
+            KITTI_LABELS_ASSET.extracted_path,
+        ):
+            if not path.is_dir() or not any(path.iterdir()):
+                return False
+        return True
+
     def _download_data(self) -> None:
         KITTI_IMAGES_ASSET.fetch(extract=True, local_path=self.input_images_zip)
         KITTI_LABELS_ASSET.fetch(extract=True, local_path=self.input_labels_zip)
