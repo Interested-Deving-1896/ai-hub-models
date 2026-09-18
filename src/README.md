@@ -440,6 +440,7 @@ and many more.
 | [Qwen3-VL-8B-Instruct](https://aihub.qualcomm.com/models/qwen3_vl_8b_instruct) | `qai_hub_models.models.qwen3_vl_8b_instruct` |
 | [Qwen3.5-0.8B](https://aihub.qualcomm.com/models/qwen3_5_0_8b) | `qai_hub_models.models.qwen3_5_0_8b` |
 | [Qwen3.5-2B](https://aihub.qualcomm.com/models/qwen3_5_2b) | `qai_hub_models.models.qwen3_5_2b` |
+| [SmolVLM2-2.2B-Instruct](https://aihub.qualcomm.com/models/smolvlm2_2_2b_instruct) | `qai_hub_models.models.smolvlm2_2_2b_instruct` |
 
 ## Need help?
 Slack: https://aihub.qualcomm.com/community/slack
