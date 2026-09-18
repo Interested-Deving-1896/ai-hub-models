@@ -89,3 +89,68 @@ class Conv2dLinear(torch.nn.Module):
             The output tensor after applying the Conv2D transformation.
         """
         return self.conv(x)
+
+
+class Conv2dFromConv1d(torch.nn.Module):
+    """Adapt a Conv1d layer to an equivalent Conv2d layer for inputs of shape N,C,1,L."""
+
+    def __init__(self, module: torch.nn.Conv1d) -> None:
+        super().__init__()
+        padding: tuple[int, int] | str
+        if isinstance(module.padding, str):
+            padding = module.padding
+        else:
+            padding = (0, module.padding[0])
+
+        self.conv = torch.nn.Conv2d(
+            in_channels=module.in_channels,
+            out_channels=module.out_channels,
+            kernel_size=(1, module.kernel_size[0]),
+            stride=(1, module.stride[0]),
+            padding=padding,
+            dilation=(1, module.dilation[0]),
+            groups=module.groups,
+            bias=module.bias is not None,
+        ).to(device=module.weight.device, dtype=module.weight.dtype)
+        self.conv.train(module.training)
+
+        with torch.no_grad():
+            self.conv.weight.copy_(module.weight.unsqueeze(-2))
+            if module.bias is not None and self.conv.bias is not None:
+                self.conv.bias.copy_(module.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.conv(x)
+
+
+class InstanceNorm2dFromInstanceNorm1d(torch.nn.Module):
+    """Adapt an InstanceNorm1d layer to an equivalent InstanceNorm2d layer."""
+
+    def __init__(self, module: torch.nn.InstanceNorm1d) -> None:
+        super().__init__()
+        if module.momentum is None:
+            raise ValueError("InstanceNorm1d momentum must be a float")
+        self.norm = torch.nn.InstanceNorm2d(
+            num_features=module.num_features,
+            eps=module.eps,
+            momentum=module.momentum,
+            affine=module.affine,
+            track_running_stats=module.track_running_stats,
+        )
+        reference = module.weight if module.weight is not None else module.running_mean
+        if reference is not None:
+            self.norm.to(device=reference.device, dtype=reference.dtype)
+        self.norm.train(module.training)
+
+        with torch.no_grad():
+            if module.weight is not None and self.norm.weight is not None:
+                self.norm.weight.copy_(module.weight)
+            if module.bias is not None and self.norm.bias is not None:
+                self.norm.bias.copy_(module.bias)
+            if module.running_mean is not None and self.norm.running_mean is not None:
+                self.norm.running_mean.copy_(module.running_mean)
+            if module.running_var is not None and self.norm.running_var is not None:
+                self.norm.running_var.copy_(module.running_var)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.norm(x)

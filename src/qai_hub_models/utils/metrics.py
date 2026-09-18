@@ -257,6 +257,17 @@ WORD_ERROR_RATE = _register_metric(
     )
 )
 
+DIARIZATION_ERROR_RATE = _register_metric(
+    MetricMetadata(
+        name="Diarization Error Rate",
+        unit="DER",
+        description="Percentage of reference speech time affected by missed speech, false alarm, or speaker confusion errors.",
+        range=(0.0, 100.0),
+        float_vs_device_threshold=10.0,
+        higher_is_better=False,
+    )
+)
+
 HOMOGRAPHY_ACCURACY = _register_metric(
     MetricMetadata(
         name="Homography Estimation @3px",
