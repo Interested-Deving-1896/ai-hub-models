@@ -413,6 +413,7 @@ and many more.
 | [IBM-Granite-v3.1-8B-Instruct](https://aihub.qualcomm.com/models/ibm_granite_v3_1_8b_instruct) | [qai_hub_models.models.ibm_granite_v3_1_8b_instruct](src/qai_hub_models/models/ibm_granite_v3_1_8b_instruct/README.md) |
 | [IndusQ-1.1B](https://aihub.qualcomm.com/models/indus_1b) | [qai_hub_models.models.indus_1b](src/qai_hub_models/models/indus_1b/README.md) |
 | [Intern3.5-VL-2B](https://aihub.qualcomm.com/models/intern3_5_vl_2b) | [qai_hub_models.models.intern3_5_vl_2b](src/qai_hub_models/models/intern3_5_vl_2b/README.md) |
+| [Intern3.5-VL-4B](https://aihub.qualcomm.com/models/intern3_5_vl_4b) | [qai_hub_models.models.intern3_5_vl_4b](src/qai_hub_models/models/intern3_5_vl_4b/README.md) |
 | [JAIS-6p7b-Chat](https://aihub.qualcomm.com/models/jais_6p7b_chat) | [qai_hub_models.models.jais_6p7b_chat](src/qai_hub_models/models/jais_6p7b_chat/README.md) |
 | [Llama-SEA-LION-v3.5-8B-R](https://aihub.qualcomm.com/models/llama_v3_1_sea_lion_3_5_8b_r) | [qai_hub_models.models.llama_v3_1_sea_lion_3_5_8b_r](src/qai_hub_models/models/llama_v3_1_sea_lion_3_5_8b_r/README.md) |
 | [Llama-v3-8B-Instruct](https://aihub.qualcomm.com/models/llama_v3_8b_instruct) | [qai_hub_models.models.llama_v3_8b_instruct](src/qai_hub_models/models/llama_v3_8b_instruct/README.md) |
