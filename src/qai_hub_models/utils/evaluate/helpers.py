@@ -659,7 +659,9 @@ def evaluate(
         return evaluator_func()
 
     evaluators = {name: _get_evaluator(name, m) for name, m in model_executors.items()}
-    async_outputs: dict[str, list[AsyncOnDeviceResult]] = {
+    # A collection app whose last pipeline stage runs on CPU returns its output
+    # directly instead of a pending job.
+    async_outputs: dict[str, list[AsyncOnDeviceResult | tuple[torch.Tensor, ...]]] = {
         name: [] for name in {**ai_hub_inference_models, **collection_inference_models}
     }
     collection_model_generators: dict[str, list[CollectionModelEvalGenerator]] = (
@@ -762,8 +764,9 @@ def evaluate(
                     f"{evaluators[model_name].formatted_accuracy()}"
                 )
 
-    # Drain collection model generators round-robin until all have returned
-    # their final AsyncOnDeviceResult (via StopIteration.value).
+    # Drain collection model generators round-robin until all have returned their
+    # final output (via StopIteration.value) — a pending AsyncOnDeviceResult, or
+    # already-computed values if the pipeline ends on CPU.
     for model_name, gens in collection_model_generators.items():
         pending = set(range(len(gens)))
         while pending:
@@ -780,8 +783,11 @@ def evaluate(
             for batch_idx, sample in enumerate(dataloader):
                 _, ground_truth_values, *_ = sample
                 async_model_output = batched_outputs[batch_idx]
-                assert isinstance(async_model_output, AsyncOnDeviceResult)
-                model_output = async_model_output.wait()
+                model_output = (
+                    async_model_output.wait()
+                    if isinstance(async_model_output, AsyncOnDeviceResult)
+                    else async_model_output
+                )
                 evaluators[model_name].add_batch(model_output, ground_truth_values)
 
                 cumulative_samples = (

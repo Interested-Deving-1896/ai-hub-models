@@ -48,23 +48,6 @@ from qai_hub_models.utils.input_spec import InputSpec
 REPO_PATH = EXTERNAL_REPO_PATHS["boundingbox_3d"]
 
 
-class _PrecomputedEvalResult(AsyncOnDeviceResult):
-    """
-    Wraps an already-computed eval result as an AsyncOnDeviceResult.
-
-    DeepBox ends on CPU geometry decode, so its result is ready before the
-    drain (utils/evaluate/helpers.py) calls .wait(). Subclasses
-    AsyncOnDeviceResult (bypassing its device-job __init__) to satisfy the
-    drain's isinstance check while carrying a plain Python payload.
-    """
-
-    def __init__(self, value: tuple[list[dict]]) -> None:
-        self._value = value
-
-    def wait(self) -> tuple[list[dict]]:  # type: ignore[override]
-        return self._value
-
-
 class DeepBoxApp:
     """
     App code to perform end-to-end DeepBox 3D object detection inference.
@@ -604,10 +587,9 @@ class DeepBoxApp:
                 det["pred_boxes_2d"].append(box_2d_xyxy)
                 det["pred_scores"].append(score)
 
-        output = (per_image_detections,)
-        if on_device:
-            return _PrecomputedEvalResult(output)
-        return output  # type: ignore[return-value]
+        # The last stage is CPU geometry decode, so the result is already final in
+        # both the on-device and local paths.
+        return (per_image_detections,)  # type: ignore[return-value]
 
     def _crop_for_detection(
         self,
