@@ -547,7 +547,7 @@ class ScorecardAssetYaml(BaseQAIHMConfig):
         self.models[model_id].add_asset(
             details,
             precision,
-            device.canonical_chipset if path.runtime.is_aot_compiled else None,
+            device.chipset if path.runtime.is_aot_compiled else None,
             path,
         )
 
@@ -562,6 +562,6 @@ class ScorecardAssetYaml(BaseQAIHMConfig):
             return None
         return self.models[model_id].get_asset(
             precision,
-            device.canonical_chipset if path.runtime.is_aot_compiled else None,
+            device.chipset if path.runtime.is_aot_compiled else None,
             path,
         )

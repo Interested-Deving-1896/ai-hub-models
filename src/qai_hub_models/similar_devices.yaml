@@ -6,9 +6,8 @@
 #   * reference_chipset: the chipset whose perf numbers are duplicated onto
 #     this device. If unset, falls back to chipset.
 #
-# Lookup uses the reference_chipset field (or chipset if unset), plus any
-# chipset that normalizes to the same value via sanitize_chipset_name
-# (e.g. 8-elite-for-galaxy -> 8-elite).
+# Lookup uses the reference_chipset field (or chipset if unset), matched
+# exactly against the chipsets in devices_and_chipsets.yaml.
 devices:
   SA8255P ADP:
     chipset: qualcomm-sa8255p
@@ -41,7 +40,7 @@ devices:
     icon: IoT_Drone
   Dragonwing Q-8750:
     chipset: qualcomm-qcs8750
-    reference_chipset: qualcomm-snapdragon-8-elite
+    reference_chipset: qualcomm-snapdragon-8-elite-for-galaxy
     os:
       ostype: Android
       version: '15'

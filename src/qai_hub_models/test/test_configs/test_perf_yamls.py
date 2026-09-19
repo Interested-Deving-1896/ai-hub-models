@@ -108,11 +108,11 @@ def test_similar_devices_chipsets_resolve() -> None:
     perf-yaml propagation can silently drop entries.
     """
     raw = _load_similar_devices_raw()
-    canonical_chipsets = set(DevicesAndChipsetsYaml.load().chipsets)
+    catalog_chipsets = set(DevicesAndChipsetsYaml.load().chipsets)
     # similar_devices.yaml may define non-workbench chipsets locally; those
     # propagate into devices_and_chipsets.yaml via codegen, so we treat both
     # sources as valid for the lookup.
-    valid_chipsets = canonical_chipsets | set(raw.chipsets)
+    valid_chipsets = catalog_chipsets | set(raw.chipsets)
 
     for device_name, entry in raw.devices.items():
         assert entry.chipset in valid_chipsets, (

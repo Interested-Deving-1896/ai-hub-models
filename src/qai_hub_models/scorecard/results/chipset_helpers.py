@@ -7,15 +7,12 @@ from __future__ import annotations
 
 import qai_hub as hub
 
-from qai_hub_models.scorecard.device import (
-    ScorecardDevice,
-    get_all_chipset_workbench_variants,
-    get_canonical_chipset_name,
-)
+from qai_hub_models.scorecard.device import ScorecardDevice
+from qai_hub_models.utils.device import WEBSITE_EXCLUDED_DEVICES
 
 WEBSITE_CHIPSET_ORDER = [
-    "qualcomm-snapdragon-8-elite-gen5",
-    "qualcomm-snapdragon-8-elite",
+    "qualcomm-snapdragon-8-elite-gen5-for-galaxy",
+    "qualcomm-snapdragon-8-elite-for-galaxy",
     "qualcomm-snapdragon-x2-elite",
     "qualcomm-snapdragon-x-elite",
     "qualcomm-snapdragon-x-plus-8-core",
@@ -39,7 +36,7 @@ WEBSITE_CHIPSET_ORDER = [
 
 def sorted_chipsets(chips: set[str]) -> list[str]:
     """Sort the set of chipsets in order they should show up on the website."""
-    chips = {get_canonical_chipset_name(c) for c in chips}
+    chips = set(chips)
 
     out = []
     for chipset in WEBSITE_CHIPSET_ORDER:
@@ -59,10 +56,9 @@ def sorted_devices(devices: set[ScorecardDevice]) -> list[ScorecardDevice]:
     """
     device_chipset_map: dict[str, set[ScorecardDevice]] = {}
     for device in devices:
-        canonical_name = device.canonical_chipset
-        if canonical_name not in device_chipset_map:
-            device_chipset_map[canonical_name] = set()
-        device_chipset_map[canonical_name].add(device)
+        if device.chipset not in device_chipset_map:
+            device_chipset_map[device.chipset] = set()
+        device_chipset_map[device.chipset].add(device)
 
     out: list[ScorecardDevice] = []
     for chipset in WEBSITE_CHIPSET_ORDER:
@@ -93,17 +89,13 @@ def get_supported_devices(chipsets: set[str]) -> list[ScorecardDevice]:
     """Return all the supported devices given the chipset being used."""
     supported_devices: set[ScorecardDevice] = set()
 
-    all_variants = get_all_chipset_workbench_variants()
     for chipset in chipsets:
-        canonical_name = get_canonical_chipset_name(chipset)
-        for query_chip in all_variants.get(canonical_name, [canonical_name]):
-            if query_chip not in __CHIP_SUPPORTED_DEVICES_CACHE:
-                __CHIP_SUPPORTED_DEVICES_CACHE[query_chip] = {
-                    ScorecardDevice.get(device.name, return_unregistered=True)
-                    for device in hub.get_devices(attributes=f"chipset:{query_chip}")
-                    if "(Family)" not in device.name
-                    and device.name
-                    != "Snapdragon 8 Gen 3 QRD"  # this is not available to all users
-                }
-            supported_devices.update(__CHIP_SUPPORTED_DEVICES_CACHE[query_chip])
+        if chipset not in __CHIP_SUPPORTED_DEVICES_CACHE:
+            __CHIP_SUPPORTED_DEVICES_CACHE[chipset] = {
+                ScorecardDevice.get(device.name, return_unregistered=True)
+                for device in hub.get_devices(attributes=f"chipset:{chipset}")
+                if "(Family)" not in device.name
+                and device.name not in WEBSITE_EXCLUDED_DEVICES
+            }
+        supported_devices.update(__CHIP_SUPPORTED_DEVICES_CACHE[chipset])
     return sorted_devices(supported_devices)

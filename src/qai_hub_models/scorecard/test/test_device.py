@@ -43,7 +43,10 @@ def test_compute_peer_chipsets_pairs_x_elite_and_x_plus() -> None:
 
 def test_compute_peer_chipsets_leaves_others_alone() -> None:
     """X2 Elite is a different NPU (htp 81), and mobile chipsets never pair here."""
-    for chipset in ("qualcomm-snapdragon-x2-elite", "qualcomm-snapdragon-8-elite"):
+    for chipset in (
+        "qualcomm-snapdragon-x2-elite",
+        "qualcomm-snapdragon-8-elite-for-galaxy",
+    ):
         assert compute_peer_chipsets(chipset) == {chipset}
 
 

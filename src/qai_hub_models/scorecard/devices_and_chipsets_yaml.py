@@ -16,13 +16,14 @@ from typing_extensions import assert_never
 
 from qai_hub_models.configs.chipset_yaml import ChipsetYaml, WebsiteWorld
 from qai_hub_models.configs.proto_helpers import form_factor_to_proto, runtime_to_proto
-from qai_hub_models.scorecard.device import (
-    ScorecardDevice,
-    get_canonical_chipset_name,
-)
+from qai_hub_models.scorecard.device import ScorecardDevice
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
-from qai_hub_models.utils.device import FormFactor, OperatingSystem
+from qai_hub_models.utils.device import (
+    WEBSITE_EXCLUDED_DEVICES,
+    FormFactor,
+    OperatingSystem,
+)
 from qai_hub_models.utils.path_helpers import QAIHM_PACKAGE_ROOT
 from qai_hub_models.utils.qai_hub_helpers import get_device_and_chipset_name
 
@@ -42,7 +43,6 @@ def chipset_marketing_name(
     brand automatically (e.g. ``qualcomm-dragonwing-qcs8550-proxy`` ->
     ``Qualcomm® Dragonwing™ QCS8550 (Proxy)``).
     """
-    chipset = get_canonical_chipset_name(chipset)
     for alias in aliases or ():
         if not alias.startswith("qualcomm-dragonwing-"):
             continue
@@ -289,9 +289,7 @@ def load_similar_devices() -> dict[str, tuple[str, list[str]]]:
     """
     Load the similar devices mapping, resolving reference chipsets to device names.
 
-    For each entry, the lookup uses `reference_chipset` (or `chipset` if unset),
-    plus any chipset that normalizes to the same value via get_canonical_chipset_name
-    (e.g. 8-elite-for-galaxy -> 8-elite).
+    For each entry, the lookup uses `reference_chipset` (or `chipset` if unset).
 
     Returns unsupported_device_name -> (real_chipset, [reference_device_names]).
     The real_chipset (the device's own `chipset` field) gets added to perf.yaml's
@@ -303,22 +301,20 @@ def load_similar_devices() -> dict[str, tuple[str, list[str]]]:
 
     dc = DevicesAndChipsetsYaml.load()
 
-    sanitized_to_devices: dict[str, list[str]] = {}
+    chipset_to_devices: dict[str, list[str]] = {}
     for name, details in dc.devices.items():
         if name in similar_names:
             continue
-        key = get_canonical_chipset_name(details.chipset)
-        if key not in sanitized_to_devices:
-            sanitized_to_devices[key] = []
-        sanitized_to_devices[key].append(name)
+        if details.chipset not in chipset_to_devices:
+            chipset_to_devices[details.chipset] = []
+        chipset_to_devices[details.chipset].append(name)
 
     resolved: dict[str, tuple[str, list[str]]] = {}
     for unsupported_name, entry in raw.devices.items():
         lookup_chipset = entry.reference_chipset or entry.chipset
-        key = get_canonical_chipset_name(lookup_chipset)
         resolved[unsupported_name] = (
             entry.chipset,
-            sanitized_to_devices.get(key, []),
+            chipset_to_devices.get(lookup_chipset, []),
         )
     return resolved
 
@@ -377,6 +373,8 @@ class DevicesAndChipsetsYaml(BaseQAIHMConfig):
         for hub_device in hub.get_devices():
             if "(Family)" in hub_device.name:
                 # Exclude "Family" devices
+                continue
+            if hub_device.name in WEBSITE_EXCLUDED_DEVICES:
                 continue
             if hub_device.name in out.devices:
                 # Exclude multiple devices with the same name

@@ -389,7 +389,7 @@ def _get_artifact_handler(platform: HubDevicePlatform) -> GenieXBenchArtifactHan
     raise NotImplementedError(
         "geniex-bench currently supports Windows (Snapdragon X / X2 "
         "Elite), IoT Linux (Dragonwing IQ-9075 EVK), and Android "
-        "(Snapdragon 8 Elite QRD / Gen 5 QRD). "
+        "(Samsung Galaxy S25 / S26). "
         f"Device {platform.device.name!r} is none of these."
     )
 

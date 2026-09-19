@@ -33,7 +33,6 @@ from qai_hub_models.models.templates.llm.model import (
     PositionProcessorBase,
 )
 from qai_hub_models.models.templates.llm.split_onnx_utils import utils
-from qai_hub_models.scorecard.device import get_canonical_chipset_name
 from qai_hub_models.utils.args import (
     get_export_model_name,
     get_model_kwargs,
@@ -274,10 +273,6 @@ def export_model(
     device = hub_devices[-1]
     chipset_attr = next((attr for attr in device.attributes if "chipset" in attr), None)
     chipset = chipset_attr.split(":")[-1] if chipset_attr else None
-    # Canonicalize (e.g. drop `-for-galaxy`) so the bundle's local dir name /
-    # zip contents match the chipset key used in release-assets.yaml.
-    if chipset is not None:
-        chipset = get_canonical_chipset_name(chipset)
 
     # Throw a warning if weight sharing is not supported.
     if "htp-supports-weight-sharing:true" not in device.attributes:

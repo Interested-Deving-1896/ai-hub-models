@@ -119,7 +119,7 @@ def test_filter_naming_a_missing_component_is_a_noop() -> None:
 @pytest.mark.parametrize("owner", [BACKBONE, STANDALONE])
 def test_out_of_scope_devices_are_untouched(owner: str) -> None:
     """Only the (precision, path, device) tuples in scope are cleared."""
-    other = ScorecardDevice.get("Snapdragon 8 Elite QRD")
+    other = ScorecardDevice.get("Samsung Galaxy S25")
     perf = _hybrid_perf()
     for component in (BACKBONE, STANDALONE):
         details = perf.precisions[PRECISION].components[component]

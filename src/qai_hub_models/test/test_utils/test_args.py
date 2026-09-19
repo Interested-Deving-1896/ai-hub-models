@@ -183,7 +183,7 @@ def llama_parser() -> argparse.ArgumentParser:
                 ]
             },
             default_precision=Precision.w4a16,
-            default_export_device="Snapdragon 8 Elite QRD",
+            default_export_device="Samsung Galaxy S25",
         )
 
 
@@ -203,13 +203,13 @@ def test_device_parsing(llama_parser: argparse.ArgumentParser) -> None:
     assert "chipset:qualcomm-snapdragon-8gen3" in device.attributes
 
     device = llama_parser.parse_args([]).device
-    assert device.name == "Snapdragon 8 Elite QRD"
+    assert device.name == "Samsung Galaxy S25"
 
     for action in llama_parser._actions:
         if action.dest == "device_str":
             assert (
                 action.help
-                == "The name of the device used to run this script. Run `qai-hub list-devices` to see the list of options. If not set, defaults to `Snapdragon 8 Elite QRD`."
+                == "The name of the device used to run this script. Run `qai-hub list-devices` to see the list of options. If not set, defaults to `Samsung Galaxy S25`."
             )
 
 

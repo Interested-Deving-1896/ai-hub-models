@@ -23,7 +23,7 @@ from qai_hub_models.scripts import apply_llm_perf_updates as mod
 # drop/upsert key perf rows by resolved ScorecardDevice.
 MODEL = "llama_v3_2_3b_instruct"
 DEV_OK = "Snapdragon X Elite CRD"
-DEV_FAILED = "Snapdragon 8 Elite QRD"
+DEV_FAILED = "Samsung Galaxy S25"
 
 
 def _metric(device_name: str, path: ScorecardProfilePath) -> dict:
@@ -235,7 +235,7 @@ def test_mobile_metric_does_not_backfill_older_chipsets(perf_dir: Path) -> None:
     mod.apply_updates([_metric(DEV_FAILED, ScorecardProfilePath.GENIE)])
 
     chipsets, _ = _supported(MODEL)
-    assert "qualcomm-snapdragon-8-elite" in chipsets
+    assert "qualcomm-snapdragon-8-elite-for-galaxy" in chipsets
     assert not {
         "qualcomm-snapdragon-888",
         "qualcomm-snapdragon-8gen1",

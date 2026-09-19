@@ -61,7 +61,7 @@ def _release_assets_scope(
     )
     scope: set[tuple[Precision, str | None, ScorecardProfilePath]] = set()
     for precision, path, device in test_params.profile_tests:
-        chipset = device.canonical_chipset if path.runtime.is_aot_compiled else None
+        chipset = device.chipset if path.runtime.is_aot_compiled else None
         scope.add((precision, chipset, path))
     return scope
 

@@ -383,10 +383,8 @@ cs_8_elite = RegisteredDevice(
     device_name="Samsung Galaxy S25 (Family)",
     is_default=True,
 )
-cs_8_elite_qrd = RegisteredDevice(device_name="Snapdragon 8 Elite QRD")
 cs_7_gen_4 = RegisteredDevice(device_name="Snapdragon 7 Gen 4 QRD")
 cs_8_elite_gen_5 = RegisteredDevice(device_name="Samsung Galaxy S26 (Family)")
-cs_8_elite_gen_5_qrd = RegisteredDevice(device_name="Snapdragon 8 Elite Gen 5 QRD")
 
 # Compute chipsets
 cs_x_elite = RegisteredDevice(device_name="Snapdragon X Elite CRD")
@@ -417,3 +415,15 @@ CANARY_DEVICES = {
     "Snapdragon X Elite CRD",
     "Dragonwing IQ-9075 EVK",
 }
+
+# Hub devices that must never reach the website: they are still hosted on some
+# deployments, so every Hub-driven device query has to filter them out by name.
+# The 8 Elite QRDs are retired (LLM runs moved to the Galaxy devices on AWS);
+# the 8 Gen 3 QRD is not available to all users.
+WEBSITE_EXCLUDED_DEVICES = frozenset(
+    {
+        "Snapdragon 8 Gen 3 QRD",
+        "Snapdragon 8 Elite QRD",
+        "Snapdragon 8 Elite Gen 5 QRD",
+    }
+)

@@ -31,7 +31,6 @@ from qualcomm_device_cloud_sdk.models import (
 
 from qai_hub_models.scorecard.device import (
     ScorecardDevice,
-    cs_8_elite_qrd,
     cs_ventuno_q,
     cs_x_elite,
 )
@@ -61,9 +60,7 @@ HUB_DEVICE_TO_QDC_DEVICE_MAP = {
     "Snapdragon X Elite CRD": "SC8380XP",
     "Snapdragon X Plus 8-Core CRD": "X1P42100",
     "Snapdragon X2 Elite CRD": "SC8480XP",
-    "Snapdragon 8 Elite QRD": "SM8750",
     "Samsung Galaxy S25": "SM8750",
-    "Snapdragon 8 Elite Gen 5 QRD": "SM8850",
     "Samsung Galaxy S26": "SM8850",
     "SA8295P ADP": "SA8295P",
     "SA7255P ADP": "SA7255P",
@@ -138,7 +135,7 @@ _RETRYABLE_STATUS_CODES = (401, 403, 429, 500, 502, 503, 504)
 # Devices with a dedicated (non-shared) QDC pool, which allow more concurrent
 # jobs and require a separate API key (QDC_PRIVATE_API_KEY).
 DEDICATED_POOL_DEVICES: frozenset[ScorecardDevice] = frozenset(
-    {cs_8_elite_qrd, cs_x_elite, cs_ventuno_q}
+    {cs_x_elite, cs_ventuno_q}
 )
 
 # Return type for the generic retry wrapper.

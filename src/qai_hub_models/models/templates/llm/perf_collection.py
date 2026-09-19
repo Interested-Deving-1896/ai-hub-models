@@ -341,7 +341,7 @@ def _update_perf_yaml_locked(
     if device not in perf.supported_devices:
         perf.supported_devices.append(device)
 
-    chipset = device.canonical_chipset
+    chipset = device.chipset
     if chipset not in perf.supported_chipsets:
         perf.supported_chipsets.append(chipset)
 

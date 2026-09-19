@@ -33,7 +33,6 @@ from qai_hub_models.models.templates.llm.perf_collection import (
     update_perf_yaml,
 )
 from qai_hub_models.scorecard import ScorecardDevice, ScorecardProfilePath
-from qai_hub_models.scorecard.device import get_chipset_workbench_variants
 from qai_hub_models.scorecard.utils.fetch_prerelease_assets import (
     download_prerelease_asset,
 )
@@ -929,18 +928,8 @@ def fetch_genie_bundle_for_perf(
 
     Raises a clear error if no matching asset exists.
     """
-    # release-assets.yaml is keyed by whichever raw workbench chipset name the
-    # compiling device reported at build time, which differs between devices
-    # that share a canonical chipset (e.g. a QRD board reports the canonical
-    # name plainly, while a Samsung device reports a "-for-galaxy" variant).
-    # Try every workbench variant of this chipset rather than assuming one.
     assets = load_release_assets_for_model(model_id)
-    asset = None
-    for variant in get_chipset_workbench_variants(chipset):
-        asset = assets.get_asset(precision, variant, ScorecardProfilePath.GENIE)
-        if asset is not None:
-            chipset = variant
-            break
+    asset = assets.get_asset(precision, chipset, ScorecardProfilePath.GENIE)
     if asset is None:
         available_chipsets: list[str] = []
         prec_details = assets.precisions.get(precision)

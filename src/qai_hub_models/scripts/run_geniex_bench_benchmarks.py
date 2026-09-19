@@ -28,10 +28,7 @@ from qai_hub_models.models.templates.llm.perf_collection import (
     update_perf_yaml,
 )
 from qai_hub_models.scorecard import ScorecardProfilePath
-from qai_hub_models.scorecard.device import (
-    ScorecardDevice,
-    get_chipset_workbench_variants,
-)
+from qai_hub_models.scorecard.device import ScorecardDevice
 from qai_hub_models.scorecard.envvars import (
     LLMPerfPrecisionsEnvvar,
     SpecialLLMPerfPrecisionSetting,
@@ -158,18 +155,8 @@ def fetch_geniex_qairt_bundle(
     model_id: str, precision: Precision, chipset: str, output_dir: Path
 ) -> tuple[Path, list[int]]:
     """Download/extract the CI-built geniex_qairt bundle. Returns (bundle_dir, context_lengths)."""
-    # release-assets.yaml is keyed by whichever raw workbench chipset name the
-    # compiling device reported at build time, which differs between devices
-    # that share a canonical chipset (e.g. a QRD board reports the canonical
-    # name plainly, while a Samsung device reports a "-for-galaxy" variant).
-    # Try every workbench variant of this chipset rather than assuming one.
     assets = load_release_assets_for_model(model_id)
-    asset = None
-    for variant in get_chipset_workbench_variants(chipset):
-        asset = assets.get_asset(precision, variant, ScorecardProfilePath.GENIEX_QAIRT)
-        if asset is not None:
-            chipset = variant
-            break
+    asset = assets.get_asset(precision, chipset, ScorecardProfilePath.GENIEX_QAIRT)
     if asset is None:
         available: list[str] = []
         prec_details = assets.precisions.get(precision)

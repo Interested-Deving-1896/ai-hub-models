@@ -18,7 +18,6 @@ from typing import Any
 import qai_hub as hub
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.scorecard.device import get_canonical_chipset_name_from_device
 from qai_hub_models.utils.ai_hub_access import can_access_qualcomm_ai_hub
 from qai_hub_models.utils.args import get_export_model_name, get_model_kwargs
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
@@ -52,6 +51,7 @@ from qai_hub_models.utils.printing import print_on_target_demo_cmd, print_tool_v
 from qai_hub_models.utils.qai_hub_helpers import (
     _AIHUB_URL,
     assert_success_and_get_target_models,
+    get_device_and_chipset_name,
 )
 
 
@@ -152,7 +152,7 @@ def export_model(
     )
     output_path = Path(output_dir or Path.cwd() / "export_assets")
 
-    chipset = get_canonical_chipset_name_from_device(device)
+    _, chipset = get_device_and_chipset_name(device)
 
     # 1. Instantiate the CollectionModel and upload each component's source.
     model = model_cls.from_pretrained(

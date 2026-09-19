@@ -56,10 +56,10 @@ def test_on_target_demo_cmd_uses_the_cli(
     """The printed command must be runnable as-is, for in-tree and standalone alike."""
     with patch(
         "qai_hub_models.utils.printing.get_device_and_chipset_name",
-        return_value=("Snapdragon 8 Elite QRD", "qualcomm-snapdragon-8-elite"),
+        return_value=("Samsung Galaxy S25", "qualcomm-snapdragon-8-elite-for-galaxy"),
     ):
         print_on_target_demo_cmd(
-            _fake_compile_job("mabc123"), folder, hub.Device("Snapdragon 8 Elite QRD")
+            _fake_compile_job("mabc123"), folder, hub.Device("Samsung Galaxy S25")
         )
 
     out = capsys.readouterr().out

@@ -39,57 +39,12 @@ from qai_hub_models.utils.device import (
     RegisteredDevice,
     _get_cached_device,
 )
-from qai_hub_models.utils.qai_hub_helpers import get_device_and_chipset_name
 
 # -----------------------------------------------------------------------------
 # Chipset helpers (scorecard-specific)
 # -----------------------------------------------------------------------------
 
 UNIVERSAL_DEVICE_NAME = "universal"
-FOR_GALAXY_SUFFIX = "-for-galaxy"
-
-
-def get_canonical_chipset_name(name: str) -> str:
-    """
-    Map a workbench chipset name to its canonical name. Multiple workbench
-    chipset names can share a single canonical name (e.g. ``-for-galaxy``
-    variants).
-    """
-    if name.endswith(FOR_GALAXY_SUFFIX):
-        return name[: -len(FOR_GALAXY_SUFFIX)]
-    return name
-
-
-def get_canonical_chipset_name_from_device(device: hub.Device) -> str | None:
-    """Canonical chipset name for a hub Device, or None if it has none."""
-    _, chipset = get_device_and_chipset_name(device)
-    return get_canonical_chipset_name(chipset) if chipset is not None else None
-
-
-@cache
-def get_all_chipset_workbench_variants() -> dict[str, list[str]]:
-    """
-    Canonical chipset names that correspond to more than one workbench chipset name.
-    Returns a dict from canonical name to list of workbench names.
-    """
-    variants: dict[str, list[str]] = {}
-    for device in ScorecardDevice._registry.values():
-        chipset_variants = get_chipset_workbench_variants(device.chipset)
-        if len(chipset_variants) > 1:
-            variants[device.canonical_chipset] = chipset_variants
-    return variants
-
-
-def get_chipset_workbench_variants(chipset: str) -> list[str]:
-    """
-    If a chipset has a different canonical name from the workbench name, return both.
-    For example, ``qualcomm-snapdragon-8-elite-for-galaxy`` returns
-    ``[qualcomm-snapdragon-8-elite-for-galaxy, qualcomm-snapdragon-8-elite]``,
-    while ``qualcomm-snapdragon-8-elite`` returns just ``[qualcomm-snapdragon-8-elite]``.
-    """
-    if (canonical_name := get_canonical_chipset_name(chipset)) != chipset:
-        return [chipset, canonical_name]
-    return [chipset]
 
 
 COMPUTE_PEER_CHIPSETS = frozenset(
@@ -104,7 +59,7 @@ def compute_peer_chipsets(chipset: str) -> set[str]:
     X Plus 8-Core is the same NPU as X Elite (htp 73, soc_model 60), but only two
     units exist in the QDC pool, so we measure X Elite and credit both.
     """
-    if get_canonical_chipset_name(chipset) in COMPUTE_PEER_CHIPSETS:
+    if chipset in COMPUTE_PEER_CHIPSETS:
         return set(COMPUTE_PEER_CHIPSETS)
     return {chipset}
 
@@ -567,40 +522,25 @@ class ScorecardDevice(HubDeviceAttributes):
         ]
 
     @cached_property
-    def canonical_chipset(self) -> str:
-        """Canonical (de-suffixed) chipset name, e.g. "qualcomm-snapdragon-8-elite"
-        from the "-for-galaxy" workbench variant.
-        """
-        return get_canonical_chipset_name(self.chipset)
-
-    @cached_property
     def extended_supported_chipsets(self) -> set[str]:
         """
         If this device can run a model, get a set of all chipsets that should also be supported.
         This device's chipset will be included in the list.
-
-        The device's own chipset is returned as its workbench name (e.g.
-        ``qualcomm-snapdragon-8-elite-for-galaxy``) so that Hub API queries
-        match the exact chipset ID. Consumers that need the canonical name
-        should use ``canonical_chipset`` instead.
         """
         if self.form_factor in [
             FormFactor.PHONE,
             FormFactor.TABLET,
         ]:
             mobile_chips = [
-                "qualcomm-snapdragon-8-elite-gen5",
-                "qualcomm-snapdragon-8-elite",
+                "qualcomm-snapdragon-8-elite-gen5-for-galaxy",
+                "qualcomm-snapdragon-8-elite-for-galaxy",
                 "qualcomm-snapdragon-8gen3",
                 "qualcomm-snapdragon-8gen2",
                 "qualcomm-snapdragon-8gen1",
                 "qualcomm-snapdragon-888",
             ]
-            # Look up by canonical name, but return the workbench name for
-            # the device's own chipset so Hub queries match the exact ID.
-            canonical_chipset = self.canonical_chipset
-            if canonical_chipset in mobile_chips:
-                idx = mobile_chips.index(canonical_chipset)
+            if self.chipset in mobile_chips:
+                idx = mobile_chips.index(self.chipset)
                 # Return this chipset and all older chipsets as proxies —
                 # we don't run older devices in the scorecard.
                 return {self.chipset} | set(mobile_chips[idx + 1 :])
@@ -644,19 +584,6 @@ cs_8_elite = ScorecardDevice.from_registered(
     devicefarm_backend="aws",
 )
 
-cs_8_elite_qrd = ScorecardDevice.from_registered(
-    registered_device.cs_8_elite_qrd,
-    name="cs_8_elite_qrd",
-    compile_paths=[
-        ScorecardCompilePath.GENIE,
-        ScorecardCompilePath.GENIEX_QAIRT,
-    ],
-    profile_paths=[
-        ScorecardProfilePath.GENIE,
-        ScorecardProfilePath.GENIEX_QAIRT,
-    ],
-)
-
 cs_7_gen_4 = ScorecardDevice.from_registered(
     registered_device.cs_7_gen_4,
     name="cs_7_gen_4",
@@ -667,19 +594,6 @@ cs_8_elite_gen_5 = ScorecardDevice.from_registered(
     name="cs_8_elite_gen_5",
     reference_device_name="Samsung Galaxy S26",
     devicefarm_backend="aws",
-)
-
-cs_8_elite_gen_5_qrd = ScorecardDevice.from_registered(
-    registered_device.cs_8_elite_gen_5_qrd,
-    name="cs_8_elite_gen_5_qrd",
-    compile_paths=[
-        ScorecardCompilePath.GENIE,
-        ScorecardCompilePath.GENIEX_QAIRT,
-    ],
-    profile_paths=[
-        ScorecardProfilePath.GENIE,
-        ScorecardProfilePath.GENIEX_QAIRT,
-    ],
 )
 
 # Compute chipsets
