@@ -2322,22 +2322,22 @@ class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
             )
 
         # --- Genie config (text-dec-htp.json equivalent) ---
-        context_length: int = 0
-        for file_meta in metadata.model_files.values():
-            if "attention_mask" in file_meta.inputs:
-                attn_shape = file_meta.inputs["attention_mask"].shape
-                context_length = max(context_length, attn_shape[3])
-
+        # Linking collapses all context-length graphs into one context binary
+        # with a single reported attention_mask shape, so read the part's own
+        # export config instead of scanning metadata.model_files.
+        context_lengths: list[int] = []
         image_processor = None
         llm_config = None
         for comp in self.components.values():
             if isinstance(comp, self.part_base_cls):
+                context_lengths = list(getattr(comp, "export_context_lengths", []))
                 presplit = comp._presplit
                 image_processor = getattr(presplit, "_image_processor", None)
                 llm_config = getattr(
                     presplit, "_original_llm_config", presplit.llm_config
                 )
                 break
+        context_length: int = max(context_lengths, default=0)
 
         if image_processor is None:
             image_processor = self._get_collection_processor().image_processor
@@ -2541,7 +2541,7 @@ class Qwen3VLCollectionBase(MultiGraphWorkbenchModelCollection):
 
         metadata.genie = GenieMetadata(
             chat_template=GenieChatTemplate(**cast(dict[str, Any], chat_spec)),
-            context_lengths=[context_length],
+            context_lengths=sorted(context_lengths),
             supports_streaming=True,
             supports_vision=True,
             supports_thinking=False,
