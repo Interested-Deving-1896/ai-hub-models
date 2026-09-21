@@ -185,7 +185,8 @@ jobs:
       uses: ./.github/actions/configure-multiple-aws-roles
       with:
         role-to-assume: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
-        role-duration-seconds: 3600
+        # 6 hours
+        role-duration-seconds: 21600
         profile: qaihm-devicefarm
         aws-region: us-west-2
 
