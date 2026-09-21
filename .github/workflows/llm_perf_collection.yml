@@ -195,6 +195,10 @@ jobs:
 
     - name: Submit LLM Perf Jobs
       id: submit
+      # A partial submission failure (e.g. a transient AWS upload error) must
+      # not block collect from running for the jobs that did submit -- only
+      # the affected jobs should show as missing/failed, not the whole leg.
+      continue-on-error: true
       env:
         QAIHM_LLM_MODELS: ${{ inputs.model || 'all' }}
         QAIHM_TEST_DEVICES: ${{ matrix.devices }}
@@ -213,7 +217,10 @@ jobs:
       run: |
         source ${{ env.VENV_PATH }}/bin/activate
         cd $GITHUB_WORKSPACE
-        python -m qai_hub_models.scripts.run_genie_benchmarks submit --jobs-file "$JOBS_FILE"
+        mkdir -p "$GITHUB_WORKSPACE/test-results"
+        python -m qai_hub_models.scripts.run_genie_benchmarks submit \
+          --jobs-file "$JOBS_FILE" \
+          --junit-xml "$GITHUB_WORKSPACE/test-results/models-junit-llm_perf_submit.xml"
 
     - name: Collect LLM Performance Results
       id: run_tests

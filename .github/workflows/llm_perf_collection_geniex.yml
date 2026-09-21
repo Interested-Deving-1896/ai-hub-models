@@ -210,6 +210,10 @@ jobs:
 
     - name: Submit geniex-bench Jobs
       id: submit
+      # A partial submission failure (e.g. a transient AWS upload error) must
+      # not block collect from running for the jobs that did submit -- only
+      # the affected jobs should show as not_submitted, not the whole leg.
+      continue-on-error: true
       env:
         QAIHM_MODELS: ${{ inputs.model || 'all' }}
         QAIHM_TEST_DEVICES: ${{ matrix.devices }}

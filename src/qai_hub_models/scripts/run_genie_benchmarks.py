@@ -48,7 +48,9 @@ def _cmd_submit(args: argparse.Namespace) -> int:
     eval_device = get_llm_eval_device()
     print(f"On-device accuracy: {eval_device.name if eval_device else 'off'}")
     submitted = 0
+    cases: list[tuple[str, str | None]] = []
     for model_id, precision, device in _build_params():
+        case_name = f"{model_id}-{precision}-{device.name}"
         try:
             submit_llm_perf_job(
                 model_id=model_id,
@@ -60,14 +62,22 @@ def _cmd_submit(args: argparse.Namespace) -> int:
                 skip_perf_update=cfg.skip_perf_update,
             )
             submitted += 1
-        except Exception as e:  # noqa: PERF203
-            print(
-                f"ERROR: submission failed for {model_id}/{precision}/"
-                f"{device.name}: {e}",
-                file=sys.stderr,
-            )
+            cases.append((case_name, None))
+        except Exception as e:
+            msg = f"submission failed for {case_name}: {e}"
+            print(f"ERROR: {msg}", file=sys.stderr)
+            cases.append((case_name, msg))
     print(f"Submitted {submitted} genie job(s) to {args.jobs_file}")
-    return 0 if submitted else 1
+
+    if args.junit_xml:
+        _write_junit(args.junit_xml, cases)
+
+    failed = [name for name, msg in cases if msg]
+    if failed:
+        print(f"FAILED submissions: {failed}", file=sys.stderr)
+    # A total wipeout is still its own failure even with no cases at all
+    # (empty _build_params) so CI doesn't read a silent success.
+    return 1 if failed or not submitted else 0
 
 
 def _cmd_collect(args: argparse.Namespace) -> int:
@@ -94,7 +104,9 @@ def _cmd_collect(args: argparse.Namespace) -> int:
         record = records.get(key)
         case_name = f"{model_id}-{precision}-{device.name}"
         if record is None:
-            print(f"jobs_file has no entry for {key}; skipping", file=sys.stderr)
+            msg = f"no jobs_file entry for {key}; submission must have failed"
+            print(f"ERROR: {msg}", file=sys.stderr)
+            cases.append((case_name, msg))
             continue
         try:
             tps, ttft, prefill_tps = collect_llm_perf_job(
@@ -142,6 +154,7 @@ def main() -> int:
         "submit", help="Submit one device-farm job per (model, precision, device)."
     )
     p_submit.add_argument("--jobs-file", required=True)
+    p_submit.add_argument("--junit-xml", default=None)
 
     p_collect = sub.add_parser(
         "collect", help="Poll jobs listed in the jobs file and update perf.yaml."

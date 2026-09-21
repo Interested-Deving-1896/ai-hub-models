@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+import sys
 import tempfile
 import time
 import zipfile
@@ -30,6 +31,55 @@ DEFAULT_JOB_TIMEOUT = 7200
 UPLOAD_PROCESSING_TIMEOUT = 300
 ARTIFACT_LISTING_MAX_RETRIES = 5
 ARTIFACT_LISTING_RETRY_DELAY = 5
+# Retry budget for the S3 upload PUT. Observed failure mode: SSLEOFError
+# ("EOF occurred in violation of protocol") during upload of the test bundle,
+# a transient S3-side connection drop -- see run 35474812911. requests streams
+# the file body, so a urllib3 Retry adapter can't safely retry (the file
+# handle is already partially consumed); retry manually, reopening the file
+# fresh each attempt instead.
+UPLOAD_PUT_MAX_RETRIES = 5
+UPLOAD_PUT_RETRY_BACKOFF_BASE = 3
+_RETRYABLE_HTTP_STATUS_CODES = (500, 502, 503, 504)
+
+
+def _is_retryable_upload_error(err: Exception) -> bool:
+    """Transient network/connection errors and 5xx are retryable; other
+    HTTP errors (e.g. 403 on an expired upload URL) are not.
+    """
+    if isinstance(err, requests.exceptions.HTTPError):
+        status = err.response.status_code if err.response is not None else None
+        return status in _RETRYABLE_HTTP_STATUS_CODES
+    return isinstance(
+        err, (requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+    )
+
+
+def _put_file_with_retry(url: str, file_path: str) -> None:
+    """PUT ``file_path`` to ``url``, retrying transient network/5xx failures."""
+    for attempt in range(UPLOAD_PUT_MAX_RETRIES):
+        try:
+            with open(file_path, "rb") as f:
+                resp = requests.put(
+                    url,
+                    data=f,
+                    headers={"content-type": "application/octet-stream"},
+                )
+            resp.raise_for_status()
+            return
+        except (requests.exceptions.RequestException, OSError) as err:  # noqa: PERF203
+            if not _is_retryable_upload_error(err) or (
+                attempt == UPLOAD_PUT_MAX_RETRIES - 1
+            ):
+                raise
+            delay = UPLOAD_PUT_RETRY_BACKOFF_BASE * (2**attempt)
+            print(
+                f"[AWS Device Farm] upload PUT failed ({type(err).__name__}); "
+                f"attempt {attempt + 1}/{UPLOAD_PUT_MAX_RETRIES}, "
+                f"retrying in {delay}s.",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+
 
 # Populated by the test spec's post_test phase (see aws_test_spec.yaml); mirrors
 # QDC's on-device output directory (each workload's device_scripts writes here).
@@ -116,13 +166,7 @@ class AwsDeviceFarm(DeviceFarm):
         upload = self.client.create_upload(
             projectArn=self.config.project_arn, name=name, type=upload_type
         )["upload"]
-        with open(file_path, "rb") as f:
-            resp = requests.put(
-                upload["url"],
-                data=f,
-                headers={"content-type": "application/octet-stream"},
-            )
-        resp.raise_for_status()
+        _put_file_with_retry(upload["url"], file_path)
         return self._wait_for_upload(upload["arn"])
 
     def _wait_for_upload(

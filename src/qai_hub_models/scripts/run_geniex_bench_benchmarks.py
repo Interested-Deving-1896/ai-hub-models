@@ -784,6 +784,7 @@ def _cmd_submit(args: argparse.Namespace) -> int:
     if os.path.exists(args.jobs_file):
         os.unlink(args.jobs_file)
     submitted = 0
+    failed_cases: list[str] = []
     for (
         plugin,
         model_id,
@@ -800,6 +801,7 @@ def _cmd_submit(args: argparse.Namespace) -> int:
         args.results_dir,
         args.geniex_version,
     ):
+        case_name = f"{model_id}/{plugin}/{precision}@{device_token}"
         try:
             _submit_one(
                 model_id,
@@ -818,14 +820,24 @@ def _cmd_submit(args: argparse.Namespace) -> int:
                 run_perf=args.run_perf,
             )
             submitted += 1
-        except Exception as e:  # noqa: PERF203
+        except Exception as e:
             print(
-                f"ERROR: submission failed for {model_id} @ {device_token} "
-                f"(plugin={plugin}, precision={precision}): {e}",
+                f"ERROR: submission failed for {case_name}: {e}",
                 file=sys.stderr,
             )
+            failed_cases.append(case_name)
     print(f"Submitted {submitted} geniex-bench job(s) to {args.jobs_file}")
-    return 0 if submitted else 1
+    if failed_cases:
+        print(f"FAILED submissions: {failed_cases}", file=sys.stderr)
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary, "a") as f:
+                f.write("## GenieX-bench Submission Failures\n\n")
+                f.writelines(f"- {c}\n" for c in failed_cases)
+                f.write("\n")
+    # A total wipeout is still its own failure even with no cases at all
+    # (empty _iter_work) so CI doesn't read a silent success.
+    return 1 if failed_cases or not submitted else 0
 
 
 def _cmd_collect(args: argparse.Namespace) -> int:
@@ -862,8 +874,17 @@ def _cmd_collect(args: argparse.Namespace) -> int:
         record = records.get(key)
         if record is None:
             print(
-                f"jobs_file has no entry for {key}; skipping (was it submitted?)",
+                f"jobs_file has no entry for {key}; submission must have failed",
                 file=sys.stderr,
+            )
+            rows.append(
+                {
+                    "model": model_id,
+                    "plugin": plugin,
+                    "precision": str(precision),
+                    "device": sd.name,
+                    "status": "not_submitted",
+                }
             )
             continue
 
