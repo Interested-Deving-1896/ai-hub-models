@@ -160,6 +160,10 @@ def validate_and_split_enabled_models(
             enabled_torch_model_ids = enabled_torch_model_ids.union(
                 get_week_model_ids(LLMWeekendGroup.WEEK2)
             )
+        elif model_id == SpecialModelSetting.LLM_NO_WEEK:
+            enabled_torch_model_ids = enabled_torch_model_ids.union(
+                get_week_model_ids(LLMWeekendGroup.NO_WEEK)
+            )
         elif model_id == SpecialModelSetting.LLM_DOWNLOADABLE:
             enabled_torch_model_ids = enabled_torch_model_ids.union(
                 get_downloadable_llm_model_ids()

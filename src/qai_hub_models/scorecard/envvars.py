@@ -48,6 +48,10 @@ class SpecialModelSetting(Enum):
     LLM_WEEK1 = "llm_week1"
     LLM_WEEK2 = "llm_week2"
 
+    # LLMs explicitly excluded from the week1/week2 rotation (weekend_group: no_week).
+    # Never run on a schedule; only enabled when a caller passes this token by hand.
+    LLM_NO_WEEK = "llm_no_week"
+
     # LLMs that publish downloadable release assets (rerun together on a QAIRT bump).
     LLM_DOWNLOADABLE = "llm_downloadable"
 
@@ -95,6 +99,7 @@ Special options:
  * 'pytorch_no_llm' -- Enable pytorch recipes except those flagged test_split: llm
  * 'static' -- Enable test models in qai_hub_models/scorecard/static
  * 'llm_week1' / 'llm_week2' -- Enable the LLMs in that weekend rotation (scorecard-config.yaml weekend_group)
+ * 'llm_no_week' -- Enable LLMs excluded from the week1/week2 rotation (weekend_group: no_week). Never run on a schedule; on-demand only.
  * 'llm_downloadable' -- Enable LLMs that publish downloadable release assets
 """
     SPECIAL_SETTING_ENUM = SpecialModelSetting

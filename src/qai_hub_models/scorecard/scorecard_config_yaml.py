@@ -26,6 +26,11 @@ class LLMWeekendGroup(Enum):
     WEEK1 = "week1"
     WEEK2 = "week2"
 
+    # Never included in the week1/week2 rotation. Used for models (e.g. regional
+    # Llama variants) that should only run when explicitly requested via the
+    # 'llm_no_week' token, never on a schedule.
+    NO_WEEK = "no_week"
+
     def __repr__(self) -> str:
         return self.value
 

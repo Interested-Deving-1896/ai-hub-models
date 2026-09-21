@@ -21,7 +21,8 @@ from qai_hub_models.scorecard.static.list_models import (
 )
 from qai_hub_models.utils.path_helpers import MODEL_IDS
 
-# Regional variants are skip_scorecard and must not appear in the LLM set.
+# Regional Llama variants: test_split: llm, weekend_group: no_week. Never picked
+# up by the week1/week2 rotation; only enabled via the llm_no_week token.
 REGIONAL_MODELS = {
     "llama_v3_1_sea_lion_3_5_8b_r",
     "llama_v3_elyza_jp_8b",
@@ -63,9 +64,12 @@ def test_all_llms_have_weekend_group() -> None:
 def test_weeks_are_disjoint_and_cover_all_llms() -> None:
     w1 = get_week_model_ids(LLMWeekendGroup.WEEK1)
     w2 = get_week_model_ids(LLMWeekendGroup.WEEK2)
-    assert w1 and w2
+    no_week = get_week_model_ids(LLMWeekendGroup.NO_WEEK)
+    assert w1 and w2 and no_week
     assert w1.isdisjoint(w2)
-    assert w1 | w2 == get_llm_model_ids()
+    assert w1.isdisjoint(no_week)
+    assert w2.isdisjoint(no_week)
+    assert w1 | w2 | no_week == get_llm_model_ids()
 
 
 def test_downloadable_is_nonempty_subset() -> None:
@@ -74,16 +78,27 @@ def test_downloadable_is_nonempty_subset() -> None:
     assert downloadable <= get_llm_model_ids()
 
 
-def test_regional_models_excluded() -> None:
+def test_regional_models_are_no_week() -> None:
+    """Regional variants run only on-demand via llm_no_week, never on a schedule."""
     llm_ids = get_llm_model_ids()
+    no_week = get_week_model_ids(LLMWeekendGroup.NO_WEEK)
+    w1 = get_week_model_ids(LLMWeekendGroup.WEEK1)
+    w2 = get_week_model_ids(LLMWeekendGroup.WEEK2)
     for model_id in REGIONAL_MODELS:
-        assert model_id not in llm_ids
+        assert model_id in llm_ids
+        assert model_id in no_week
+        assert model_id not in w1
+        assert model_id not in w2
 
 
 def test_tokens_resolve_to_expected_llm_sets() -> None:
     for token, expected in [
         (SpecialModelSetting.LLM_WEEK1, get_week_model_ids(LLMWeekendGroup.WEEK1)),
         (SpecialModelSetting.LLM_WEEK2, get_week_model_ids(LLMWeekendGroup.WEEK2)),
+        (
+            SpecialModelSetting.LLM_NO_WEEK,
+            get_week_model_ids(LLMWeekendGroup.NO_WEEK),
+        ),
         (SpecialModelSetting.LLM_DOWNLOADABLE, get_downloadable_llm_model_ids()),
     ]:
         torch_ids, static_ids = validate_and_split_enabled_models({token})
