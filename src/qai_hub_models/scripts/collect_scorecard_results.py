@@ -224,13 +224,6 @@ def read_jobs_config(config_path: str) -> dict:
         return yaml.load(file)
 
 
-def write_jobs_config(config: dict, path: str) -> None:
-    """Write yaml files with special characters like copyright logo, etc."""
-    yaml = ruamel.yaml.YAML()
-    with open(path, "w") as file:
-        yaml.dump(config, file)
-
-
 def _merge_existing_accuracy_data(
     new_df: pd.DataFrame,
     in_scope_keys: set[tuple[str, str, str, str]],

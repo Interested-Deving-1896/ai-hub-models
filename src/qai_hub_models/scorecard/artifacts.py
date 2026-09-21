@@ -14,6 +14,7 @@ import ruamel.yaml
 from typing_extensions import Self
 
 from qai_hub_models.scorecard.envvars import ArtifactsDirEnvvar
+from qai_hub_models.utils.base_config import sorted_mappings
 from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_PACKAGE_ROOT
 
 ValT = TypeVar("ValT")
@@ -175,6 +176,6 @@ class ScorecardYamlFile(Generic[ValT]):
         assert path is not None
         if self.mapping:
             with open(path, "w") as f:
-                ruamel.yaml.YAML().dump(self.mapping, f)
+                ruamel.yaml.YAML().dump(sorted_mappings(self.mapping), f)
         else:
             Path(path).touch()

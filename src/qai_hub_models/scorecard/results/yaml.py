@@ -36,7 +36,7 @@ from qai_hub_models.scorecard.results.scorecard_job import (
     QuantizeScorecardJob,
     ScorecardJobTypeVar,
 )
-from qai_hub_models.utils.base_config import BaseQAIHMConfig
+from qai_hub_models.utils.base_config import BaseQAIHMConfig, sorted_mappings
 from qai_hub_models.utils.export.result import (
     ComponentGroup,
     MultiGraphComponentGroup,
@@ -148,7 +148,7 @@ class ScorecardJobYaml(ScorecardYamlFile[str], Generic[ScorecardJobTypeVar]):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         if len(self.mapping) > 0:
             with open(path, "a" if append else "w") as yaml_file:
-                ruamel.yaml.YAML().dump(self.mapping, yaml_file)
+                ruamel.yaml.YAML().dump(sorted_mappings(self.mapping), yaml_file)
         elif not append:
             Path(path).touch()
 

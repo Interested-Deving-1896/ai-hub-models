@@ -21,7 +21,7 @@ from typing_extensions import Self, TypeVar
 EMPTY_SERIALIZED_YAML_SIZE = len(b"{}\n")
 
 
-def _sorted_mappings(value: Any) -> Any:
+def sorted_mappings(value: Any) -> Any:
     """Return ``value`` with every dict's keys sorted alphabetically (recursively).
 
     Used by :meth:`BaseQAIHMConfig.to_yaml` so on-disk YAML files have a stable
@@ -29,9 +29,9 @@ def _sorted_mappings(value: Any) -> Any:
     only that it's deterministic.
     """
     if isinstance(value, dict):
-        return {k: _sorted_mappings(value[k]) for k in sorted(value, key=str)}
+        return {k: sorted_mappings(value[k]) for k in sorted(value, key=str)}
     if isinstance(value, list):
-        return [_sorted_mappings(v) for v in value]
+        return [sorted_mappings(v) for v in value]
     return value
 
 
@@ -146,7 +146,7 @@ class BaseQAIHMConfig(BaseModel):
         )
         data = ruamel.yaml.YAML(typ="safe", pure=True).load(rendered)
         with open(path, "w") as f:
-            yaml.dump(_sorted_mappings(data), f)
+            yaml.dump(sorted_mappings(data), f)
 
         # Remove file if empty
         if (not write_if_empty or delete_if_empty) and os.path.getsize(path) in (

@@ -13,6 +13,7 @@ from pathlib import Path
 import ruamel.yaml
 
 from qai_hub_models.scorecard.envvars import EnabledModelsEnvvar, SpecialModelSetting
+from qai_hub_models.utils.base_config import sorted_mappings
 
 # YAML files that should be merged by combining their key-value pairs
 MERGE_YAML_FILES = [
@@ -51,7 +52,7 @@ def save_yaml(yaml_filepath: Path, data: dict) -> None:
     yaml = ruamel.yaml.YAML()
     yaml.default_flow_style = False
     with open(yaml_filepath, "w") as yaml_file:
-        yaml.dump(data, yaml_file)
+        yaml.dump(sorted_mappings(data), yaml_file)
 
 
 def write_empty_release_assets(output_dir: Path) -> None:

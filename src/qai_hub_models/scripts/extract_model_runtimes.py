@@ -33,6 +33,7 @@ from qai_hub_models.scorecard.artifacts import (
     RUNTIME_STAGE_JOB_SUBMISSION,
     ScorecardArtifact,
 )
+from qai_hub_models.utils.base_config import sorted_mappings
 
 SCORECARD_ARTIFACT_NAME = "test-results-scorecard"
 JOB_SUBMISSION_XML_NAME = "qaihm-model-tests-junit.xml"
@@ -132,7 +133,7 @@ def write_runtime_estimates_yaml(
     yaml.default_flow_style = False
     yaml.indent(mapping=2, sequence=4, offset=2)
     with open(output_path, "w") as f:
-        yaml.dump(payload, f)
+        yaml.dump(sorted_mappings(payload), f)
 
 
 _ACTION_ID_RE = re.compile(r"[0-9]+")
