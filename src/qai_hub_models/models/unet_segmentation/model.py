@@ -16,6 +16,9 @@ from qai_hub_models.models.unet_segmentation.dataset import (
     CarvanaDataset,
     UNetCalibrationDataset,
 )
+from qai_hub_models.models.unet_segmentation.external_repos.pytorch_unet.unet import (
+    UNet as _UNet,
+)
 from qai_hub_models.utils.asset_loaders import (
     CachedWebModelAsset,
     load_image,
@@ -35,8 +38,6 @@ from qai_hub_models.utils.input_spec import (
 )
 
 MODEL_ID = __name__.split(".")[-2]
-MODEL_REPO = "milesial/Pytorch-UNet"
-MODEL_TYPE = "unet_carvana"
 MODEL_ASSET_VERSION = 1
 # from https://github.com/milesial/Pytorch-UNet/releases/download/v3.0/unet_carvana_scale1.0_epoch2.pth
 DEFAULT_WEIGHTS = "unet_carvana_scale1.0_epoch2.pth"
@@ -48,9 +49,7 @@ IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
 class UNet(BaseModel):
     @classmethod
     def from_pretrained(cls, weights: str | None = DEFAULT_WEIGHTS) -> Self:
-        net = torch.hub.load(
-            MODEL_REPO, MODEL_TYPE, pretrained=False, scale=1.0, trust_repo=True
-        )
+        net = _UNet(n_channels=3, n_classes=2, bilinear=False)
         if weights is not None:
             checkpoint_path = CachedWebModelAsset.from_asset_store(
                 MODEL_ID, MODEL_ASSET_VERSION, weights
