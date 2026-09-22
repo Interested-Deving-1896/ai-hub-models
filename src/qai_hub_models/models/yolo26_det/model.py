@@ -13,6 +13,9 @@ from ultralytics.models import YOLO as ultralytics_YOLO
 from ultralytics.nn.tasks import DetectionModel
 
 from qai_hub_models.configs.tensor_spec import TensorSpec
+from qai_hub_models.models.templates.detection.detection_evaluator import (
+    DetectionEvaluator,
+)
 from qai_hub_models.models.templates.ultralytics.detect_patches import (
     patch_ultralytics_detection_head,
 )
@@ -130,12 +133,6 @@ class Yolo26Detector(Yolo):
         return {"detector_output": TensorSpec()}
 
     def get_evaluator(self) -> BaseEvaluator:
-        # This is imported here so segmentation models don't have to install
-        # detection evaluator dependencies.
-        from qai_hub_models.models.templates.detection.detection_evaluator import (
-            DetectionEvaluator,
-        )
-
         image_height, image_width = self.get_input_spec()["image"][0][2:]
         return DetectionEvaluator(
             image_height, image_width, score_threshold=0.001, nms_iou_threshold=0.7

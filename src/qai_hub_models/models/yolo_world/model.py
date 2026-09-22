@@ -320,8 +320,6 @@ class YoloWorldDetector(Yolo):
         return 10
 
     def get_evaluator(self) -> BaseEvaluator:
-        # This is imported here so segmentation models don't have to install
-        # detection evaluator dependencies.
         image_height, image_width = self.get_input_spec()["image"][0][2:]
         return DetectionEvaluator(
             image_height, image_width, score_threshold=0.001, nms_iou_threshold=0.7
