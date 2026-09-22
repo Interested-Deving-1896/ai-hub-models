@@ -215,6 +215,7 @@ class _ModelUseCaseEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._E
     MODEL_USE_CASE_AUDIO_ENHANCEMENT: _ModelUseCase.ValueType  # 14
     MODEL_USE_CASE_AUDIO_CLASSIFICATION: _ModelUseCase.ValueType  # 15
     MODEL_USE_CASE_AUDIO_GENERATION: _ModelUseCase.ValueType  # 16
+    MODEL_USE_CASE_VOICE_ACTIVITY_DETECTION: _ModelUseCase.ValueType  # 21
     MODEL_USE_CASE_VIDEO_CLASSIFICATION: _ModelUseCase.ValueType  # 17
     """Video"""
     MODEL_USE_CASE_VIDEO_GENERATION: _ModelUseCase.ValueType  # 18
@@ -244,6 +245,7 @@ MODEL_USE_CASE_SPEECH_RECOGNITION: ModelUseCase.ValueType  # 13
 MODEL_USE_CASE_AUDIO_ENHANCEMENT: ModelUseCase.ValueType  # 14
 MODEL_USE_CASE_AUDIO_CLASSIFICATION: ModelUseCase.ValueType  # 15
 MODEL_USE_CASE_AUDIO_GENERATION: ModelUseCase.ValueType  # 16
+MODEL_USE_CASE_VOICE_ACTIVITY_DETECTION: ModelUseCase.ValueType  # 21
 MODEL_USE_CASE_VIDEO_CLASSIFICATION: ModelUseCase.ValueType  # 17
 """Video"""
 MODEL_USE_CASE_VIDEO_GENERATION: ModelUseCase.ValueType  # 18

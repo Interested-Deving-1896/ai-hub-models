@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------
+# Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+# ---------------------------------------------------------------------
+name: Silero-VAD
+id: silero_vad
+status: pending
+headline: Lightweight, high-accuracy voice activity detection model for real-time speech/silence classification.
+domain: Audio
+description: Silero VAD is a compact, production-ready Voice Activity Detection model trained on a large multilingual corpus. It processes 32 ms audio chunks at 16 kHz and outputs a speech probability per chunk, enabling real-time detection of speech segments in streaming or file-based audio. The model uses an LSTM-based architecture and is well-suited for edge deployment on Qualcomm Snapdragon devices.
+use_case: Voice Activity Detection
+tags:
+  - real-time
+applicable_scenarios:
+  - Smart Home
+  - Voice Assistants
+  - Accessibility
+  - Transcription Services
+related_models:
+  - whisper_tiny
+form_factors:
+  - Phone
+  - Tablet
+  - IoT
+has_static_banner: true
+has_animated_banner: false
+dataset: []
+technical_details:
+  Input resolution: 512 samples (32 ms at 16 kHz)
+  Supported sample rates: 16000 Hz
+  Number of parameters: 0.24M
+  Model size (float): 2.27 MB
+license_type: mit
+research_paper: https://arxiv.org/abs/2108.10447
+research_paper_title: Silero VAD - pre-trained enterprise-grade Voice Activity Detector
+source_repo: https://github.com/snakers4/silero-vad
+license: https://github.com/snakers4/silero-vad/blob/master/LICENSE
+supported_precisions:
+  - float
+  - w8a16_mixed_int16

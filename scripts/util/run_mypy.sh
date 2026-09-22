@@ -43,5 +43,9 @@ else
     [[ "$f" == *_pb2.py ]] && continue
     files+=("$f")
   done
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    # Exit early (with status 0 / success) if there are no Python files to check.
+    exit 0
+  fi
   mypy --warn-unused-configs --config-file="${REPO_ROOT}/${pkg_dir}/pyproject.toml" "${files[@]}"
 fi

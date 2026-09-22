@@ -260,6 +260,7 @@ class MODEL_USE_CASE(Enum):
     AUDIO_ENHANCEMENT = "Audio Enhancement"
     AUDIO_CLASSIFICATION = "Audio Classification"
     AUDIO_GENERATION = "Audio Generation"
+    VOICE_ACTIVITY_DETECTION = "Voice Activity Detection"
 
     # Video: 300 - 399
     VIDEO_CLASSIFICATION = "Video Classification"
@@ -291,6 +292,8 @@ class MODEL_USE_CASE(Enum):
             return "audio-classification"
         if self.name == "AUDIO_GENERATION":
             return "text-to-audio"
+        if self.name == "VOICE_ACTIVITY_DETECTION":
+            return "audio-classification"
         if self.name == "DRIVER_ASSISTANCE":
             return "other"
         return self.name.replace("_", "-").lower()
@@ -319,6 +322,7 @@ MODEL_DOMAIN_USE_CASES: dict[MODEL_DOMAIN, list[MODEL_USE_CASE]] = {
         MODEL_USE_CASE.AUDIO_ENHANCEMENT,
         MODEL_USE_CASE.AUDIO_CLASSIFICATION,
         MODEL_USE_CASE.AUDIO_GENERATION,
+        MODEL_USE_CASE.VOICE_ACTIVITY_DETECTION,
     ],
     MODEL_DOMAIN.MULTIMODAL: [],  # Anything is OK
     MODEL_DOMAIN.GENERATIVE_AI: [
