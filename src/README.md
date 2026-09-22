@@ -176,6 +176,7 @@ and many more.
 | [GPUNet](https://aihub.qualcomm.com/models/gpunet) | `qai_hub_models.models.gpunet` |
 | [GoogLeNet](https://aihub.qualcomm.com/models/googlenet) | `qai_hub_models.models.googlenet` |
 | [Inception-v3](https://aihub.qualcomm.com/models/inception_v3) | `qai_hub_models.models.inception_v3` |
+| [Inception-v4](https://aihub.qualcomm.com/models/inception_v4) | `qai_hub_models.models.inception_v4` |
 | [InternImage](https://aihub.qualcomm.com/models/internimage) | `qai_hub_models.models.internimage` |
 | [LeViT](https://aihub.qualcomm.com/models/levit) | `qai_hub_models.models.levit` |
 | [MNASNet05](https://aihub.qualcomm.com/models/mnasnet05) | `qai_hub_models.models.mnasnet05` |
@@ -301,6 +302,7 @@ and many more.
 | [Yolo-R](https://aihub.qualcomm.com/models/yolor) | `qai_hub_models.models.yolor` |
 | [Yolo-X](https://aihub.qualcomm.com/models/yolox) | `qai_hub_models.models.yolox` |
 | [Yolo-v3](https://aihub.qualcomm.com/models/yolov3) | `qai_hub_models.models.yolov3` |
+| [Yolo-v4](https://aihub.qualcomm.com/models/yolov4) | `qai_hub_models.models.yolov4` |
 | [Yolo-v5](https://aihub.qualcomm.com/models/yolov5) | `qai_hub_models.models.yolov5` |
 | [Yolo-v6](https://aihub.qualcomm.com/models/yolov6) | `qai_hub_models.models.yolov6` |
 | [Yolo-v7](https://aihub.qualcomm.com/models/yolov7) | `qai_hub_models.models.yolov7` |
@@ -350,6 +352,7 @@ and many more.
 | -- | -- |
 | | |
 | [EasyOCR](https://aihub.qualcomm.com/models/easyocr) | `qai_hub_models.models.easyocr` |
+| [GR00TN1.5](https://aihub.qualcomm.com/models/grootn15) | `qai_hub_models.models.grootn15` |
 | [MiniLM-v2](https://aihub.qualcomm.com/models/minilm_v2) | `qai_hub_models.models.minilm_v2` |
 | [Nomic-Embed-Text](https://aihub.qualcomm.com/models/nomic_embed_text) | `qai_hub_models.models.nomic_embed_text` |
 | [OpenAI-Clip](https://aihub.qualcomm.com/models/openai_clip) | `qai_hub_models.models.openai_clip` |

@@ -176,6 +176,7 @@ and many more.
 | [GPUNet](https://aihub.qualcomm.com/models/gpunet) | [qai_hub_models.models.gpunet](src/qai_hub_models/models/gpunet/README.md) |
 | [GoogLeNet](https://aihub.qualcomm.com/models/googlenet) | [qai_hub_models.models.googlenet](src/qai_hub_models/models/googlenet/README.md) |
 | [Inception-v3](https://aihub.qualcomm.com/models/inception_v3) | [qai_hub_models.models.inception_v3](src/qai_hub_models/models/inception_v3/README.md) |
+| [Inception-v4](https://aihub.qualcomm.com/models/inception_v4) | [qai_hub_models.models.inception_v4](src/qai_hub_models/models/inception_v4/README.md) |
 | [InternImage](https://aihub.qualcomm.com/models/internimage) | [qai_hub_models.models.internimage](src/qai_hub_models/models/internimage/README.md) |
 | [LeViT](https://aihub.qualcomm.com/models/levit) | [qai_hub_models.models.levit](src/qai_hub_models/models/levit/README.md) |
 | [MNASNet05](https://aihub.qualcomm.com/models/mnasnet05) | [qai_hub_models.models.mnasnet05](src/qai_hub_models/models/mnasnet05/README.md) |
@@ -301,6 +302,7 @@ and many more.
 | [Yolo-R](https://aihub.qualcomm.com/models/yolor) | [qai_hub_models.models.yolor](src/qai_hub_models/models/yolor/README.md) |
 | [Yolo-X](https://aihub.qualcomm.com/models/yolox) | [qai_hub_models.models.yolox](src/qai_hub_models/models/yolox/README.md) |
 | [Yolo-v3](https://aihub.qualcomm.com/models/yolov3) | [qai_hub_models.models.yolov3](src/qai_hub_models/models/yolov3/README.md) |
+| [Yolo-v4](https://aihub.qualcomm.com/models/yolov4) | [qai_hub_models.models.yolov4](src/qai_hub_models/models/yolov4/README.md) |
 | [Yolo-v5](https://aihub.qualcomm.com/models/yolov5) | [qai_hub_models.models.yolov5](src/qai_hub_models/models/yolov5/README.md) |
 | [Yolo-v6](https://aihub.qualcomm.com/models/yolov6) | [qai_hub_models.models.yolov6](src/qai_hub_models/models/yolov6/README.md) |
 | [Yolo-v7](https://aihub.qualcomm.com/models/yolov7) | [qai_hub_models.models.yolov7](src/qai_hub_models/models/yolov7/README.md) |
@@ -350,6 +352,7 @@ and many more.
 | -- | -- |
 | | |
 | [EasyOCR](https://aihub.qualcomm.com/models/easyocr) | [qai_hub_models.models.easyocr](src/qai_hub_models/models/easyocr/README.md) |
+| [GR00TN1.5](https://aihub.qualcomm.com/models/grootn15) | [qai_hub_models.models.grootn15](src/qai_hub_models/models/grootn15/README.md) |
 | [MiniLM-v2](https://aihub.qualcomm.com/models/minilm_v2) | [qai_hub_models.models.minilm_v2](src/qai_hub_models/models/minilm_v2/README.md) |
 | [Nomic-Embed-Text](https://aihub.qualcomm.com/models/nomic_embed_text) | [qai_hub_models.models.nomic_embed_text](src/qai_hub_models/models/nomic_embed_text/README.md) |
 | [OpenAI-Clip](https://aihub.qualcomm.com/models/openai_clip) | [qai_hub_models.models.openai_clip](src/qai_hub_models/models/openai_clip/README.md) |

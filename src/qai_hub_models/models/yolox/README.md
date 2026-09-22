@@ -22,7 +22,7 @@ qai-hub-models perf Yolo-X
 qai-hub-models numerics Yolo-X
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Yolo-X --runtime onnx --precision float
+qai-hub-models fetch Yolo-X --runtime qnn_dlc --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

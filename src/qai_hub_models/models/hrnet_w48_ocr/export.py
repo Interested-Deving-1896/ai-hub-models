@@ -20,6 +20,9 @@ SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
     Precision.float: [
         TargetRuntime.ONNX,
     ],
+    Precision.w8a16: [
+        TargetRuntime.ONNX,
+    ],
 }
 
 

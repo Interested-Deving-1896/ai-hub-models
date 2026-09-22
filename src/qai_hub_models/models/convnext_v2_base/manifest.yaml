@@ -5,6 +5,10 @@ applicable_scenarios:
 dataset:
 - imagenet-1k
 description: ConvNextV2Base is a machine learning model that can classify images from the Imagenet dataset. It can also be used as a backbone in building more complex models for specific use cases.
+disabled_paths:
+  w8a16:
+    qnn_dlc:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-85.800 %) above threshold (10.0 %)
 domain: Computer Vision
 form_factors:
 - Phone

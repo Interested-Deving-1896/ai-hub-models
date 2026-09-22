@@ -23,18 +23,18 @@ is_collection_model: true
 license: https://github.com/NVIDIA/Isaac-GR00T/blob/n1.5-release/LICENSE
 license_type: apache-2.0
 name: GR00TN1.5
-related_models:
-- pi05
-requires_aot_prepare: true
 post_pip_install_commands:
 - command: pip uninstall -y onnxruntime
   machine: gpu
 - command: pip install --force-reinstall --no-deps onnxruntime-gpu==1.23.2
   machine: gpu
+related_models:
+- pi05
+requires_aot_prepare: true
 research_paper: https://arxiv.org/abs/2503.14734
 research_paper_title: 'GR00T N1: An Open Foundation Model for Generalist Humanoid Robots'
 source_repo: https://github.com/NVIDIA/Isaac-GR00T/tree/n1.5-release
-status: pending
+status: published
 supported_precisions:
 - mixed
 - float

@@ -4,12 +4,7 @@ applicable_scenarios:
 datasets:
 - common_voice
 description: Zipformer streaming ASR (Automatic Speech Recognition) model is a state-of-the-art system designed for transcribing spoken language into written text streamingly. This model is based on the transformer architecture and has been optimized for edge inference by replacing linear layers with convolutional (conv) layers. It exhibits robust performance in realistic, noisy environments, making it highly reliable for real-world applications. Specifically, it excels in long-form transcription, capable of accurately transcribing audios. Time to the first token is the encoder's latency, while time to each additional token is joiner's latency, where we assume a max decoded length specified below.
-disabled_paths:
-  mixed:
-    precompiled_qnn_onnx:
-      scorecard_failure: 'Failing jobs: jpyx9zy45'
-    qnn_context_binary:
-      scorecard_failure: 'Failing jobs: jg9m6kvq5'
+disabled_paths: {}
 domain: Audio
 external_repos:
   icefall:
