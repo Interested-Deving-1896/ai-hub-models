@@ -39,7 +39,7 @@ phases:
       # on-device output directory into the host log dir ourselves so it
       # ends up in the Customer Artifacts zip. Best-effort: a failed test
       # phase may leave nothing to pull.
-      - adb -s $DEVICEFARM_DEVICE_UDID pull /data/local/tmp/device_logs $DEVICEFARM_LOG_DIR/device_logs || true
+      - adb -s $DEVICEFARM_DEVICE_UDID pull /data/local/tmp/AWS_logs $DEVICEFARM_LOG_DIR/AWS_logs || true
 
 artifacts:
   - $DEVICEFARM_LOG_DIR

@@ -526,6 +526,30 @@ class DeviceFarm(ABC):
         return saved
 
 
+def device_logs_dir_name(backend: DeviceFarm) -> str:
+    """On-device log directory name to render into a bundle's device scripts.
+
+    QDC's server-side log harvesting only picks up a directory named
+    ``QDC_logs`` -- undocumented, discovered from a prior rename to a
+    backend-agnostic ``device_logs`` silently breaking QDC log retrieval.
+    AWS Device Farm has no such requirement (its test spec does its own
+    ``adb pull`` of a name it controls), so a distinct ``AWS_logs`` name
+    keeps that pull path unambiguous rather than implying a shared convention
+    that doesn't exist. Checked by class name (not ``isinstance``) so this
+    module doesn't need to import the backend classes it only instantiates
+    lazily in :func:`get_device_farm`.
+    """
+    name = type(backend).__name__
+    if name == "QDCDeviceFarm":
+        return "QDC_logs"
+    if name == "AwsDeviceFarm":
+        return "AWS_logs"
+    raise ValueError(
+        f"No on-device log directory name is defined for backend {name!r}; "
+        "add a case to device_logs_dir_name."
+    )
+
+
 def get_device_farm(device: ScorecardDevice) -> DeviceFarm:
     """Instantiate the right :class:`DeviceFarm` backend for ``device``.
 

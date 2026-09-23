@@ -7,7 +7,7 @@
 set +e
 umask 022
 
-LOG=/data/local/tmp/device_logs
+LOG=/data/local/tmp/{DEVICE_LOGS_DIR}
 OUT=$LOG/results
 MM_CACHE=/data/local/tmp/geniex-cache
 TC=/data/local/tmp/TestContent

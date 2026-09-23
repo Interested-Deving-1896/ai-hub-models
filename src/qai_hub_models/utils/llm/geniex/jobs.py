@@ -20,6 +20,7 @@ from qai_hub_models.utils.devicefarm.devicefarm import (
     DeviceFarm,
     HubDevicePlatform,
     JobOutcome,
+    device_logs_dir_name,
     safe_extract_zip,
     walk_dir_entries,
 )
@@ -90,8 +91,13 @@ class GenieXBenchArtifactHandler(ABC):
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
+        device_logs_dir: str,
     ) -> list[tuple[str, str]]:
         """Stage the on-device bundle into ``dest_dir`` and return its entries."""
+        # device_logs_dir is the on-device log directory name (see
+        # device_logs_dir_name); unused by handlers whose device script has no
+        # {DEVICE_LOGS_DIR} placeholder to fill (e.g. Windows, which still
+        # writes its own fixed QDC_Logs).
         raise NotImplementedError
 
     @property
@@ -135,11 +141,14 @@ class GenieXBenchArtifactHandler(ABC):
         context_lengths: list[int],
         run_perf: bool,
         eval_prompts: list[str] | None,
+        device_logs_dir: str,
     ) -> str:
         """Substitute the placeholders shared by all device scripts.
 
         CTX_LIST is comma-separated and the RUN_* flags are 1/0 regardless of
-        platform; each script parses these into its own types.
+        platform; each script parses these into its own types. DEVICE_LOGS_DIR
+        is a no-op on scripts without that placeholder (e.g. Windows, which
+        still writes its own fixed ``QDC_Logs``).
         """
         return (
             text.replace("{EVAL_CTX}", str(max(context_lengths)))
@@ -149,6 +158,7 @@ class GenieXBenchArtifactHandler(ABC):
             .replace("{CTX_LIST}", ",".join(str(c) for c in context_lengths))
             .replace("{RUN_PERF}", "1" if run_perf else "0")
             .replace("{RUN_EVAL}", "1" if eval_prompts else "0")
+            .replace("{DEVICE_LOGS_DIR}", device_logs_dir)
         )
 
     @staticmethod
@@ -203,6 +213,7 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
+        device_logs_dir: str,
     ) -> list[tuple[str, str]]:
         ds_dir = os.path.join(curr_dirname, "device_scripts")
         pytest_dir = os.path.join(ds_dir, "geniex_pytest")
@@ -231,6 +242,7 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
                     context_lengths,
                     run_perf,
                     eval_prompts,
+                    device_logs_dir,
                 )
             out_path = (
                 os.path.join(dest_dir, fn)
@@ -276,6 +288,7 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
+        device_logs_dir: str,
     ) -> list[tuple[str, str]]:
         ds_dir = os.path.join(curr_dirname, "device_scripts")
         sh_src = os.path.join(ds_dir, "run_geniex_bench_linux.sh")
@@ -301,6 +314,7 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
             context_lengths,
             run_perf,
             eval_prompts,
+            device_logs_dir,
         )
         sh_dest = os.path.join(dest_dir, "run_geniex_bench_linux.sh")
         with open(sh_dest, "w", encoding="utf-8") as f:
@@ -336,7 +350,12 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
+        device_logs_dir: str,
     ) -> list[tuple[str, str]]:
+        # device_logs_dir is unused here: run_geniex_bench_windows.ps1 has no
+        # {DEVICE_LOGS_DIR} placeholder -- it still writes its own fixed
+        # QDC_Logs (never migrated by the device_logs rename this fix undoes
+        # elsewhere), and QDC's harvesting already works for it as-is.
         ds_dir = os.path.join(curr_dirname, "device_scripts")
         ps1_src = os.path.join(ds_dir, "run_geniex_bench_windows.ps1")
 
@@ -361,6 +380,7 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
             context_lengths,
             run_perf,
             eval_prompts,
+            device_logs_dir,
         )
         with open(
             os.path.join(dest_dir, "run_geniex_bench_windows.ps1"),
@@ -400,6 +420,7 @@ def add_geniex_bundle_entries(
     chipset: str,
     matrix_rows: list[str],
     plugin: str,
+    device_logs_dir: str,
     context_lengths: list[int] = DEFAULT_CONTEXT_LENGTHS,
     qairt_bundles: dict[str, str] | None = None,
     geniex_version: str | None = None,
@@ -409,7 +430,9 @@ def add_geniex_bundle_entries(
     """Stage a GenieX-bench bundle into backend-agnostic (path, arcname) entries.
 
     ``dest_dir`` must outlive the returned entries -- callers zip/upload them
-    before it is cleaned up.
+    before it is cleaned up. ``device_logs_dir`` is the on-device log
+    directory name (see :func:`device_logs_dir_name`) rendered into the
+    bundle's device scripts.
     """
     curr_dirname = os.path.dirname(os.path.abspath(__file__))
     handler = _get_artifact_handler(platform)
@@ -424,6 +447,7 @@ def add_geniex_bundle_entries(
         geniex_version,
         eval_prompts,
         run_perf,
+        device_logs_dir,
     )
     return entries, handler.entry_script
 
@@ -726,6 +750,7 @@ def submit_geniex_bench(
     matrix_rows, qairt_bundles = _build_matrix_rows(
         model_rows, plugin, device_alias, llamacpp_quant
     )
+    device_logs_dir = device_logs_dir_name(backend)
 
     # Staging dir must outlive add_geniex_bundle_entries: the returned entries
     # reference files inside it, and submit_bundle needs them to still exist
@@ -738,6 +763,7 @@ def submit_geniex_bench(
             chipset,
             matrix_rows,
             plugin,
+            device_logs_dir,
             context_lengths=context_lengths,
             qairt_bundles=qairt_bundles or None,
             geniex_version=geniex_version,

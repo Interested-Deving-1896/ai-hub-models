@@ -57,7 +57,7 @@ class TestGenie:
                 f'sed -i \'s/"seed": [0-9]*/"seed": {i}/\' genie_config.json'
             )
             trial_commands.append(
-                f"genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt --profile /data/local/tmp/device_logs/profile{i}.json 2>>/data/local/tmp/device_logs/genie_stderr.log"
+                f"genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt --profile /data/local/tmp/<<DEVICE_LOGS_DIR>>/profile{i}.json 2>>/data/local/tmp/<<DEVICE_LOGS_DIR>>/genie_stderr.log"
             )
         full_genie_command = " && ".join(trial_commands)
         qairt_path = "/data/local/tmp/qairt/<<QAIRT_VERSION>>"
@@ -111,13 +111,13 @@ export LD_LIBRARY_PATH={qairt_path}/lib/aarch64-android
 export ADSP_LIBRARY_PATH={qairt_path}/lib/hexagon-<<HEXAGON_VERSION>>/unsigned
 
 # Drop stale logs from a prior job on this shared device.
-rm -rf /data/local/tmp/device_logs
-mkdir -p /data/local/tmp/device_logs
-genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>>/data/local/tmp/device_logs/genie_stderr.log | tee /data/local/tmp/device_logs/genie.log
+rm -rf /data/local/tmp/<<DEVICE_LOGS_DIR>>
+mkdir -p /data/local/tmp/<<DEVICE_LOGS_DIR>>
+genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>>/data/local/tmp/<<DEVICE_LOGS_DIR>>/genie_stderr.log | tee /data/local/tmp/<<DEVICE_LOGS_DIR>>/genie.log
 {full_genie_command}
 
 PROMPT_DIR=/data/local/tmp/genie_bundle/prompts
-EVAL_OUTPUT_FILE=/data/local/tmp/device_logs/eval_outputs.txt
+EVAL_OUTPUT_FILE=/data/local/tmp/<<DEVICE_LOGS_DIR>>/eval_outputs.txt
 if [ -d "$PROMPT_DIR" ]; then
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC SM8750.
     sed -i 's/"perf_profile": "[^"]*"/"perf_profile": "power_saver"/' htp_backend_ext_config.json
@@ -180,8 +180,9 @@ fi
         # Since adb shell hides the on-device exit code, confirm the script
         # actually produced its outputs. A green pytest with no genie.log was
         # the failure mode on QDC job 613912.
-        expected = ["/data/local/tmp/device_logs/genie.log"] + [
-            f"/data/local/tmp/device_logs/profile{i}.json" for i in range(num_trials)
+        expected = ["/data/local/tmp/<<DEVICE_LOGS_DIR>>/genie.log"] + [
+            f"/data/local/tmp/<<DEVICE_LOGS_DIR>>/profile{i}.json"
+            for i in range(num_trials)
         ]
         ls = subprocess.run(
             ["adb", "shell", "ls", "-l", *expected],

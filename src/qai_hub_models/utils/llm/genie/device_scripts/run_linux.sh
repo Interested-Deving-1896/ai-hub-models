@@ -18,9 +18,9 @@ cleanup_device() {
 trap cleanup_device EXIT
 
 # Drop stale logs from a prior job on this shared device.
-rm -rf /data/local/tmp/device_logs
-mkdir -p /data/local/tmp/device_logs
-exec > >(tee /data/local/tmp/device_logs/script.log) 2>&1
+rm -rf /data/local/tmp/{DEVICE_LOGS_DIR}
+mkdir -p /data/local/tmp/{DEVICE_LOGS_DIR}
+exec > >(tee /data/local/tmp/{DEVICE_LOGS_DIR}/script.log) 2>&1
 
 mount -o rw,remount /
 
@@ -61,18 +61,18 @@ genie_retry() {
 }
 
 # Run genie (capture initial output, including stderr)
-genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>&1 | tee /data/local/tmp/device_logs/genie.log
+genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>&1 | tee /data/local/tmp/{DEVICE_LOGS_DIR}/genie.log
 
 # Run profiling iterations
 for i in $(seq 1 {NUM_TRIALS}); do
     sed -i "s/\"seed\": [0-9]*/\"seed\": $i/" genie_config.json
     genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt \
-      --profile /data/local/tmp/device_logs/profile${i}.json
+      --profile /data/local/tmp/{DEVICE_LOGS_DIR}/profile${i}.json
 done
 
 # Run evaluation over all prompt files
 PROMPT_DIR=/data/local/tmp/TestContent/genie_bundle/prompts
-EVAL_OUTPUT_FILE=/data/local/tmp/device_logs/eval_outputs.txt
+EVAL_OUTPUT_FILE=/data/local/tmp/{DEVICE_LOGS_DIR}/eval_outputs.txt
 
 if [ -d "$PROMPT_DIR" ]; then
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC.

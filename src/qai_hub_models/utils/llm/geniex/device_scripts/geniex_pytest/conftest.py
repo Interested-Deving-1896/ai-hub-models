@@ -17,7 +17,7 @@ import pytest
 from appium import webdriver
 from appium.options.common import AppiumOptions
 
-DEVICE_LOGS_DIR = "/data/local/tmp/device_logs"
+DEVICE_LOGS_DIR = "/data/local/tmp/{DEVICE_LOGS_DIR}"
 
 
 def _make_options() -> AppiumOptions:

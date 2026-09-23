@@ -94,9 +94,12 @@ def _put_file_with_retry(url: str, file_path: str) -> None:
             time.sleep(delay)
 
 
-# Populated by the test spec's post_test phase (see aws_test_spec.yaml); mirrors
-# QDC's on-device output directory (each workload's device_scripts writes here).
-HOST_DEVICE_LOGS_SUBDIR = "device_logs"
+# Populated by the test spec's post_test phase (see aws_test_spec.yaml).
+# AWS_logs (rather than QDC's on-device directory name) because QDC's
+# server-side harvesting requires that literal name -- see
+# devicefarm.device_logs_dir_name -- while AWS has no such requirement and
+# does its own adb pull of a name it controls.
+HOST_DEVICE_LOGS_SUBDIR = "AWS_logs"
 
 _DEVICE_SCRIPTS_DIR = Path(__file__).parent / "device_scripts"
 _PLACEHOLDER_APK = _DEVICE_SCRIPTS_DIR / "placeholder.apk"
@@ -354,7 +357,7 @@ class AwsDeviceFarm(DeviceFarm):
         self, run_arn: str, wait_for_logs: bool = False
     ) -> list[AwsLogFile]:
         """Download+extract the run's Customer Artifacts zip once, then list
-        every file under the pulled ``device_logs`` directory.
+        every file under the pulled ``AWS_logs`` directory.
 
         One entry per on-device file (not one entry for the whole zip) so
         callers' per-filename matching (e.g. "genie" in filename,

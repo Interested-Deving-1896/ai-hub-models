@@ -43,6 +43,7 @@ from qai_hub_models.utils.devicefarm.devicefarm import (
     HubDevicePlatform,
     JobOutcome,
     JobRecord,
+    device_logs_dir_name,
     get_device_farm,
     load_jobs,
     make_key,
@@ -134,10 +135,15 @@ class GenieArtifactHandler(ABC):
         dest_dir: os.PathLike | str,
         hexagon_version: str,
         qairt_version: str,
+        device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
     ) -> list[tuple[str, str]]:
         """Stage the on-device bundle and return (abs_path, arcname) entries.
+
+        ``device_logs_dir`` is the on-device directory name (backend-specific;
+        see :func:`device_logs_dir_name`) the rendered script writes its logs
+        into.
 
         ``eval_prompts_dir`` (if provided) points at a small tmpdir holding
         the chat-templated ``prompt_NNN.txt`` files; the handler adds those
@@ -168,6 +174,7 @@ class GenieAndroidArtifactHandler(GenieArtifactHandler):
         dest_dir: os.PathLike | str,
         hexagon_version: str,
         qairt_version: str,
+        device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
     ) -> list[tuple[str, str]]:
@@ -189,6 +196,7 @@ class GenieAndroidArtifactHandler(GenieArtifactHandler):
                 file_content.replace("<<HEXAGON_VERSION>>", hexagon_version)
                 .replace("<<QAIRT_VERSION>>", qairt_version)
                 .replace("<<NUM_TRIALS>>", str(num_trials))
+                .replace("<<DEVICE_LOGS_DIR>>", device_logs_dir)
             )
 
         requirements_dest = os.path.join(dest_dir, "requirements.txt")
@@ -251,6 +259,7 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
         dest_dir: os.PathLike | str,
         hexagon_version: str,
         qairt_version: str,
+        device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
     ) -> list[tuple[str, str]]:
@@ -260,6 +269,7 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
             dest_dir,
             hexagon_version,
             qairt_version,
+            device_logs_dir,
             num_trials,
             eval_prompts_dir=eval_prompts_dir,
         )
@@ -285,6 +295,7 @@ class GenieLinuxArtifactHandler(GenieArtifactHandler):
         dest_dir: os.PathLike | str,
         hexagon_version: str,
         qairt_version: str,
+        device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
     ) -> list[tuple[str, str]]:
@@ -303,6 +314,7 @@ class GenieLinuxArtifactHandler(GenieArtifactHandler):
                 file_content.replace("{HEXAGON_VERSION}", hexagon_version)
                 .replace("{QAIRT_VERSION}", qairt_version)
                 .replace("{NUM_TRIALS}", str(num_trials))
+                .replace("{DEVICE_LOGS_DIR}", device_logs_dir)
             )
 
         entries: list[tuple[str, str]] = [(script_dest, script_name)]
@@ -333,6 +345,7 @@ class GenieWindowsArtifactHandler(GenieArtifactHandler):
         dest_dir: os.PathLike | str,
         hexagon_version: str,
         qairt_version: str,
+        device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
     ) -> list[tuple[str, str]]:
@@ -351,6 +364,7 @@ class GenieWindowsArtifactHandler(GenieArtifactHandler):
                 file_content.replace("{HEXAGON_VERSION}", hexagon_version)
                 .replace("{QAIRT_VERSION}", qairt_version)
                 .replace("{NUM_TRIALS}", str(num_trials))
+                .replace("{DEVICE_LOGS_DIR}", device_logs_dir)
             )
 
         entries: list[tuple[str, str]] = [(dest_script, script_name)]
@@ -400,6 +414,7 @@ def add_genie_bundle_entries(
     platform: HubDevicePlatform,
     genie_bundle_path: str,
     dest_dir: str,
+    device_logs_dir: str,
     qairt_sdk_path: str | None = None,
     qairt_version: str = "2.45.40.260406",
     eval_prompts: list[str] | None = None,
@@ -418,6 +433,9 @@ def add_genie_bundle_entries(
         Directory to stage small placeholder-substituted files into (test
         scripts, requirements.txt, prompt files). Must outlive the returned
         entries -- callers zip/upload them before it is cleaned up.
+    device_logs_dir
+        On-device log directory name (see :func:`device_logs_dir_name`)
+        rendered into the bundle's device scripts.
     qairt_sdk_path
         Path to the QAIRT SDK zip file. Required for auto devices.
     qairt_version
@@ -459,6 +477,7 @@ def add_genie_bundle_entries(
         dest_dir,
         platform.hexagon_version,
         qairt_version,
+        device_logs_dir,
         num_trials,
         eval_prompts_dir=eval_prompts_dir,
     )
@@ -741,6 +760,7 @@ def submit_genie_bundle(
     """
     prompts_to_use = _resolve_eval_prompts(eval_prompts)
     platform = HubDevicePlatform(hub_device_name)
+    device_logs_dir = device_logs_dir_name(backend)
 
     # Staging dir must outlive add_genie_bundle_entries: the returned entries
     # reference files inside it, and submit_bundle needs them to still exist
@@ -750,6 +770,7 @@ def submit_genie_bundle(
             platform,
             genie_bundle_path,
             dest_dir,
+            device_logs_dir,
             qairt_sdk_path,
             qairt_version,
             eval_prompts=prompts_to_use,

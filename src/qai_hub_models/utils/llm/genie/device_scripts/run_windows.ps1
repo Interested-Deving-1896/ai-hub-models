@@ -56,8 +56,8 @@ function Invoke-GenieRetry {
 Set-Location C:\Temp\TestContent\
 
 # Drop stale logs from a prior job on this shared device.
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Temp\device_logs"
-New-Item -ItemType Directory -Force -Path "C:\Temp\device_logs" | Out-Null
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Temp\{DEVICE_LOGS_DIR}"
+New-Item -ItemType Directory -Force -Path "C:\Temp\{DEVICE_LOGS_DIR}" | Out-Null
 
 try {
 
@@ -85,19 +85,19 @@ $env:Path = "$env:QAIRT_HOME\bin\aarch64-windows-msvc;" + $env:Path
 $env:Path = "$env:QAIRT_HOME\lib\aarch64-windows-msvc;" + $env:Path
 $env:ADSP_LIBRARY_PATH = "$env:QAIRT_HOME\lib\hexagon-{HEXAGON_VERSION}\unsigned"
 
-Invoke-GenieRetry -GenieArgs @("-c", "genie_config.json", "--prompt_file", "sample_prompt.txt") -OutFile "C:/Temp/device_logs/genie.log"
+Invoke-GenieRetry -GenieArgs @("-c", "genie_config.json", "--prompt_file", "sample_prompt.txt") -OutFile "C:/Temp/{DEVICE_LOGS_DIR}/genie.log"
 
 for ($i = 1; $i -le {NUM_TRIALS}; $i++) {
     $profileName = "profile$($i).json"
-    $outputPath = "C:/Temp/device_logs/$profileName"
+    $outputPath = "C:/Temp/{DEVICE_LOGS_DIR}/$profileName"
     (Get-Content genie_config.json) -replace '"seed": \d+', "`"seed`": $i" | Set-Content genie_config.json
     Invoke-GenieRetry -GenieArgs @("-c", "genie_config.json", "--prompt_file", "sample_prompt.txt", "--profile", $outputPath)
 }
 
 $PromptDir = "C:\Temp\TestContent\prompts"
-$EvalOutputFile = "C:/Temp/device_logs/eval_outputs.txt"
+$EvalOutputFile = "C:/Temp/{DEVICE_LOGS_DIR}/eval_outputs.txt"
 if (Test-Path $PromptDir) {
-    New-Item -ItemType Directory -Force -Path "C:/Temp/device_logs"
+    New-Item -ItemType Directory -Force -Path "C:/Temp/{DEVICE_LOGS_DIR}"
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC.
     (Get-Content htp_backend_ext_config.json) -replace '"perf_profile": "[^"]*"', '"perf_profile": "power_saver"' | Set-Content htp_backend_ext_config.json
     "" | Out-File -FilePath $EvalOutputFile -Encoding utf8
