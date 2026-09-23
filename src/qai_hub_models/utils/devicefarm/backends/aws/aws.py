@@ -37,8 +37,17 @@ ARTIFACT_LISTING_RETRY_DELAY = 5
 # the file body, so a urllib3 Retry adapter can't safely retry (the file
 # handle is already partially consumed); retry manually, reopening the file
 # fresh each attempt instead.
-UPLOAD_PUT_MAX_RETRIES = 5
+# Delay sequence (base=3, doubling, capped at 120s): 3, 6, 12, 24, 48, 96,
+# 120, 120, 120 -- ~9 minutes of cumulative backoff before giving up, enough
+# to ride out a 5+ minute outage like run 35741077622/35819722217 with margin.
+UPLOAD_PUT_MAX_RETRIES = 10
 UPLOAD_PUT_RETRY_BACKOFF_BASE = 3
+UPLOAD_PUT_RETRY_BACKOFF_CAP = 120
+# (connect timeout, read timeout). requests applies the read timeout between
+# individual socket reads/writes, not to the whole request, so a large but
+# still-progressing upload won't spuriously time out -- only a stalled
+# connection that stops moving bytes for this long will.
+UPLOAD_PUT_TIMEOUT = (30, 60)
 _RETRYABLE_HTTP_STATUS_CODES = (500, 502, 503, 504)
 
 
@@ -63,6 +72,7 @@ def _put_file_with_retry(url: str, file_path: str) -> None:
                     url,
                     data=f,
                     headers={"content-type": "application/octet-stream"},
+                    timeout=UPLOAD_PUT_TIMEOUT,
                 )
             resp.raise_for_status()
             return
@@ -71,7 +81,10 @@ def _put_file_with_retry(url: str, file_path: str) -> None:
                 attempt == UPLOAD_PUT_MAX_RETRIES - 1
             ):
                 raise
-            delay = UPLOAD_PUT_RETRY_BACKOFF_BASE * (2**attempt)
+            delay = min(
+                UPLOAD_PUT_RETRY_BACKOFF_BASE * (2**attempt),
+                UPLOAD_PUT_RETRY_BACKOFF_CAP,
+            )
             print(
                 f"[AWS Device Farm] upload PUT failed ({type(err).__name__}); "
                 f"attempt {attempt + 1}/{UPLOAD_PUT_MAX_RETRIES}, "
