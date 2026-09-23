@@ -209,6 +209,8 @@ def evaluate(
             veg_kwargs["image_width"] = vlm_image_size[0]
             veg_kwargs["image_height"] = vlm_image_size[1]
 
+        default_precision = next(iter(quantized_model_cls.supported_precisions))
+
         if is_fp:
             veg_kwargs["precision"] = Precision.float
         else:
@@ -219,7 +221,7 @@ def evaluate(
                 # the checkpoint instead of FP weights. Precision is recovered
                 # from the checkpoint's args.json; if absent it stays float.
                 veg_kwargs["precision"] = checkpoint_type.precision(
-                    Precision.float, checkpoint=checkpoint_path
+                    default_precision, checkpoint=checkpoint_path
                 )
 
         print("Loading vision encoder for evaluation...")
