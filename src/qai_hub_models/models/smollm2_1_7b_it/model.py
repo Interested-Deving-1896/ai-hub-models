@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import onnx
+import torch
 from transformers import PreTrainedTokenizerBase
 
 from qai_hub_models import Precision
@@ -99,7 +100,7 @@ DEFAULT_EXPORT_CONTEXT_LENGTHS = GLOBAL_DEFAULT_EXPORT_CONTEXT_LENGTHS
 DEFAULT_EXPORT_SEQUENCE_LENGTHS = GLOBAL_DEFAULT_EXPORT_SEQUENCE_LENGTHS
 
 MODEL_ID = __name__.split(".")[-2]
-MODEL_ASSET_VERSION = 4
+MODEL_ASSET_VERSION = 5
 
 # Model architecture constants (from SmolLM2-1.7B-Instruct config.json)
 NUM_LAYERS = 24
@@ -202,6 +203,16 @@ class Smollm2_1_7B_Instruct_QuantizablePreSplit(
     ada_scale_model_type: str | None = "llama"
     ada_scale_num_rmsnorm_per_blk = ADA_SCALE_NUM_RMSNORM_PER_BLK
     spinquant_config = SPINQUANT_CONFIG
+
+    @classmethod
+    def resolve_default_checkpoint(
+        cls,
+        precision: Precision,
+        host_device: torch.device,
+        fp_model: Smollm2_1_7B_Instruct_PreSplit | None,
+    ) -> tuple[str, Smollm2_1_7B_Instruct_PreSplit | None]:
+        """Downloads the full checkpoint zip"""
+        return cls.fetch_default_checkpoint(precision), fp_model
 
     @classmethod
     def apply_pre_sim_transforms(
