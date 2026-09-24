@@ -352,14 +352,14 @@ jobs:
 
           Read .claude/skills/nightly-analyze/SKILL.md and follow its process exactly.
 
-          IMPORTANT — Step 5 changed: you do NOT call `gh issue comment` yourself.
-          Your `GITHUB_TOKEN` is repo-scoped and cannot write to
+          IMPORTANT — Step 5 changed: you do NOT call 'gh issue comment' yourself.
+          Your 'GITHUB_TOKEN' is repo-scoped and cannot write to
           qcom-ai-hub/tetracode (retrying will 404 and burn turns). Instead:
-            1. Write the full comment markdown to `/tmp/breeze_comment.md` (flat,
-               NOT `/tmp/claude/...`).
+            1. Write the full comment markdown to '/tmp/breeze_comment.md' (flat,
+               NOT '/tmp/claude/...').
             2. Emit it via
-               `python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment.md`
-          A downstream `post_breeze_comment` job recovers the file from this
+               'python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment.md'
+          A downstream 'post_breeze_comment' job recovers the file from this
           job's log and posts to every URL in ISSUE_URLS.
 
           Context variables for the skill:
@@ -372,7 +372,7 @@ jobs:
           Your job: analyze test failures, find breaking commits, propose fixes,
           and soft-triage to the right team. You NEVER auto-assign or auto-label.
 
-          IMPORTANT: You have a 50-turn limit. Be efficient:
+          IMPORTANT: You have a 75-turn limit. Be efficient:
           - Read SKILL.md first — it contains ALL instructions including triage rules
           - Do NOT read .claude/triage/ files separately — triage info is inlined in SKILL.md
           - Batch gh API calls — never loop over commits one-by-one
@@ -388,7 +388,7 @@ jobs:
           - Issues filed in qcom-ai-hub/tetracode with labels p0, ai-hub-models
           - Issue title pattern: "[QAIHM Nightly] Test Failures - YYYY-MM-DD" or "[QAIHM Nightly] Workbench Job Failures - YYYY-MM-DD"
         bot_name: "breeze-code-action-agent[bot]"
-        max_turns: 50
+        max_turns: 75
         track_progress: false
         show_full_output: true
         claude_output_mode: summary

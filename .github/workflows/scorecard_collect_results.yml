@@ -719,13 +719,13 @@ jobs:
 
         Read .claude/skills/scorecard-analyze/SKILL.md and follow its process exactly.
 
-        IMPORTANT — you do NOT post the comment yourself. Your `GITHUB_TOKEN` is
+        IMPORTANT — you do NOT post the comment yourself. Your 'GITHUB_TOKEN' is
         repo-scoped and cannot write to qcom-ai-hub/tetracode (attempts will fail
         and retries will burn turns). Instead:
-          1. Write the full comment markdown to `/tmp/breeze_scorecard_comment.md`.
+          1. Write the full comment markdown to '/tmp/breeze_scorecard_comment.md'.
           2. Emit it via
-             `python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_scorecard_comment.md`
-        A downstream `post_scorecard_breeze_comment` job recovers the file from
+             'python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_scorecard_comment.md'
+        A downstream 'post_scorecard_breeze_comment' job recovers the file from
         this job's log and posts it to ISSUE_URL.
 
         Context variables for the skill:
@@ -798,7 +798,7 @@ jobs:
             exit 1
           fi
           echo "Agent job id: $AGENT_JOB_ID"
-          gh api \
+          gh api --allow-escape-sequences \
             "repos/${{ github.repository }}/actions/jobs/$AGENT_JOB_ID/logs" \
             > /tmp/breeze/agent.log
           python3 scripts/breeze_nightly/extract_comment_from_log.py \

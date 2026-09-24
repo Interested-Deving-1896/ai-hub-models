@@ -68,7 +68,10 @@ def main() -> None:
 
     api_path = f"repos/{args.repo}/actions/jobs/{args.job_id}/logs"
     result = subprocess.run(
-        ["gh", "api", api_path], capture_output=True, text=True, check=False
+        ["gh", "api", "--allow-escape-sequences", api_path],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode != 0:
         sys.exit(f"gh api failed (rc={result.returncode}): {result.stderr.strip()}")
