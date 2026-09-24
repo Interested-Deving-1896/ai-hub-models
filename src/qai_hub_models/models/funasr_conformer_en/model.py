@@ -17,10 +17,11 @@ from qai_hub_models.models.funasr_conformer_en.evaluator import (
 )
 from qai_hub_models.models.funasr_conformer_en.model_patches import (
     _ConformerEncoderWithCTC,
+    patch_layer_drop,
 )
 from qai_hub_models.utils.base_dataset import BaseDataset
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import InputSpec, IoType, OutputSpec, TensorSpec
 
 MODEL_ID = __name__.split(".")[-2]
@@ -71,10 +72,7 @@ class FunASRConformerEn(BaseModel):
         token_list: list[str],
         frontend: Any,
     ) -> None:
-        # use_pt2=False: torch.export symbolic tracing breaks on data-dependent
-        # control flow in FunASR's make_pad_mask (uses .tolist()). TorchScript
-        # trace (jit.trace) handles this correctly with concrete inputs.
-        super().__init__(serialization_settings=SerializationSettings(use_pt2=False))
+        super().__init__()
         self.model = model
         self.token_list = token_list
         self.frontend = frontend
@@ -92,6 +90,7 @@ class FunASRConformerEn(BaseModel):
         token_list = auto.kwargs["token_list"]
         frontend = auto.kwargs["frontend"]
         model = _ConformerEncoderWithCTC(inner.encoder, inner.ctc.ctc_lo)
+        patch_layer_drop(model)
         return cls(model, token_list, frontend)
 
     def forward(self, feats: torch.Tensor) -> torch.Tensor:

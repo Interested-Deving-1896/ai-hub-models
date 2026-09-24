@@ -2,10 +2,35 @@
 # Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
+import types
 from typing import Any
 
 import torch
 import torch.nn.functional as F
+from funasr.models.transformer.utils.repeat import MultiSequential
+
+
+def layer_drop_forward(self: MultiSequential, *args: Any) -> Any:
+    """
+    Serialization-safe replacement for MultiSequential.forward.
+
+    Upstream draws the layer-drop probabilities with `torch.empty(n).uniform_()`.
+    The in-place `uniform_` survives torch.export as an `aten.uniform_` node whose
+    `from`/`to` kwargs are dropped on save, so torch.export.load fails with
+    KeyError: 'from'. `torch.rand` produces the same U[0, 1) draw out of place.
+    """
+    _probs = torch.rand(len(self))
+    for idx, m in enumerate(self):
+        if not self.training or (_probs[idx] >= self.layer_drop_rate):
+            args = m(*args)
+    return args
+
+
+def patch_layer_drop(model: torch.nn.Module) -> None:
+    """Swap every MultiSequential in `model` onto the forward above."""
+    for module in model.modules():
+        if isinstance(module, MultiSequential):
+            module.forward = types.MethodType(layer_drop_forward, module)
 
 
 class _ConformerEncoderWithCTC(torch.nn.Module):
