@@ -57,6 +57,9 @@ claude
 
 ## 3. `/ai-hub-models:onboard`
 
+> For Qualcomm engineers trying to contribute directly to this repo, use `/ai-hub-models:onboard-internal` instead.
+> The usage is the same as `/ai-hub-models:onboard` but performs a few additions needed to make it follow repo rules.
+
 Give it **the model** (HF repo, GitHub URL, PyPI package, or a name) and **the dataset +
 metric** up front:
 
