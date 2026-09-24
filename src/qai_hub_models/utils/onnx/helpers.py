@@ -179,7 +179,7 @@ class ONNXBundle:
             Path(dst_folder),
             f"{dst_model_name}.onnx",
             f"{dst_model_name}.data" if self.onnx_weights_name else None,
-            f"{dst_model_name}_qairt_context.bin" if self.qairt_bin_name else None,
+            f"{dst_model_name}.bin" if self.qairt_bin_name else None,
             f"{dst_model_name}.encodings" if self.aimet_encodings_name else None,
         )
 

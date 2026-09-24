@@ -184,8 +184,8 @@ def test_onnx_bundle_move_with_qairt_bin(tmp_path: Path) -> None:
     assert bundle.qairt_context_binary_path == qairt_bin_path
 
     out = bundle.move(dst, "model2")
-    assert out.qairt_bin_name == "model2_qairt_context.bin"
-    assert out.qairt_context_binary_path == dst / "model2_qairt_context.bin"
+    assert out.qairt_bin_name == "model2.bin"
+    assert out.qairt_context_binary_path == dst / "model2.bin"
     assert not os.path.exists(qairt_bin_path)
     assert out.qairt_context_binary_path and os.path.exists(
         out.qairt_context_binary_path
@@ -202,7 +202,7 @@ def test_onnx_bundle_move_with_qairt_bin(tmp_path: Path) -> None:
         (a for a in ep_nodes[0].attribute if a.name == "ep_cache_context"), None
     )
     assert ep_cache_attr is not None
-    assert ep_cache_attr.s.decode() == "./model2_qairt_context.bin"
+    assert ep_cache_attr.s.decode() == "./model2.bin"
 
     # Test copy (not move) with qairt bin
     dst2 = tmp_path / "test2"
@@ -221,8 +221,8 @@ def test_onnx_bundle_move_with_qairt_bin(tmp_path: Path) -> None:
 
     bundle2 = ONNXBundle.from_bundle_path(tmp_path, model_name="model3")
     out2 = bundle2.move(dst2, "model4", copy=True)
-    assert out2.qairt_bin_name == "model4_qairt_context.bin"
-    assert out2.qairt_context_binary_path == dst2 / "model4_qairt_context.bin"
+    assert out2.qairt_bin_name == "model4.bin"
+    assert out2.qairt_context_binary_path == dst2 / "model4.bin"
     # Original should still exist since we used copy=True
     assert os.path.exists(qairt_bin_path2)
     assert out2.qairt_context_binary_path and os.path.exists(
