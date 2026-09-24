@@ -196,8 +196,9 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
            model's supported runtimes.
         2. Explicit path name (e.g. qnn_dlc_via_qnn_ep): enables the path
            if the model supports any runtime with the same inference engine.
-        3. Engine prefix (e.g. "qnn"): enables paths whose runtime
-           is in the model's supported runtimes.
+        3. Engine prefix (e.g. "qnn"): enables default paths whose runtime
+           is in the model's supported runtimes. Non-default paths are not
+           matched by a prefix and must be named explicitly (rule 2).
 
         Parameters
         ----------
@@ -242,9 +243,14 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             supported_engines = {r.inference_engine for r in supported_runtimes}
             return self.runtime.inference_engine in supported_engines
 
-        # 3. Engine prefix: exact runtime match against supported runtimes
+        # 3. Engine prefix: exact runtime match against supported runtimes.
+        # Restricted to default_paths() to match the `enabled` property, which
+        # gates the same rule. Without this, a prefix like 'qnn' selects
+        # unpublished paths (qnn_dlc_via_qnn_ep, qnn_dlc_gpu) that `enabled`
+        # reports as off, and callers keyed on `enabled` blow up.
         return (
-            self.runtime.inference_engine.value in valid_test_runtimes
+            self in ScorecardProfilePath.default_paths()
+            and self.runtime.inference_engine.value in valid_test_runtimes
             and self.runtime in supported_runtimes
         )
 

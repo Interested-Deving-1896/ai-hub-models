@@ -21,6 +21,18 @@ from qai_hub_models.utils.metrics import (
 )
 
 
+def _box_is_finite(box: BoundingBox) -> bool:
+    """
+    Whether a box's coordinates are all finite.
+
+    A model that overflows (eg. fp16 on device) can emit inf/nan coordinates.
+    podm's intersection_over_union then computes a nan IoU and trips its own
+    `assert iou >= 0`, crashing evaluation instead of scoring the bad
+    prediction as a miss.
+    """
+    return all(math.isfinite(c) for c in (box.xtl, box.ytl, box.xbr, box.ybr))
+
+
 class mAPEvaluator(BaseEvaluator):
     """Evaluator that calculates mAP given stored bounding boxes."""
 
@@ -82,7 +94,7 @@ class mAPEvaluator(BaseEvaluator):
                 x1, y1, x2, y2, in pixel space.
         """
         self.gt_bbox += gt_bbox
-        self.pred_bbox += pred_bbox
+        self.pred_bbox += [b for b in pred_bbox if _box_is_finite(b)]
 
     def get_mAP_for_iOU(self, iOU: float) -> float:
         return MetricPerClass.mAP(
@@ -322,7 +334,9 @@ class DetectionEvaluator(mAPEvaluator):
                     curr_pred_box[0].tolist(),
                     strict=False,
                 )
-                if not any(math.isnan(x) for x in pred_bbox)
+                # isfinite, not just isnan: a nan box asserts inside of_bbox's
+                # verify(), but -inf <= inf passes it and reaches podm.
+                if all(math.isfinite(x) for x in pred_bbox)
             ]
 
             if self.nms_iou_threshold is None and self.score_threshold is not None:

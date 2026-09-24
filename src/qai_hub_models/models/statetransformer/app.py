@@ -300,7 +300,7 @@ class StateTransformerApp:
         high_res_raster: torch.Tensor,
         low_res_raster: torch.Tensor,
         context_actions: torch.Tensor,
-        prediction_generation: dict[str, np.ndarray],
+        prediction_generation: dict[str, torch.Tensor],
     ) -> Image.Image:
         """
         Post-process model predictions and generate a visualization image.
@@ -328,10 +328,8 @@ class StateTransformerApp:
         prediction_generation
             Dictionary containing raw prediction outputs from the model.
             Keys:
-                - 'traj_logits': ndarray of shape (batch_size, 80, 4)
+                - 'traj_logits': Tensor of shape (batch_size, 80, 4)
                 Predicted trajectory logits.
-                - 'key_points_logits' (optional): ndarray of shape (batch_size, N, 4)
-                Predicted key points for trajectory refinement.
 
         Returns
         -------
@@ -388,10 +386,13 @@ class StateTransformerApp:
             A PIL Image object representing the high-resolution raster with predicted
             trajectory and key points overlaid.
         """
-        traj_logits, traj_scores = self.model(
-            high_res_raster, low_res_raster, context_actions
+        model_output = self.model(high_res_raster, low_res_raster, context_actions)
+        # OnDeviceModel returns a bare tensor for a single-output model, but is
+        # typed to allow a tuple.
+        traj_logits = (
+            model_output[0] if isinstance(model_output, tuple) else model_output
         )
-        prediction_generation = {"traj_logits": traj_logits, "traj_scores": traj_scores}
+        prediction_generation = {"traj_logits": traj_logits}
         if isinstance(prediction_generation, dict):
             img: Image.Image = self.post_process(
                 high_res_raster, low_res_raster, context_actions, prediction_generation

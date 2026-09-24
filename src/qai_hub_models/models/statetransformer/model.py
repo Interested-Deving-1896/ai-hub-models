@@ -87,7 +87,7 @@ class StateTransformer(BaseModel):
         high_res_raster: torch.Tensor,
         low_res_raster: torch.Tensor,
         context_actions: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor:
         """
         Forward pass of the trajectory prediction model.
 
@@ -129,10 +129,6 @@ class StateTransformer(BaseModel):
             Dtype: float32
             Each sample corresponds to an 8-second predicted trajectory consisting of
             80 timesteps and 4 features per step (e.g., x, y, yaw, speed).
-        traj_scores : torch.Tensor
-            Confidence scores for the predicted trajectories.
-            Shape: (batch_size, 1)
-            Dtype: float32
 
         Notes
         -----
@@ -154,13 +150,11 @@ class StateTransformer(BaseModel):
         F.one_hot = custom_one_hot if serializing else F.one_hot
         if not serializing:
             out_dict = self.generate(**prepared_data)
-            return out_dict["traj_logits"], out_dict["traj_scores"]
+            return out_dict["traj_logits"]
         input_embeds, info_dict = self.encoder(is_training=False, **prepared_data)
         transformer_outputs = self.embedding_to_hidden(input_embeds)
         hidden_state = transformer_outputs["last_hidden_state"]
-        traj_logits = self.generate_trajs(hidden_state, info_dict)
-        traj_scores = torch.ones([traj_logits.shape[0], 1]).to(traj_logits.device)
-        return traj_logits, traj_scores
+        return self.generate_trajs(hidden_state, info_dict)
 
     def get_input_spec(self, batch_size: int = 1) -> InputSpec:
         """
@@ -224,4 +218,4 @@ class StateTransformer(BaseModel):
         OutputSpec
             Mapping of output tensor names to their specs.
         """
-        return {"traj_logits": TensorSpec(), "traj_scores": TensorSpec()}
+        return {"traj_logits": TensorSpec()}

@@ -21,6 +21,7 @@ from qai_hub_models.scorecard.execution_helpers import (
     get_profile_parameterized_pytest_config,
     get_quantize_parameterized_pytest_config,
 )
+from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 
 
 @pytest.fixture(autouse=True)
@@ -324,6 +325,66 @@ def test_engine_prefix_jit_model(monkeypatch: pytest.MonkeyPatch) -> None:
     path_values = {p[1].value for p in profile_paths}
     assert "qnn_dlc" in path_values
     assert "qnn_context_binary" not in path_values
+
+
+def test_engine_prefix_does_not_enable_unpublished_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    An engine prefix must not select paths outside default_paths().
+
+    qnn_dlc_via_qnn_ep and qnn_dlc_gpu share the QNN_DLC runtime, so a bare
+    'qnn' used to select them via should_run_path_for_model while the `enabled`
+    property (which gates the same rule on default_paths) reported them off.
+    count_device_jobs keys its tally on `enabled` and raised KeyError.
+    """
+    EnabledPathsEnvvar.patchenv(monkeypatch, {"qnn"})
+    EnabledPrecisionsEnvvar.patchenv(monkeypatch, {SpecialPrecisionSetting.DEFAULT})
+
+    profile_paths = get_profile_parameterized_pytest_config(
+        "", JIT_RUNTIMES, JIT_RUNTIMES
+    )
+    path_values = {p[1].value for p in profile_paths}
+    assert "qnn_dlc" in path_values
+    assert "qnn_dlc_via_qnn_ep" not in path_values
+    assert "qnn_dlc_gpu" not in path_values
+
+
+@pytest.mark.parametrize(
+    "requested",
+    [
+        {SpecialPathSetting.DEFAULT},
+        {"qnn"},
+        {"onnx"},
+        {"tflite"},
+        {"qnn_dlc_via_qnn_ep"},
+        {"qnn_dlc_gpu"},
+        {SpecialPathSetting.DEFAULT, "qnn_dlc_via_qnn_ep"},
+        {"qnn", "qnn_dlc_via_qnn_ep"},
+        {SpecialPathSetting.DEFAULT, "onnx_dml_gpu"},
+    ],
+)
+def test_should_run_paths_are_all_enabled(
+    monkeypatch: pytest.MonkeyPatch, requested: set[str | SpecialPathSetting]
+) -> None:
+    """
+    Every path should_run_path_for_model selects must also report `enabled`.
+
+    Callers build lookup tables keyed on `enabled` (e.g. count_device_jobs'
+    job_count_by_path) and then index them with the paths parameterization
+    yields, so any path in should_run but not enabled is a crash.
+    """
+    EnabledPathsEnvvar.patchenv(monkeypatch, requested)
+
+    all_runtimes = {Precision.float: list(TargetRuntime)}
+    enabled = {p for p in ScorecardProfilePath if p.enabled}
+    should_run = {
+        p
+        for p in ScorecardProfilePath
+        if p.should_run_path_for_model(Precision.float, all_runtimes)
+    }
+    assert should_run, "expected at least one path to run"
+    assert not (should_run - enabled)
 
 
 def test_llm_runtimes_do_not_match_qnn_paths(monkeypatch: pytest.MonkeyPatch) -> None:
