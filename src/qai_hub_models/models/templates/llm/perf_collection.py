@@ -24,6 +24,7 @@ from filelock import FileLock
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
+from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.scorecard import ScorecardDevice
 from qai_hub_models.scorecard.device import (
     DEFAULT_QDC_DEVICE,
@@ -276,6 +277,7 @@ def update_perf_yaml(
     profile_path: ScorecardProfilePath = ScorecardProfilePath.GENIE,
     ttft_max_ms: float | None = None,
     desired_compute_unit: str = "npu",
+    tool_versions: ToolVersions | None = None,
 ) -> None:
     """Upsert one LLM metric into the model's perf.yaml.
 
@@ -283,6 +285,8 @@ def update_perf_yaml(
     their measured prompt length; when omitted, ttft_ms * (context_length / 128)
     is applied here as a fallback.
     desired_compute_unit: written to the entry; "npu" by default.
+    tool_versions: written to the (device, profile_path) entry's tool_versions
+    field, if given. Shared by every context length under that entry.
     FileLock guards the read-modify-write against concurrent xdist workers.
 
     When LLMPerfUpdatesEnvvar is set, the call is also recorded to that
@@ -301,6 +305,9 @@ def update_perf_yaml(
             profile_path=profile_path.value,
             ttft_max_ms=ttft_max_ms,
             desired_compute_unit=desired_compute_unit,
+            tool_versions=tool_versions.model_dump(mode="json", exclude_none=True)
+            if tool_versions
+            else None,
         )
     )
     perf_path = QAIHM_MODELS_ROOT / model_id / "perf.yaml"
@@ -316,6 +323,7 @@ def update_perf_yaml(
             profile_path,
             ttft_max_ms,
             desired_compute_unit,
+            tool_versions,
         )
 
 
@@ -330,6 +338,7 @@ def _update_perf_yaml_locked(
     profile_path: ScorecardProfilePath = ScorecardProfilePath.GENIE,
     ttft_max_ms: float | None = None,
     desired_compute_unit: str = "npu",
+    tool_versions: ToolVersions | None = None,
 ) -> None:
     perf = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
 
@@ -364,6 +373,9 @@ def _update_perf_yaml_locked(
         device_metrics[profile_path] = QAIHMModelPerf.PerformanceDetails()
 
     perf_details = device_metrics[profile_path]
+
+    if tool_versions is not None:
+        perf_details.tool_versions = tool_versions
 
     if ttft_max_ms is None:
         # Legacy genie scaling; remove when GENIE retires.

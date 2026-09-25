@@ -27,6 +27,7 @@ class ToolVersions(BaseQAIHMConfig):
     """
 
     qairt: QAIRTVersion | None = None
+    geniex: str | None = None
     onnx: str | None = None
     onnx_runtime: str | None = None
     tflite: str | None = None
@@ -37,6 +38,7 @@ class ToolVersions(BaseQAIHMConfig):
         return tool_versions_pb2.ToolVersions(
             ai_hub_models=self.ai_hub_models,
             qairt=self.qairt.full_version_with_flavor if self.qairt else None,
+            geniex=self.geniex,
             onnx=self.onnx,
             onnx_runtime=self.onnx_runtime,
             tflite=self.tflite,

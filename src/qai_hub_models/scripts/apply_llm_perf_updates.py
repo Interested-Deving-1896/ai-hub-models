@@ -22,6 +22,7 @@ from filelock import FileLock
 
 from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
+from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.models.templates.llm.perf_collection import update_perf_yaml
 from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE, ScorecardDevice
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import load_similar_devices
@@ -134,6 +135,9 @@ def apply_updates(updates: list[dict]) -> int:
             ttft_max_ms=u["ttft_max_ms"],
             profile_path=ScorecardProfilePath(u["profile_path"]),
             desired_compute_unit=u["desired_compute_unit"],
+            tool_versions=ToolVersions(**u["tool_versions"])
+            if u.get("tool_versions")
+            else None,
         )
 
     similar_devices_mapping = load_similar_devices()

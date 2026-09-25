@@ -68,10 +68,12 @@ _EVAL_TIMEOUT_S = 600
 _EVAL_SLEEP_S = 10
 
 # geniex-bench result schemas this parser reads. 4 kept the fields 3 exposed and
-# only added some, so both parse identically. An unlisted version is reported by
-# compute_metrics rather than dropped, because a silent skip reads as "the device
-# produced nothing" and now costs the committed perf rows.
-_SUPPORTED_BENCH_SCHEMAS = frozenset({"3", "4"})
+# only added some, so both parse identically. 5 added qairt_version/
+# llama_cpp_version (unread until 6). 6 added geniex_version. An unlisted
+# version is reported by compute_metrics rather than dropped, because a silent
+# skip reads as "the device produced nothing" and now costs the committed perf
+# rows.
+_SUPPORTED_BENCH_SCHEMAS = frozenset({"3", "4", "5", "6"})
 
 
 @dataclass
@@ -85,6 +87,9 @@ class GenieXBenchMetrics:
     decode_tps: float
     prompt_tokens: int
     gen_tokens: int
+    geniex_version: str | None = None
+    qairt_version: str | None = None
+    llama_cpp_version: str | None = None
 
 
 class GenieXBenchArtifactHandler(ABC):
@@ -552,6 +557,9 @@ def _parse_cell_metrics(path: str) -> GenieXBenchMetrics | None:
         decode_tps=float(decode),
         prompt_tokens=int((agg.get("prompt_tokens") or {}).get("median") or 0),
         gen_tokens=int((agg.get("gen_tokens") or {}).get("median") or 0),
+        geniex_version=cell.get("geniex_version"),
+        qairt_version=cell.get("qairt_version"),
+        llama_cpp_version=cell.get("llama_cpp_version"),
     )
 
 

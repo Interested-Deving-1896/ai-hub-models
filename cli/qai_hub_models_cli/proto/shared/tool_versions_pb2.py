@@ -18,7 +18,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1ashared/tool_versions.proto\x12\x05qaihm\"\xe2\x01\n\x0cToolVersions\x12\x1a\n\rai_hub_models\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05qairt\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x11\n\x04onnx\x18\x03 \x01(\tH\x02\x88\x01\x01\x12\x19\n\x0connx_runtime\x18\x04 \x01(\tH\x03\x88\x01\x01\x12\x13\n\x06tflite\x18\x05 \x01(\tH\x04\x88\x01\x01\x12\x13\n\x06litert\x18\x06 \x01(\tH\x05\x88\x01\x01\x42\x10\n\x0e_ai_hub_modelsB\x08\n\x06_qairtB\x07\n\x05_onnxB\x0f\n\r_onnx_runtimeB\t\n\x07_tfliteB\t\n\x07_litertb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1ashared/tool_versions.proto\x12\x05qaihm\"\x82\x02\n\x0cToolVersions\x12\x1a\n\rai_hub_models\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05qairt\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x11\n\x04onnx\x18\x03 \x01(\tH\x02\x88\x01\x01\x12\x19\n\x0connx_runtime\x18\x04 \x01(\tH\x03\x88\x01\x01\x12\x13\n\x06tflite\x18\x05 \x01(\tH\x04\x88\x01\x01\x12\x13\n\x06litert\x18\x06 \x01(\tH\x05\x88\x01\x01\x12\x13\n\x06geniex\x18\x07 \x01(\tH\x06\x88\x01\x01\x42\x10\n\x0e_ai_hub_modelsB\x08\n\x06_qairtB\x07\n\x05_onnxB\x0f\n\r_onnx_runtimeB\t\n\x07_tfliteB\t\n\x07_litertB\t\n\x07_geniexb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -26,5 +26,5 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'shared.tool_versions_pb2', 
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   _globals['_TOOLVERSIONS']._serialized_start=38
-  _globals['_TOOLVERSIONS']._serialized_end=264
+  _globals['_TOOLVERSIONS']._serialized_end=296
 # @@protoc_insertion_point(module_scope)

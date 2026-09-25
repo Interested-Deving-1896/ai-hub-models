@@ -30,12 +30,14 @@ class ToolVersions(google.protobuf.message.Message):
     ONNX_RUNTIME_FIELD_NUMBER: builtins.int
     TFLITE_FIELD_NUMBER: builtins.int
     LITERT_FIELD_NUMBER: builtins.int
+    GENIEX_FIELD_NUMBER: builtins.int
     ai_hub_models: builtins.str
     qairt: builtins.str
     onnx: builtins.str
     onnx_runtime: builtins.str
     tflite: builtins.str
     litert: builtins.str
+    geniex: builtins.str
     def __init__(
         self,
         *,
@@ -45,11 +47,14 @@ class ToolVersions(google.protobuf.message.Message):
         onnx_runtime: builtins.str | None = ...,
         tflite: builtins.str | None = ...,
         litert: builtins.str | None = ...,
+        geniex: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_ai_hub_models", b"_ai_hub_models", "_litert", b"_litert", "_onnx", b"_onnx", "_onnx_runtime", b"_onnx_runtime", "_qairt", b"_qairt", "_tflite", b"_tflite", "ai_hub_models", b"ai_hub_models", "litert", b"litert", "onnx", b"onnx", "onnx_runtime", b"onnx_runtime", "qairt", b"qairt", "tflite", b"tflite"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_ai_hub_models", b"_ai_hub_models", "_litert", b"_litert", "_onnx", b"_onnx", "_onnx_runtime", b"_onnx_runtime", "_qairt", b"_qairt", "_tflite", b"_tflite", "ai_hub_models", b"ai_hub_models", "litert", b"litert", "onnx", b"onnx", "onnx_runtime", b"onnx_runtime", "qairt", b"qairt", "tflite", b"tflite"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_ai_hub_models", b"_ai_hub_models", "_geniex", b"_geniex", "_litert", b"_litert", "_onnx", b"_onnx", "_onnx_runtime", b"_onnx_runtime", "_qairt", b"_qairt", "_tflite", b"_tflite", "ai_hub_models", b"ai_hub_models", "geniex", b"geniex", "litert", b"litert", "onnx", b"onnx", "onnx_runtime", b"onnx_runtime", "qairt", b"qairt", "tflite", b"tflite"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_ai_hub_models", b"_ai_hub_models", "_geniex", b"_geniex", "_litert", b"_litert", "_onnx", b"_onnx", "_onnx_runtime", b"_onnx_runtime", "_qairt", b"_qairt", "_tflite", b"_tflite", "ai_hub_models", b"ai_hub_models", "geniex", b"geniex", "litert", b"litert", "onnx", b"onnx", "onnx_runtime", b"onnx_runtime", "qairt", b"qairt", "tflite", b"tflite"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_ai_hub_models", b"_ai_hub_models"]) -> typing.Literal["ai_hub_models"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_geniex", b"_geniex"]) -> typing.Literal["geniex"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_litert", b"_litert"]) -> typing.Literal["litert"] | None: ...
     @typing.overload

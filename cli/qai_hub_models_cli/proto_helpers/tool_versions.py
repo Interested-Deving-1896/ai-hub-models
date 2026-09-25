@@ -11,6 +11,7 @@ from qai_hub_models_cli.proto.shared.tool_versions_pb2 import ToolVersions
 # Tool version proto fields paired with their display labels, in display order.
 _TOOL_VERSION_LABELS: list[tuple[str, str]] = [
     ("qairt", "QAIRT"),
+    ("geniex", "GenieX"),
     ("onnx", "ONNX"),
     ("onnx_runtime", "ONNX Runtime"),
     ("tflite", "TFLite"),

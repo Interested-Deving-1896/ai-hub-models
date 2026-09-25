@@ -14,9 +14,10 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
-from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models import Precision, QAIRTVersion, TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.configs.model_metadata import ModelMetadata
+from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.models.templates.llm.grader.grace import (
     load_eval_prompts,
     select_balanced,
@@ -537,6 +538,18 @@ def _rows_and_updates_from_metrics(
             )
             ttft_min = m.ttft_ms * (_TTFT_BASELINE_PROMPT_TOKENS / m.prompt_tokens)
             ttft_max = m.ttft_ms * (m.context_length / m.prompt_tokens)
+            # report.c writes qairt_version unconditionally on every cell
+            # regardless of --plugin, so it's only meaningful for qairt-plugin
+            # cells -- an llama_cpp cell's qairt_version reflects whatever
+            # QAIRT plugin happens to also be registered in that binary.
+            tool_versions = ToolVersions(
+                geniex=m.geniex_version,
+                qairt=(
+                    QAIRTVersion(m.qairt_version, validate_exists_on_ai_hub=False)
+                    if base_plugin == "qairt" and m.qairt_version
+                    else None
+                ),
+            )
             update_kwargs = dict(
                 model_id=model_id,
                 device_name=sd.reference_device_name,
@@ -548,6 +561,7 @@ def _rows_and_updates_from_metrics(
                 ttft_max_ms=ttft_max,
                 profile_path=profile_path.value,
                 desired_compute_unit=m.device_alias,
+                tool_versions=tool_versions.model_dump(mode="json", exclude_none=True),
             )
             perf_updates.append(update_kwargs)
             update_perf_yaml(
@@ -561,6 +575,7 @@ def _rows_and_updates_from_metrics(
                 ttft_max_ms=ttft_max,
                 profile_path=profile_path,
                 desired_compute_unit=m.device_alias,
+                tool_versions=tool_versions,
             )
     return csv_rows, perf_updates
 

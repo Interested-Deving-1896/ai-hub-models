@@ -24,6 +24,22 @@ from qai_hub_models.configs.tool_versions import ToolVersions
 RESULTS_PATCH_TARGET = "qai_hub_models.configs.tool_versions.get_job_results"
 
 
+def test_geniex_field_round_trips_to_proto() -> None:
+    tv = ToolVersions(
+        geniex="v0.7.0",
+        qairt=QAIRTVersion("2.45", validate_exists_on_ai_hub=False),
+    )
+    proto = tv.to_proto()
+    assert proto.geniex == "v0.7.0"
+    assert proto.qairt == "2.45"
+
+    empty_proto = ToolVersions().to_proto()
+    assert not empty_proto.HasField("geniex")
+
+    assert ToolVersions(geniex="v0.7.0") == ToolVersions(geniex="v0.7.0")
+    assert ToolVersions(geniex="v0.7.0") != ToolVersions(geniex="v0.7.1")
+
+
 def test_extract_tool_versions_from_compiled_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
