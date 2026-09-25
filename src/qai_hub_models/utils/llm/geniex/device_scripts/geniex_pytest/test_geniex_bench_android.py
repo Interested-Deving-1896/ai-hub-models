@@ -43,6 +43,11 @@ DEVICE_EVAL_ERR = f"{DEVICE_LOGS_DIR}/geniex_eval_stderr.txt"
 
 CTXS = tuple(int(c) for c in "{CTX_LIST}".split(","))
 ANDROID_BENCH_URL = "{ANDROID_BENCH_URL}"
+# Presigned S3 GET URL for the qairt bundle (empty when the plugin isn't
+# qairt, or when the caller has no S3 asset -- e.g. local/dev runs), so the
+# device curls its weights directly instead of the host pushing them via adb,
+# bypassing AWS Device Farm's ~4GB artifact-upload cap.
+QAIRT_BUNDLE_URL = "{QAIRT_BUNDLE_URL}"
 PLUGIN = "{PLUGIN}"
 N_GEN = int("{N_GEN}")
 EVAL_CTX = int("{EVAL_CTX}")
@@ -81,16 +86,18 @@ def adb(cmd: str, *, check: bool = True) -> subprocess.CompletedProcess:
     return result
 
 
-def _preflight_network() -> None:
+def _preflight_url(url: str) -> None:
     # QDC phones occasionally boot with degraded wifi; fail fast instead
-    # of letting stage_bundle() hang silently on a stalled fetch. HEAD the
-    # actual asset (a bucket-root probe returns 403 on S3 list-bucket).
+    # of letting stage_bundle()/_fetch_qairt_bundle_ondevice() hang silently
+    # on a stalled fetch. A presigned S3 GET URL's signature is bound to the
+    # HTTP method, so a HEAD (or a bucket-root probe) gets rejected with 403
+    # regardless of connectivity -- use `-r 0-0` to keep this a GET while
+    # only pulling the first byte.
     preflight = subprocess.run(
         [
             "adb",
             "shell",
-            f"curl -sSI -o /dev/null -w '%{{http_code}}' --max-time 15 "
-            f"{ANDROID_BENCH_URL}",
+            f"curl -sS -o /dev/null -w '%{{http_code}}' --max-time 15 -r 0-0 '{url}'",
         ],
         check=False,
         capture_output=True,
@@ -99,10 +106,16 @@ def _preflight_network() -> None:
     http_code = preflight.stdout.strip()
     if preflight.returncode != 0 or not http_code.startswith(("2", "3")):
         pytest.fail(
-            f"Device cannot reach {ANDROID_BENCH_URL} (rc={preflight.returncode}, "
+            f"Device cannot reach {url} (rc={preflight.returncode}, "
             f"http_code={http_code!r}, stderr={preflight.stderr!r}). "
             "Likely QDC device-side wifi failure — file a QDC infra ticket and re-run."
         )
+
+
+def _preflight_network() -> None:
+    _preflight_url(ANDROID_BENCH_URL)
+    if QAIRT_BUNDLE_URL:
+        _preflight_url(QAIRT_BUNDLE_URL)
 
 
 def stage_bundle() -> None:
@@ -144,6 +157,58 @@ def push_bundle() -> None:
     adb(f"find {DEVICE_BUNDLE}/bin -type f -exec chmod 755 {{}} +")
     adb(f"cp {DEVICE_BUNDLE}/lib/qairt/htp-files/*.so {DEVICE_BUNDLE}/lib/")
     adb(f"cp {DEVICE_BUNDLE}/lib/llama_cpp/*.so {DEVICE_BUNDLE}/lib/")
+
+
+def _fetch_qairt_bundle_ondevice(bundle_name: str) -> str:
+    """Curl+unzip the presigned qairt bundle directly on-device.
+
+    Mirrors run_android.py's genie_bundle_download_block: bypasses AWS
+    Device Farm's ~4GB artifact-upload cap by having the device pull weights
+    straight from S3 instead of the host adb-pushing them. The zip's own
+    top-level folder is named after the long release-asset name (see
+    ASSET_CONFIG.get_release_asset_name), not the bare model_id that
+    _rewrite_matrix_for_qairt_bundles (geniex/jobs.py) already baked into
+    matrix_rows.txt -- so the extracted dir is moved to `bundle_name`
+    (the bare model_id) to match what the matrix/eval model refs expect.
+    Returns `bundle_name` unchanged, for the caller's convenience.
+    """
+    adb(f"rm -rf {DEVICE_QAIRT_BUNDLES} /data/local/tmp/_qairt_bundle_dl")
+    adb(f"mkdir -p {DEVICE_QAIRT_BUNDLES} /data/local/tmp/_qairt_bundle_dl")
+    adb(
+        "curl -L --fail --max-time 1800 --retry 3 --retry-delay 5 "
+        f"--output /data/local/tmp/qairt_bundle.zip '{QAIRT_BUNDLE_URL}'"
+    )
+    # Android's toybox unzip can return a nonzero warning exit even on a fully
+    # successful extract (see run_android.py's qairt.zip handling); don't
+    # trust the exit code, verify the extracted dir exists instead, retrying
+    # the extract once if it doesn't.
+    adb(
+        "unzip -q /data/local/tmp/qairt_bundle.zip -d /data/local/tmp/_qairt_bundle_dl",
+        check=False,
+    )
+    find = adb(
+        "find /data/local/tmp/_qairt_bundle_dl -mindepth 1 -maxdepth 1 -type d "
+        "| head -n1"
+    )
+    extracted = find.stdout.strip()
+    if not extracted:
+        adb("rm -rf /data/local/tmp/_qairt_bundle_dl")
+        adb("mkdir -p /data/local/tmp/_qairt_bundle_dl")
+        adb(
+            "unzip -q /data/local/tmp/qairt_bundle.zip "
+            "-d /data/local/tmp/_qairt_bundle_dl",
+            check=False,
+        )
+        find = adb(
+            "find /data/local/tmp/_qairt_bundle_dl -mindepth 1 -maxdepth 1 -type d "
+            "| head -n1"
+        )
+        extracted = find.stdout.strip()
+    adb("rm -f /data/local/tmp/qairt_bundle.zip")
+    assert extracted, "qairt bundle zip had no top-level directory"
+    adb(f"mv '{extracted}' {DEVICE_QAIRT_BUNDLES}/{bundle_name}")
+    adb("rm -rf /data/local/tmp/_qairt_bundle_dl")
+    return bundle_name
 
 
 def _run_bench(ctx: int, env: str, tsv_path: str, chipset: str) -> int:
@@ -278,8 +343,16 @@ def test_scorecard() -> None:
     adb(f"rm -rf {DEVICE_RESULTS}", check=False)
     adb(f"mkdir -p {DEVICE_MM_CACHE} {DEVICE_RESULTS}")
     try:
+        chipset = Path(HOST_CHIPSET).read_text().strip()
+        rows = [r for r in Path(HOST_ROWS).read_text().splitlines() if r.strip()]
+        assert rows, "no model rows produced"
+
         bundle_name: str | None = None
-        if PLUGIN == "qairt" and os.path.isdir(HOST_QAIRT_BUNDLES):
+        if PLUGIN == "qairt" and QAIRT_BUNDLE_URL:
+            # Bundle must have consistent name with name in matrix.
+            model_id_for_bundle = rows[0].split("|", 1)[0]
+            bundle_name = _fetch_qairt_bundle_ondevice(model_id_for_bundle)
+        elif PLUGIN == "qairt" and os.path.isdir(HOST_QAIRT_BUNDLES):
             adb(f"mkdir -p {DEVICE_QAIRT_BUNDLES}")
             subprocess.run(
                 ["adb", "push", f"{HOST_QAIRT_BUNDLES}/.", DEVICE_QAIRT_BUNDLES],
@@ -293,8 +366,6 @@ def test_scorecard() -> None:
             assert len(names) == 1, f"expected one qairt bundle, got {names}"
             bundle_name = names[0]
 
-        chipset = Path(HOST_CHIPSET).read_text().strip()
-        rows = [r for r in Path(HOST_ROWS).read_text().splitlines() if r.strip()]
         tsv_by_ctx: dict[int, list[str]] = {ctx: [] for ctx in CTXS}
         for row in rows:
             name, plugin, devs, model_id, vlm, _image = row.split("|")

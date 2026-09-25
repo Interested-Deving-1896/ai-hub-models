@@ -37,6 +37,11 @@ from qai_hub_models.scorecard.utils.fetch_prerelease_assets import (
     download_prerelease_asset,
 )
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
+from qai_hub_models.utils.aws import (
+    QAIHM_PRIVATE_S3_BUCKET,
+    get_presigned_download_url,
+    get_qaihm_s3,
+)
 from qai_hub_models.utils.devicefarm.devicefarm import (
     DEFAULT_RETRIES,
     DeviceFarm,
@@ -138,6 +143,7 @@ class GenieArtifactHandler(ABC):
         device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
+        genie_bundle_url: str | None = None,
     ) -> list[tuple[str, str]]:
         """Stage the on-device bundle and return (abs_path, arcname) entries.
 
@@ -150,6 +156,12 @@ class GenieArtifactHandler(ABC):
         to the entry list under the appropriate on-device path. Callers
         avoid duplicating the multi-GB genie bundle by keeping the prompt
         files in a separate directory from the bundle itself.
+
+        ``genie_bundle_url`` (if provided) is a presigned S3 GET URL for the
+        genie bundle zip; Linux/Windows curl it on-device instead of the
+        caller shipping the bundle weights through the artifact zip. When
+        None (e.g. auto/mobile carve-outs), the handler falls back to
+        referencing ``genie_bundle_path`` directly via ``walk_dir_entries``.
         """
         raise NotImplementedError
 
@@ -177,11 +189,14 @@ class GenieAndroidArtifactHandler(GenieArtifactHandler):
         device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
+        genie_bundle_url: str | None = None,
     ) -> list[tuple[str, str]]:
         # Write only the small placeholder-substituted files (test_appium.py,
-        # requirements.txt) to dest_dir. The multi-GB genie bundle stays put
-        # and is referenced directly via arcname prefix -- copying it here
-        # would triple /scratch usage while staging.
+        # requirements.txt) to dest_dir. When genie_bundle_url is set, the
+        # device itself curls+unzips the bundle from S3 -- the multi-GB local
+        # genie_bundle_path is never referenced. Otherwise (no URL, e.g. the
+        # Auto carve-out) fall back to referencing it directly via arcname
+        # prefix -- copying it here would triple /scratch usage while staging.
         test_folder = os.path.join(dest_dir, "tests")
         os.makedirs(test_folder, exist_ok=True)
 
@@ -197,6 +212,7 @@ class GenieAndroidArtifactHandler(GenieArtifactHandler):
                 .replace("<<QAIRT_VERSION>>", qairt_version)
                 .replace("<<NUM_TRIALS>>", str(num_trials))
                 .replace("<<DEVICE_LOGS_DIR>>", device_logs_dir)
+                .replace("<<GENIE_BUNDLE_URL>>", genie_bundle_url or "")
             )
 
         requirements_dest = os.path.join(dest_dir, "requirements.txt")
@@ -205,25 +221,32 @@ class GenieAndroidArtifactHandler(GenieArtifactHandler):
             requirements_dest,
         )
 
-        # Reference every genie bundle file from its original path with a
-        # "genie_bundle/" arcname prefix (no copy), plus eval-prompt files
-        # (if any) under "genie_bundle/prompts/".
         entries: list[tuple[str, str]] = [
             (test_appium_path, os.path.join("tests", "test_appium.py")),
             (requirements_dest, "requirements.txt"),
         ]
-        entries.extend(
-            walk_dir_entries(
-                os.fspath(genie_bundle_path), arcname_prefix="genie_bundle"
-            )
-        )
-        if eval_prompts_dir:
+        if genie_bundle_url:
+            # Bundle weights come from the on-device curl; eval prompts (if
+            # any) are small enough to still ship through the artifact zip,
+            # under a path the device script copies into genie_bundle/prompts
+            # after extracting the downloaded bundle.
+            if eval_prompts_dir:
+                entries.extend(
+                    walk_dir_entries(eval_prompts_dir, arcname_prefix="eval_prompts")
+                )
+        else:
             entries.extend(
                 walk_dir_entries(
-                    eval_prompts_dir,
-                    arcname_prefix=os.path.join("genie_bundle", "prompts"),
+                    os.fspath(genie_bundle_path), arcname_prefix="genie_bundle"
                 )
             )
+            if eval_prompts_dir:
+                entries.extend(
+                    walk_dir_entries(
+                        eval_prompts_dir,
+                        arcname_prefix=os.path.join("genie_bundle", "prompts"),
+                    )
+                )
         return entries
 
 
@@ -262,7 +285,11 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
         device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
+        genie_bundle_url: str | None = None,
     ) -> list[tuple[str, str]]:
+        # Carve-out: auto devices' network reachability to S3 is unconfirmed,
+        # so this handler always ships the full bundle through the artifact
+        # zip regardless of whether the caller minted a presigned URL.
         entries = super().create_artifact(
             curr_dirname,
             genie_bundle_path,
@@ -272,6 +299,7 @@ class GenieAutoArtifactHandler(GenieAndroidArtifactHandler):
             device_logs_dir,
             num_trials,
             eval_prompts_dir=eval_prompts_dir,
+            genie_bundle_url=None,
         )
         entries.append(
             (self.qairt_sdk_path, os.path.join("genie_bundle", "qairt_sdk.zip"))
@@ -298,6 +326,7 @@ class GenieLinuxArtifactHandler(GenieArtifactHandler):
         device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
+        genie_bundle_url: str | None = None,
     ) -> list[tuple[str, str]]:
         # Write the version-substituted run_linux.sh into dest_dir; reference
         # the multi-GB genie bundle via arcname prefix rather than copying it
@@ -348,6 +377,7 @@ class GenieWindowsArtifactHandler(GenieArtifactHandler):
         device_logs_dir: str,
         num_trials: int = 25,
         eval_prompts_dir: str | None = None,
+        genie_bundle_url: str | None = None,
     ) -> list[tuple[str, str]]:
         # Windows layout: run_windows.ps1 + bundle contents live at the top
         # of the zip (no genie_bundle/ prefix). Substitute placeholders in
@@ -420,6 +450,7 @@ def add_genie_bundle_entries(
     eval_prompts: list[str] | None = None,
     num_trials: int = 25,
     model_id: str | None = None,
+    genie_bundle_url: str | None = None,
 ) -> tuple[list[tuple[str, str]], str | None]:
     """Stage a Genie bundle into backend-agnostic (path, arcname) entries.
 
@@ -448,6 +479,11 @@ def add_genie_bundle_entries(
     model_id
         Model identifier used to load the HF tokenizer if the bundle
         tokenizer lacks a chat template.
+    genie_bundle_url
+        Presigned S3 GET URL for the genie bundle zip. When provided, the
+        device curls+extracts the bundle itself instead of the caller
+        shipping it through the artifact zip. Ignored by handlers that carve
+        themselves out of this (e.g. auto -- see ``GenieAutoArtifactHandler``).
 
     Returns
     -------
@@ -480,6 +516,7 @@ def add_genie_bundle_entries(
         device_logs_dir,
         num_trials,
         eval_prompts_dir=eval_prompts_dir,
+        genie_bundle_url=genie_bundle_url,
     )
     return entries, artifact_handler.entry_script
 
@@ -751,12 +788,15 @@ def submit_genie_bundle(
     eval_prompts: list[str] | None | object = None,
     num_trials: int = 25,
     model_id: str | None = None,
+    genie_bundle_url: str | None = None,
 ) -> str:
     """Upload artifacts and submit a Genie job, returning the backend job id.
 
     Companion to :func:`collect_genie_bundle`. Does no waiting or result
     parsing -- the caller records the job id (typically to a jobs_file) and
-    polls later.
+    polls later. ``genie_bundle_url``, when provided, is a presigned S3 GET
+    URL the device curls the bundle from directly, instead of the caller
+    shipping the (potentially multi-GB) bundle through the artifact zip.
     """
     prompts_to_use = _resolve_eval_prompts(eval_prompts)
     platform = HubDevicePlatform(hub_device_name)
@@ -776,6 +816,7 @@ def submit_genie_bundle(
             eval_prompts=prompts_to_use,
             num_trials=num_trials,
             model_id=model_id,
+            genie_bundle_url=genie_bundle_url,
         )
 
         # No explicit timeout: submission itself doesn't block on either
@@ -988,6 +1029,24 @@ def fetch_genie_bundle_for_perf(
     return bundle_dir
 
 
+def get_genie_bundle_url(model_id: str, precision: Precision, chipset: str) -> str:
+    """Mint a presigned S3 GET URL for the current genie release asset.
+
+    Re-resolves the asset fresh (same lookup as :func:`fetch_genie_bundle_for_perf`)
+    so a stale/failed compile is never signed -- always whatever
+    ``load_release_assets_for_model`` currently selects.
+    """
+    assets = load_release_assets_for_model(model_id)
+    asset = assets.get_asset(precision, chipset, ScorecardProfilePath.GENIE)
+    if asset is None or asset.s3_key is None:
+        raise RuntimeError(
+            f"No genie release asset for {model_id!r} precision={precision} "
+            f"chipset={chipset!r}; cannot mint a presigned download URL."
+        )
+    bucket = get_qaihm_s3(QAIHM_PRIVATE_S3_BUCKET)[0]
+    return get_presigned_download_url(bucket, asset.s3_key)
+
+
 def submit_llm_perf_job(
     model_id: str,
     device: ScorecardDevice,
@@ -1010,6 +1069,7 @@ def submit_llm_perf_job(
     genie_bundle_path = fetch_genie_bundle_for_perf(
         model_id, precision, device.chipset, output_dir
     )
+    genie_bundle_url = get_genie_bundle_url(model_id, precision, device.chipset)
 
     eval_prompts = _USE_DEFAULT_PROMPTS if device == get_llm_eval_device() else None
     job_name = f"Genie {model_id} {precision}"
@@ -1023,6 +1083,7 @@ def submit_llm_perf_job(
         qairt_sdk_path=qairt_sdk_path,
         eval_prompts=eval_prompts,
         model_id=model_id,
+        genie_bundle_url=genie_bundle_url,
     )
 
     key = make_key(model_id, str(precision), "GENIE", device.name)
@@ -1064,9 +1125,13 @@ def collect_llm_perf_job(
     backend = get_device_farm(device)
 
     def _resubmit() -> str:
+        # Re-derive both the local path and the presigned URL fresh on every
+        # resubmit -- never reuse a URL/path from a previous attempt, so a
+        # just-recompiled asset (not a stale one) is always what's signed.
         bundle_path = fetch_genie_bundle_for_perf(
             model_id, precision, device.chipset, Path(output_dir)
         )
+        bundle_url = get_genie_bundle_url(model_id, precision, device.chipset)
         return submit_genie_bundle(
             backend,
             hub_device_name,
@@ -1075,6 +1140,7 @@ def collect_llm_perf_job(
             qairt_sdk_path=qairt_sdk_path,
             eval_prompts=eval_prompts,
             model_id=model_id,
+            genie_bundle_url=bundle_url,
         )
 
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:

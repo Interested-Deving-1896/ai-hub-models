@@ -13,6 +13,7 @@ from qai_hub_models.utils.asset_loaders import EXECUTING_IN_CI_ENVIRONMENT
 from qai_hub_models.utils.aws import (
     QAIHM_PRIVATE_S3_BUCKET,
     get_files_to_upload_remove,
+    get_presigned_download_url,
     get_qaihm_s3,
     list_s3_files_in_folder_recursive,
 )
@@ -210,6 +211,23 @@ def test_get_files_to_upload_remove_folders() -> None:
             assert local_files_skipped == {
                 subfolder + "/myfile": aws_preuploaded_files[1]
             }
+
+
+def test_get_presigned_download_url() -> None:
+    bucket = MagicMock(name="my-bucket")
+    bucket.name = "my-bucket"
+    bucket.meta.client.generate_presigned_url.return_value = (
+        "https://example.com/signed"
+    )
+
+    url = get_presigned_download_url(bucket, "some/s3/key.zip", expires_in=123)
+
+    assert url == "https://example.com/signed"
+    bucket.meta.client.generate_presigned_url.assert_called_once_with(
+        "get_object",
+        Params={"Bucket": "my-bucket", "Key": "some/s3/key.zip"},
+        ExpiresIn=123,
+    )
 
 
 def test_ci_private_aws_access() -> None:

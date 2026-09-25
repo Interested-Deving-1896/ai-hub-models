@@ -30,6 +30,7 @@ from qai_hub_models_cli._internal.aws import (
 )
 
 __all__ = [
+    "PRESIGNED_URL_EXPIRY_S",
     "QAIHM_AWS_PROFILE",
     "QAIHM_PRIVATE_S3_BUCKET",
     "QAIHM_PUBLIC_S3_BUCKET",
@@ -37,6 +38,7 @@ __all__ = [
     "attempt_with_s3_credentials_warning",
     "can_access_private_s3",
     "get_files_to_upload_remove",
+    "get_presigned_download_url",
     "get_qaihm_s3",
     "get_qaihm_s3_or_exit",
     "get_s3_url",
@@ -49,6 +51,23 @@ __all__ = [
 
 QAIHM_PUBLIC_S3_BUCKET = "qaihub-public-assets"
 QAIHM_AWS_PROFILE = "qaihm"
+
+# 24h -- ~2x the largest job timeout (GENIE/GENIEX_BENCH_JOB_TIMEOUT = 43200s),
+# covering unbounded device-farm queueing delay before a device is allocated.
+PRESIGNED_URL_EXPIRY_S = 86400
+
+
+def get_presigned_download_url(
+    bucket: Bucket, key: str, expires_in: int = PRESIGNED_URL_EXPIRY_S
+) -> str:
+    """Mint a time-limited GET URL for a private-bucket object.
+
+    Lets a device with no AWS identity download directly from S3 (bypassing
+    the device-farm backend's own ~4GB artifact-upload cap) via plain curl.
+    """
+    return bucket.meta.client.generate_presigned_url(
+        "get_object", Params={"Bucket": bucket.name, "Key": key}, ExpiresIn=expires_in
+    )
 
 
 @functools.cache

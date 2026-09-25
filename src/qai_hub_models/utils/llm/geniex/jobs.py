@@ -15,7 +15,17 @@ import zipfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from qai_hub_models import Precision
 from qai_hub_models.models.templates.llm.model import LLMBase
+from qai_hub_models.models.templates.llm.perf_collection import (
+    load_release_assets_for_model,
+)
+from qai_hub_models.scorecard import ScorecardProfilePath
+from qai_hub_models.utils.aws import (
+    QAIHM_PRIVATE_S3_BUCKET,
+    get_presigned_download_url,
+    get_qaihm_s3,
+)
 from qai_hub_models.utils.devicefarm.devicefarm import (
     DeviceFarm,
     HubDevicePlatform,
@@ -88,12 +98,21 @@ class GenieXBenchArtifactHandler(ABC):
         context_lengths: list[int],
         plugin: str,
         qairt_bundles: dict[str, str] | None,
+        qairt_bundle_urls: dict[str, str] | None,
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
     ) -> list[tuple[str, str]]:
-        """Stage the on-device bundle into ``dest_dir`` and return its entries."""
+        """Stage the on-device bundle into ``dest_dir`` and return its entries.
+
+        ``qairt_bundle_urls`` (if provided), keyed the same as ``qairt_bundles``,
+        holds a presigned S3 GET URL per model so a handler can curl the bundle
+        on-device instead of the caller shipping its weights through the
+        artifact zip. Handlers that don't support this (e.g. Linux/Windows,
+        which only ever run through QDC, not the AWS backend with its upload
+        cap) may ignore it and fall back to ``_stage_qairt_bundles``.
+        """
         # device_logs_dir is the on-device log directory name (see
         # device_logs_dir_name); unused by handlers whose device script has no
         # {DEVICE_LOGS_DIR} placeholder to fill (e.g. Windows, which still
@@ -210,6 +229,7 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
         context_lengths: list[int],
         plugin: str,
         qairt_bundles: dict[str, str] | None,
+        qairt_bundle_urls: dict[str, str] | None,
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
@@ -223,7 +243,16 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
                 matrix_rows, qairt_bundles, device_root=self.DEVICE_ROOT
             )
 
+        # AWS Device Farm's ~4GB artifact-upload cap makes shipping qairt
+        # weights through the zip (_stage_qairt_bundles) infeasible for
+        # larger models; when a presigned URL is available, the device
+        # curls it directly instead (see qairt_bundle_urls below).
+        stage_bundles_locally = bool(
+            plugin == "qairt" and qairt_bundles and not qairt_bundle_urls
+        )
+
         bench_url = _bench_url("android-arm64", "tar.gz", geniex_version)
+        bundle_url = (qairt_bundle_urls or {}).get(next(iter(qairt_bundles or {}), ""))
         test_folder = os.path.join(dest_dir, "tests")
         os.makedirs(test_folder, exist_ok=True)
         for fn in os.listdir(pytest_dir):
@@ -238,7 +267,8 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
                 content = self._apply_common_replacements(
                     content.replace("{ANDROID_BENCH_URL}", bench_url)
                     .replace("{PLUGIN}", plugin)
-                    .replace("{N_GEN}", str(_N_GEN)),
+                    .replace("{N_GEN}", str(_N_GEN))
+                    .replace("{QAIRT_BUNDLE_URL}", bundle_url or ""),
                     context_lengths,
                     run_perf,
                     eval_prompts,
@@ -259,7 +289,8 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
         with open(os.path.join(dest_dir, "chipset.txt"), "w", encoding="utf-8") as f:
             f.write(chipset + "\n")
 
-        if plugin == "qairt" and qairt_bundles:
+        if stage_bundles_locally:
+            assert qairt_bundles is not None
             self._stage_qairt_bundles(dest_dir, qairt_bundles)
 
         if eval_prompts:
@@ -285,11 +316,14 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
         context_lengths: list[int],
         plugin: str,
         qairt_bundles: dict[str, str] | None,
+        qairt_bundle_urls: dict[str, str] | None,
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
     ) -> list[tuple[str, str]]:
+        # QDC only (never AWS Device Farm, which has no Linux/Windows devices),
+        # so there's no upload cap to work around; always stage locally.
         ds_dir = os.path.join(curr_dirname, "device_scripts")
         sh_src = os.path.join(ds_dir, "run_geniex_bench_linux.sh")
 
@@ -347,6 +381,7 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
         context_lengths: list[int],
         plugin: str,
         qairt_bundles: dict[str, str] | None,
+        qairt_bundle_urls: dict[str, str] | None,
         geniex_version: str | None,
         eval_prompts: list[str] | None,
         run_perf: bool,
@@ -423,6 +458,7 @@ def add_geniex_bundle_entries(
     device_logs_dir: str,
     context_lengths: list[int] = DEFAULT_CONTEXT_LENGTHS,
     qairt_bundles: dict[str, str] | None = None,
+    qairt_bundle_urls: dict[str, str] | None = None,
     geniex_version: str | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
@@ -432,7 +468,9 @@ def add_geniex_bundle_entries(
     ``dest_dir`` must outlive the returned entries -- callers zip/upload them
     before it is cleaned up. ``device_logs_dir`` is the on-device log
     directory name (see :func:`device_logs_dir_name`) rendered into the
-    bundle's device scripts.
+    bundle's device scripts. ``qairt_bundle_urls`` (keyed like ``qairt_bundles``)
+    holds presigned S3 GET URLs the Android handler curls on-device instead of
+    shipping weights through the artifact zip.
     """
     curr_dirname = os.path.dirname(os.path.abspath(__file__))
     handler = _get_artifact_handler(platform)
@@ -444,6 +482,7 @@ def add_geniex_bundle_entries(
         context_lengths,
         plugin,
         qairt_bundles,
+        qairt_bundle_urls,
         geniex_version,
         eval_prompts,
         run_perf,
@@ -718,6 +757,27 @@ def _build_matrix_rows(
     return matrix_rows, qairt_bundles
 
 
+def get_geniex_qairt_bundle_url(
+    model_id: str, precision: Precision, chipset: str
+) -> str:
+    """Mint a presigned S3 GET URL for the current geniex_qairt release asset.
+
+    Re-resolves the asset fresh (same lookup as :func:`fetch_geniex_qairt_bundle`
+    in run_geniex_bench_benchmarks.py) so a stale/failed compile is never
+    signed -- always whatever ``load_release_assets_for_model`` currently
+    selects.
+    """
+    assets = load_release_assets_for_model(model_id)
+    asset = assets.get_asset(precision, chipset, ScorecardProfilePath.GENIEX_QAIRT)
+    if asset is None or asset.s3_key is None:
+        raise RuntimeError(
+            f"No geniex_qairt release asset for {model_id!r} precision={precision} "
+            f"chipset={chipset!r}; cannot mint a presigned download URL."
+        )
+    bucket = get_qaihm_s3(QAIHM_PRIVATE_S3_BUCKET)[0]
+    return get_presigned_download_url(bucket, asset.s3_key)
+
+
 def submit_geniex_bench(
     backend: DeviceFarm,
     hub_device_name: str,
@@ -731,6 +791,7 @@ def submit_geniex_bench(
     llamacpp_quant: str | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
+    qairt_bundle_urls: dict[str, str] | None = None,
 ) -> tuple[str, list[str], dict[str, str]]:
     """Upload artifacts and submit a geniex-bench job, returning the id.
 
@@ -741,7 +802,10 @@ def submit_geniex_bench(
     eval_prompts set => accuracy collection: staged raw into the bundle for
     one ``geniex-bench --accuracy`` pass, which applies the bundle's own chat
     template on-device. run_perf=False submits an eval-only job (no TPS/TTFT
-    sweep).
+    sweep). A presigned S3 GET URL per model in ``qairt_bundles``, keyed the
+    same way, lets the Android handler curl the bundle on-device instead of
+    shipping weights through the artifact zip; callers mint these fresh per
+    submit/resubmit via :func:`get_geniex_qairt_bundle_url`.
     """
     if plugin == "llama_cpp" and not llamacpp_quant:
         raise ValueError("llamacpp_quant is required when plugin='llama_cpp'.")
@@ -766,6 +830,7 @@ def submit_geniex_bench(
             device_logs_dir,
             context_lengths=context_lengths,
             qairt_bundles=qairt_bundles or None,
+            qairt_bundle_urls=qairt_bundle_urls or None,
             geniex_version=geniex_version,
             eval_prompts=eval_prompts,
             run_perf=run_perf,

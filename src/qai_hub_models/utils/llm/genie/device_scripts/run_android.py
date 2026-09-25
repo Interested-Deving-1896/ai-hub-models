@@ -30,6 +30,31 @@ def _set_package_verifier(enabled: bool) -> None:
         )
 
 
+def _preflight_url(url: str) -> None:
+    # We've seen QDC SM8750 QRD boot with wifi degraded (logcat shows WifiHAL
+    # fatal_event + ENETDOWN), in which case the on-device curls would hang
+    # and the test would silently "pass". A presigned S3 URL's signature is
+    # bound to the HTTP method, so HEAD gets a 403; `-r 0-0` keeps it a GET.
+    preflight = subprocess.run(
+        [
+            "adb",
+            "shell",
+            f"curl -sS -o /dev/null -w '%{{http_code}}' --max-time 15 -r 0-0 '{url}'",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    http_code = preflight.stdout.strip()
+    if preflight.returncode != 0 or not http_code.startswith(("2", "3")):
+        pytest.fail(
+            f"Device cannot reach {url.split('?', 1)[0]} "
+            f"(rc={preflight.returncode}, http_code={http_code!r}, "
+            f"stderr={preflight.stderr!r}). Likely QDC device-side wifi "
+            "failure — file a QDC infra ticket and re-run."
+        )
+
+
 class TestGenie:
     @pytest.fixture
     def driver(self) -> webdriver.Remote | None:
@@ -51,6 +76,7 @@ class TestGenie:
         # script to set environment variables
         # run genie-t2t-run on the device
         num_trials = int("<<NUM_TRIALS>>")
+        genie_bundle_url = "<<GENIE_BUNDLE_URL>>"
         trial_commands = []
         for i in range(num_trials):
             trial_commands.append(
@@ -61,6 +87,25 @@ class TestGenie:
             )
         full_genie_command = " && ".join(trial_commands)
         qairt_path = "/data/local/tmp/qairt/<<QAIRT_VERSION>>"
+        if genie_bundle_url:
+            genie_bundle_download_block = f"""# Always re-download: dedicated-pool devices are reused, so a partial extract
+# from a previous job would otherwise silently corrupt this run.
+rm -rf /data/local/tmp/genie_bundle /data/local/tmp/_genie_dl
+mkdir -p /data/local/tmp/_genie_dl
+curl -L --fail --max-time 1800 --retry 3 --retry-delay 5 \\
+    --output /data/local/tmp/genie_bundle.zip "{genie_bundle_url}"
+unzip -q /data/local/tmp/genie_bundle.zip -d /data/local/tmp/_genie_dl
+rm -f /data/local/tmp/genie_bundle.zip
+GENIE_EXTRACTED=$(find /data/local/tmp/_genie_dl -mindepth 1 -maxdepth 1 -type d | head -n1)
+mv "$GENIE_EXTRACTED" /data/local/tmp/genie_bundle
+rm -rf /data/local/tmp/_genie_dl
+if [ -d /data/local/tmp/eval_prompts ]; then
+    mv /data/local/tmp/eval_prompts /data/local/tmp/genie_bundle/prompts
+fi"""
+        else:
+            # Carve-out fallback: genie_bundle (weights included) was already
+            # pushed host-side via adb push, nothing to download.
+            genie_bundle_download_block = ""
         genie_script = f"""set -e
 # We pipe genie output through `tee` (below) so it shows up on adb stdout
 # (and thus in the captured proc.stdout) even when a failed QDC job never
@@ -70,6 +115,9 @@ set -o pipefail
 # Drop per-job state on exit (dedicated-pool devices are reused).
 cleanup_device() {{
     rm -rf /data/local/tmp/genie_bundle \\
+           /data/local/tmp/genie_bundle.zip \\
+           /data/local/tmp/_genie_dl \\
+           /data/local/tmp/eval_prompts \\
            /data/local/tmp/qairt \\
            /data/local/tmp/qairt.zip 2>/dev/null || true
 }}
@@ -89,9 +137,8 @@ genie_retry() {{
     fi
     rm -f "$tmp_out"
 }}
+{genie_bundle_download_block}
 cd /data/local/tmp/genie_bundle
-# Always re-download: dedicated-pool devices are reused, so a partial extract
-# from a previous job would otherwise silently corrupt this run.
 rm -rf /data/local/tmp/qairt
 echo "=== Pre-download connectivity check ==="
 echo "Pinging google.com before QAIRT SDK download..."
@@ -131,41 +178,41 @@ if [ -d "$PROMPT_DIR" ]; then
     done
 fi
 """
-        # Push the genie_bundle directory to the device. QDC stages the
-        # extracted test package under /qdc/appium; AWS Device Farm's custom
-        # test environment extracts it under $DEVICEFARM_TEST_PACKAGE_PATH
-        # instead (see aws_test_spec.yaml, which sets the override).
+        # QDC stages the extracted test package under /qdc/appium; AWS Device
+        # Farm's custom test environment extracts it under
+        # $DEVICEFARM_TEST_PACKAGE_PATH instead (see aws_test_spec.yaml,
+        # which sets the override).
         host_artifact_root = os.environ.get("QAIHM_HOST_ARTIFACT_ROOT", "/qdc/appium")
-        subprocess.run(
-            ["adb", "push", f"{host_artifact_root}/genie_bundle/", "/data/local/tmp"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-
-        # Preflight: bail fast if the device can't reach the QAIRT download
-        # host. We've seen QDC SM8750 QRD boot with wifi degraded (logcat
-        # shows WifiHAL fatal_event + ENETDOWN), in which case the curl below
-        # would hang for ~20 minutes and the test would silently "pass".
-        preflight = subprocess.run(
-            [
-                "adb",
-                "shell",
-                "curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "
-                "https://softwarecenter.qualcomm.com/",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        http_code = preflight.stdout.strip()
-        if preflight.returncode != 0 or not http_code.startswith(("2", "3")):
-            pytest.fail(
-                "Device cannot reach softwarecenter.qualcomm.com "
-                f"(rc={preflight.returncode}, http_code={http_code!r}, "
-                f"stderr={preflight.stderr!r}). Likely QDC device-side wifi "
-                "failure — file a QDC infra ticket and re-run."
+        if genie_bundle_url:
+            # The genie_bundle itself is curled directly on-device (see
+            # genie_script below); only the small eval-prompt files (if any)
+            # are staged host-side and need pushing.
+            eval_prompts_src = f"{host_artifact_root}/eval_prompts"
+            if os.path.isdir(eval_prompts_src):
+                subprocess.run(
+                    ["adb", "push", f"{eval_prompts_src}/", "/data/local/tmp"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+        else:
+            # Carve-out fallback (e.g. no presigned URL available): push the
+            # full genie_bundle directory, weights included, as before.
+            subprocess.run(
+                [
+                    "adb",
+                    "push",
+                    f"{host_artifact_root}/genie_bundle/",
+                    "/data/local/tmp",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
             )
+
+        _preflight_url("https://softwarecenter.qualcomm.com/")
+        if genie_bundle_url:
+            _preflight_url(genie_bundle_url)
 
         # Run the shell script on the device. adb shell does not propagate the
         # remote exit code, so on-device failures can't be detected here; the

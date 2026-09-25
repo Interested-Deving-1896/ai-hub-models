@@ -55,6 +55,7 @@ from qai_hub_models.utils.llm.eval_io import (
 from qai_hub_models.utils.llm.geniex.jobs import (
     GenieXBenchMetrics,
     collect_geniex_bench,
+    get_geniex_qairt_bundle_url,
     submit_geniex_bench,
 )
 from qai_hub_models.utils.path_helpers import MODEL_IDS
@@ -344,6 +345,11 @@ def _submit_one(
 
     job_name = f"geniex-bench {plugin} {model_id}"
     backend = get_device_farm(sd)
+    qairt_bundle_urls = (
+        {model_id: get_geniex_qairt_bundle_url(model_id, precision, sd.chipset)}
+        if plugin == "qairt"
+        else None
+    )
     job_id, _, _ = submit_geniex_bench(
         backend,
         hub_device_name=sd.reference_device_name,
@@ -357,6 +363,7 @@ def _submit_one(
         llamacpp_quant=llamacpp_quant,
         eval_prompts=eval_prompts,
         run_perf=run_perf,
+        qairt_bundle_urls=qairt_bundle_urls,
     )
     runtime = "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
     key = make_key(model_id, str(precision), runtime, sd.name)
@@ -416,6 +423,14 @@ def _collect_one(
 
     def _resubmit() -> str:
         model_ref, ctx_list, llamacpp_quant = _resolve_resubmit_args()
+        # Re-derive the presigned URL fresh on every resubmit -- never reuse
+        # one from a previous attempt, so a just-recompiled asset (not a
+        # stale one) is always what's signed.
+        qairt_bundle_urls = (
+            {model_id: get_geniex_qairt_bundle_url(model_id, precision, sd.chipset)}
+            if plugin == "qairt"
+            else None
+        )
         new_job_id, _, _ = submit_geniex_bench(
             backend,
             hub_device_name=sd.reference_device_name,
@@ -429,6 +444,7 @@ def _collect_one(
             llamacpp_quant=llamacpp_quant,
             eval_prompts=eval_prompts,
             run_perf=run_perf,
+            qairt_bundle_urls=qairt_bundle_urls,
         )
         return new_job_id
 
