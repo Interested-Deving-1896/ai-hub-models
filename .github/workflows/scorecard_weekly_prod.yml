@@ -28,12 +28,8 @@ jobs:
             id: pick
             run: |
               source "${{ env.VENV_PATH }}/bin/activate"
-              # Alternate LLM groups by ISO-week parity: odd -> week1, even -> week2.
-              if [ "$(( $(date -u +%V | sed 's/^0*//') % 2 ))" -eq 1 ]; then
-                MODELS="${BASE_MODELS},llm_week1"
-              else
-                MODELS="${BASE_MODELS},llm_week2"
-              fi
+              # Temporarily run both LLM groups instead of alternating by ISO-week parity.
+              MODELS="${BASE_MODELS},llm_week1,llm_week2"
               # On a geniex_qairt QAIRT bump, also rebuild every downloadable LLM.
               if ! CHANGED="$(python -m qai_hub_models.scripts.qairt_geniex_changed)"; then
                 echo "::error::qairt_geniex_changed failed"
