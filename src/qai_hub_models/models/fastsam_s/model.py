@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing_extensions import Self
 
+from qai_hub_models import Precision
 from qai_hub_models.models.templates.fastsam.model import Fast_SAM
 
 MODEL_ID = __name__.split(".")[-2]
@@ -22,3 +23,7 @@ class FastSAM_S(Fast_SAM):
         # It seems that we're using __func__ directly to ensure that the
         # returned object is a FastSAM_S rather than a FastSAM.
         return Fast_SAM.from_pretrained.__func__(FastSAM_S, ckpt_name)  # type: ignore[attr-defined]
+
+    def get_hub_litemp_percentage(self, precision: Precision) -> float:
+        """Returns the Lite-MP percentage value for the specified mixed precision quantization."""
+        return 30
