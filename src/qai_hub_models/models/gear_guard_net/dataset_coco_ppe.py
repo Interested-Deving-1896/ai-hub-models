@@ -20,6 +20,7 @@ from qai_hub_models.utils.base_dataset import (
     DatasetMetadata,
     DatasetSplit,
 )
+from qai_hub_models.utils.download import download_many_urls
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
     resize_pad,
@@ -167,10 +168,6 @@ class CocoPPEDataset(BaseDataset):
         ValueError
             If no target images are found in the dataset after filtering.
         """
-        # This requires extra dependencies that we don't want to require
-        # For models that only need the validation set
-        from qai_hub_models.datasets.coco.coco_utils import download_many_urls
-
         asyncio.run(
             download_many_urls(self.chosen_samples, self.data_path, "filename", "url")
         )

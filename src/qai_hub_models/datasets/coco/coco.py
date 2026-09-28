@@ -22,6 +22,7 @@ from qai_hub_models.utils.base_dataset import (
     DatasetMetadata,
     DatasetSplit,
 )
+from qai_hub_models.utils.download import download_many_urls
 from qai_hub_models.utils.image_processing import (
     app_to_net_image_inputs,
     resize_pad,
@@ -183,10 +184,6 @@ class CocoDatasetBase(BaseDataset, CocoDetection):
         COCO_ANNOTATIONS.fetch(extract=True)
 
         if self.split == DatasetSplit.TRAIN:
-            # This requires extra dependencies that we don't want to require
-            # For models that only need the validation set
-            from qai_hub_models.datasets.coco.coco_utils import download_many_urls
-
             self._resolve_train_samples()
             asyncio.run(
                 download_many_urls(

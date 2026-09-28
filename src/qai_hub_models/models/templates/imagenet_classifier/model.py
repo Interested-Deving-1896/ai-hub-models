@@ -14,6 +14,7 @@ from typing_extensions import Self
 
 from qai_hub_models.configs.model_metadata import ModelMetadata
 from qai_hub_models.datasets.imagenet import ImagenetDataset, ImagenetteDataset
+from qai_hub_models.datasets.open_images import OpenImagesV7Dataset
 from qai_hub_models.models.templates.imagenet_classifier.classification_evaluator import (
     ClassificationEvaluator,
 )
@@ -154,7 +155,7 @@ class ImagenetClassifier(BaseModel):
         return [ImagenetDataset, ImagenetteDataset]
 
     def get_calibration_dataset_cls(self) -> type[BaseDataset]:
-        return ImagenetteDataset
+        return OpenImagesV7Dataset
 
     def write_supplementary_files(
         self,
