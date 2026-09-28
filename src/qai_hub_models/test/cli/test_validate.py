@@ -265,7 +265,7 @@ class TestRequirementsTxt:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "requirements.txt").write_text("foo==1.0\nbar>=2.0\n")
-        monkeypatch.setattr(validate_mod, "_load_base_package_pins", dict)
+        monkeypatch.setattr(validate_mod, "_load_requirement_pins", lambda path: {})
         report = Report()
         _check_requirements_txt(tmp_path, report)
         statuses = {r.name: r.status for r in report.rows}
@@ -276,7 +276,7 @@ class TestRequirementsTxt:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "requirements.txt").write_text("foo\n")
-        monkeypatch.setattr(validate_mod, "_load_base_package_pins", dict)
+        monkeypatch.setattr(validate_mod, "_load_requirement_pins", lambda path: {})
         report = Report()
         _check_requirements_txt(tmp_path, report)
         row = next(
@@ -291,8 +291,8 @@ class TestRequirementsTxt:
         (tmp_path / "requirements.txt").write_text("torch==2.99\n")
         monkeypatch.setattr(
             validate_mod,
-            "_load_base_package_pins",
-            lambda: {"torch": SpecifierSet(">=2.4,<=2.11.0")},
+            "_load_requirement_pins",
+            lambda path: {"torch": SpecifierSet(">=2.4,<=2.11.0")},
         )
         report = Report()
         _check_requirements_txt(tmp_path, report)
@@ -303,14 +303,61 @@ class TestRequirementsTxt:
         assert "torch" in row.detail
         assert "2.99" in row.detail
 
+    def test_standalone_ignores_global_requirements_only_pins(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A standalone recipe may move a package the base package never pins.
+
+        transformers is the real case: absent from the base package's
+        requirements.txt, but pinned in global_requirements.txt because many
+        in-tree models agree on one version. A standalone recipe brings its own
+        environment, so that agreement is not binding on it.
+        """
+        (tmp_path / "requirements.txt").write_text("transformers==5.7.0\n")
+        base = tmp_path / "base.txt"
+        base.write_text("torch>=2.4,<=2.11.0\n")
+        globals_ = tmp_path / "global.txt"
+        globals_.write_text("torch>=2.4,<=2.11.0\ntransformers==4.56.2\n")
+        monkeypatch.setattr(validate_mod, "_BASE_REQUIREMENTS_PATH", base)
+        monkeypatch.setattr(validate_mod, "_GLOBAL_REQUIREMENTS_PATH", globals_)
+        monkeypatch.setattr(validate_mod, "_is_in_tree", lambda source_dir: False)
+        validate_mod._load_requirement_pins.cache_clear()
+        report = Report()
+        _check_requirements_txt(tmp_path, report)
+        row = next(
+            r for r in report.rows if r.name == "requirements.txt vs. base package"
+        )
+        assert row.status is Status.PASS
+
+    def test_in_tree_still_held_to_global_requirements(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The same pin is still a conflict for an in-tree recipe."""
+        (tmp_path / "requirements.txt").write_text("transformers==5.7.0\n")
+        base = tmp_path / "base.txt"
+        base.write_text("torch>=2.4,<=2.11.0\n")
+        globals_ = tmp_path / "global.txt"
+        globals_.write_text("torch>=2.4,<=2.11.0\ntransformers==4.56.2\n")
+        monkeypatch.setattr(validate_mod, "_BASE_REQUIREMENTS_PATH", base)
+        monkeypatch.setattr(validate_mod, "_GLOBAL_REQUIREMENTS_PATH", globals_)
+        monkeypatch.setattr(validate_mod, "_is_in_tree", lambda source_dir: True)
+        validate_mod._load_requirement_pins.cache_clear()
+        report = Report()
+        _check_requirements_txt(tmp_path, report)
+        row = next(
+            r for r in report.rows if r.name == "requirements.txt vs. base package"
+        )
+        assert row.status is Status.FAIL
+        assert "global_requirements.txt" in row.detail
+
     def test_compatible_pin_passes(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         (tmp_path / "requirements.txt").write_text("torch==2.5\n")
         monkeypatch.setattr(
             validate_mod,
-            "_load_base_package_pins",
-            lambda: {"torch": SpecifierSet(">=2.4,<=2.11.0")},
+            "_load_requirement_pins",
+            lambda path: {"torch": SpecifierSet(">=2.4,<=2.11.0")},
         )
         report = Report()
         _check_requirements_txt(tmp_path, report)

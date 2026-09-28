@@ -5,9 +5,11 @@
 """``qai-hub-models validate <target>`` — recipe report card.
 
 Runs every check that can be performed locally against a recipe folder:
-folder shape, manifest schema, requirements.txt vs. the base package's
-pin set, model imports and torch forward pass, App instantiation, and
-URL reachability against every URL declared in the manifest.
+folder shape, manifest schema, requirements.txt against the pins a recipe
+of its kind must respect (global_requirements.txt in-tree, the base
+package's own requirements.txt standalone), model imports and torch
+forward pass, App instantiation, and URL reachability against every URL
+declared in the manifest.
 
 No AI Hub workbench calls, no device, no dataset. Exit 0 iff every check
 passes; WARNs do not fail.
@@ -458,15 +460,16 @@ def _check_external_repo_shas(manifest: QAIHMModelManifest, report: Report) -> N
 
 
 _GLOBAL_REQUIREMENTS_PATH = QAIHM_PACKAGE_ROOT / "global_requirements.txt"
+_BASE_REQUIREMENTS_PATH = QAIHM_PACKAGE_ROOT / "requirements.txt"
 
 
 @cache
-def _load_base_package_pins() -> dict[str, SpecifierSet]:
-    """Parse the base package's global_requirements.txt into ``{name: SpecifierSet}``."""
+def _load_requirement_pins(path: Path) -> dict[str, SpecifierSet]:
+    """Parse a requirements file into ``{lowercased package name: SpecifierSet}``."""
     pins: dict[str, SpecifierSet] = {}
-    if not _GLOBAL_REQUIREMENTS_PATH.exists():
+    if not path.exists():
         return pins
-    for line in _GLOBAL_REQUIREMENTS_PATH.read_text().splitlines():
+    for line in path.read_text().splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
@@ -495,7 +498,7 @@ def _check_requirements_txt(source_dir: Path, report: Report) -> None:
     req_path = source_dir / "requirements.txt"
     if not req_path.exists():
         return
-    base = _load_base_package_pins()
+    base, constraint_label = _constraint_pins(source_dir)
     unpinned: list[str] = []
     conflicts: list[str] = []
     parse_errors: list[str] = []
@@ -515,7 +518,7 @@ def _check_requirements_txt(source_dir: Path, report: Report) -> None:
         if not _specifier_is_satisfiable(merged):
             conflicts.append(
                 f"{req.name}: recipe wants {req.specifier}, "
-                f"base package wants {base_spec}"
+                f"{constraint_label} wants {base_spec}"
             )
 
     if parse_errors:
@@ -607,13 +610,30 @@ def _extract_pip_command_pkgs(cmd: str) -> list[str]:
     return names
 
 
-def _check_pip_commands(manifest: QAIHMModelManifest, report: Report) -> None:
+def _constraint_pins(source_dir: Path) -> tuple[dict[str, SpecifierSet], str]:
+    """Pins a recipe must not contradict, and the label naming where they came from.
+
+    In-tree recipes answer to global_requirements.txt, whose contract is that one
+    environment serves every model in the package. Standalone recipes ship their own
+    environment, so only the base package's install requirements bind them.
+    """
+    if _is_in_tree(source_dir):
+        return (
+            _load_requirement_pins(_GLOBAL_REQUIREMENTS_PATH),
+            "global_requirements.txt",
+        )
+    return _load_requirement_pins(_BASE_REQUIREMENTS_PATH), "base package"
+
+
+def _check_pip_commands(
+    source_dir: Path, manifest: QAIHMModelManifest, report: Report
+) -> None:
     commands = list(manifest.pre_pip_install_commands) + list(
         manifest.post_pip_install_commands
     )
     if not commands:
         return
-    base = _load_base_package_pins()
+    base, constraint_label = _constraint_pins(source_dir)
     conflicts: list[str] = []
     for cmd in commands:
         for name in _extract_pip_command_pkgs(cmd.command):
@@ -629,7 +649,7 @@ def _check_pip_commands(manifest: QAIHMModelManifest, report: Report) -> None:
                 ):
                     conflicts.append(
                         f"{name}: manifest command wants {req.specifier}, "
-                        f"base package wants {base_spec}"
+                        f"{constraint_label} wants {base_spec}"
                     )
             except (InvalidRequirement, StopIteration):
                 continue
@@ -1630,7 +1650,7 @@ def _run_all_checks(
     if manifest is not None:
         _check_external_repos_init(source_dir, manifest, report)
         _check_requirements_txt(source_dir, report)
-        _check_pip_commands(manifest, report)
+        _check_pip_commands(source_dir, manifest, report)
 
     if not install_ok:
         _skip_downstream_on_install_failure(report)
