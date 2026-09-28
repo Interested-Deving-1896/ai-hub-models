@@ -35,11 +35,13 @@ HOST_BUNDLE = f"{HOST_STAGE}/bundle"
 DEVICE_BUNDLE = "/data/local/tmp/pkg-geniex"
 DEVICE_QAIRT_BUNDLES = f"{DEVICE_BUNDLE}/qairt_bundles"
 DEVICE_MM_CACHE = "/data/local/tmp/geniex-cache"
-DEVICE_LOGS_DIR = "/data/local/tmp/{DEVICE_LOGS_DIR}"
-DEVICE_RESULTS = f"{DEVICE_LOGS_DIR}/results"
+# Must not share its name with the host-side log-dir placeholder: that replace
+# would also rewrite every f-string reference to it into a relative path.
+DEVICE_LOGS = "/data/local/tmp/{DEVICE_LOGS_DIR}"
+DEVICE_RESULTS = f"{DEVICE_LOGS}/results"
 DEVICE_PROMPTS = "/data/local/tmp/eval_prompts"
-DEVICE_EVAL_OUT = f"{DEVICE_LOGS_DIR}/geniex_eval_outputs.txt"
-DEVICE_EVAL_ERR = f"{DEVICE_LOGS_DIR}/geniex_eval_stderr.txt"
+DEVICE_EVAL_OUT = f"{DEVICE_LOGS}/geniex_eval_outputs.txt"
+DEVICE_EVAL_ERR = f"{DEVICE_LOGS}/geniex_eval_stderr.txt"
 
 CTXS = tuple(int(c) for c in "{CTX_LIST}".split(","))
 ANDROID_BENCH_URL = "{ANDROID_BENCH_URL}"
@@ -218,7 +220,7 @@ def _run_bench(ctx: int, env: str, tsv_path: str, chipset: str) -> int:
         f"--matrix-file {tsv_path} --output-json-dir {DEVICE_RESULTS} -r 3 "
         f"{size_flags} "
         f"--mm-data-dir {DEVICE_MM_CACHE} --chipset '{chipset}' "
-        f"2>>{DEVICE_LOGS_DIR}/geniex_bench_stderr.log"
+        f"2>>{DEVICE_LOGS}/geniex_bench_stderr.log"
     )
     res = adb(cmd, check=False)
     if res.returncode == 0:
@@ -292,8 +294,8 @@ def _run_eval(
     for fn in prompt_files:
         idx = fn[len("prompt_") : -len(".txt")]
         pf = f"{DEVICE_PROMPTS}/{fn}"
-        perr = f"{DEVICE_LOGS_DIR}/geniex_eval_prompt_stderr.txt"
-        pout = f"{DEVICE_LOGS_DIR}/geniex_eval_prompt_stdout.txt"
+        perr = f"{DEVICE_LOGS}/geniex_eval_prompt_stderr.txt"
+        pout = f"{DEVICE_LOGS}/geniex_eval_prompt_stdout.txt"
         # Each attempt writes to fresh per-prompt temp files on device; the
         # accepted attempt's stdout is concatenated under the ===EVAL_IDX===
         # marker exactly once so retries do not concatenate two generations at

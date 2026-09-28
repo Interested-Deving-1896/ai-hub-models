@@ -10,6 +10,7 @@ import contextlib
 import fcntl
 import os
 import pathlib
+import re
 import shutil
 import sys
 import tempfile
@@ -32,6 +33,15 @@ DEFAULT_JOB_TIMEOUT = 21600  # 6 hours
 # Log-upload poll budget when salvaging logs from an already-failed job. Short on
 # purpose: the job is lost either way, so waiting out DEFAULT_JOB_TIMEOUT is wasted.
 FAILED_JOB_LOG_TIMEOUT = 300  # 5 minutes
+
+
+def sanitize_job_id(job_id: str) -> str:
+    """Make a job ID safe as a single path component.
+
+    AWS Device Farm job IDs are ARNs (``arn:aws:devicefarm:...:run:.../...``):
+    "/" would nest into missing directories, and upload-artifact rejects ":".
+    """
+    return re.sub(r"[:/\\]", "_", job_id)
 
 
 # ---- zip helpers (shared by artifact staging and log archiving) -----------
@@ -508,9 +518,8 @@ class DeviceFarm(ABC):
                         shutil.move(target, dest)
                     saved += 1
                 if saved:
-                    create_zip(
-                        os.path.join(save_logs_dir, f"{label or job_id}.zip"), staged
-                    )
+                    zip_name = sanitize_job_id(label or job_id)
+                    create_zip(os.path.join(save_logs_dir, f"{zip_name}.zip"), staged)
         except Exception as err:
             # Type only, never the message: backend errors may embed secrets.
             print(

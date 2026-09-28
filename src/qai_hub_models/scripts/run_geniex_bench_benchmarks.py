@@ -8,7 +8,6 @@ import argparse
 import csv
 import json
 import os
-import re
 import shutil
 import sys
 from collections.abc import Iterator
@@ -47,6 +46,7 @@ from qai_hub_models.utils.devicefarm.devicefarm import (
     load_jobs,
     make_key,
     poll_and_retry,
+    sanitize_job_id,
     save_job,
 )
 from qai_hub_models.utils.llm.eval_io import (
@@ -274,16 +274,12 @@ def _device_logs_dir(
     """Structured path for persisted device log zips (QDC or AWS Device Farm).
 
     Keyed on job_id so a retried job's logs don't clobber the prior attempt.
-    QDC's job_id is a plain opaque string, but AWS Device Farm's is a full
-    ARN (``arn:aws:devicefarm:...:run:.../...``); sanitize it since
-    actions/upload-artifact rejects colons in artifact paths.
     """
-    safe_job_id = re.sub(r"[:/\\]", "_", job_id)
     return os.path.join(
         save_dir_root,
         "device_logs",
         model_id,
-        f"{precision}_{device_name}_{runtime}_{safe_job_id}",
+        f"{precision}_{device_name}_{runtime}_{sanitize_job_id(job_id)}",
     )
 
 

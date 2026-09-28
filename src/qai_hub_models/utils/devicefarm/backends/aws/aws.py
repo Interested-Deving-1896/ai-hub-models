@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import sys
 import tempfile
 import time
@@ -48,6 +49,11 @@ UPLOAD_PUT_RETRY_BACKOFF_CAP = 120
 # still-progressing upload won't spuriously time out -- only a stalled
 # connection that stops moving bytes for this long will.
 UPLOAD_PUT_TIMEOUT = (30, 60)
+# Same (connect, read) semantics as UPLOAD_PUT_TIMEOUT, for artifact downloads.
+DOWNLOAD_TIMEOUT = (30, 60)
+# Presigned URLs carry their credentials in the query string. The test spec
+# log is archived as a CI artifact, so strip them (e.g. from a failed curl).
+_PRESIGNED_QUERY_RE = re.compile(rb"(https?://[^\s?'\"]+)\?[^\s'\"]+")
 _RETRYABLE_HTTP_STATUS_CODES = (500, 502, 503, 504)
 
 
@@ -100,6 +106,9 @@ def _put_file_with_retry(url: str, file_path: str) -> None:
 # devicefarm.device_logs_dir_name -- while AWS has no such requirement and
 # does its own adb pull of a name it controls.
 HOST_DEVICE_LOGS_SUBDIR = "AWS_logs"
+# Archive name for the job's TESTSPEC_OUTPUT artifact (the full test spec
+# console log, including pytest output), the AWS analogue of QDC's job logs.
+TESTSPEC_LOG_NAME = "test_spec_output.txt"
 
 _DEVICE_SCRIPTS_DIR = Path(__file__).parent / "device_scripts"
 _PLACEHOLDER_APK = _DEVICE_SCRIPTS_DIR / "placeholder.apk"
@@ -335,35 +344,60 @@ class AwsDeviceFarm(DeviceFarm):
             raise RuntimeError(f"No jobs found under run {run_arn}")
         return str(jobs[0]["arn"])
 
-    def _download_customer_artifacts_zip(self, run_arn: str) -> bytes | None:
+    def _download_artifacts(self, run_arn: str) -> tuple[bytes | None, bytes | None]:
+        """Return ``(customer_artifacts_zip, testspec_output)``; either may be None."""
         job_arn = self._job_arn(run_arn)
+        artifacts: list[dict] = []
         for attempt in range(ARTIFACT_LISTING_MAX_RETRIES):
             artifacts = self.client.list_artifacts(arn=job_arn, type="FILE")[
                 "artifacts"
             ]
-            url = next(
-                (a["url"] for a in artifacts if a.get("name") == "Customer Artifacts"),
-                None,
-            )
-            if url is not None:
-                resp = requests.get(url)
-                resp.raise_for_status()
-                return resp.content
+            if any(a.get("name") == "Customer Artifacts" for a in artifacts):
+                break
             if attempt < ARTIFACT_LISTING_MAX_RETRIES - 1:
                 time.sleep(ARTIFACT_LISTING_RETRY_DELAY)
-        return None
+
+        zip_bytes = None
+        zip_url = next(
+            (a["url"] for a in artifacts if a.get("name") == "Customer Artifacts"),
+            None,
+        )
+        if zip_url is not None:
+            resp = requests.get(zip_url, timeout=DOWNLOAD_TIMEOUT)
+            resp.raise_for_status()
+            zip_bytes = resp.content
+
+        testspec = None
+        testspec_url = next(
+            (a["url"] for a in artifacts if a.get("type") == "TESTSPEC_OUTPUT"),
+            None,
+        )
+        if testspec_url is not None:
+            # Diagnostic only: losing it must not discard the device logs.
+            try:
+                resp = requests.get(testspec_url, timeout=DOWNLOAD_TIMEOUT)
+                resp.raise_for_status()
+                testspec = _PRESIGNED_QUERY_RE.sub(rb"\1?<redacted>", resp.content)
+            except requests.RequestException as err:
+                print(
+                    f"[AwsDeviceFarm] could not fetch test spec output "
+                    f"({type(err).__name__}); continuing without it.",
+                    file=sys.stderr,
+                )
+        return zip_bytes, testspec
 
     def get_job_log_files(
         self, run_arn: str, wait_for_logs: bool = False
     ) -> list[AwsLogFile]:
         """Download+extract the run's Customer Artifacts zip once, then list
-        every file under the pulled ``AWS_logs`` directory.
+        every file under the pulled ``AWS_logs`` directory, plus the test spec
+        output (the job's full host-side console log) as ``TESTSPEC_LOG_NAME``.
 
         One entry per on-device file (not one entry for the whole zip) so
         callers' per-filename matching (e.g. "genie" in filename,
         "profile*.json") works unmodified.
         """
-        zip_bytes = self._download_customer_artifacts_zip(run_arn)
+        zip_bytes, testspec = self._download_artifacts(run_arn)
         extract_root = tempfile.mkdtemp(prefix="aws_devicefarm_artifacts_")
         if zip_bytes is not None:
             with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
@@ -376,13 +410,18 @@ class AwsDeviceFarm(DeviceFarm):
             HOST_DEVICE_LOGS_SUBDIR,
         )
         self._extracted_log_dir = device_logs_dir
-        if not os.path.isdir(device_logs_dir):
-            return []
         files: list[AwsLogFile] = []
         for root, _, filenames in os.walk(device_logs_dir):
             for fn in filenames:
                 rel = os.path.relpath(os.path.join(root, fn), device_logs_dir)
                 files.append(AwsLogFile(filename=rel.replace(os.sep, "/")))
+        # Callers waiting for parseable logs treat an empty listing as a
+        # retryable empty-logs job; the test spec log alone must not mask that.
+        if testspec is not None and (files or not wait_for_logs):
+            os.makedirs(device_logs_dir, exist_ok=True)
+            with open(os.path.join(device_logs_dir, TESTSPEC_LOG_NAME), "wb") as f:
+                f.write(testspec)
+            files.append(AwsLogFile(filename=TESTSPEC_LOG_NAME))
         return files
 
     def download_job_log_files(self, filename: str, target_path: str) -> None:

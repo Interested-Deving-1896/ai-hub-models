@@ -17,7 +17,8 @@ import pytest
 from appium import webdriver
 from appium.options.common import AppiumOptions
 
-DEVICE_LOGS_DIR = "/data/local/tmp/{DEVICE_LOGS_DIR}"
+# Named apart from the log-dir placeholder; see test_geniex_bench_android.py.
+DEVICE_LOGS = "/data/local/tmp/{DEVICE_LOGS_DIR}"
 
 
 def _make_options() -> AppiumOptions:
@@ -67,11 +68,11 @@ def _push_results_xml(xml_path: str) -> None:
     if not os.path.exists(xml_path):
         return
     subprocess.run(
-        ["adb", "shell", f"mkdir -p {DEVICE_LOGS_DIR}"],
+        ["adb", "shell", f"mkdir -p {DEVICE_LOGS}"],
         check=False,
     )
     subprocess.run(
-        ["adb", "push", xml_path, f"{DEVICE_LOGS_DIR}/results.xml"],
+        ["adb", "push", xml_path, f"{DEVICE_LOGS}/results.xml"],
         check=False,
     )
 
