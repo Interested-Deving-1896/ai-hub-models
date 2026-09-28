@@ -170,7 +170,7 @@ if [ "$RUN_EVAL" = "1" ]; then
       timeout {EVAL_TIMEOUT_S} ./bin/geniex-bench --plugin "$e_plugin" --device "$e_dev" \
         -m "$e_model" --accuracy --prompt-file "$prompt_file" \
         --system-prompt "$SYSTEM_PROMPT" --no-think \
-        -c {EVAL_CTX} -n {EVAL_N_GEN} --mm-data-dir "$MM_CACHE" \
+        -c {EVAL_CTX} -n {EVAL_N_GEN} --seed {EVAL_SEED} --mm-data-dir "$MM_CACHE" \
         --chipset "{CHIPSET}"; then
       eval_ran=$((eval_ran + 1))
     fi

@@ -75,6 +75,9 @@ PROMPT_DIR=/data/local/tmp/TestContent/genie_bundle/prompts
 EVAL_OUTPUT_FILE=/data/local/tmp/{DEVICE_LOGS_DIR}/eval_outputs.txt
 
 if [ -d "$PROMPT_DIR" ]; then
+    # The perf sweep above left the seed at {NUM_TRIALS}; reset to the bundle's
+    # nominal default so eval isn't silently run at a different seed.
+    sed -i 's/"seed": [0-9]*/"seed": 42/' genie_config.json
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC.
     sed -i 's/"perf_profile": "[^"]*"/"perf_profile": "power_saver"/' htp_backend_ext_config.json
     true > "$EVAL_OUTPUT_FILE"

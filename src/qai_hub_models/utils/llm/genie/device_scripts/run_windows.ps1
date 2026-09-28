@@ -98,6 +98,9 @@ $PromptDir = "C:\Temp\TestContent\prompts"
 $EvalOutputFile = "C:/Temp/{DEVICE_LOGS_DIR}/eval_outputs.txt"
 if (Test-Path $PromptDir) {
     New-Item -ItemType Directory -Force -Path "C:/Temp/{DEVICE_LOGS_DIR}"
+    # The perf sweep above left the seed at {NUM_TRIALS}; reset to the bundle's
+    # nominal default so eval isn't silently run at a different seed.
+    (Get-Content genie_config.json) -replace '"seed": \d+', '"seed": 42' | Set-Content genie_config.json
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC.
     (Get-Content htp_backend_ext_config.json) -replace '"perf_profile": "[^"]*"', '"perf_profile": "power_saver"' | Set-Content htp_backend_ext_config.json
     "" | Out-File -FilePath $EvalOutputFile -Encoding utf8

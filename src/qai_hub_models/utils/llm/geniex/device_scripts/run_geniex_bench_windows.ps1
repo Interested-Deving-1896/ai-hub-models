@@ -163,7 +163,7 @@ if ($RUN_EVAL) {
                     "--plugin", $e_plugin, "--device", $e_dev, "-m", $e_model,
                     "--accuracy", "--prompt-file", $pf.FullName,
                     "--system-prompt", $SYSTEM_PROMPT_ARG, "--no-think",
-                    "-c", "{EVAL_CTX}", "-n", "{EVAL_N_GEN}",
+                    "-c", "{EVAL_CTX}", "-n", "{EVAL_N_GEN}", "--seed", "{EVAL_SEED}",
                     "--mm-data-dir", $MM_CACHE, "--chipset", "{CHIPSET}"
                 ) -NoNewWindow -PassThru -RedirectStandardOutput $tmpOut `
                     -RedirectStandardError $tmpErr

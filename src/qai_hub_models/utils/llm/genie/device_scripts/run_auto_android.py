@@ -135,6 +135,9 @@ genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2
 PROMPT_DIR=/data/local/tmp/genie_bundle/prompts
 EVAL_OUTPUT_FILE=/data/local/tmp/<<DEVICE_LOGS_DIR>>/eval_outputs.txt
 if [ -d "$PROMPT_DIR" ]; then
+    # The perf sweep above left the seed at {num_trials - 1}; reset to the
+    # bundle's nominal default so eval isn't silently run at a different seed.
+    sed -i 's/"seed": [0-9]*/"seed": 42/' genie_config.json
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC SM8750.
     sed -i 's/"perf_profile": "[^"]*"/"perf_profile": "power_saver"/' htp_backend_ext_config.json
     > "$EVAL_OUTPUT_FILE"

@@ -67,6 +67,11 @@ _EVAL_N_GEN = 4096
 _EVAL_TIMEOUT_S = 600
 _EVAL_SLEEP_S = 10
 
+# Matches Genie's on-device eval seed (genie_config.json's sampler default,
+# see llm_helpers.create_genie_config) -- pinned explicitly rather than
+# relying on geniex-bench's own CLI default, which could drift independently.
+_DEFAULT_EVAL_SEED = 42
+
 # geniex-bench result schemas this parser reads. 4 kept the fields 3 exposed and
 # only added some, so both parse identically. 5 added qairt_version/
 # llama_cpp_version (unread until 6). 6 added geniex_version. An unlisted
@@ -108,6 +113,7 @@ class GenieXBenchArtifactHandler(ABC):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         """Stage the on-device bundle into ``dest_dir`` and return its entries.
 
@@ -166,6 +172,7 @@ class GenieXBenchArtifactHandler(ABC):
         run_perf: bool,
         eval_prompts: list[str] | None,
         device_logs_dir: str,
+        eval_seed: int,
     ) -> str:
         """Substitute the placeholders shared by all device scripts.
 
@@ -177,6 +184,7 @@ class GenieXBenchArtifactHandler(ABC):
         return (
             text.replace("{EVAL_CTX}", str(max(context_lengths)))
             .replace("{EVAL_N_GEN}", str(_EVAL_N_GEN))
+            .replace("{EVAL_SEED}", str(eval_seed))
             .replace("{EVAL_TIMEOUT_S}", str(_EVAL_TIMEOUT_S))
             .replace("{EVAL_SLEEP_S}", str(_EVAL_SLEEP_S))
             .replace("{CTX_LIST}", ",".join(str(c) for c in context_lengths))
@@ -239,6 +247,7 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         ds_dir = os.path.join(curr_dirname, "device_scripts")
         pytest_dir = os.path.join(ds_dir, "geniex_pytest")
@@ -278,6 +287,7 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
                     run_perf,
                     eval_prompts,
                     device_logs_dir,
+                    eval_seed,
                 )
             out_path = (
                 os.path.join(dest_dir, fn)
@@ -326,6 +336,7 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         # QDC only (never AWS Device Farm, which has no Linux/Windows devices),
         # so there's no upload cap to work around; always stage locally.
@@ -354,6 +365,7 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
             run_perf,
             eval_prompts,
             device_logs_dir,
+            eval_seed,
         )
         sh_dest = os.path.join(dest_dir, "run_geniex_bench_linux.sh")
         with open(sh_dest, "w", encoding="utf-8") as f:
@@ -391,6 +403,7 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         # device_logs_dir is unused here: run_geniex_bench_windows.ps1 has no
         # {DEVICE_LOGS_DIR} placeholder -- it still writes its own fixed
@@ -421,6 +434,7 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
             run_perf,
             eval_prompts,
             device_logs_dir,
+            eval_seed,
         )
         with open(
             os.path.join(dest_dir, "run_geniex_bench_windows.ps1"),
@@ -467,6 +481,7 @@ def add_geniex_bundle_entries(
     geniex_version: str | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
+    eval_seed: int = _DEFAULT_EVAL_SEED,
 ) -> tuple[list[tuple[str, str]], str | None]:
     """Stage a GenieX-bench bundle into backend-agnostic (path, arcname) entries.
 
@@ -492,6 +507,7 @@ def add_geniex_bundle_entries(
         eval_prompts,
         run_perf,
         device_logs_dir,
+        eval_seed,
     )
     return entries, handler.entry_script
 
@@ -800,6 +816,7 @@ def submit_geniex_bench(
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
     qairt_bundle_urls: dict[str, str] | None = None,
+    eval_seed: int = _DEFAULT_EVAL_SEED,
 ) -> tuple[str, list[str], dict[str, str]]:
     """Upload artifacts and submit a geniex-bench job, returning the id.
 
@@ -842,6 +859,7 @@ def submit_geniex_bench(
             geniex_version=geniex_version,
             eval_prompts=eval_prompts,
             run_perf=run_perf,
+            eval_seed=eval_seed,
         )
 
         # No explicit timeout: submission itself doesn't block on either
