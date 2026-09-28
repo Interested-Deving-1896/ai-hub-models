@@ -21,7 +21,6 @@ from pathlib import Path
 from filelock import FileLock
 
 from qai_hub_models import Precision
-from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.configs.tool_versions import ToolVersions
 from qai_hub_models.models.templates.llm.perf_collection import update_perf_yaml
 from qai_hub_models.scorecard.device import DEFAULT_QDC_DEVICE, ScorecardDevice
@@ -32,6 +31,7 @@ from qai_hub_models.scorecard.release_assets_yaml import (
     NEVER_DROPPED,
     QAIHMModelReleaseAssets,
 )
+from qai_hub_models.scorecard.scorecard_config_yaml import model_perf_component_key
 from qai_hub_models.utils.path_helpers import QAIHM_MODELS_ROOT
 
 # Genie runs on DEFAULT_QDC_DEVICE and nowhere else, so that one job decides
@@ -119,7 +119,7 @@ def apply_updates(updates: list[dict]) -> int:
             # This writer only ever produces the consolidated backbone entry (see
             # _update_perf_yaml_locked). Anything else in this perf.yaml is a standalone
             # component owned by the scorecard, which runs earlier in the same workflow.
-            backbone = QAIHMModelManifest.from_model(model_id).perf_component_key(None)
+            backbone = model_perf_component_key(model_id, None)
             perf.drop_entries_in_scope(scope, only_components={backbone})
             perf.to_model_yaml(model_id)
 

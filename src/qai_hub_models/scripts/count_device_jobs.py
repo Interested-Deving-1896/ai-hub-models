@@ -15,7 +15,6 @@ from pathlib import Path
 from qai_hub.client import JobType
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard.device import ScorecardDevice, cs_universal
 from qai_hub_models.scorecard.envvars import (
     EnabledDevicesEnvvar,
@@ -64,8 +63,8 @@ def _extract_codegen_test_options(
     bool,
     bool,
 ]:
-    manifest = QAIHMModelManifest.from_model(model_id)
-    sc = manifest.scorecard_config
+    sc = QAIHMModelScorecardConfig.from_model(model_id)
+    manifest = sc.manifest
     options = _extract_runtime_and_precision_options(manifest)
     return (
         sc.skip_hub_tests_and_scorecard or sc.skip_scorecard,

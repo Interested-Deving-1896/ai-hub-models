@@ -32,6 +32,7 @@ from qai_hub_models.scorecard.results.yaml import (
     ScorecardAssetYaml,
     get_model_component_and_graph_names,
 )
+from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.scorecard.static.list_models import (
     validate_and_split_enabled_models,
 )
@@ -107,7 +108,7 @@ def main() -> None:
     for model_id in sorted(pytorch_models):
         try:
             manifest = QAIHMModelManifest.from_model(model_id)
-            sc = manifest.scorecard_config
+            sc = QAIHMModelScorecardConfig.from_model(model_id)
             if (
                 sc.skip_hub_tests_and_scorecard
                 or sc.skip_scorecard

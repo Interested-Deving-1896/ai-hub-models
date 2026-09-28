@@ -194,9 +194,6 @@ class TestInfoFieldCoverage:
             info_pb2.ModelInfo.DESCRIPTOR,
             pydantic_field_renames={"license": "license_url"},
             pydantic_only={
-                # Scorecard-config lives on the manifest object but is not
-                # part of info.proto (it's internal-only CI state).
-                "scorecard_config",
                 # Shared/dataset dependency declarations. Not part of the
                 # public info.proto schema — used only by internal setup.
                 "templates",

@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
+import functools
 import os
 from enum import Enum, unique
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, PrivateAttr, model_validator
 
+from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
 from qai_hub_models.utils.path_helpers import (
     MODEL_IDS,
@@ -113,6 +115,26 @@ class QAIHMModelScorecardConfig(BaseQAIHMConfig):
     # together end-to-end and consolidated into one tab keyed by the model name.
     standalone_components: dict[str, str] = Field(default_factory=dict)
 
+    # Set by from_model so `manifest` can pull manifest.yaml on demand. None on
+    # directly-constructed configs, which must pass a manifest in explicitly.
+    _model_id: str | None = PrivateAttr(default=None)
+
+    @functools.cached_property
+    def manifest(self) -> QAIHMModelManifest:
+        """
+        This model's manifest.yaml, parsed once and cached on this instance.
+
+        Read-only. from_model is cached, so this instance is shared process-wide;
+        anything that writes to the manifest (disabled_paths, to_model_yaml) must load
+        its own copy via QAIHMModelManifest.from_model instead.
+        """
+        if self._model_id is None:
+            raise ValueError(
+                "manifest is only available on configs loaded via from_model(); "
+                "pass a manifest explicitly instead."
+            )
+        return QAIHMModelManifest.from_model(self._model_id)
+
     @model_validator(mode="after")
     def _validate_standalone_component_labels(self) -> QAIHMModelScorecardConfig:
         # Labels are perf.yaml component keys, so a duplicate silently merges two
@@ -124,14 +146,78 @@ class QAIHMModelScorecardConfig(BaseQAIHMConfig):
             )
         return self
 
+    def validate_standalone_components(
+        self, manifest: QAIHMModelManifest | None = None
+    ) -> None:
+        """
+        Check standalone_components against the model's manifest.
+
+        Cross-file, so it cannot live in the model_validator: manifest.yaml is a
+        separate file. Defaults to this config's own cached manifest.
+        """
+        if not self.standalone_components:
+            return
+        manifest = manifest if manifest is not None else self.manifest
+
+        # Non-LLM collection models already get a tab per component.
+        if not manifest.model_type_llm:
+            raise ValueError(
+                "standalone_components can only be set on LLM/VLM models "
+                "(model_type_llm must be true). Non-LLM collection models already "
+                "get one model card tab per component."
+            )
+
+        # `name` keys the consolidated backbone entry, so reusing it overwrites it.
+        if (
+            manifest.name is not None
+            and manifest.name in self.standalone_components.values()
+        ):
+            raise ValueError(
+                f"standalone_components label {manifest.name!r} collides with the "
+                f"model name, which keys the consolidated backbone entry in perf.yaml."
+            )
+
+    def perf_component_key(
+        self, component: str | None, manifest: QAIHMModelManifest | None = None
+    ) -> str:
+        """
+        perf.yaml key for a component. Standalone components use their declared label.
+        Any other component on a model that declares standalone ones is an LLM backbone
+        part, which collapses to the model name because the parts are only measured
+        together end-to-end. Regular collection models keep their raw component names.
+
+        Only the fallback needs the manifest, so a raw component name on a model with
+        no standalone components resolves without loading one at all.
+        """
+        if component is not None:
+            if component in self.standalone_components:
+                return self.standalone_components[component]
+            if not self.standalone_components:
+                return component
+        manifest = manifest if manifest is not None else self.manifest
+        assert manifest.id is not None, "perf_component_key needs a full model manifest"
+        return manifest.name or manifest.id
+
     @classmethod
+    @functools.cache
     def from_model(cls, model_id: str) -> QAIHMModelScorecardConfig:
-        """Load scorecard-config.yaml for the given model."""
+        """
+        Load scorecard-config.yaml for the given model.
+
+        Cached: these files are read-only config that nothing rewrites in-process, and
+        callers like ScorecardJobSummary.add_to_perf ask for the same model's config
+        once per export test.
+        """
         if not os.path.exists(QAIHM_MODELS_ROOT / model_id):
             raise ValueError(f"{model_id} does not exist")
 
         scorecard_path = SCORECARD_MODELS_ROOT / model_id / "scorecard-config.yaml"
-        return cls.from_yaml(scorecard_path, create_empty_if_no_file=True)
+        config = cls.from_yaml(scorecard_path, create_empty_if_no_file=True)
+        config._model_id = model_id
+        # Gated on the field being set so the common case doesn't pay a manifest load.
+        if config.standalone_components:
+            config.validate_standalone_components()
+        return config
 
     @property
     def runs_in_scorecard(self) -> bool:
@@ -145,6 +231,11 @@ class QAIHMModelScorecardConfig(BaseQAIHMConfig):
         through a QDC workflow.
         """
         return self.test_split is TestRunnerSplit.LLM
+
+
+def model_perf_component_key(model_id: str, component: str | None) -> str:
+    """perf.yaml key for one component of the given model. See perf_component_key."""
+    return QAIHMModelScorecardConfig.from_model(model_id).perf_component_key(component)
 
 
 def _scorecard_llm_configs() -> dict[str, QAIHMModelScorecardConfig]:

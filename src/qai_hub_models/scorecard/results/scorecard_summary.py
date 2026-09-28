@@ -46,6 +46,10 @@ from qai_hub_models.scorecard.results.yaml import (
     ProfileScorecardJobYaml,
     QuantizeScorecardJobYaml,
 )
+from qai_hub_models.scorecard.scorecard_config_yaml import (
+    QAIHMModelScorecardConfig,
+    model_perf_component_key,
+)
 from qai_hub_models.scorecard.static.model_config import ScorecardModelConfig
 from qai_hub_models.scorecard.static.model_exec import (
     get_static_model_test_parameterizations,
@@ -142,9 +146,7 @@ class ScorecardJobSummary(Generic[ScorecardPathT]):
             perf.precisions[params.precision] = QAIHMModelPerf.PrecisionDetails()
 
         precision_details = perf.precisions[params.precision]
-        component_id = QAIHMModelManifest.from_model(
-            params.model_id
-        ).perf_component_key(params.component)
+        component_id = model_perf_component_key(params.model_id, params.component)
         if component_id not in precision_details.components:
             # This field is set only when the parent precision is "mixed", since it is not otherwise
             # possible to decipher what precision was used for each component.
@@ -345,9 +347,11 @@ class ModelTestConfig:
             manifest.can_use_quantize_job,
         )
 
+        scorecard_config = QAIHMModelScorecardConfig.from_model(model_id)
+
         # is_llm must match what the generated test_profile ran with, or the scope
         # computed here covers devices the model never profiles on.
-        is_llm = manifest.scorecard_config.is_llm
+        is_llm = scorecard_config.is_llm
         profile_tests = get_profile_parameterized_pytest_config(
             model_id,
             model_supported_paths,
@@ -363,7 +367,7 @@ class ModelTestConfig:
             manifest.can_use_quantize_job,
         )
 
-        standalone_components = manifest.scorecard_config.standalone_components
+        standalone_components = scorecard_config.standalone_components
         profile_component_names = component_names
         if standalone_components and component_names is not None:
             profile_component_names = [

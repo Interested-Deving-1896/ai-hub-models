@@ -530,7 +530,7 @@ def process_e2e_recipe_model(
 
     # Load configs
     manifest = QAIHMModelManifest.from_model(model_id)
-    sc = manifest.scorecard_config
+    sc = QAIHMModelScorecardConfig.from_model(model_id)
 
     # Skip certain models
     if manifest.is_precompiled or sc.skip_hub_tests_and_scorecard or sc.skip_scorecard:
@@ -899,7 +899,7 @@ if __name__ == "__main__":
         assert global_numerics_diff is not None
         try:
             manifest = QAIHMModelManifest.from_model(model_id)
-            sc = manifest.scorecard_config
+            sc = QAIHMModelScorecardConfig.from_model(model_id)
             if (
                 sc.skip_hub_tests_and_scorecard
                 or sc.skip_scorecard

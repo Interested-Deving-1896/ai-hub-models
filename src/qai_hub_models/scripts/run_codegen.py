@@ -16,6 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
+from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.scripts.generate_global_readme import generate_global_readme
 from qai_hub_models.scripts.generate_model_readme import generate_and_write_model_readme
 from qai_hub_models.utils.path_helpers import (
@@ -265,8 +266,8 @@ def _generate_template_external_repos(environment: Environment) -> list[str]:
 
 def generate_code_for_model(model_name: str) -> list[str]:
     model_dir = QAIHM_MODELS_ROOT / model_name
-    manifest = QAIHMModelManifest.from_model(model_name)
-    scorecard_config = manifest.scorecard_config
+    scorecard_config = QAIHMModelScorecardConfig.from_model(model_name)
+    manifest = scorecard_config.manifest
 
     if scorecard_config.skip_export:
         print(f"Skipping export.py generation for {model_name}.")
