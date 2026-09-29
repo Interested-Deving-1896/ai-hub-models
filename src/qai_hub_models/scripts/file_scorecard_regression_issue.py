@@ -37,6 +37,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from qai_hub_models import QAIRTVersion
+from qai_hub_models.scorecard.envvars import DateFormatEnvvar
 from qai_hub_models.scorecard.results.yaml import ToolVersionsByPathYaml
 from qai_hub_models.scripts.download_scorecard_results import (
     download_single_artifact,
@@ -262,7 +263,9 @@ def _cell_from_manifest_and_versions(
 
 
 def _lookup_context_cell(
-    deployment: str, exclude_run_id: str = ""
+    deployment: str,
+    exclude_run_id: str = "",
+    scheduled_run_ids: list[str] | None = None,
 ) -> ScorecardContextCell:
     """Pull the most recent (or previous) run's cell from S3 for a deployment.
 
@@ -270,7 +273,11 @@ def _lookup_context_cell(
     not load-bearing, so a lookup failure must not break issue filing.
     """
     try:
-        manifest = find_latest_run(deployment, exclude_run_id=exclude_run_id)
+        manifest = find_latest_run(
+            deployment,
+            exclude_run_id=exclude_run_id,
+            scheduled_run_ids=scheduled_run_ids,
+        )
     except Exception:
         logging.warning(
             "S3 lookup failed while building scorecard context for %s.",
@@ -306,6 +313,7 @@ def build_scorecard_context(
     current_deployment: str,
     current_run_id: str,
     current_tool_versions: ToolVersionsByPathYaml,
+    scheduled_run_ids: list[str] | None = None,
 ) -> ScorecardContext:
     """Assemble the Scorecard Context table.
 
@@ -320,6 +328,9 @@ def build_scorecard_context(
         indexed as latest for a different deployment (partial retry).
     current_tool_versions
         This run's tool-versions.yaml (already loaded upstream).
+    scheduled_run_ids
+        GitHub run IDs of scheduled weekly scorecards, newest first. When set,
+        only these runs fill the non-current cells.
 
     Returns
     -------
@@ -328,23 +339,33 @@ def build_scorecard_context(
         and the other cells filled from S3 (or left empty on miss).
     """
     current_env = _env_label(current_deployment)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Kickoff run's start date (set by the collect workflow); same date S3 records.
+    run_date = DateFormatEnvvar.get().strftime("%Y-%m-%d")
     current_cell = _cell_from_manifest_and_versions(
-        current_run_id, today, current_tool_versions
+        current_run_id, run_date, current_tool_versions
     )
 
     # Previous run for THIS deployment (baseline used by the toolchain diff).
     # S3 manifests store the normalized env label ("prod"/"dev"/"staging"), not
     # the raw AI Hub URL subdomain, so look up by current_env not current_deployment.
-    same_prev = _lookup_context_cell(current_env, exclude_run_id=current_run_id)
+    same_prev = _lookup_context_cell(
+        current_env,
+        exclude_run_id=current_run_id,
+        scheduled_run_ids=scheduled_run_ids,
+    )
 
     # Other deployment's latest + previous (context only). Same reason as above:
     # compare env labels, not subdomains.
     other_env = "dev" if current_env == "prod" else "prod"
-    other_latest = _lookup_context_cell(other_env, exclude_run_id=current_run_id)
+    other_latest = _lookup_context_cell(
+        other_env,
+        exclude_run_id=current_run_id,
+        scheduled_run_ids=scheduled_run_ids,
+    )
     other_prev = _lookup_context_cell(
         other_env,
         exclude_run_id=other_latest.run_id or current_run_id,
+        scheduled_run_ids=scheduled_run_ids,
     )
 
     ctx = ScorecardContext(current_env=current_env)
@@ -583,11 +604,27 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--scheduled-run-ids",
+        default=None,
+        help=(
+            "Comma-separated GitHub run IDs of scheduled weekly scorecards "
+            "(prod + dev), newest first. Restricts the Scorecard Context's "
+            "Previous cells to real weekly runs."
+        ),
+    )
+    parser.add_argument(
         "--output",
         required=True,
         help="Path to write the issue JSON (title + body)",
     )
     args = parser.parse_args()
+
+    scheduled_run_ids: list[str] | None = None
+    if args.scheduled_run_ids is not None:
+        scheduled_run_ids = [i for i in args.scheduled_run_ids.split(",") if i]
+        if not all(i.isdigit() for i in scheduled_run_ids):
+            parser.error(f"Invalid --scheduled-run-ids {args.scheduled_run_ids!r}")
+        scheduled_run_ids.sort(key=int, reverse=True)
 
     # Load structured regression data
     perf_path = _resolve_glob(args.perf_regressions_json)
@@ -649,6 +686,7 @@ def main() -> None:
                     current_deployment=args.deployment,
                     current_run_id=args.current_run_id,
                     current_tool_versions=current_tool_versions,
+                    scheduled_run_ids=scheduled_run_ids,
                 )
             except Exception:
                 logging.warning(

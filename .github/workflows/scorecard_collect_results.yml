@@ -491,7 +491,16 @@ jobs:
           # ${{ ... }} substitution so a crafted value can't inject shell
           # metacharacters into the run script body.
           ACTION_ID: ${{ inputs.action_id || github.run_id }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # Only scheduled weekly runs may fill the Scorecard Context's Previous
+          # cells; nightly/manual runs were historically also stored as weekly-prod.
+          SCHEDULED_RUN_IDS=""
+          for WF in scorecard_weekly_prod.yml scorecard_weekly_dev.yml; do
+            IDS=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$WF" --event schedule \
+              --limit 10 --json databaseId --jq '[.[].databaseId | tostring] | join(",")')
+            SCHEDULED_RUN_IDS="${SCHEDULED_RUN_IDS:+$SCHEDULED_RUN_IDS,}$IDS"
+          done
           DEPLOYMENT=${{ env.QAIHM_TEST_DEPLOYMENT }}
           DEPLOYMENT_URL=$( [ "$DEPLOYMENT" = "prod" ] && echo "workbench" || echo "$DEPLOYMENT" )
           # The previous baseline is whichever branch we just checked out for
@@ -518,6 +527,7 @@ jobs:
             --deployment "$DEPLOYMENT_URL" \
             --previous-deployment "$PREVIOUS_DEPLOYMENT_URL" \
             --current-run-id "$ACTION_ID" \
+            --scheduled-run-ids "$SCHEDULED_RUN_IDS" \
             --tool-versions-path "${{ env.QAIHM_TEST_ARTIFACTS_DIR }}/tool-versions.yaml" \
             --output "${{ env.QAIHM_TEST_ARTIFACTS_DIR }}/regression-issue.json" \
             $TEST_ARGS
@@ -541,7 +551,7 @@ jobs:
         run: |
           source ${{ env.VENV_PATH }}/bin/activate && python3 -m qai_hub_models.scripts.upload_scorecard_history \
             --run-id "${{ inputs.action_id || github.run_id }}" \
-            --run-name "${{ inputs.tableau_branch_name || 'weekly-prod' }}" \
+            --run-name "${{ inputs.tableau_branch_name || 'adhoc' }}" \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Run Trend Detection

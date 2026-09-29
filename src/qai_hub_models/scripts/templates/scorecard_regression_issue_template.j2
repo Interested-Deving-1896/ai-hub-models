@@ -16,7 +16,7 @@ Date: {{ today }}
 | Latest   | {{ _cell(context.dev_latest) }} | {{ _cell(context.prod_latest) }} |
 | Previous | {{ _cell(context.dev_previous) }} | {{ _cell(context.prod_previous) }} |
 
-_This report: **{{ context.current_env|capitalize }}** scorecard, comparing against the previous **{{ context.current_env|capitalize }}** run._
+_This report: **{{ context.current_env|capitalize }}** scorecard. **Previous** = the prior weekly scheduled scorecard for that column; nightly and manual runs are excluded. Regression tables compare against results checked into `main`._
 
 {% endif %}
 {% if perf_regressions %}

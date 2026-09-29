@@ -19,36 +19,79 @@ def _mk(run_id: str, deployment: str, run_name: str, date: str) -> ScorecardMani
     )
 
 
-def test_find_latest_run_skips_ad_hoc_dispatches_by_default() -> None:
-    """The Scorecard Context grid and toolchain-diff baseline must pick the
-    real weekly scorecards, not ad-hoc workflow_dispatches that a coworker
-    might trigger with an arbitrary tableau_branch_name.
+def test_find_latest_run_returns_prior_weekly_run_of_same_deployment() -> None:
+    """The issue's Previous cell must be last week's weekly-dev scorecard, even
+    when a week of nightly/manual uploads (and a manual dev dispatch that was
+    mislabelled weekly-prod, tetracode #21470) sit newer in S3. Before this
+    fix those pushed the weekly run out of the 25-manifest download window.
     """
-    # Descending-by-date order matches list_runs()'s sort. An ad-hoc dispatch
-    # sits at the top; the real weekly-prod is older.
-    manifests = [
-        _mk("adhoc-latest", "prod", "test-toolchain-diff-v2", "2026-07-13"),
-        _mk("adhoc-mid", "prod", "shreya-experiment", "2026-07-13"),
-        _mk("weekly-latest", "prod", "weekly-prod", "2026-07-06"),
-    ]
-    with mock.patch.object(mod, "list_runs", return_value=manifests):
-        result = mod.find_latest_run("prod")
+    manifests = {
+        f"scorecard-history/{9000 + i}-adhoc/manifest.json": _mk(
+            str(9000 + i), "prod", "adhoc", "2026-09-16"
+        )
+        for i in range(30)
+    }
+    manifests["scorecard-history/8500-weekly-prod/manifest.json"] = _mk(
+        "8500", "dev", "weekly-prod", "2026-09-15"
+    )
+    manifests["scorecard-history/8000-weekly-dev/manifest.json"] = _mk(
+        "8000", "dev", "weekly-dev", "2026-09-10"
+    )
+
+    def fake_download(bucket: str, key: str, dest: str, verbose: bool) -> None:
+        manifests[key].to_json(dest)
+
+    listing = [mock.Mock(key=k) for k in manifests]
+    with (
+        mock.patch.object(mod, "get_qaihm_s3_or_exit", return_value=("bkt", None)),
+        mock.patch.object(
+            mod, "list_s3_files_in_folder_recursive", return_value=listing
+        ),
+        mock.patch.object(mod, "s3_download", side_effect=fake_download) as download,
+    ):
+        result = mod.find_latest_run("dev")
+
     assert result is not None
-    assert result.run_id == "weekly-latest"
+    assert result.run_id == "8000"
+    download.assert_called_once()
 
 
-def test_find_latest_run_empty_prefix_includes_everything() -> None:
-    """Passing run_name_prefix="" is the escape hatch when a caller genuinely
-    wants the latest manifest of any shape (e.g. debugging).
+def test_find_latest_run_with_scheduled_ids_ignores_mislabelled_nightlies() -> None:
+    """Nightly/manual prod runs were stored as weekly-prod too, so the key can't
+    tell them apart. With GitHub's scheduled IDs, Prod Previous must be last
+    week's scheduled run (tetracode #21470: 09-19 vs 09-12, not a nightly).
     """
-    manifests = [
-        _mk("adhoc-latest", "prod", "test-toolchain-diff-v2", "2026-07-13"),
-        _mk("weekly-latest", "prod", "weekly-prod", "2026-07-06"),
-    ]
-    with mock.patch.object(mod, "list_runs", return_value=manifests):
-        result = mod.find_latest_run("prod", run_name_prefix="")
+    manifests = {
+        "scorecard-history/9500-weekly-prod/manifest.json": _mk(
+            "9500", "prod", "weekly-prod", "2026-09-21"
+        ),
+        "scorecard-history/9000-weekly-prod/manifest.json": _mk(
+            "9000", "prod", "weekly-prod", "2026-09-19"
+        ),
+        "scorecard-history/8000-weekly-prod/manifest.json": _mk(
+            "8000", "prod", "weekly-prod", "2026-09-12"
+        ),
+    }
+
+    def fake_download(bucket: str, key: str, dest: str, verbose: bool) -> None:
+        manifests[key].to_json(dest)
+
+    with (
+        mock.patch.object(mod, "get_qaihm_s3_or_exit", return_value=("bkt", None)),
+        mock.patch.object(
+            mod, "s3_file_exists", side_effect=lambda _b, key: key in manifests
+        ),
+        mock.patch.object(mod, "s3_download", side_effect=fake_download),
+    ):
+        result = mod.find_latest_run(
+            "prod",
+            exclude_run_id="9000",
+            # 7777 is a scheduled dev run: no weekly-prod manifest, so skipped.
+            scheduled_run_ids=["9000", "7777", "8000"],
+        )
+
     assert result is not None
-    assert result.run_id == "adhoc-latest"
+    assert result.run_id == "8000"
 
 
 def test_download_single_artifact_key_matches_upload_layout(tmp_path: Path) -> None:

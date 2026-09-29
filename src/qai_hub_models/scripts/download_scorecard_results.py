@@ -46,7 +46,10 @@ S3_PREFIX = "scorecard-history"
 
 
 def list_runs(
-    last: int = 10, since: str | None = None, until: str | None = None
+    last: int = 10,
+    since: str | None = None,
+    until: str | None = None,
+    run_name: str | None = None,
 ) -> list[ScorecardManifest]:
     """List scorecard runs by scanning S3 for manifest.json files.
 
@@ -56,8 +59,9 @@ def list_runs(
     objects = list_s3_files_in_folder_recursive(bucket, f"{S3_PREFIX}/")
 
     # Filter to only manifest.json files, sorted descending by key
+    suffix = f"-{run_name}/manifest.json" if run_name else "/manifest.json"
     manifest_keys = sorted(
-        (obj.key for obj in objects if obj.key.endswith("/manifest.json")),
+        (obj.key for obj in objects if obj.key.endswith(suffix)),
         reverse=True,
     )
 
@@ -85,25 +89,39 @@ def list_runs(
 def find_latest_run(
     deployment: str,
     exclude_run_id: str = "",
-    run_name_prefix: str = "weekly-",
+    scheduled_run_ids: list[str] | None = None,
 ) -> ScorecardManifest | None:
-    """Return the most recent manifest for the given deployment, or None.
+    """Return the most recent weekly-{deployment} manifest, or None.
 
     Used to source the "previous" baseline for the toolchain-version diff and
     the cross-deployment context table. Excludes exclude_run_id so a partial
     re-run of the same scorecard doesn't compare against itself.
 
-    run_name_prefix defaults to "weekly-" so ad-hoc workflow_dispatches (which
-    carry the dispatcher's chosen tableau_branch_name) don't drown out real
-    scheduled runs in the picker. Pass run_name_prefix="" to consider every
-    manifest, including manual and test dispatches.
+    Filtering on the S3 key before download keeps nightly/manual runs from
+    pushing the real weekly run out of the 25-manifest window.
+
+    scheduled_run_ids (newest first, from GitHub's scheduled runs) is the
+    authoritative list: nightly/manual uploads were historically also keyed
+    weekly-prod, so the key alone can't tell them apart.
     """
-    for manifest in list_runs(last=25):
+    if scheduled_run_ids is not None:
+        run_name = f"weekly-{deployment}"
+        bucket, _ = get_qaihm_s3_or_exit(QAIHM_PRIVATE_S3_BUCKET)
+        for run_id in scheduled_run_ids:
+            if run_id == exclude_run_id:
+                continue
+            key = f"{S3_PREFIX}/{run_id}-{run_name}/manifest.json"
+            if not s3_file_exists(bucket, key):
+                continue
+            with tempfile.NamedTemporaryFile(suffix=".json") as tmp:
+                s3_download(bucket, key, tmp.name, verbose=False)
+                return ScorecardManifest.from_json(tmp.name)
+        return None
+
+    for manifest in list_runs(last=25, run_name=f"weekly-{deployment}"):
         if manifest.deployment != deployment:
             continue
         if exclude_run_id and manifest.run_id == exclude_run_id:
-            continue
-        if run_name_prefix and not manifest.run_name.startswith(run_name_prefix):
             continue
         return manifest
     return None

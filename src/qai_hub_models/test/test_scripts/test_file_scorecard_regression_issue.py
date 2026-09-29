@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from qai_hub_models import QAIRTVersion
 from qai_hub_models.scorecard.results.yaml import ToolVersionsByPathYaml
 from qai_hub_models.scripts import file_scorecard_regression_issue as mod
@@ -282,17 +284,26 @@ def test_context_omitted_when_none() -> None:
     assert "## Scorecard Context" not in body
 
 
-def test_build_scorecard_context_places_current_run_on_correct_side() -> None:
+def test_build_scorecard_context_places_current_run_on_correct_side(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A dev scorecard puts its own run in the Dev column; the other cells
-    come from S3 lookups of the opposite deployment.
+    come from S3 lookups of the opposite deployment. The current cell's date
+    is the kickoff date, not the (days-later) issue filing date.
     """
+    monkeypatch.setenv("QAIHM_TEST_DATE", "2026-09-19T06:07:16Z")
+    monkeypatch.setenv("QAIHM_TEST_DATE_FORMAT", "%Y-%m-%dT%H:%M:%SZ")
     current_versions = mock.MagicMock()
     current_versions.tool_versions = {}
     same_prev_cell = ScorecardContextCell("100", "2026-07-02", "2.47.0")
     prod_latest_cell = ScorecardContextCell("99", "2026-07-04", "2.47.0")
     prod_prev_cell = ScorecardContextCell("80", "2026-06-27", "2.45.0")
 
-    def fake_lookup(deployment: str, exclude_run_id: str = "") -> ScorecardContextCell:
+    def fake_lookup(
+        deployment: str,
+        exclude_run_id: str = "",
+        scheduled_run_ids: list[str] | None = None,
+    ) -> ScorecardContextCell:
         if deployment == "dev":
             return same_prev_cell
         # First prod call returns the latest; the second (exclude=latest)
@@ -310,6 +321,7 @@ def test_build_scorecard_context_places_current_run_on_correct_side() -> None:
         )
     # Current run lands in dev_latest even though S3 doesn't know about it yet.
     assert ctx.dev_latest.run_id == "111"
+    assert ctx.dev_latest.date == "2026-09-19"
     assert ctx.dev_previous.run_id == "100"
     assert ctx.prod_latest.run_id == "99"
     assert ctx.prod_previous.run_id == "80"
@@ -342,7 +354,11 @@ def test_build_scorecard_context_normalizes_prod_subdomain() -> None:
     current_versions.tool_versions = {}
     seen_deployments: list[str] = []
 
-    def fake_lookup(deployment: str, exclude_run_id: str = "") -> ScorecardContextCell:
+    def fake_lookup(
+        deployment: str,
+        exclude_run_id: str = "",
+        scheduled_run_ids: list[str] | None = None,
+    ) -> ScorecardContextCell:
         seen_deployments.append(deployment)
         return ScorecardContextCell()
 
