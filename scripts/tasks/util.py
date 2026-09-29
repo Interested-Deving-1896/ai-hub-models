@@ -16,11 +16,12 @@ from pathlib import Path
 from typing import Any
 
 from .constants import (
-    BASH_EXECUTABLE,
     PY_PACKAGE_MODELS_ROOT,
     SCORECARD_PACKAGE_MODELS_ROOT,
+    bash_argv,
     process_output,
     run_and_get_output,
+    venv_activate_command,
 )
 
 
@@ -288,7 +289,7 @@ def on_mac() -> bool:
 
 
 def run(command: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(command, shell=True, check=True, executable=BASH_EXECUTABLE)
+    return subprocess.run(bash_argv(command), check=True)
 
 
 def run_with_venv(
@@ -296,10 +297,8 @@ def run_with_venv(
 ) -> None:
     if venv is not None:
         subprocess.run(
-            f"source {venv}/bin/activate && {command}",
-            shell=True,
+            bash_argv(f"{venv_activate_command(venv)} && {command}"),
             check=True,
-            executable=BASH_EXECUTABLE,
             env=env,
         )
     else:
@@ -310,11 +309,9 @@ def run_with_venv_and_get_output(venv: str | None, command: str) -> str:
     if venv is not None:
         return process_output(
             subprocess.run(
-                f"source {venv}/bin/activate && {command}",
+                bash_argv(f"{venv_activate_command(venv)} && {command}"),
                 stdout=subprocess.PIPE,
-                shell=True,
                 check=True,
-                executable=BASH_EXECUTABLE,
             )
         )
     return run_and_get_output(command)
@@ -342,13 +339,7 @@ def debug_mode() -> bool:
 @functools.cache
 def uv_installed() -> bool:
     try:
-        result = subprocess.run(
-            ["which uv"],
-            check=False,
-            capture_output=True,
-            executable=BASH_EXECUTABLE,
-            shell=True,
-        )
+        result = subprocess.run(bash_argv("which uv"), check=False, capture_output=True)
         return result.returncode == 0
     except Exception:
         return False

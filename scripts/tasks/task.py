@@ -12,10 +12,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from sys import platform
 
-from .constants import REPO_ROOT
+from .constants import REPO_ROOT, bash_argv, venv_activate_command
 from .github import end_group, start_group
 from .test_utils import TestStatus, write_junit_testcase
-from .util import BASH_EXECUTABLE, debug_mode, default_parallelism, echo, have_root
+from .util import debug_mode, default_parallelism, echo, have_root
 
 
 class Task(ABC):
@@ -216,12 +216,7 @@ class RunCommandsTask(Task):
         for attempt in range(1, max_attempts + 1):
             try:
                 subprocess.run(
-                    command,
-                    shell=True,
-                    check=True,
-                    cwd=self.cwd,
-                    env=self.env,
-                    executable=BASH_EXECUTABLE,
+                    bash_argv(command), check=True, cwd=self.cwd, env=self.env
                 )
                 return True
             except subprocess.CalledProcessError as e:
@@ -286,10 +281,8 @@ class RunCommandsWithVenvTask(RunCommandsTask):
         if debug_mode() and platform in ["darwin", "linux", "linux2"]:
             self.commands.insert(0, "df -h")
         if self.venv is not None:
-            self.commands = [
-                f"source {self.venv}/bin/activate && {command}"
-                for command in self.commands
-            ]
+            activate = venv_activate_command(self.venv)
+            self.commands = [f"{activate} && {command}" for command in self.commands]
 
 
 class PyTestTask(RunCommandsWithVenvTask):

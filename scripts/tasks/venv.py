@@ -11,6 +11,7 @@ import re
 import shlex
 import subprocess
 from collections.abc import Iterable
+from pathlib import Path
 
 from .constants import (
     DEFAULT_PYTHON,
@@ -21,6 +22,8 @@ from .constants import (
     PY_PACKAGE_MODELS_ROOT,
     REPO_ROOT,
     REQUIREMENTS_PATH,
+    bash_argv,
+    venv_activate_command,
 )
 from .task import CompositeTask, RunCommandsTask, RunCommandsWithVenvTask
 from .util import get_pip, get_pip_install_commands, has_cuda_gpu, uv_installed
@@ -121,7 +124,9 @@ class CreateVenvTask(RunCommandsTask):
     def __init__(self, venv_path: str, python_executable: str | None = None) -> None:
         super().__init__(
             f"Creating virtual environment at {venv_path}",
-            f"source {REPO_ROOT}/scripts/util/env_create.sh --python={python_executable or DEFAULT_PYTHON} --venv={venv_path} --no-sync",
+            f'source "{Path(REPO_ROOT, "scripts", "util", "env_create.sh").as_posix()}" '
+            f'"--python={python_executable or DEFAULT_PYTHON}" '
+            f'"--venv={Path(venv_path).as_posix()}" --no-sync',
         )
 
 
@@ -129,12 +134,14 @@ def is_package_installed(package_name: str, venv_path: str | None = None) -> boo
     if venv_path is not None:
         if not os.path.exists(venv_path):
             return False
-        command = f'. {venv_path}/bin/activate && python -c "import {package_name}"'
+        command = (
+            f'{venv_activate_command(venv_path)} && python -c "import {package_name}"'
+        )
     else:
         command = f'python -c "import {package_name}"'
 
     try:
-        subprocess.check_call(command, shell=True)
+        subprocess.check_call(bash_argv(command))
         return True
     except subprocess.CalledProcessError:
         return False

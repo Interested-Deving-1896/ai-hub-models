@@ -5,6 +5,7 @@
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -12,20 +13,37 @@ def process_output(command: subprocess.CompletedProcess[bytes]) -> str:
     return command.stdout.decode("utf-8").strip()
 
 
-DEFAULT_PYTHON = "python3.10"
+ON_WINDOWS = sys.platform == "win32"
 
-BASH_EXECUTABLE = shutil.which("bash")
+DEFAULT_PYTHON = "py -3.10" if ON_WINDOWS else "python3.10"
+
+
+def _find_bash() -> str | None:
+    if ON_WINDOWS and (git := shutil.which("git")):
+        # PATH's bash.exe is usually WSL's; we need Git Bash, which ships next to git.
+        git_bash = Path(git).parent.parent / "bin" / "bash.exe"
+        if git_bash.exists():
+            return str(git_bash)
+    return shutil.which("bash")
+
+
+BASH_EXECUTABLE = _find_bash()
+
+
+def bash_argv(command: str) -> list[str]:
+    # shell=True + executable=bash still passes cmd.exe's "/c" flag on Windows.
+    assert BASH_EXECUTABLE is not None, "bash is required (install Git for Windows)."
+    return [BASH_EXECUTABLE, "-c", command]
+
+
+def venv_activate_command(venv: str) -> str:
+    subdir = "Scripts" if ON_WINDOWS else "bin"
+    return f'source "{venv.replace(os.sep, "/")}/{subdir}/activate"'
 
 
 def run_and_get_output(command: str, check: bool = True) -> str:
     return process_output(
-        subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            shell=True,
-            check=check,
-            executable=BASH_EXECUTABLE,
-        )
+        subprocess.run(bash_argv(command), stdout=subprocess.PIPE, check=check)
     )
 
 

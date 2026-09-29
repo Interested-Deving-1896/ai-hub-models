@@ -30,6 +30,11 @@ while [ $# -gt 0 ]
   shift
 done
 
+ACTIVATE_SUBDIR="bin"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) ACTIVATE_SUBDIR="Scripts" ;;
+esac
+
 if [ ! -d "$ENV_PATH" ]; then
   mkdir -p "$(dirname "$ENV_PATH")"
 
@@ -37,9 +42,9 @@ if [ ! -d "$ENV_PATH" ]; then
   $PYTHON -m venv "$ENV_PATH"
 
   echo "Activating virtual env."
-  source "$ENV_PATH/bin/activate"
+  source "$ENV_PATH/$ACTIVATE_SUBDIR/activate"
 else
-  source "$ENV_PATH/bin/activate"
+  source "$ENV_PATH/$ACTIVATE_SUBDIR/activate"
   echo "Env created already. Skipping creation."
 fi
 
