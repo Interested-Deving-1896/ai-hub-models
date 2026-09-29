@@ -75,6 +75,15 @@ on:
           type: string
           default: test_export_scripts
 
+        expect_post_flaky_artifact:
+          description: |
+            Whether the post-flaky-retry "Job-IDs" artifact can exist yet. True for
+            callers that run after fix_flaky_jobs. Set false for the LLM path, which
+            runs in parallel with fix_flaky_jobs and always uses "Flaky-Job-IDs";
+            skipping the doomed download avoids a spurious failure annotation.
+          type: boolean
+          default: true
+
 env:
   PYTHONUNBUFFERED: 1
   VENV_PATH: build/ci-envs/qaihm-build
@@ -101,6 +110,7 @@ jobs:
 
       - name: Download Post-Flaky-Job-Retry Artifacts
         id: download-post-flaky-job-retry-artifacts
+        if: inputs.expect_post_flaky_artifact
         continue-on-error: true
         uses: actions/download-artifact@v8
         with:
@@ -112,7 +122,7 @@ jobs:
       - name: Download Flaky-Job Artifacts
         # If the "without Flaky Jobs" artifact doesn't exist (e.g., flaky jobs fix step failed),
         # download the original intermediates created by the main scorecard workflow.
-        if: steps.download-post-flaky-job-retry-artifacts.outcome == 'failure'
+        if: steps.download-post-flaky-job-retry-artifacts.outcome != 'success'
         uses: actions/download-artifact@v8
         with:
             run-id: ${{ inputs.action_id }}

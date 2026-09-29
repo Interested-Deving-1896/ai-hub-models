@@ -115,6 +115,7 @@ jobs:
       split_name: ${{ matrix.split.split_name }}
       runs_on: '["tetra-ubuntu-2204", "self-hosted"]'
       build_and_test_target: test_llm_export_scripts
+      expect_post_flaky_artifact: false
 
   combine_llm_release_assets:
     name: Combine LLM Release Assets
