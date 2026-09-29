@@ -40,6 +40,11 @@ on:
           - staging
           - dev
 
+      qairt_version:
+        description: 'QAIRT version downloaded on-device for the genie run (e.g. "2.50"). "qaihm_default" keeps the pinned default SDK.'
+        default: qaihm_default
+        type: string
+
       run_eval:
         description: 'Run on-device evaluation with default prompts. Eval runs on exactly one device: cs_x_elite when `device` covers it (including "all"/"default"), or the single device named in `device`. Naming several devices without cs_x_elite runs no eval.'
         default: true
@@ -76,6 +81,11 @@ on:
         description: 'Hub Deployment'
         type: string
         default: prod
+
+      qairt_version:
+        description: 'QAIRT version downloaded on-device for the genie run (e.g. "2.50"). "qaihm_default" keeps the pinned default SDK.'
+        type: string
+        default: qaihm_default
 
       run_eval:
         description: 'Run on-device evaluation. Runs on cs_x_elite, or on the single device named in `device` when exactly one is named.'
@@ -207,6 +217,7 @@ jobs:
         QAIHM_LLM_EVAL_DEVICE_SCOPE: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
         QAIHM_LLM_PERF_PRECISIONS: ${{ inputs.precision }}
         QAIHM_RUN_EVAL: ${{ inputs.run_eval }}
+        QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
         AWS_REGION: us-west-2
@@ -231,6 +242,7 @@ jobs:
         QAIHM_LLM_EVAL_DEVICE_SCOPE: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
         QAIHM_LLM_PERF_PRECISIONS: ${{ inputs.precision }}
         QAIHM_RUN_EVAL: ${{ inputs.run_eval }}
+        QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_UPDATES: ${{ github.workspace }}/genie_perf_updates_${{ matrix.pool }}.jsonl
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}

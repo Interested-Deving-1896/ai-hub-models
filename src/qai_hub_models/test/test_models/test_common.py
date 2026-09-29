@@ -231,6 +231,8 @@ def test_qairt_version() -> None:
         assert ai_hub_default == ai_hub_default.full_version
         assert ai_hub_default.is_default
         assert ai_hub_default.sdk_flavor is None
+        # Drops the builder-time suffix from "2.32.6.250402152434_116405".
+        assert ai_hub_default.sdk_download_version == "2.32.6.250402"
 
         # Get default using the api version
         aihub_default_api = QAIRTVersion(ai_hub_default.api_version)
@@ -263,6 +265,8 @@ def test_qairt_version() -> None:
         assert latest.tags == [QAIRTVersion.LATEST_AIHUB_TAG]
         assert latest.hub_option == f"--qairt_version {QAIRTVersion.LATEST_AIHUB_TAG}"
         assert latest.explicit_hub_option == "--qairt_version 2.33"
+        # Drops the builder-time suffix from "2.33.0.250327124043_117917".
+        assert latest.sdk_download_version == "2.33.0.250327"
 
         # Untagged
         standard_version = QAIRTVersion("2.31")

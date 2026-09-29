@@ -61,6 +61,13 @@ EVAL_SLEEP_S = int("{EVAL_SLEEP_S}")
 # a self-referential set literal to mypy).
 RUN_PERF = "{RUN_PERF}" == "1"  # noqa: PLR0133
 RUN_EVAL = "{RUN_EVAL}" == "1"  # noqa: PLR0133
+# QAIRT SDK to pass via --qairt-lib (e.g. "2.45.0.260326"); empty keeps the
+# bundled QAIRT.
+QAIRT_VERSION = "{QAIRT_VERSION}"
+DEVICE_QAIRT_ZIP = "/data/local/tmp/qairt.zip"
+# The SDK zip's top-level entry is qairt/<version>/, so extract into its parent.
+DEVICE_QAIRT_EXTRACT = "/data/local/tmp"
+DEVICE_QAIRT_ROOT = f"{DEVICE_QAIRT_EXTRACT}/qairt"
 
 
 def adb(cmd: str, *, check: bool = True) -> subprocess.CompletedProcess:
@@ -213,12 +220,40 @@ def _fetch_qairt_bundle_ondevice(bundle_name: str) -> str:
     return bundle_name
 
 
-def _run_bench(ctx: int, env: str, tsv_path: str, chipset: str) -> int:
+def fetch_qairt_sdk() -> str:
+    """Download QAIRT_VERSION's SDK on-device; return the --qairt-lib flag for it.
+
+    Returns an empty string (no flag) when the bundled QAIRT should be used.
+    """
+    if PLUGIN != "qairt" or not QAIRT_VERSION:
+        return ""
+    print(f"=== Using QAIRT {QAIRT_VERSION} ===")
+    sdk = f"{DEVICE_QAIRT_ROOT}/{QAIRT_VERSION}"
+    url = (
+        "https://softwarecenter.qualcomm.com/api/download/software/sdks/"
+        f"Qualcomm_AI_Runtime_Community/All/{QAIRT_VERSION}/v{QAIRT_VERSION}.zip"
+    )
+    adb(
+        "curl -L -J --fail --max-time 300 --retry 3 --retry-delay 5 "
+        f"--output {DEVICE_QAIRT_ZIP} {url}"
+    )
+    adb(f"rm -rf {DEVICE_QAIRT_ROOT}")
+    # toybox unzip can exit nonzero on a successful extract, so check=False and
+    # verify the extracted dir instead of trusting its exit code.
+    adb(f"unzip -q {DEVICE_QAIRT_ZIP} -d {DEVICE_QAIRT_EXTRACT}", check=False)
+    adb(f"rm -f {DEVICE_QAIRT_ZIP}", check=False)
+    adb(f"test -d {sdk}/lib")
+    return f"--qairt-lib {sdk}"
+
+
+def _run_bench(
+    ctx: int, env: str, tsv_path: str, chipset: str, qairt_lib_flag: str
+) -> int:
     size_flags = f"-c {ctx + N_GEN} -p {ctx - N_GEN} -n {N_GEN}"
     cmd = (
         f"cd {DEVICE_BUNDLE} && {env} ./bin/geniex-bench "
         f"--matrix-file {tsv_path} --output-json-dir {DEVICE_RESULTS} -r 3 "
-        f"{size_flags} "
+        f"{qairt_lib_flag} {size_flags} "
         f"--mm-data-dir {DEVICE_MM_CACHE} --chipset '{chipset}' "
         f"2>>{DEVICE_LOGS}/geniex_bench_stderr.log"
     )
@@ -233,7 +268,11 @@ def _cleanup_device() -> None:
     # Drop per-job state (dedicated-pool devices are reused across jobs; leftover
     # bundles / caches / matrix TSVs would leak into the next tenant's run).
     # device_logs is left alone so retrieval still sees results/logs.
-    adb(f"rm -rf {DEVICE_BUNDLE} {DEVICE_MM_CACHE}", check=False)
+    adb(
+        f"rm -rf {DEVICE_BUNDLE} {DEVICE_MM_CACHE} {DEVICE_QAIRT_ROOT} "
+        f"{DEVICE_QAIRT_ZIP}",
+        check=False,
+    )
     adb("rm -f /data/local/tmp/matrix-*.tsv", check=False)
 
 
@@ -254,7 +293,7 @@ def _count_eval_markers() -> int:
 
 
 def _run_eval(
-    env: str, model_ref: str, device_alias: str, chipset: str
+    env: str, model_ref: str, device_alias: str, chipset: str, qairt_lib_flag: str
 ) -> tuple[int, int, int]:
     """Run `geniex-bench --accuracy` once per staged prompt, collecting stdout.
 
@@ -306,7 +345,8 @@ def _run_eval(
             f"cd {DEVICE_BUNDLE} && "
             f"rm -f {pout} {perr} && "
             f"{env} timeout {EVAL_TIMEOUT_S} ./bin/geniex-bench --plugin {PLUGIN} "
-            f"--device {device_alias} -m {model_ref} --accuracy --prompt-file {pf} "
+            f"--device {device_alias} -m {model_ref} {qairt_lib_flag} "
+            f"--accuracy --prompt-file {pf} "
             f'--system-prompt "$(cat {DEVICE_PROMPTS}/system_prompt.txt)" --no-think '
             f"-c {EVAL_CTX} -n {EVAL_N_GEN} --mm-data-dir {DEVICE_MM_CACHE} "
             f"--chipset '{chipset}' >{pout} 2>{perr}; "
@@ -340,6 +380,7 @@ def _run_eval(
 def test_scorecard() -> None:
     _preflight_network()
     push_bundle()
+    qairt_lib_flag = fetch_qairt_sdk()
     # QDC reuses device cells across jobs; wipe stale cell JSONs from a prior
     # run so compute_metrics doesn't ingest another model/plugin's results.
     adb(f"rm -rf {DEVICE_RESULTS}", check=False)
@@ -398,7 +439,7 @@ def test_scorecard() -> None:
                     + " ".join(f"'{ln}'" for ln in tsv_by_ctx[ctx])
                     + f" > {tsv_path}"
                 )
-                if _run_bench(ctx, env, tsv_path, chipset) != 0:
+                if _run_bench(ctx, env, tsv_path, chipset, qairt_lib_flag) != 0:
                     failures.append(ctx)
             # Confirm cell JSONs exist; adb hides on-device exit codes.
             results_listing = adb(f"ls -l {DEVICE_RESULTS}", check=False).stdout
@@ -424,14 +465,20 @@ def test_scorecard() -> None:
             )
             # Accuracy eval always runs on the NPU (the on-device target).
             eval_ran, eval_collected, eval_expected = _run_eval(
-                env, eval_model, "npu", chipset
+                env, eval_model, "npu", chipset, qairt_lib_flag
             )
 
         if RUN_PERF and (failures or cell_json_count == 0):
+            # Surface geniex-bench's stderr so a device-side failure (e.g. a bad
+            # QAIRT swap) is diagnosable from the JUnit XML alone.
+            stderr_tail = adb(
+                f"tail -n 40 {DEVICE_LOGS}/geniex_bench_stderr.log", check=False
+            ).stdout
             pytest.fail(
                 f"geniex-bench produced no usable output (failed ctxs={failures}, "
                 f"cell_json_count={cell_json_count}).\n--- {DEVICE_RESULTS} ---\n"
-                f"{results_listing}"
+                f"{results_listing}\n--- geniex_bench_stderr.log (tail) ---\n"
+                f"{stderr_tail}"
             )
         # Every prompt failed => fail loudly so the host retry loop resubmits
         # instead of adb silently hiding the device drop.

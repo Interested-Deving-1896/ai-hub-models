@@ -337,6 +337,28 @@ class QAIRTVersionEnvvar(QAIHMStringEnvvar):
             return runtime.default_qairt_version
         return QAIRTVersion(value)
 
+    @classmethod
+    def get_on_device_sdk_version(cls, value: str | None = None) -> str | None:
+        """
+        Software Center SDK version (e.g. 2.50.0.260812) to download on-device.
+
+        Returns None when the envvar is the default, so on-device runs keep
+        their bundled / pinned QAIRT unless a version was explicitly requested.
+        """
+        value = value or cls.get()
+        if cls.is_default(value):
+            return None
+        framework = QAIRTVersion.ParsedFramework.parse_opt(value)
+        # Software Center builds need not be on AI Hub, so a full version skips the lookup.
+        if framework is None or framework.patch is None or framework.ident is None:
+            framework = QAIRTVersion(value).framework
+        if framework.patch is None or framework.ident is None:
+            raise ValueError(
+                f"Cannot resolve QAIRT {value!r} to a full SDK version (need AI Hub "
+                "access, or pass a full version like 2.50.0.260812)."
+            )
+        return framework.sdk_download_version
+
 
 @pytest_cli_envvar
 class IgnoreKnownFailuresEnvvar(QAIHMBoolEnvvar):

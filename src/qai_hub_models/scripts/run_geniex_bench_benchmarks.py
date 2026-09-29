@@ -31,6 +31,7 @@ from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.device import ScorecardDevice
 from qai_hub_models.scorecard.envvars import (
     LLMPerfPrecisionsEnvvar,
+    QAIRTVersionEnvvar,
     SpecialLLMPerfPrecisionSetting,
 )
 from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
@@ -293,6 +294,7 @@ def _print_job_banner(
     geniex_version: str | None,
     run_perf: bool = True,
     eval_prompts: list[str] | None = None,
+    qairt_version: str | None = None,
 ) -> None:
     print(f"\n{'=' * 60}")
     print(f"Model:   {model_id}")
@@ -301,6 +303,8 @@ def _print_job_banner(
     print(f"Ref:     {model_ref}")
     print(f"Ctx:     {context_lengths}")
     print(f"GenieX:  {geniex_version or 'latest stable mirror'}")
+    if plugin == "qairt":
+        print(f"QAIRT:   {qairt_version or 'bundled with geniex-bench'}")
     print(f"Perf:    {'on' if run_perf else 'off'}")
     print(f"Eval:    {'on' if eval_prompts else 'off'}")
     print(f"{'=' * 60}")
@@ -319,6 +323,7 @@ def _submit_one(
     llamacpp_quant: str | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
+    qairt_version: str | None = None,
 ) -> str:
     """Submit one geniex-bench job and upsert a jobs_file entry.
 
@@ -338,6 +343,7 @@ def _submit_one(
         geniex_version,
         run_perf,
         eval_prompts,
+        qairt_version,
     )
 
     job_name = f"geniex-bench {plugin} {model_id}"
@@ -361,6 +367,7 @@ def _submit_one(
         eval_prompts=eval_prompts,
         run_perf=run_perf,
         qairt_bundle_urls=qairt_bundle_urls,
+        qairt_version=qairt_version,
     )
     runtime = "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
     key = make_key(model_id, str(precision), runtime, sd.name)
@@ -380,6 +387,7 @@ def _collect_one(
     llamacpp_urls: dict[Precision, str] | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
+    qairt_version: str | None = None,
 ) -> tuple[list[GenieXBenchMetrics], list[dict], str]:
     """Poll a submitted geniex-bench job. On retryable failure, re-fetch
     the bundle from release-assets.yaml (qairt) or the HF URL (llama_cpp)
@@ -442,6 +450,7 @@ def _collect_one(
             eval_prompts=eval_prompts,
             run_perf=run_perf,
             qairt_bundle_urls=qairt_bundle_urls,
+            qairt_version=qairt_version,
         )
         return new_job_id
 
@@ -732,6 +741,14 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
         'downloads to. Defaults to the unversioned "latest stable" mirror.',
     )
     parser.add_argument(
+        "--qairt-version",
+        default=None,
+        help='QAIRT version for the qairt plugin (e.g. "2.50" or "qaihm_default"). '
+        "A non-default version is downloaded on-device and swapped into the "
+        "geniex-bench bundle in place of its shipped QAIRT libs. Defaults to "
+        "the QAIHM_TEST_QAIRT_VERSION env var; ignored for llama_cpp.",
+    )
+    parser.add_argument(
         "--run-eval",
         action="store_true",
         default=os.environ.get("QAIHM_RUN_EVAL", "").lower() == "true",
@@ -806,8 +823,16 @@ def _add_output_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _resolve_qairt_version(args: argparse.Namespace) -> str | None:
+    """Software Center SDK version to swap in on-device, or None to keep the bundled QAIRT."""
+    if args.plugin == "llama_cpp":
+        return None
+    return QAIRTVersionEnvvar.get_on_device_sdk_version(args.qairt_version)
+
+
 def _cmd_submit(args: argparse.Namespace) -> int:
     eval_prompts = _resolve_eval_prompts(args.run_eval)
+    qairt_version = _resolve_qairt_version(args)
     if os.path.exists(args.jobs_file):
         os.unlink(args.jobs_file)
     submitted = 0
@@ -845,6 +870,7 @@ def _cmd_submit(args: argparse.Namespace) -> int:
                     eval_prompts, _scorecard_device(device_token), args.devices
                 ),
                 run_perf=args.run_perf,
+                qairt_version=qairt_version if plugin == "qairt" else None,
             )
             submitted += 1
         except Exception as e:
@@ -875,6 +901,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
     (model, precision, plugin, device) tuple up in the jobs_file by key.
     """
     eval_prompts = _resolve_eval_prompts(args.run_eval)
+    qairt_version = _resolve_qairt_version(args)
     rows: list[dict] = []
     perf_updates: list[dict] = []
     records = load_jobs(args.jobs_file)
@@ -948,6 +975,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
                 llamacpp_urls=llamacpp_urls,
                 eval_prompts=_eval_prompts_for_device(eval_prompts, sd, args.devices),
                 run_perf=args.run_perf,
+                qairt_version=qairt_version if plugin == "qairt" else None,
             )
         except Exception as e:
             print(

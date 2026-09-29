@@ -50,7 +50,7 @@ on:
           default: perf_and_accuracy
 
         options:
-          description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). Only geniex_version is consumed here; see scripts/ci/parse_options.py.'
+          description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). qairt_version selects the QAIRT SDK downloaded on-device for genie / geniex_qairt; see scripts/ci/parse_options.py.'
           type: string
           default: ''
 
@@ -68,6 +68,7 @@ jobs:
       llm_split_matrix: ${{ steps.find.outputs.llm_split_matrix }}
       has_models: ${{ steps.find.outputs.has_models }}
       geniex_version: ${{ steps.parse_versions.outputs.geniex_version }}
+      qairt_version: ${{ steps.parse_versions.outputs.qairt_version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -192,6 +193,7 @@ jobs:
       # Map default and default variants to 'all' (see scorecard/envvars.py).
       precision: ${{ contains(fromJSON('["default", "default_minus_float", "default_quantized", "bench"]'), inputs.test_precisions) && 'all' || inputs.test_precisions }}
       deployment: ${{ inputs.deployment }}
+      qairt_version: ${{ needs.determine_llm_models.outputs.qairt_version }}
       run_eval: ${{ inputs.test_scope != 'perf' }}
       create_pr: false
       release_assets_action_id: ${{ inputs.action_id }}
@@ -212,6 +214,7 @@ jobs:
       precision: ${{ contains(fromJSON('["default", "default_minus_float", "default_quantized", "bench"]'), inputs.test_precisions) && 'all' || inputs.test_precisions }}
       geniex_bench_plugin: qairt
       geniex_version: ${{ needs.determine_llm_models.outputs.geniex_version }}
+      qairt_version: ${{ needs.determine_llm_models.outputs.qairt_version }}
       release_assets_action_id: ${{ inputs.action_id }}
       create_pr: false
       scope: ${{ inputs.test_scope }}

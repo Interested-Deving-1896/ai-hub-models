@@ -5,7 +5,7 @@
 ## -> consolidate_pr.
 
 name: GenieX Performance Collection
-run-name: "GenieX Perf (${{ inputs.model || 'all' }}, ${{ inputs.device || 'all' }}, ${{ inputs.geniex_version || 'latest' }})"
+run-name: "GenieX Perf (${{ inputs.model || 'all' }}, ${{ inputs.device || 'all' }}, ${{ inputs.geniex_version || 'latest' }}, QAIRT ${{ inputs.qairt_version || 'qaihm_default' }})"
 
 env:
   VENV_PATH: build/ci-envs/qaihm-build
@@ -47,6 +47,12 @@ on:
         description: 'Pin GenieX release tag (e.g. "0.3.7"). Leave blank for the unversioned "latest stable" mirror.'
         required: false
         default: ''
+        type: string
+
+      qairt_version:
+        description: 'QAIRT version for the qairt plugin (e.g. "2.50"). A non-default version is downloaded on-device and swapped into the geniex-bench bundle; "qaihm_default" keeps the bundled QAIRT.'
+        required: false
+        default: 'qaihm_default'
         type: string
 
       release_assets_action_id:
@@ -94,6 +100,11 @@ on:
         description: 'Pin GenieX release tag (e.g. "0.3.7"). Leave blank for the unversioned "latest stable" mirror.'
         type: string
         default: ''
+
+      qairt_version:
+        description: 'QAIRT version for the qairt plugin (e.g. "2.50"). A non-default version is downloaded on-device and swapped into the geniex-bench bundle; "qaihm_default" keeps the bundled QAIRT.'
+        type: string
+        default: 'qaihm_default'
 
       release_assets_action_id:
         description: 'Run ID with a fresh Scorecard LLM Perf Release Assets (<run_id>) artifact to override the committed copy.'
@@ -169,6 +180,10 @@ jobs:
         # Mirrors genie's collection job so the two runtimes install the same deps.
         bnt-venv-install-cmd: install_global_requirements
         aws-role-arn: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
+        # Workbench access resolves a short qairt_version (e.g. "2.50") to the
+        # full Software Center SDK version downloaded on-device.
+        hub-deployments: prod
+        hub-user-token-prod: ${{ secrets.HUB_USER_TOKEN_PROD }}
 
     - name: Install qai_hub_models from source
       run: |
@@ -224,6 +239,7 @@ jobs:
         GENIEX_BENCH_PRECISIONS: ${{ inputs.precision || 'default' }}
         GENIEX_VERSION: ${{ inputs.geniex_version || '' }}
         GENIEX_SCOPE: ${{ inputs.scope || 'perf' }}
+        QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
@@ -262,6 +278,7 @@ jobs:
         GENIEX_BENCH_PRECISIONS: ${{ inputs.precision || 'default' }}
         GENIEX_VERSION: ${{ inputs.geniex_version || '' }}
         GENIEX_SCOPE: ${{ inputs.scope || 'perf' }}
+        QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm

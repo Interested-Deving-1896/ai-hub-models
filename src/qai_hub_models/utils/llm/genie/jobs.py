@@ -33,6 +33,7 @@ from qai_hub_models.models.templates.llm.perf_collection import (
     update_perf_yaml,
 )
 from qai_hub_models.scorecard import ScorecardDevice, ScorecardProfilePath
+from qai_hub_models.scorecard.envvars import QAIRTVersionEnvvar
 from qai_hub_models.scorecard.utils.fetch_prerelease_assets import (
     download_prerelease_asset,
 )
@@ -73,6 +74,9 @@ logger.setLevel(logging.INFO)
 GENIE_JOB_TIMEOUT = 43200  # 12 hours
 
 DEFAULT_LLM_SYSTEM_PROMPT = LLMBase.default_system_prompt
+
+# QAIRT SDK downloaded on-device when no version is requested.
+DEFAULT_GENIE_QAIRT_SDK_VERSION = "2.45.40.260406"
 
 
 def _write_eval_prompts_to_dir(
@@ -446,7 +450,7 @@ def add_genie_bundle_entries(
     dest_dir: str,
     device_logs_dir: str,
     qairt_sdk_path: str | None = None,
-    qairt_version: str = "2.45.40.260406",
+    qairt_version: str | None = None,
     eval_prompts: list[str] | None = None,
     num_trials: int = 25,
     model_id: str | None = None,
@@ -470,7 +474,8 @@ def add_genie_bundle_entries(
     qairt_sdk_path
         Path to the QAIRT SDK zip file. Required for auto devices.
     qairt_version
-        QAIRT SDK version to download on-device (e.g. ``"2.45.40.260406"``).
+        Software Center QAIRT SDK version to download on-device (e.g.
+        ``"2.45.40.260406"``). None uses ``DEFAULT_GENIE_QAIRT_SDK_VERSION``.
     eval_prompts
         If provided, list of prompts to evaluate. Each prompt is formatted
         using the bundle's tokenizer and run sequentially on device.
@@ -492,6 +497,7 @@ def add_genie_bundle_entries(
     entry_script: str | None
         Optional entry script path used by the test framework.
     """
+    qairt_version = qairt_version or DEFAULT_GENIE_QAIRT_SDK_VERSION
     curr_dirname = os.path.dirname(os.path.abspath(__file__))
     artifact_handler = _get_artifact_handler(platform, qairt_sdk_path)
 
@@ -784,7 +790,7 @@ def submit_genie_bundle(
     genie_bundle_path: str,
     job_name: str = "LLM Genie",
     qairt_sdk_path: str | None = None,
-    qairt_version: str = "2.45.40.260406",
+    qairt_version: str | None = None,
     eval_prompts: list[str] | None | object = None,
     num_trials: int = 25,
     model_id: str | None = None,
@@ -924,7 +930,7 @@ def submit_and_collect_genie_bundle(
     genie_bundle_path: str,
     job_name: str = "LLM Genie",
     qairt_sdk_path: str | None = None,
-    qairt_version: str = "2.45.40.260406",
+    qairt_version: str | None = None,
     eval_prompts: list[str] | None | object = None,
     num_trials: int = 25,
     model_id: str | None = None,
@@ -1081,6 +1087,7 @@ def submit_llm_perf_job(
         str(genie_bundle_path),
         job_name=job_name,
         qairt_sdk_path=qairt_sdk_path,
+        qairt_version=QAIRTVersionEnvvar.get_on_device_sdk_version(),
         eval_prompts=eval_prompts,
         model_id=model_id,
         genie_bundle_url=genie_bundle_url,
@@ -1123,6 +1130,7 @@ def collect_llm_perf_job(
     key = make_key(model_id, str(precision), "GENIE", device.name)
     hub_device_name = device.reference_device.name
     backend = get_device_farm(device)
+    qairt_version = QAIRTVersionEnvvar.get_on_device_sdk_version()
 
     def _resubmit() -> str:
         # Re-derive both the local path and the presigned URL fresh on every
@@ -1138,6 +1146,7 @@ def collect_llm_perf_job(
             str(bundle_path),
             job_name=job_name,
             qairt_sdk_path=qairt_sdk_path,
+            qairt_version=qairt_version,
             eval_prompts=eval_prompts,
             model_id=model_id,
             genie_bundle_url=bundle_url,

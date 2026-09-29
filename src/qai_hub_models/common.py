@@ -137,6 +137,11 @@ class QAIRTVersion:
         return self.framework.full_version_with_flavor
 
     @property
+    def sdk_download_version(self) -> str:
+        """Version for the Software Center SDK download URL (on-device QAIRT)."""
+        return self.framework.sdk_download_version
+
+    @property
     def sdk_flavor(self) -> str | None:
         return self.framework.flavor
 
@@ -304,6 +309,17 @@ class QAIRTVersion:
         @property
         def full_version_with_flavor(self) -> str:
             return self.full_version + (f"-{self.flavor}" if self.flavor else "")
+
+        @property
+        def sdk_download_version(self) -> str:
+            # AI Hub's ident is a 12-digit builder timestamp; Software Center keys
+            # SDK zips on its 6-digit date prefix (e.g. 2.45.0.260326).
+            ident = self.ident[:6] if self.ident else None
+            return (
+                self.api_version
+                + (f".{self.patch}" if self.patch is not None else "")
+                + (f".{ident}" if ident is not None else "")
+            )
 
         def version_eq(self, other: QAIRTVersion.ParsedFramework) -> bool:
             """Return true if this version matches the other version."""

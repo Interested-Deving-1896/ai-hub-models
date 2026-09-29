@@ -18,6 +18,7 @@ TC=/data/local/tmp/TestContent
 cleanup_device() {
     rm -rf "$TC"/geniex-bench-linux-arm64-* 2>/dev/null || true
     rm -f "$TC"/geniex-bench.tar.gz 2>/dev/null || true
+    rm -rf "$TC"/qairt "$TC"/qairt.zip 2>/dev/null || true
     rm -rf "$MM_CACHE" 2>/dev/null || true
     rm -f /data/local/tmp/matrix-*.tsv 2>/dev/null || true
 }
@@ -48,6 +49,28 @@ BUNDLE=$(ls -d "$TC"/geniex-bench-linux-arm64-* 2>/dev/null | head -n1)
 [ -x "$BUNDLE/bin/geniex-bench" ] || { echo "FATAL: $BUNDLE/bin/geniex-bench missing"; exit 1; }
 
 cd "$BUNDLE"
+
+# Run the qairt plugin against QAIRT_VERSION's SDK via --qairt-lib; empty
+# QAIRT_VERSION keeps the QAIRT bundled with geniex-bench.
+PLUGIN="{PLUGIN}"
+QAIRT_VERSION="{QAIRT_VERSION}"
+QAIRT_LIB_ARGS=()
+if [ "$PLUGIN" = "qairt" ] && [ -n "$QAIRT_VERSION" ]; then
+  echo "=== Using QAIRT $QAIRT_VERSION ==="
+  QZIP=$TC/qairt.zip
+  # The SDK zip's top-level entry is qairt/<version>/; extract into its parent.
+  QROOT="$TC/qairt"
+  QURL="https://softwarecenter.qualcomm.com/api/download/software/sdks/Qualcomm_AI_Runtime_Community/All/$QAIRT_VERSION/v$QAIRT_VERSION.zip"
+  curl -fSL --retry 3 --retry-delay 5 -o "$QZIP" "$QURL" || { echo "FATAL: QAIRT SDK download failed: $QURL"; exit 1; }
+  rm -rf "$QROOT"
+  # unzip can exit nonzero on a successful extract; verify the dir instead.
+  unzip -q "$QZIP" -d "$TC" || true
+  rm -f "$QZIP"
+  SDK="$QROOT/$QAIRT_VERSION"
+  [ -d "$SDK/lib" ] || { echo "FATAL: QAIRT SDK not extracted to $SDK"; exit 1; }
+  QAIRT_LIB_ARGS=(--qairt-lib "$SDK")
+fi
+
 export LD_LIBRARY_PATH="$BUNDLE/lib:$BUNDLE/lib/llama_cpp:$BUNDLE/lib/qairt:$LD_LIBRARY_PATH"
 export GENIEX_PLUGIN_PATH="$BUNDLE/lib"
 
@@ -103,7 +126,7 @@ EOF
     echo "=== matrix ctx=$ctx ==="
     cat "$tsv"
     geniex_retry ./bin/geniex-bench --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
-      {BENCH_SIZE_FLAGS} \
+      "${QAIRT_LIB_ARGS[@]}" {BENCH_SIZE_FLAGS} \
       --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
     bench_rc=$?
     echo "rc=$bench_rc  ($(ls "$OUT" | wc -l) cell json files so far)"
@@ -168,7 +191,7 @@ if [ "$RUN_EVAL" = "1" ]; then
     # DSP release before the next attach.
     if geniex_eval_retry "$pout" "$perr" \
       timeout {EVAL_TIMEOUT_S} ./bin/geniex-bench --plugin "$e_plugin" --device "$e_dev" \
-        -m "$e_model" --accuracy --prompt-file "$prompt_file" \
+        -m "$e_model" "${QAIRT_LIB_ARGS[@]}" --accuracy --prompt-file "$prompt_file" \
         --system-prompt "$SYSTEM_PROMPT" --no-think \
         -c {EVAL_CTX} -n {EVAL_N_GEN} --seed {EVAL_SEED} --mm-data-dir "$MM_CACHE" \
         --chipset "{CHIPSET}"; then

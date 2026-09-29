@@ -113,6 +113,7 @@ class GenieXBenchArtifactHandler(ABC):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        qairt_version: str | None,
         eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         """Stage the on-device bundle into ``dest_dir`` and return its entries.
@@ -173,6 +174,8 @@ class GenieXBenchArtifactHandler(ABC):
         eval_prompts: list[str] | None,
         device_logs_dir: str,
         eval_seed: int,
+        plugin: str,
+        qairt_version: str | None,
     ) -> str:
         """Substitute the placeholders shared by all device scripts.
 
@@ -191,6 +194,9 @@ class GenieXBenchArtifactHandler(ABC):
             .replace("{RUN_PERF}", "1" if run_perf else "0")
             .replace("{RUN_EVAL}", "1" if eval_prompts else "0")
             .replace("{DEVICE_LOGS_DIR}", device_logs_dir)
+            .replace("{PLUGIN}", plugin)
+            # Empty QAIRT_VERSION keeps the QAIRT libs shipped in the geniex-bench bundle.
+            .replace("{QAIRT_VERSION}", qairt_version or "")
         )
 
     @staticmethod
@@ -247,6 +253,7 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        qairt_version: str | None,
         eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         ds_dir = os.path.join(curr_dirname, "device_scripts")
@@ -280,7 +287,6 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
             if fn.endswith(".py"):
                 content = self._apply_common_replacements(
                     content.replace("{ANDROID_BENCH_URL}", bench_url)
-                    .replace("{PLUGIN}", plugin)
                     .replace("{N_GEN}", str(_N_GEN))
                     .replace("{QAIRT_BUNDLE_URL}", bundle_url or ""),
                     context_lengths,
@@ -288,6 +294,8 @@ class GenieXBenchAndroidArtifactHandler(GenieXBenchArtifactHandler):
                     eval_prompts,
                     device_logs_dir,
                     eval_seed,
+                    plugin,
+                    qairt_version,
                 )
             out_path = (
                 os.path.join(dest_dir, fn)
@@ -336,6 +344,7 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        qairt_version: str | None,
         eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         # QDC only (never AWS Device Farm, which has no Linux/Windows devices),
@@ -366,6 +375,8 @@ class GenieXBenchLinuxArtifactHandler(GenieXBenchArtifactHandler):
             eval_prompts,
             device_logs_dir,
             eval_seed,
+            plugin,
+            qairt_version,
         )
         sh_dest = os.path.join(dest_dir, "run_geniex_bench_linux.sh")
         with open(sh_dest, "w", encoding="utf-8") as f:
@@ -403,6 +414,7 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
         eval_prompts: list[str] | None,
         run_perf: bool,
         device_logs_dir: str,
+        qairt_version: str | None,
         eval_seed: int = _DEFAULT_EVAL_SEED,
     ) -> list[tuple[str, str]]:
         # device_logs_dir is unused here: run_geniex_bench_windows.ps1 has no
@@ -435,6 +447,8 @@ class GenieXBenchWindowsArtifactHandler(GenieXBenchArtifactHandler):
             eval_prompts,
             device_logs_dir,
             eval_seed,
+            plugin,
+            qairt_version,
         )
         with open(
             os.path.join(dest_dir, "run_geniex_bench_windows.ps1"),
@@ -482,6 +496,7 @@ def add_geniex_bundle_entries(
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
     eval_seed: int = _DEFAULT_EVAL_SEED,
+    qairt_version: str | None = None,
 ) -> tuple[list[tuple[str, str]], str | None]:
     """Stage a GenieX-bench bundle into backend-agnostic (path, arcname) entries.
 
@@ -490,10 +505,14 @@ def add_geniex_bundle_entries(
     directory name (see :func:`device_logs_dir_name`) rendered into the
     bundle's device scripts. ``qairt_bundle_urls`` (keyed like ``qairt_bundles``)
     holds presigned S3 GET URLs the Android handler curls on-device instead of
-    shipping weights through the artifact zip.
+    shipping weights through the artifact zip. ``qairt_version`` (qairt plugin
+    only) is a Software Center SDK version the device downloads and passes to
+    geniex-bench via ``--qairt-lib``; None keeps the bundled QAIRT.
     """
     curr_dirname = os.path.dirname(os.path.abspath(__file__))
     handler = _get_artifact_handler(platform)
+    if plugin != "qairt":
+        qairt_version = None
     entries = handler.create_artifact(
         curr_dirname,
         dest_dir,
@@ -507,6 +526,7 @@ def add_geniex_bundle_entries(
         eval_prompts,
         run_perf,
         device_logs_dir,
+        qairt_version,
         eval_seed,
     )
     return entries, handler.entry_script
@@ -817,6 +837,7 @@ def submit_geniex_bench(
     run_perf: bool = True,
     qairt_bundle_urls: dict[str, str] | None = None,
     eval_seed: int = _DEFAULT_EVAL_SEED,
+    qairt_version: str | None = None,
 ) -> tuple[str, list[str], dict[str, str]]:
     """Upload artifacts and submit a geniex-bench job, returning the id.
 
@@ -860,6 +881,7 @@ def submit_geniex_bench(
             eval_prompts=eval_prompts,
             run_perf=run_perf,
             eval_seed=eval_seed,
+            qairt_version=qairt_version,
         )
 
         # No explicit timeout: submission itself doesn't block on either

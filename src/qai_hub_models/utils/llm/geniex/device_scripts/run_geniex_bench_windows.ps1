@@ -3,6 +3,9 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 
 $ErrorActionPreference = "Continue"
+# Expand-Archive of the QAIRT SDK emits ~12k progress records; left on, they
+# overflow the host's output and crash the next Write-Host.
+$ProgressPreference = "SilentlyContinue"
 
 $LOG = "C:\Temp\QDC_Logs"
 $OUT = "$LOG\results"
@@ -63,6 +66,28 @@ if (-not (Test-Path "$BUNDLE\bin\geniex-bench.exe")) {
 }
 
 Set-Location $BUNDLE
+
+# Run the qairt plugin against QAIRT_VERSION's SDK via --qairt-lib; empty
+# QAIRT_VERSION keeps the QAIRT bundled with geniex-bench.
+$PLUGIN = "{PLUGIN}"
+$QAIRT_VERSION = "{QAIRT_VERSION}"
+$QAIRT_LIB_ARGS = @()
+if ($PLUGIN -eq "qairt" -and $QAIRT_VERSION) {
+    Write-Output "=== Using QAIRT $QAIRT_VERSION ==="
+    $QZIP = "$TC\qairt.zip"
+    # The SDK zip's top-level entry is qairt\<version>\; extract into its parent ($TC).
+    $QROOT = "$TC\qairt"
+    $QURL = "https://softwarecenter.qualcomm.com/api/download/software/sdks/Qualcomm_AI_Runtime_Community/All/$QAIRT_VERSION/v$QAIRT_VERSION.zip"
+    & curl.exe -fSL --retry 3 --retry-delay 5 -o $QZIP $QURL
+    if ($LASTEXITCODE -ne 0) { throw "QAIRT SDK download failed: $LASTEXITCODE" }
+    Remove-Item -Recurse -Force $QROOT -ErrorAction SilentlyContinue
+    Expand-Archive -Path $QZIP -DestinationPath $TC -Force
+    Remove-Item $QZIP
+    $SDK = "$QROOT\$QAIRT_VERSION"
+    if (-not (Test-Path "$SDK\lib")) { throw "QAIRT SDK not extracted to $SDK" }
+    $QAIRT_LIB_ARGS = @("--qairt-lib", $SDK)
+}
+
 $env:GENIEX_PLUGIN_PATH = "$BUNDLE\lib"
 $env:PATH = "$BUNDLE\lib;$BUNDLE\lib\llama_cpp;$BUNDLE\lib\qairt;$BUNDLE\lib\qairt\htp-files;$env:PATH"
 
@@ -103,11 +128,11 @@ if ($RUN_PERF) {
         $tsv = $tsvByCtx[$ctx]
         Write-Output "=== matrix ctx=$ctx ==="
         if (Test-Path $tsv) { Get-Content $tsv }
-        $ok = Invoke-GenieXBenchRetry -BenchArgs @(
+        $ok = Invoke-GenieXBenchRetry -BenchArgs (@(
             "--matrix-file", $tsv, "--output-json-dir", $OUT, "-r", "3",
             {BENCH_SIZE_FLAGS_ARGS}
             "--mm-data-dir", $MM_CACHE, "--chipset", "{CHIPSET}"
-        )
+        ) + $QAIRT_LIB_ARGS)
         if (-not $ok) { $failed_ctxs += " $ctx" }
         Write-Output "$((Get-ChildItem $OUT).Count) cell json files so far"
     }
@@ -159,13 +184,13 @@ if ($RUN_EVAL) {
                 # Start-Process redirects at the OS-process level so geniex-bench's
                 # stderr info lines don't become PowerShell NativeCommandErrors (QDC
                 # flags those Unsuccessful).
-                $proc = Start-Process -FilePath "$BUNDLE\bin\geniex-bench.exe" -ArgumentList @(
+                $proc = Start-Process -FilePath "$BUNDLE\bin\geniex-bench.exe" -ArgumentList (@(
                     "--plugin", $e_plugin, "--device", $e_dev, "-m", $e_model,
                     "--accuracy", "--prompt-file", $pf.FullName,
                     "--system-prompt", $SYSTEM_PROMPT_ARG, "--no-think",
                     "-c", "{EVAL_CTX}", "-n", "{EVAL_N_GEN}", "--seed", "{EVAL_SEED}",
                     "--mm-data-dir", $MM_CACHE, "--chipset", "{CHIPSET}"
-                ) -NoNewWindow -PassThru -RedirectStandardOutput $tmpOut `
+                ) + $QAIRT_LIB_ARGS) -NoNewWindow -PassThru -RedirectStandardOutput $tmpOut `
                     -RedirectStandardError $tmpErr
                 # Without -Wait, PS 5.1 hands back a Process with no cached native
                 # handle, so .ExitCode reads $null after exit; touching .Handle keeps
@@ -227,6 +252,7 @@ finally {
     Get-ChildItem -Path $TC -Directory -Filter 'geniex-bench-windows-arm64-*' -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -Force "$TC\geniex-bench.zip" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "$TC\qairt", "$TC\qairt.zip" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $MM_CACHE -ErrorAction SilentlyContinue
     Get-ChildItem -Path "C:\Temp" -Filter 'matrix-*.tsv' -ErrorAction SilentlyContinue |
         Remove-Item -Force -ErrorAction SilentlyContinue
