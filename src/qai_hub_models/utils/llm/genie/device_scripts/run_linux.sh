@@ -22,7 +22,11 @@ rm -rf /data/local/tmp/{DEVICE_LOGS_DIR}
 mkdir -p /data/local/tmp/{DEVICE_LOGS_DIR}
 exec > >(tee /data/local/tmp/{DEVICE_LOGS_DIR}/script.log) 2>&1
 
-mount -o rw,remount /
+# qdc recommends this, but not for Ubuntu
+if [[ "$(uname -a)" != *Ubuntu* ]]; then
+    mount -o rw,remount /
+    setenforce 0 || echo "Skipping setenforce"
+fi
 
 cd /data/local/tmp/TestContent/genie_bundle
 
@@ -93,5 +97,3 @@ if [ -d "$PROMPT_DIR" ]; then
         sleep 3
     done
 fi
-
-mount -o rw,remount /
