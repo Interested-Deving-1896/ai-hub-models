@@ -220,6 +220,8 @@ class InferenceScorecardJob(ScorecardJob[hub.InferenceJob]):
     @property
     def input_dataset(self) -> DatasetEntries:
         """Input dataset."""
+        if self.job.inputs is None:
+            raise ValueError("Job has no input dataset.")
         return cast(DatasetEntries, self.job.inputs.download())
 
     @property

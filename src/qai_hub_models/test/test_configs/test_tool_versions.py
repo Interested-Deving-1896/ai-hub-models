@@ -13,7 +13,6 @@ from qai_hub.public_api_pb2 import (
     InferenceJobResult,
     JobResult,
     ProfileDetail,
-    ProfileJobResult,
     ToolVersion,
 )
 
@@ -276,8 +275,8 @@ def test_extract_tool_versions_from_profile_job(
 
     def _make_results(versions: list[ToolVersion]) -> JobResult:
         return JobResult(
-            profile_job_result=ProfileJobResult(
-                profile=ProfileDetail(tool_versions=versions)
+            inference_job_result=InferenceJobResult(
+                detail=ProfileDetail(tool_versions=versions)
             )
         )
 

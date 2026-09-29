@@ -209,13 +209,7 @@ class ToolVersions(BaseQAIHMConfig):
             )
 
         result = get_job_results(job._owner.config, job.job_id)
-        if job._job_type == JobType.PROFILE:
-            profile_detail = result.profile_job_result.profile
-        elif job._job_type == JobType.INFERENCE:
-            profile_detail = result.inference_job_result.detail
-        else:
-            # This is unreachable, but we write it for type checking.
-            raise AssertionError()
+        profile_detail = result.inference_job_result.detail
 
         out = ToolVersions()
         for tool_version in profile_detail.tool_versions:
