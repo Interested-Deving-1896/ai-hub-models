@@ -17,8 +17,10 @@ from unittest import mock
 import pytest
 
 from qai_hub_models.scorecard.results.yaml import (
+    CompileScorecardJobYaml,
     ComponentNamesYaml,
     GraphNamesYaml,
+    InferenceScorecardJobYaml,
     ToolVersionsByPathYaml,
 )
 from qai_hub_models.scripts import collect_scorecard_results as mod
@@ -116,3 +118,36 @@ def test_dropped_component_leaves_no_stale_graph_key() -> None:
     )
 
     assert committed_graphs.get("m", "B") is None
+
+
+@pytest.mark.parametrize("all_models", [True, False], ids=["clear-all", "per-model"])
+def test_previous_job_ids_survive_ignore_existing_clear(all_models: bool) -> None:
+    """CI always sets ignore-existing; the clear must not erase "Previous *" job IDs.
+
+    Snapshotting after the clear left them all N/A (tetracode #21471).
+    """
+    key = "not_a_real_model_float_tflite_cs_8_gen_3"
+    with (
+        mock.patch.object(
+            CompileScorecardJobYaml,
+            "from_intermediates",
+            return_value=CompileScorecardJobYaml({key: "jcprev"}),
+        ),
+        mock.patch.object(
+            InferenceScorecardJobYaml,
+            "from_intermediates",
+            return_value=InferenceScorecardJobYaml({key: "jiprev"}),
+        ),
+    ):
+        state = mod._load_intermediate_state(
+            using_prod_hub=True,
+            ignore_existing=True,
+            model_list=["not_a_real_model"],
+            all_models=all_models,
+        )
+
+    assert state.previous_compile_jobs.mapping == {key: "jcprev"}
+    assert state.previous_inference_jobs.mapping == {key: "jiprev"}
+    # The clear still happens, so this run's jobs don't merge onto stale ones.
+    assert state.compile_jobs.mapping == {}
+    assert state.inference_jobs.mapping == {}

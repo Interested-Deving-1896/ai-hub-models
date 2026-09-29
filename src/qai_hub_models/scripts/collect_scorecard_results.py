@@ -16,6 +16,7 @@ import sys
 import tempfile
 import traceback
 from collections.abc import Iterable
+from dataclasses import dataclass
 from itertools import cycle
 from pathlib import Path
 
@@ -115,6 +116,117 @@ def drop_names_with_replacements(
             component_names_yaml.clear(model)
         if fresh_graph_names.has_model(model):
             graph_names_yaml.clear(model)
+
+
+@dataclass
+class _IntermediateState:
+    component_names: ComponentNamesYaml
+    graph_names: GraphNamesYaml
+    pre_qdq_jobs: PreQDQCompileScorecardJobYaml
+    quantize_jobs: QuantizeScorecardJobYaml
+    compile_jobs: CompileScorecardJobYaml
+    link_jobs: LinkScorecardJobYaml
+    profile_jobs: ProfileScorecardJobYaml
+    inference_jobs: InferenceScorecardJobYaml
+    # Pre-clear snapshot for the regression reports' "Previous *" columns.
+    previous_compile_jobs: CompileScorecardJobYaml
+    previous_inference_jobs: InferenceScorecardJobYaml
+
+
+def _load_intermediate_state(
+    using_prod_hub: bool,
+    ignore_existing: bool,
+    model_list: list[str],
+    all_models: bool,
+) -> _IntermediateState:
+    if not using_prod_hub:
+        # Previous scorecard state is applicable only on prod
+        return _IntermediateState(
+            ComponentNamesYaml(),
+            GraphNamesYaml(),
+            PreQDQCompileScorecardJobYaml(),
+            QuantizeScorecardJobYaml(),
+            CompileScorecardJobYaml(),
+            LinkScorecardJobYaml(),
+            ProfileScorecardJobYaml(),
+            InferenceScorecardJobYaml(),
+            CompileScorecardJobYaml(),
+            InferenceScorecardJobYaml(),
+        )
+
+    component_names_yaml = ComponentNamesYaml.from_intermediates()
+    graph_names_yaml = GraphNamesYaml.from_intermediates()
+    pre_qdq_job_yamls = PreQDQCompileScorecardJobYaml.from_intermediates()
+    quantize_job_yamls = QuantizeScorecardJobYaml.from_intermediates()
+    compile_job_yamls = CompileScorecardJobYaml.from_intermediates()
+    link_job_yamls = LinkScorecardJobYaml.from_intermediates()
+    profile_job_yamls = ProfileScorecardJobYaml.from_intermediates()
+    inference_job_yamls = InferenceScorecardJobYaml.from_intermediates()
+
+    # Snapshot before the ignore-existing clear below; CI always sets it, and
+    # snapshotting after left every "Previous *" job ID empty (tetracode #21471).
+    previous_compile_jobs = CompileScorecardJobYaml(dict(compile_job_yamls.mapping))
+    previous_inference_jobs = InferenceScorecardJobYaml(
+        dict(inference_job_yamls.mapping)
+    )
+
+    # Erase jobs for models we're collecting results for, if applicable
+    if ignore_existing:
+        # Fresh names needed to build the scoped export-params list.
+        fresh_component_names = ComponentNamesYaml.from_test_artifacts()
+        fresh_graph_names = GraphNamesYaml.from_test_artifacts()
+
+        drop_names_with_replacements(
+            component_names_yaml,
+            graph_names_yaml,
+            fresh_component_names,
+            fresh_graph_names,
+            model_list,
+        )
+
+        if all_models:
+            pre_qdq_job_yamls.clear()
+            quantize_job_yamls.clear()
+            compile_job_yamls.clear()
+            link_job_yamls.clear()
+            profile_job_yamls.clear()
+            inference_job_yamls.clear()
+        else:
+            for model in model_list:
+                # Job yamls: scoped drop preserves out-of-scope committed IDs.
+                try:
+                    manifest = QAIHMModelManifest.from_model(model)
+                    scope_params = _resolve_test_params(
+                        manifest, fresh_component_names, fresh_graph_names
+                    ).get_all_export_params()
+                except Exception:
+                    # Non-recipe models fall back to model-wide clear.
+                    pre_qdq_job_yamls.clear(model)
+                    quantize_job_yamls.clear(model)
+                    compile_job_yamls.clear(model)
+                    link_job_yamls.clear(model)
+                    profile_job_yamls.clear(model)
+                    inference_job_yamls.clear(model)
+                    continue
+                pre_qdq_job_yamls.drop_in_scope(scope_params)
+                quantize_job_yamls.drop_in_scope(scope_params)
+                compile_job_yamls.drop_in_scope(scope_params)
+                link_job_yamls.drop_in_scope(scope_params)
+                profile_job_yamls.drop_in_scope(scope_params)
+                inference_job_yamls.drop_in_scope(scope_params)
+
+    return _IntermediateState(
+        component_names_yaml,
+        graph_names_yaml,
+        pre_qdq_job_yamls,
+        quantize_job_yamls,
+        compile_job_yamls,
+        link_job_yamls,
+        profile_job_yamls,
+        inference_job_yamls,
+        previous_compile_jobs,
+        previous_inference_jobs,
+    )
 
 
 def _resolve_test_params(
@@ -697,79 +809,22 @@ if __name__ == "__main__":
     set_default_hub_client(get_scorecard_client_or_raise(args.deployment))
 
     # Load Base YAMLs
-    if using_prod_hub:
-        # Load previous scorecard state
-        component_names_yaml = ComponentNamesYaml.from_intermediates()
-        graph_names_yaml = GraphNamesYaml.from_intermediates()
-        pre_qdq_job_yamls = PreQDQCompileScorecardJobYaml.from_intermediates()
-        quantize_job_yamls = QuantizeScorecardJobYaml.from_intermediates()
-        compile_job_yamls = CompileScorecardJobYaml.from_intermediates()
-        link_job_yamls = LinkScorecardJobYaml.from_intermediates()
-        profile_job_yamls = ProfileScorecardJobYaml.from_intermediates()
-        inference_job_yamls = InferenceScorecardJobYaml.from_intermediates()
-
-        # Erase jobs for models we're collecting results for, if applicable
-        if args.ignore_existing_intermediate_jobs:
-            # Fresh names needed to build the scoped export-params list.
-            fresh_component_names = ComponentNamesYaml.from_test_artifacts()
-            fresh_graph_names = GraphNamesYaml.from_test_artifacts()
-
-            drop_names_with_replacements(
-                component_names_yaml,
-                graph_names_yaml,
-                fresh_component_names,
-                fresh_graph_names,
-                model_list,
-            )
-
-            if all_models:
-                pre_qdq_job_yamls.clear()
-                quantize_job_yamls.clear()
-                compile_job_yamls.clear()
-                link_job_yamls.clear()
-                profile_job_yamls.clear()
-                inference_job_yamls.clear()
-            else:
-                for model in model_list:
-                    # Job yamls: scoped drop preserves out-of-scope committed IDs.
-                    try:
-                        manifest = QAIHMModelManifest.from_model(model)
-                        scope_params = _resolve_test_params(
-                            manifest, fresh_component_names, fresh_graph_names
-                        ).get_all_export_params()
-                    except Exception:
-                        # Non-recipe models fall back to model-wide clear.
-                        pre_qdq_job_yamls.clear(model)
-                        quantize_job_yamls.clear(model)
-                        compile_job_yamls.clear(model)
-                        link_job_yamls.clear(model)
-                        profile_job_yamls.clear(model)
-                        inference_job_yamls.clear(model)
-                        continue
-                    pre_qdq_job_yamls.drop_in_scope(scope_params)
-                    quantize_job_yamls.drop_in_scope(scope_params)
-                    compile_job_yamls.drop_in_scope(scope_params)
-                    link_job_yamls.drop_in_scope(scope_params)
-                    profile_job_yamls.drop_in_scope(scope_params)
-                    inference_job_yamls.drop_in_scope(scope_params)
-    else:
-        # Previous scorecard state is applicable only on prod
-        component_names_yaml = ComponentNamesYaml()
-        graph_names_yaml = GraphNamesYaml()
-        pre_qdq_job_yamls = PreQDQCompileScorecardJobYaml()
-        quantize_job_yamls = QuantizeScorecardJobYaml()
-        compile_job_yamls = CompileScorecardJobYaml()
-        link_job_yamls = LinkScorecardJobYaml()
-        profile_job_yamls = ProfileScorecardJobYaml()
-        inference_job_yamls = InferenceScorecardJobYaml()
-
-    # Capture the previous (pre-merge) compile- and inference-job yamls for
-    # the regression reports' "Previous *" columns before the in-memory merge
-    # below makes current and previous indistinguishable.
-    previous_compile_jobs = CompileScorecardJobYaml(dict(compile_job_yamls.mapping))
-    previous_inference_jobs = InferenceScorecardJobYaml(
-        dict(inference_job_yamls.mapping)
+    state = _load_intermediate_state(
+        using_prod_hub,
+        args.ignore_existing_intermediate_jobs,
+        model_list,
+        all_models,
     )
+    component_names_yaml = state.component_names
+    graph_names_yaml = state.graph_names
+    pre_qdq_job_yamls = state.pre_qdq_jobs
+    quantize_job_yamls = state.quantize_jobs
+    compile_job_yamls = state.compile_jobs
+    link_job_yamls = state.link_jobs
+    profile_job_yamls = state.profile_jobs
+    inference_job_yamls = state.inference_jobs
+    previous_compile_jobs = state.previous_compile_jobs
+    previous_inference_jobs = state.previous_inference_jobs
 
     # Append job results from test artifacts
     component_names_yaml.mapping.update(
