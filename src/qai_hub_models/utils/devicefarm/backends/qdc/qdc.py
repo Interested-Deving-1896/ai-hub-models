@@ -113,11 +113,12 @@ _UNPARSED_LOG_SUFFIXES = (".mp4",)
 # "Completed" seconds before get_job_log_files has indexed the uploaded files,
 # so a successful job can momentarily list zero files (observed in the GPU
 # nightly, breaking metric extraction for a job that actually succeeded). With
-# BASE=5/MAX=300 the backoff schedule (5, 10, 20, 40, 80) sums to ~2.5 minutes.
+# BASE=5/MAX=300 the backoff schedule (5, 10, 20, 40, 80, 160, 300, 300, 300)
+# sums to ~20 minutes.
 # This is a client-side workaround; QDC-5565 tracks fixing it server-side so
 # the file listing is consistent once log upload reports complete.
 # https://jira-dc.qualcomm.com/jira/browse/QDC-5565
-LOG_LISTING_MAX_RETRIES = 5
+LOG_LISTING_MAX_RETRIES = 10
 # HTTP status codes that the QDC SDK can surface transiently on status polling.
 # The SDK raises a bare Exception with the code embedded in the message (e.g.
 # "failed with status code 403 and message: Invalid Credentials"), so we match
