@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import os
 import pathlib
 import re
@@ -25,6 +24,7 @@ from typing import Any, TypeVar
 
 import qai_hub as hub
 import ruamel.yaml
+from filelock import FileLock
 
 from qai_hub_models.scorecard.device import ScorecardDevice
 
@@ -242,24 +242,20 @@ def save_job(
     job_id: str,
     attempts_left: int = DEFAULT_RETRIES,
 ) -> None:
-    """Upsert one row into ``jobs_file``. fcntl.LOCK_EX-guarded for parallel submitters."""
+    """Upsert one row into ``jobs_file``. FileLock-guarded for parallel submitters."""
     p = Path(jobs_file)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with p.open("a+", encoding="utf-8") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        try:
-            f.seek(0)
-            raw = f.read()
-            mapping: dict[str, Any] = (
-                dict(ruamel.yaml.YAML().load(raw) or {}) if raw.strip() else {}
-            )
-            mapping[key] = {"job_id": job_id, "attempts_left": attempts_left}
-            f.seek(0)
-            f.truncate(0)
-            ruamel.yaml.YAML().dump(mapping, f)
-            f.flush()
-        finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    with FileLock(f"{p}.lock"), p.open("a+", encoding="utf-8") as f:
+        f.seek(0)
+        raw = f.read()
+        mapping: dict[str, Any] = (
+            dict(ruamel.yaml.YAML().load(raw) or {}) if raw.strip() else {}
+        )
+        mapping[key] = {"job_id": job_id, "attempts_left": attempts_left}
+        f.seek(0)
+        f.truncate(0)
+        ruamel.yaml.YAML().dump(mapping, f)
+        f.flush()
 
 
 # ---- base class -------------------------------------------------------------
