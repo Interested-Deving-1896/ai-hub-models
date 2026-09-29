@@ -4,12 +4,15 @@ applicable_scenarios:
 - Named Entity Recognition
 description: MOBILEBERT is a lightweight BERT model designed for efficient self-supervised learning of language representations. It can be used for masked language modeling and as a backbone for various NLP tasks.
 disabled_paths:
+  float:
+    tflite:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-74.000 %) above threshold (10.0 %)
   w8a16:
     onnx:
-      scorecard_failure: 'Failing jobs: j5m047jqg'
+      scorecard_failure: 'Failing jobs: jgol9m9kg'
   w8a16_mixed_fp16:
     onnx:
-      scorecard_failure: 'Failing jobs: jgdd0k4kg'
+      scorecard_failure: 'Failing jobs: jp0mxk69g'
 domain: Generative AI
 form_factors:
 - Phone

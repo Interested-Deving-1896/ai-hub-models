@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [MobileNet-v4: Efficient pure-conv ImageNet classifier for mobile devices](https://aihub.qualcomm.com/models/mobilenet_v4)
 
 MobileNetV4 is a machine learning model that can classify images from the Imagenet dataset. It can also be used as a backbone in building more complex models for specific use cases.

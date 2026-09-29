@@ -5,6 +5,10 @@ applicable_scenarios:
 datasets:
 - wikitext
 description: ELECTRABERT is a lightweight BERT model designed for efficient self-supervised learning of language representations. It can be used for identify unnatural or artificially modified text and as a backbone for various NLP tasks.
+disabled_paths:
+  float:
+    tflite:
+      scorecard_accuracy_failure: Torch and On-device accuracy diff (-79.200 %) above threshold (10.0 %)
 domain: Generative AI
 form_factors:
 - Phone

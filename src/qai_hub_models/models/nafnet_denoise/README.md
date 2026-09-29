@@ -22,7 +22,7 @@ qai-hub-models perf NAFNet-DeNoise
 qai-hub-models numerics NAFNet-DeNoise
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch NAFNet-DeNoise --runtime tflite --precision float
+qai-hub-models fetch NAFNet-DeNoise --runtime onnx --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

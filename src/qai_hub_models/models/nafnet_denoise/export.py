@@ -18,7 +18,6 @@ from qai_hub_models.utils.export.dispatch import select_pipeline
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
     Precision.float: [
-        TargetRuntime.TFLITE,
         TargetRuntime.ONNX,
     ],
     Precision.w8a16: [

@@ -184,6 +184,7 @@ and many more.
 | [MobileNet-v2](https://aihub.qualcomm.com/models/mobilenet_v2) | `qai_hub_models.models.mobilenet_v2` |
 | [MobileNet-v3-Large](https://aihub.qualcomm.com/models/mobilenet_v3_large) | `qai_hub_models.models.mobilenet_v3_large` |
 | [MobileNet-v3-Small](https://aihub.qualcomm.com/models/mobilenet_v3_small) | `qai_hub_models.models.mobilenet_v3_small` |
+| [MobileNet-v4](https://aihub.qualcomm.com/models/mobilenet_v4) | `qai_hub_models.models.mobilenet_v4` |
 | [NASNet](https://aihub.qualcomm.com/models/nasnet) | `qai_hub_models.models.nasnet` |
 | [RegNet](https://aihub.qualcomm.com/models/regnet) | `qai_hub_models.models.regnet` |
 | [RegNet-Y-800MF](https://aihub.qualcomm.com/models/regnet_y_800mf) | `qai_hub_models.models.regnet_y_800mf` |
@@ -383,6 +384,7 @@ and many more.
 | [Zipformer](https://aihub.qualcomm.com/models/zipformer) | `qai_hub_models.models.zipformer` |
 | | |
 | **Audio Classification**
+| [Pyannote-Speaker-Diarization](https://aihub.qualcomm.com/models/pyannote_speaker_diarization) | `qai_hub_models.models.pyannote_speaker_diarization` |
 | [YamNet](https://aihub.qualcomm.com/models/yamnet) | `qai_hub_models.models.yamnet` |
 | | |
 | **Audio Generation**
@@ -392,6 +394,9 @@ and many more.
 | [PiperTTS-DE](https://aihub.qualcomm.com/models/pipertts_de) | `qai_hub_models.models.pipertts_de` |
 | [PiperTTS-EN](https://aihub.qualcomm.com/models/pipertts_en) | `qai_hub_models.models.pipertts_en` |
 | [PiperTTS-IT](https://aihub.qualcomm.com/models/pipertts_it) | `qai_hub_models.models.pipertts_it` |
+| | |
+| **Voice Activity Detection**
+| [Silero-VAD](https://aihub.qualcomm.com/models/silero_vad) | `qai_hub_models.models.silero_vad` |
 
 ### Generative AI
 

@@ -22,7 +22,7 @@ qai-hub-models perf Electra-Bert-Base-Discrim-Google
 qai-hub-models numerics Electra-Bert-Base-Discrim-Google
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Electra-Bert-Base-Discrim-Google --runtime tflite --precision float
+qai-hub-models fetch Electra-Bert-Base-Discrim-Google --runtime qnn_dlc --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

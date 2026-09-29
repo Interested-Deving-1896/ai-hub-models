@@ -22,7 +22,7 @@ qai-hub-models perf Mobile-Bert-Uncased-Google
 qai-hub-models numerics Mobile-Bert-Uncased-Google
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch Mobile-Bert-Uncased-Google --runtime tflite --precision float
+qai-hub-models fetch Mobile-Bert-Uncased-Google --runtime qnn_dlc --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Pyannote-Speaker-Diarization: Open-source speaker diarization model identifying "who spoke when" in audio recordings](https://aihub.qualcomm.com/models/pyannote_speaker_diarization)
 
 Pyannote Speaker Diarization is an open-source speaker diarization model that identifies "who spoke when" in an audio recording. It detects per-frame speaker activity and encodes speaker identity, enabling accurate multi-speaker attribution in meetings, interviews, and other multi-party conversations.

@@ -184,6 +184,7 @@ and many more.
 | [MobileNet-v2](https://aihub.qualcomm.com/models/mobilenet_v2) | [qai_hub_models.models.mobilenet_v2](src/qai_hub_models/models/mobilenet_v2/README.md) |
 | [MobileNet-v3-Large](https://aihub.qualcomm.com/models/mobilenet_v3_large) | [qai_hub_models.models.mobilenet_v3_large](src/qai_hub_models/models/mobilenet_v3_large/README.md) |
 | [MobileNet-v3-Small](https://aihub.qualcomm.com/models/mobilenet_v3_small) | [qai_hub_models.models.mobilenet_v3_small](src/qai_hub_models/models/mobilenet_v3_small/README.md) |
+| [MobileNet-v4](https://aihub.qualcomm.com/models/mobilenet_v4) | [qai_hub_models.models.mobilenet_v4](src/qai_hub_models/models/mobilenet_v4/README.md) |
 | [NASNet](https://aihub.qualcomm.com/models/nasnet) | [qai_hub_models.models.nasnet](src/qai_hub_models/models/nasnet/README.md) |
 | [RegNet](https://aihub.qualcomm.com/models/regnet) | [qai_hub_models.models.regnet](src/qai_hub_models/models/regnet/README.md) |
 | [RegNet-Y-800MF](https://aihub.qualcomm.com/models/regnet_y_800mf) | [qai_hub_models.models.regnet_y_800mf](src/qai_hub_models/models/regnet_y_800mf/README.md) |
@@ -383,6 +384,7 @@ and many more.
 | [Zipformer](https://aihub.qualcomm.com/models/zipformer) | [qai_hub_models.models.zipformer](src/qai_hub_models/models/zipformer/README.md) |
 | | |
 | **Audio Classification**
+| [Pyannote-Speaker-Diarization](https://aihub.qualcomm.com/models/pyannote_speaker_diarization) | [qai_hub_models.models.pyannote_speaker_diarization](src/qai_hub_models/models/pyannote_speaker_diarization/README.md) |
 | [YamNet](https://aihub.qualcomm.com/models/yamnet) | [qai_hub_models.models.yamnet](src/qai_hub_models/models/yamnet/README.md) |
 | | |
 | **Audio Generation**
@@ -392,6 +394,9 @@ and many more.
 | [PiperTTS-DE](https://aihub.qualcomm.com/models/pipertts_de) | [qai_hub_models.models.pipertts_de](src/qai_hub_models/models/pipertts_de/README.md) |
 | [PiperTTS-EN](https://aihub.qualcomm.com/models/pipertts_en) | [qai_hub_models.models.pipertts_en](src/qai_hub_models/models/pipertts_en/README.md) |
 | [PiperTTS-IT](https://aihub.qualcomm.com/models/pipertts_it) | [qai_hub_models.models.pipertts_it](src/qai_hub_models/models/pipertts_it/README.md) |
+| | |
+| **Voice Activity Detection**
+| [Silero-VAD](https://aihub.qualcomm.com/models/silero_vad) | [qai_hub_models.models.silero_vad](src/qai_hub_models/models/silero_vad/README.md) |
 
 ### Generative AI
 
