@@ -1657,6 +1657,7 @@ class Gemma4Base_AIMETOnnx(LLM_AIMETOnnx):
         elif precision == Precision.w4:
             _set_lm_head_to_8b(quant_sim)
             cls._apply_precision_activations(quant_sim, precision)
+        cls._hold_params_at_int8(quant_sim)
         return quant_sim
 
 

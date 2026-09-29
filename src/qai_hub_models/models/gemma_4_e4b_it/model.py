@@ -80,6 +80,12 @@ DEFAULT_CHECKPOINT = {
 # Name used for split ONNX file basenames
 SPLIT_MODEL_NAME = "Gemma4_E4B"
 
+# See ``LLM_AIMETOnnx.int8_param_names``. v4 ships all of these at int8; see
+# https://github.com/qcom-ai-hub/tetracode/issues/21286.
+INT8_PARAM_NAMES = tuple(
+    f"model.model.layers.{i}.mlp.down_proj.weight" for i in range(NUM_LAYERS)
+)
+
 # Vision encoder (VEG) default trace resolution. The Gemma4 processor applies
 # pan-and-scan tiling, so the actual patch count is derived from this at load
 # time (see Gemma4VisionEncoder.from_pretrained).
@@ -144,6 +150,8 @@ class Gemma4_E4B_QuantizablePreSplit(
     num_layers_per_split = NUM_LAYERS_PER_SPLIT
     split_lm_head = SPLIT_LM_HEAD
     splitting_points = SPLITTING_POINTS
+    # Base class holds these at int8 (per-channel, symmetric) via _hold_params_at_int8.
+    int8_param_names = INT8_PARAM_NAMES
 
 
 class Gemma4_E4B_PartBase(Gemma4PartBase):
