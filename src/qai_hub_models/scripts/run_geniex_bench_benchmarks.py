@@ -384,19 +384,22 @@ def _collect_one(
     jobs_file: str,
     save_dir_root: str,
     geniex_version: str | None,
+    ctx_list: list[int],
     llamacpp_urls: dict[Precision, str] | None = None,
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
     qairt_version: str | None = None,
-) -> tuple[list[GenieXBenchMetrics], list[dict], str]:
+) -> tuple[list[GenieXBenchMetrics], list[dict], str, str | None]:
     """Poll a submitted geniex-bench job. On retryable failure, re-fetch
     the bundle from release-assets.yaml (qairt) or the HF URL (llama_cpp)
     and resubmit; the jobs_file row is rewritten with the new job id and
-    one fewer attempt.
+    one fewer attempt. A failed job whose logs hold every expected result is
+    kept rather than resubmitted.
 
-    Returns ``(metrics, eval_results, status)`` where status is
+    Returns ``(metrics, eval_results, status, job_failure)`` where status is
     ``"success"``, ``"eval_only"``, ``"eval_incomplete (...)"``,
-    ``"no_metrics"``, or ``"failed"``.
+    ``"no_metrics"``, or ``"failed"``, and ``job_failure`` is the reason the
+    kept job failed, if it did.
     """
     sd = ScorecardDevice.get(device_name)
     device_alias = ",".join(LLAMACPP_DEVICE_ALIASES) if plugin == "llama_cpp" else "npu"
@@ -413,7 +416,7 @@ def _collect_one(
             f"@ {device_name}: no GGUF URL available",
             file=sys.stderr,
         )
-        return [], [], "failed"
+        return [], [], "failed", None
 
     def _resolve_resubmit_args() -> tuple[str, list[int], str | None]:
         if plugin == "qairt":
@@ -454,7 +457,21 @@ def _collect_one(
         )
         return new_job_id
 
+    def _has_all_results(
+        metrics: list[GenieXBenchMetrics], eval_results: list[dict]
+    ) -> bool:
+        if not run_perf and not eval_prompts:
+            return False
+        expected = {(a, c) for a in device_alias.split(",") for c in ctx_list}
+        got = {(m.device_alias, m.context_length) for m in metrics}
+        perf_ok = not run_perf or expected <= got
+        eval_ok = not eval_prompts or len(eval_results) >= len(eval_prompts)
+        return perf_ok and eval_ok
+
+    job_failure: str | None = None
+
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
+        nonlocal job_failure
         logs_dir = _device_logs_dir(
             save_dir_root, model_id, precision, sd.name, runtime, job_id
         )
@@ -467,6 +484,14 @@ def _collect_one(
             run_perf=run_perf,
             save_logs_dir=logs_dir,
         )
+        # e.g. geniex-bench segfaulting in teardown fails the job after every
+        # result landed; a resubmit would crash the same way.
+        if outcome is not JobOutcome.SUCCESS and _has_all_results(
+            metrics, eval_results
+        ):
+            print(f"Keeping all results from failed job: {reason}")
+            job_failure = reason
+            outcome = JobOutcome.SUCCESS
         return (metrics, eval_results), outcome, reason
 
     try:
@@ -484,10 +509,10 @@ def _collect_one(
             f"ERROR: {e} for {model_id} @ {device_name}",
             file=sys.stderr,
         )
-        return [], [], "failed"
+        return [], [], "failed", None
 
     if metrics:
-        return metrics, eval_results, "success"
+        return metrics, eval_results, "success", job_failure
     # With perf off the device runs eval only, so an empty metrics list is
     # expected rather than a failure. But the eval must still return one result
     # per prompt sent; a short count means the run crashed or was truncated.
@@ -497,7 +522,7 @@ def _collect_one(
         status = f"eval_incomplete ({len(eval_results)}/{len(eval_prompts)})"
     else:
         status = "eval_only"
-    return metrics, eval_results, status
+    return metrics, eval_results, status, job_failure
 
 
 def _rows_and_updates_from_metrics(
@@ -912,7 +937,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
         precision,
         device_token,
         _model_ref,
-        _ctx_list,
+        ctx_list,
         _llamacpp_quant,
     ) in _iter_work(
         args.models,
@@ -963,7 +988,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
             )
 
         try:
-            metrics, eval_results, status = _collect_one(
+            metrics, eval_results, status, job_failure = _collect_one(
                 model_id=model_id,
                 precision=precision,
                 device_name=sd.name,
@@ -972,6 +997,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
                 jobs_file=args.jobs_file,
                 save_dir_root=args.results_dir,
                 geniex_version=args.geniex_version,
+                ctx_list=ctx_list,
                 llamacpp_urls=llamacpp_urls,
                 eval_prompts=_eval_prompts_for_device(eval_prompts, sd, args.devices),
                 run_perf=args.run_perf,
@@ -994,6 +1020,23 @@ def _cmd_collect(args: argparse.Namespace) -> int:
             continue
 
         _save_eval_results(eval_results, model_id, sd, precision, plugin)
+
+        # Its results are applied like any other, but the extra row keeps the
+        # failed job red in the CSV, step summary, and exit code.
+        if job_failure:
+            print(
+                f"::warning::{model_id} [{precision}] @ {sd.name}: results kept "
+                f"from a failed job. {job_failure}"
+            )
+            rows.append(
+                {
+                    "model": model_id,
+                    "plugin": plugin,
+                    "precision": str(precision),
+                    "device": sd.name,
+                    "status": "job_failed (results kept)",
+                }
+            )
 
         if status != "success":
             rows.append(

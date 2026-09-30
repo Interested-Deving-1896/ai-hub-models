@@ -6,12 +6,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 import shutil
 import tempfile
-import zipfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -27,11 +27,11 @@ from qai_hub_models.utils.aws import (
     get_qaihm_s3,
 )
 from qai_hub_models.utils.devicefarm.devicefarm import (
+    FAILED_JOB_LOG_TIMEOUT,
     DeviceFarm,
     HubDevicePlatform,
     JobOutcome,
     device_logs_dir_name,
-    safe_extract_zip,
     walk_dir_entries,
 )
 
@@ -600,47 +600,27 @@ def _parse_cell_metrics(path: str) -> GenieXBenchMetrics | None:
 
 
 def compute_geniex_metrics(
-    backend: DeviceFarm,
-    job_log_files: list,
+    logs_dir: str,
     save_results_dir: str | None = None,
-    save_logs_dir: str | None = None,
 ) -> list[GenieXBenchMetrics]:
-    """Parse metrics from job logs; if ``save_logs_dir`` is set, keep the raw zips too."""
+    """Parse metrics from job logs fetched by ``DeviceFarm.download_job_logs``."""
     metrics: list[GenieXBenchMetrics] = []
-    if save_logs_dir:
-        os.makedirs(save_logs_dir, exist_ok=True)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for job_log in job_log_files:
-            target = os.path.join(tmpdir, "logs", f"{job_log.filename}.zip")
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            if not backend.try_download_job_log_files(job_log.filename, target):
+    unreadable_schemas: dict[str, str] = {}
+    for root, _, files in os.walk(logs_dir):
+        for fn in sorted(files):
+            if not fn.endswith(".json"):
                 continue
-            if save_logs_dir:
-                safe_name = os.path.basename(job_log.filename)
-                shutil.copy(target, os.path.join(save_logs_dir, f"{safe_name}.zip"))
-            try:
-                safe_extract_zip(target, tmpdir)
-            except zipfile.BadZipFile:
+            path = os.path.join(root, fn)
+            parsed = _parse_cell_metrics(path)
+            if parsed is None:
+                if version := _unreadable_cell_schema(path):
+                    unreadable_schemas[fn] = version
                 continue
-
-        unreadable_schemas: dict[str, str] = {}
-        for root, _, files in os.walk(tmpdir):
-            for fn in sorted(files):
-                if not fn.endswith(".json"):
-                    continue
-                path = os.path.join(root, fn)
-                parsed = _parse_cell_metrics(path)
-                if parsed is None:
-                    if version := _unreadable_cell_schema(path):
-                        unreadable_schemas[fn] = version
-                    continue
-                metrics.append(parsed)
-                if save_results_dir:
-                    rel = os.path.relpath(path, tmpdir)
-                    dest = os.path.join(save_results_dir, rel)
-                    os.makedirs(os.path.dirname(dest), exist_ok=True)
-                    shutil.copy(path, dest)
+            metrics.append(parsed)
+            if save_results_dir:
+                dest = os.path.join(save_results_dir, os.path.relpath(path, logs_dir))
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                shutil.copy(path, dest)
 
     if metrics:
         print(f"Parsed {len(metrics)} geniex-bench cells:")
@@ -673,50 +653,21 @@ def compute_geniex_metrics(
     return metrics
 
 
-def compute_geniex_eval_results(
-    backend: DeviceFarm,
-    job_log_files: list,
-    prompts: list[str],
-    save_logs_dir: str | None = None,
-) -> list[dict]:
+def compute_geniex_eval_results(logs_dir: str, prompts: list[str]) -> list[dict]:
     """Parse ``geniex_eval_outputs.txt`` into [{idx, prompt, output}].
 
+    ``logs_dir`` holds job logs fetched by ``DeviceFarm.download_job_logs``.
     The device scripts run ``geniex-bench --accuracy`` once per prompt and
     append each invocation's stdout to a single ``geniex_eval_outputs.txt``,
-    with ``===EVAL_IDX_NNN===`` markers separating prompts. If
-    ``save_logs_dir`` is set the raw eval log zip lands there too.
+    with ``===EVAL_IDX_NNN===`` markers separating prompts.
     """
     outputs: dict[int, str] = {}
-    if save_logs_dir:
-        os.makedirs(save_logs_dir, exist_ok=True)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for job_log in job_log_files:
-            if "geniex_eval_outputs" not in job_log.filename:
+    for root, _, files in os.walk(logs_dir):
+        for fn in files:
+            if "geniex_eval_outputs" not in fn or fn.endswith(".zip"):
                 continue
-            target = os.path.join(tmpdir, "logs", f"{job_log.filename}.zip")
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            if not backend.try_download_job_log_files(job_log.filename, target):
-                continue
-            if save_logs_dir:
-                safe_name = os.path.basename(job_log.filename)
-                dest = os.path.join(save_logs_dir, f"{safe_name}.zip")
-                # Skip if compute_metrics already copied this zip in the
-                # same call -- avoids the redundant I/O when both perf
-                # and eval run.
-                if not os.path.exists(dest):
-                    shutil.copy(target, dest)
-            try:
-                safe_extract_zip(target, tmpdir)
-            except zipfile.BadZipFile:
-                continue
-
-        for root, _, files in os.walk(tmpdir):
-            for fn in files:
-                if "geniex_eval_outputs" not in fn or fn.endswith(".zip"):
-                    continue
-                with open(os.path.join(root, fn), "rb") as f:
-                    outputs.update(_parse_eval_outputs(_decode_device_log(f.read())))
+            with open(os.path.join(root, fn), "rb") as f:
+                outputs.update(_parse_eval_outputs(_decode_device_log(f.read())))
 
     return [
         {
@@ -901,6 +852,36 @@ def submit_geniex_bench(
     return job_id, matrix_rows, qairt_bundles
 
 
+def _fetch_and_parse_job_logs(
+    backend: DeviceFarm,
+    job_id: str,
+    job_log_files: list,
+    save_logs_dir: str | None,
+    log_label: str | None,
+    save_results_dir: str | None,
+    eval_prompts: list[str] | None,
+    run_perf: bool,
+) -> tuple[list[GenieXBenchMetrics], list[dict]]:
+    """Download the logs once, archive them, then parse metrics + eval from them.
+
+    Archiving comes before parsing so the logs survive whatever verdict follows.
+    """
+    with tempfile.TemporaryDirectory() as logs_dir:
+        backend.download_job_logs(job_log_files, logs_dir)
+        backend.archive_job_logs(job_id, logs_dir, save_logs_dir, label=log_label)
+        metrics = (
+            compute_geniex_metrics(logs_dir, save_results_dir=save_results_dir)
+            if run_perf
+            else []
+        )
+        # eval_prompts holds the raw questions so compute_eval_results labels each
+        # output with the human-readable prompt (not the templated form).
+        eval_results = (
+            compute_geniex_eval_results(logs_dir, eval_prompts) if eval_prompts else []
+        )
+    return metrics, eval_results
+
+
 def collect_geniex_bench(
     backend: DeviceFarm,
     hub_device_name: str,
@@ -911,13 +892,14 @@ def collect_geniex_bench(
     save_logs_dir: str | None = None,
     log_label: str | None = None,
 ) -> tuple[list[GenieXBenchMetrics], list[dict], JobOutcome, str | None]:
-    """Poll a submitted geniex-bench job and download+parse logs on success.
+    """Poll a submitted geniex-bench job and download+parse its logs.
 
-    Returns ``(metrics, eval_results, outcome, reason)``. ``metrics`` and
-    ``eval_results`` are empty unless ``outcome`` is SUCCESS; ``reason``
-    carries the failure description on a non-SUCCESS outcome. eval_prompts
-    is only consulted on success to attach the human-readable prompt text
-    to each parsed output (run_perf=False yields eval-only results).
+    Returns ``(metrics, eval_results, outcome, reason)``; ``reason`` carries the
+    failure description on a non-SUCCESS outcome. A failed job's logs are parsed
+    too, since it can fail after writing every result (e.g. geniex-bench
+    segfaulting in teardown); the caller decides whether those are enough.
+    eval_prompts attaches the human-readable prompt text to each parsed output
+    (run_perf=False yields eval-only results).
     ``log_label`` names the per-job log archive written under ``save_logs_dir``.
     """
     job_status = backend.status(job_id, timeout=GENIEX_BENCH_JOB_TIMEOUT)
@@ -931,8 +913,24 @@ def collect_geniex_bench(
         )
         outcome = backend.classify_failure(job_result)
         print(f"[result={job_result}] {reason}")
-        backend.save_job_logs(job_id, save_logs_dir, label=log_label)
-        return [], [], outcome, reason
+        try:
+            with contextlib.suppress(TimeoutError):
+                backend.log_upload_status(job_id, timeout=FAILED_JOB_LOG_TIMEOUT)
+            metrics, eval_results = _fetch_and_parse_job_logs(
+                backend,
+                job_id,
+                backend.get_job_log_files(job_id),
+                save_logs_dir,
+                log_label,
+                save_results_dir,
+                eval_prompts,
+                run_perf,
+            )
+        except Exception as err:
+            # Type only, never the message: backend errors may embed secrets.
+            print(f"Could not parse logs of failed job {job_id} ({type(err).__name__})")
+            return [], [], outcome, reason
+        return metrics, eval_results, outcome, reason
 
     backend.log_upload_status(job_id)
     # The file listing can lag the log-upload signal on some backends, so wait
@@ -947,24 +945,17 @@ def collect_geniex_bench(
         print(f"[empty logs] {reason}")
         return [], [], JobOutcome.RETRYABLE_EMPTY_LOGS, reason
 
-    # Archive the logs before parsing, so they survive whatever verdict follows:
-    # a 'Successful' job can still be failed below (e.g. no eval output), and its
-    # logs are what explains why.
-    backend.save_job_logs(job_id, save_logs_dir, job_log_files, label=log_label)
-
-    metrics = (
-        compute_geniex_metrics(
-            backend, job_log_files, save_results_dir=save_results_dir
-        )
-        if run_perf
-        else []
-    )
-    # eval_prompts holds the raw questions so compute_eval_results labels each
-    # output with the human-readable prompt (not the templated form).
-    eval_results = (
-        compute_geniex_eval_results(backend, job_log_files, eval_prompts)
-        if eval_prompts
-        else []
+    # A 'Successful' job can still be failed below (e.g. no eval output), and the
+    # logs archived here are what explains why.
+    metrics, eval_results = _fetch_and_parse_job_logs(
+        backend,
+        job_id,
+        job_log_files,
+        save_logs_dir,
+        log_label,
+        save_results_dir,
+        eval_prompts,
+        run_perf,
     )
     # A job can report a successful result and return log files while carrying
     # no eval output at all: if the device drops off adb mid-run, device_logs is

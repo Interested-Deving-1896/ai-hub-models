@@ -472,6 +472,53 @@ class DeviceFarm(ABC):
             )
             return False
 
+    def download_job_logs(self, job_log_files: list, dest_dir: str) -> int:
+        """Download and unwrap each log file at its ``.filename`` under ``dest_dir``.
+
+        Returns the count that landed; see :meth:`try_download_job_log_files`
+        for why a missing file is skipped rather than raised.
+        """
+        saved = 0
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for job_log in job_log_files:
+                target = os.path.join(tmpdir, f"{uuid.uuid4().hex}.zip")
+                if not self.try_download_job_log_files(job_log.filename, target):
+                    continue
+                dest = os.path.join(dest_dir, job_log.filename)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                # Logs are served as a zip; unwrap it so callers see readable
+                # files. A non-zip payload is kept as-is.
+                try:
+                    safe_extract_zip(target, os.path.dirname(dest))
+                except (zipfile.BadZipFile, ValueError):
+                    shutil.move(target, dest)
+                saved += 1
+        return saved
+
+    def archive_job_logs(
+        self,
+        job_id: str,
+        logs_dir: str,
+        save_logs_dir: str | None,
+        label: str | None = None,
+    ) -> None:
+        """Best-effort: zip ``logs_dir`` (from :meth:`download_job_logs`) into
+        ``<save_logs_dir>/<label or job_id>.zip``. Never raises.
+        """
+        if not save_logs_dir or not os.listdir(logs_dir):
+            return
+        try:
+            os.makedirs(save_logs_dir, exist_ok=True)
+            zip_name = sanitize_job_id(label or job_id)
+            create_zip(os.path.join(save_logs_dir, f"{zip_name}.zip"), logs_dir)
+        except Exception as err:
+            # Type only, never the message: backend errors may embed secrets.
+            print(
+                f"[{type(self).__name__}] could not archive logs for job {job_id} "
+                f"({type(err).__name__}); any failure reason still stands.",
+                file=sys.stderr,
+            )
+
     def save_job_logs(
         self,
         job_id: str,
@@ -498,24 +545,9 @@ class DeviceFarm(ABC):
                 job_log_files = self.get_job_log_files(job_id)
             if not job_log_files:
                 return 0
-            with tempfile.TemporaryDirectory() as tmpdir:
-                staged = os.path.join(tmpdir, "logs")
-                for job_log in job_log_files:
-                    target = os.path.join(tmpdir, f"{uuid.uuid4().hex}.zip")
-                    if not self.try_download_job_log_files(job_log.filename, target):
-                        continue
-                    dest = os.path.join(staged, job_log.filename)
-                    os.makedirs(os.path.dirname(dest), exist_ok=True)
-                    # Logs are served as a zip; unwrap it so the archive holds
-                    # readable files. A non-zip payload is kept as-is.
-                    try:
-                        safe_extract_zip(target, os.path.dirname(dest))
-                    except (zipfile.BadZipFile, ValueError):
-                        shutil.move(target, dest)
-                    saved += 1
-                if saved:
-                    zip_name = sanitize_job_id(label or job_id)
-                    create_zip(os.path.join(save_logs_dir, f"{zip_name}.zip"), staged)
+            with tempfile.TemporaryDirectory() as staged:
+                saved = self.download_job_logs(job_log_files, staged)
+                self.archive_job_logs(job_id, staged, save_logs_dir, label=label)
         except Exception as err:
             # Type only, never the message: backend errors may embed secrets.
             print(
