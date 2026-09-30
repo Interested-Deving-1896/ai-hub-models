@@ -35,6 +35,10 @@ case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*) ACTIVATE_SUBDIR="Scripts" ;;
 esac
 
+# A venv active in PowerShell leaks a ';'-separated _OLD_VIRTUAL_PATH that
+# activate's `deactivate` would restore as PATH, dropping uname, git, etc.
+unset _OLD_VIRTUAL_PATH _OLD_VIRTUAL_PYTHONHOME
+
 if [ ! -d "$ENV_PATH" ]; then
   mkdir -p "$(dirname "$ENV_PATH")"
 
