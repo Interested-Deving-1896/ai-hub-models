@@ -13,6 +13,8 @@ layer, where :func:`resolve_recipe_dir` converts it into a folder path.
 
 from __future__ import annotations
 
+import difflib
+import functools
 import importlib
 import sys
 from pathlib import Path
@@ -20,6 +22,57 @@ from typing import Any
 
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_MODELS_ROOT
+
+_LIST_MODEL_IDS_HINT = "Run `qai-hub-models models -q` to list model IDs."
+
+
+def _normalize_model_name(name: str) -> str:
+    """Fold the separators users get wrong: `MobileNet-v2` -> `mobilenet_v2`."""
+    return name.lower().replace("-", "_").replace(" ", "_")
+
+
+@functools.cache
+def _display_name_to_id() -> dict[str, str]:
+    """Map normalized manifest display names to model ids.
+
+    Reads every manifest, so call this only when a target has already failed
+    to resolve.
+    """
+    mapping: dict[str, str] = {}
+    for model_id in MODEL_IDS:
+        try:
+            name = QAIHMModelManifest.from_model(model_id).name
+        except Exception:
+            # An unreadable manifest must not mask the caller's real error.
+            continue
+        if name:
+            mapping.setdefault(_normalize_model_name(name), model_id)
+    return mapping
+
+
+def unknown_model_error(target: str) -> str:
+    """Build the error text for a target that is neither a model id nor a folder."""
+    normalized = _normalize_model_name(target)
+    by_display_name = _display_name_to_id()
+
+    if resolved := by_display_name.get(normalized):
+        return (
+            f"{target!r} is a model display name, not a model ID. "
+            f"Use {resolved!r} instead."
+        )
+
+    candidates = {_normalize_model_name(m): m for m in MODEL_IDS} | by_display_name
+    if matches := difflib.get_close_matches(normalized, candidates, n=1):
+        return (
+            f"Unknown model {target!r}. Did you mean {candidates[matches[0]]!r}?\n\n"
+            f"{_LIST_MODEL_IDS_HINT}"
+        )
+
+    return (
+        f"Unknown model {target!r}, and no folder of that name exists here.\n\n"
+        f"  * {_LIST_MODEL_IDS_HINT}\n"
+        "  * To use a local recipe folder, pass a path: ./my_model"
+    )
 
 
 def resolve_recipe_dir(target: str | Path) -> Path:
@@ -52,12 +105,7 @@ def resolve_recipe_dir(target: str | Path) -> Path:
         elif (cwd_folder := Path(target_str)).is_dir():
             source_dir = cwd_folder.resolve()
         else:
-            raise ValueError(
-                f"{target_str!r} is not an installed model id and no folder "
-                f"of that name exists in the current directory. Either use a "
-                "known model id (see `qai-hub-models models` for the list) "
-                "or pass a folder path (e.g. my_model)."
-            )
+            raise ValueError(unknown_model_error(target_str))
     if not (source_dir / "manifest.yaml").exists():
         raise ValueError(
             f"{source_dir} does not contain a manifest.yaml — cannot resolve "

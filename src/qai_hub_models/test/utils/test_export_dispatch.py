@@ -13,6 +13,7 @@ from qai_hub_models.utils.export.context import (
     RecipeSourceUnavailableError,
     import_recipe_module,
     resolve_recipe_dir,
+    unknown_model_error,
 )
 from qai_hub_models.utils.export.dispatch import select_pipeline
 
@@ -44,9 +45,33 @@ def test_resolve_recipe_dir_rejects_unknown_id(tmp_path: Path) -> None:
     """A bare id not in MODEL_IDS raises with a helpful message."""
     with (
         patch("qai_hub_models.utils.export.context.MODEL_IDS", ["known_model"]),
-        pytest.raises(ValueError, match="not an installed model id"),
+        pytest.raises(ValueError, match="Unknown model"),
     ):
         resolve_recipe_dir("does_not_exist_anywhere_xyz")
+
+
+def test_unknown_model_error_resolves_display_names_and_typos() -> None:
+    """A display name must name its id, since `models` lists names, not ids.
+
+    Telling a user who pasted "MobileNet-v2" to go read the model list sends
+    them back to the same string they just tried.
+    """
+    with (
+        patch(
+            "qai_hub_models.utils.export.context.MODEL_IDS",
+            ["mobilenet_v2", "efficientnet_b0"],
+        ),
+        patch(
+            "qai_hub_models.utils.export.context._display_name_to_id",
+            return_value={"mobilenet_v2": "mobilenet_v2"},
+        ),
+    ):
+        assert "Use 'mobilenet_v2'" in unknown_model_error("MobileNet-v2")
+        assert "Did you mean 'efficientnet_b0'?" in unknown_model_error(
+            "eficientnet_b0"
+        )
+        no_match = unknown_model_error("oopstypoinmodelname")
+        assert "models -q" in no_match and "Did you mean" not in no_match
 
 
 def test_resolve_recipe_dir_accepts_bare_cwd_folder(

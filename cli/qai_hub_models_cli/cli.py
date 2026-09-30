@@ -34,10 +34,7 @@ from qai_hub_models_cli.common import (
     parse_sdk_version_filters,
     sample_command,
 )
-from qai_hub_models_cli.envvars import (
-    VERBOSE_EXCEPTIONS_ENVVAR,
-    verbose_exceptions_enabled,
-)
+from qai_hub_models_cli.envvars import verbose_exceptions_enabled
 from qai_hub_models_cli.fetch import fetch, get_asset_url
 from qai_hub_models_cli.find import find_matching_releases
 from qai_hub_models_cli.proto.info_pb2 import (
@@ -588,19 +585,11 @@ def _dispatch_recipe_command(script: str, raw_args: list[str]) -> None:
             resolved_target = aliased_folder
 
     from qai_hub_models.cli.dispatch import run_model_script
-    from qai_hub_models.utils.export.context import RecipeSourceUnavailableError
 
-    try:
-        run_model_script(model_id=resolved_target, script=script, forwarded=forwarded)
-    except RecipeSourceUnavailableError:
-        # Already actionable; don't bury it in the generic support-email message.
-        raise
-    except Exception as e:
-        raise RuntimeError(
-            f"\nSomething went wrong (an exception was thrown). Email us at ai-hub-support@qti.qualcomm.com for assistance.\n\n"
-            f"Enable a full stack trace by setting the following environment variable: `{VERBOSE_EXCEPTIONS_ENVVAR}=1`. \n"
-            "You should include the stack trace in your support request."
-        ) from e
+    # Errors surface with their own message via main()'s handler. Recipe
+    # failures are overwhelmingly user input (bad id, bad flag), so burying
+    # them behind a support-email prompt hid the actionable text.
+    run_model_script(model_id=resolved_target, script=script, forwarded=forwarded)
 
 
 def _warn_missing_qaihm_install(
@@ -1032,7 +1021,7 @@ def _run_list_models(args: argparse.Namespace) -> None:
     show_filter_columns = feature_supported(
         args.qaihm_version, MIN_MODEL_FILTER_VERSION
     )
-    columns = ["Name", "Domain"]
+    columns = ["Name", "Model ID", "Domain"]
     if show_filter_columns:
         columns += ["Use Case", "Quantized", "Runtimes"]
         wrap_column, wrap_on_commas = "Runtimes", True
@@ -1043,7 +1032,7 @@ def _run_list_models(args: argparse.Namespace) -> None:
     rows = []
     for domain, group in groups.items():
         for entry in group:
-            row = [entry.display_name, domain]
+            row = [entry.display_name, entry.id, domain]
             if show_filter_columns:
                 row.append(use_case_proto_to_str(entry.use_case))
                 row += [

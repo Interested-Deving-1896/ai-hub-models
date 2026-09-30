@@ -133,6 +133,10 @@ def test_models_table(manifest: None, capsys: pytest.CaptureFixture[str]) -> Non
     # Use Case + Quantized + Runtimes columns.
     assert "Quantized" in output and "Runtimes" in output
     assert "tflite" in output
+    # Model ID is what `export`/`evaluate` take, so the table must show it
+    # next to the display name users would otherwise copy.
+    assert "Model ID" in output
+    assert "mobilenet_v2" in output
 
 
 def test_models_quiet(manifest: None, capsys: pytest.CaptureFixture[str]) -> None:
@@ -194,3 +198,4 @@ def test_models_filter_version_gated(
     main(["models", "-v", "0.55.0"])
     out = capsys.readouterr().out
     assert "Quantized" not in out and "Runtimes" not in out
+    assert "Model ID" in out

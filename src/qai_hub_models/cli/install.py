@@ -36,7 +36,10 @@ from typing import Any
 
 from qai_hub_models.configs.manifest_yaml import PipCommand
 from qai_hub_models.utils.asset_loaders import load_yaml
-from qai_hub_models.utils.export.context import looks_like_path
+from qai_hub_models.utils.export.context import (
+    looks_like_path,
+    unknown_model_error,
+)
 from qai_hub_models.utils.path_helpers import MODEL_IDS, QAIHM_PACKAGE_ROOT
 
 DATASETS_ROOT = QAIHM_PACKAGE_ROOT / "datasets"
@@ -317,11 +320,7 @@ def _resolve_root(target: str) -> Node:
     if target not in MODEL_IDS:
         if (cwd_folder := Path(target)).is_dir():
             return _folder_root(cwd_folder.resolve())
-        raise ValueError(
-            f"{target!r} is not an installed model id and no folder of that "
-            "name exists in the current directory. Either use a known model "
-            "id or pass a recipe folder path (e.g. my_model)."
-        )
+        raise ValueError(unknown_model_error(target))
     return Node(NodeKind.MODEL, target)
 
 

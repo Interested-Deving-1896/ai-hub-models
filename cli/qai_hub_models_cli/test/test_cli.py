@@ -148,6 +148,32 @@ def test_dispatch_surfaces_source_unavailable_error(
     assert "ai-hub-support@qti.qualcomm.com" not in out
 
 
+def test_dispatch_surfaces_user_error_message(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A plain exception keeps its own text instead of the support-email message.
+
+    Unknown ids, bad flags and missing datasets all arrive here as ordinary
+    exceptions; wrapping them hid the one line that told the user what to fix.
+    """
+    mock_run = MagicMock(
+        side_effect=ValueError("Unknown model 'typo'. Did you mean 'mobilenet_v2'?")
+    )
+    with (
+        patch("qai_hub_models_cli.cli._check_version_match"),
+        patch("qai_hub_models_cli.cli.is_heavy_package_installed", return_value=True),
+        patch.dict(
+            sys.modules,
+            _stub_heavy_modules({"mobilenet_v2"}, run_model_script=mock_run),
+        ),
+        pytest.raises(SystemExit),
+    ):
+        main(["export", "mobilenet_v2"])
+    out = capsys.readouterr().out
+    assert "Did you mean 'mobilenet_v2'?" in out
+    assert "ai-hub-support@qti.qualcomm.com" not in out
+
+
 def test_dispatch_missing_model_arg_exits_with_usage_hint(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

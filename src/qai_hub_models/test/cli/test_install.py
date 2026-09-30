@@ -234,7 +234,7 @@ class TestResolveRoot:
         self, fake_tree: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(fake_tree)
-        with pytest.raises(ValueError, match="not an installed model id"):
+        with pytest.raises(ValueError, match="Unknown model"):
             _resolve_root("nope")
         with pytest.raises(ValueError, match="no folder of that name exists"):
             _resolve_root("nope")
@@ -339,7 +339,7 @@ class TestPlanInstall:
         assert template_entry[1] == []
 
     def test_unknown_model_id_rejected(self, fake_tree: Path) -> None:
-        with pytest.raises(ValueError, match="not an installed model id"):
+        with pytest.raises(ValueError, match="Unknown model"):
             plan_install("does_not_exist")
 
 

@@ -69,7 +69,15 @@ class ParseEnumAction(argparse.Action):
         option_string: str | None = None,
     ) -> None:
         assert isinstance(values, str)
-        setattr(namespace, self.dest, self.enum_type[values.upper().replace("-", "_")])
+        try:
+            member = self.enum_type[values.upper().replace("-", "_")]
+        except KeyError:
+            choices = ", ".join(sorted(m.name.lower() for m in self.enum_type))
+            parser.error(
+                f"argument {option_string}: invalid choice {values!r} "
+                f"(choose from {choices})"
+            )
+        setattr(namespace, self.dest, member)
 
 
 ParserT = TypeVar("ParserT", bound=argparse.ArgumentParser)
@@ -296,6 +304,12 @@ class QAIHMArgumentParser(argparse.ArgumentParser):
             self._validate_fp16_support(parsed.device, precision)
 
         if self._dataset_name_to_cls and hasattr(parsed, "dataset_name"):
+            if parsed.dataset_name not in self._dataset_name_to_cls:
+                choices = ", ".join(sorted(self._dataset_name_to_cls))
+                self.error(
+                    f"argument --dataset-name: invalid choice "
+                    f"{parsed.dataset_name!r} (choose from {choices})"
+                )
             parsed.dataset_cls = self._dataset_name_to_cls[parsed.dataset_name]
 
         return parsed
