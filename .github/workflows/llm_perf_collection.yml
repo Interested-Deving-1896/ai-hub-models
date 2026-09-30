@@ -224,6 +224,7 @@ jobs:
         AWS_PROFILE_NAME: qaihm
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
+        AWS_DEVICEFARM_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
         AWS_DEVICEFARM_REGION: us-west-2
       run: |
         source ${{ env.VENV_PATH }}/bin/activate
@@ -250,6 +251,7 @@ jobs:
         AWS_PROFILE_NAME: qaihm
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
+        AWS_DEVICEFARM_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
         AWS_DEVICEFARM_REGION: us-west-2
       run: |
         source ${{ env.VENV_PATH }}/bin/activate

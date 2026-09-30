@@ -243,6 +243,7 @@ jobs:
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
+        AWS_DEVICEFARM_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
         AWS_DEVICEFARM_REGION: us-west-2
       run: |
         source ${{ env.VENV_PATH }}/bin/activate
@@ -282,6 +283,7 @@ jobs:
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
+        AWS_DEVICEFARM_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
         AWS_DEVICEFARM_REGION: us-west-2
       run: |
         source ${{ env.VENV_PATH }}/bin/activate
