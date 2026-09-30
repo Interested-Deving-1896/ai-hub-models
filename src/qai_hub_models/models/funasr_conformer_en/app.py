@@ -18,6 +18,7 @@ from qai_hub_models.models.funasr_conformer_en.model import (
     audio_len_to_valid_frames,
 )
 from qai_hub_models.models.funasr_conformer_en.utils import CTC_BLANK_ID, ctc_bpe_decode
+from qai_hub_models.models.templates.conformer.utils import chunk_audio
 
 
 class FunASRConformerEnApp:
@@ -94,7 +95,7 @@ class FunASRConformerEnApp:
             audio_t = torchaudio.functional.resample(audio_t, sample_rate, SAMPLE_RATE)
             audio = audio_t.squeeze(0).numpy()
 
-        chunks = self._chunk_audio(audio)
+        chunks = chunk_audio(DEFAULT_AUDIO_LENGTH, audio)
         parts: list[str] = []
         for chunk, real_len in chunks:
             result = self._transcribe_chunk(chunk, real_len)
@@ -102,23 +103,6 @@ class FunASRConformerEnApp:
                 parts.append(result)
 
         return " ".join(parts)
-
-    def _chunk_audio(self, audio: np.ndarray) -> list[tuple[np.ndarray, int]]:
-        """
-        Split 16kHz audio into (chunk, real_len) pairs of DEFAULT_AUDIO_LENGTH samples.
-        The last chunk is zero-padded if shorter; real_len tracks actual samples.
-        """
-        if len(audio) == 0:
-            return [(np.zeros(DEFAULT_AUDIO_LENGTH, dtype=np.float32), 0)]
-
-        chunks = []
-        for start in range(0, len(audio), DEFAULT_AUDIO_LENGTH):
-            chunk = audio[start : start + DEFAULT_AUDIO_LENGTH]
-            real_len = len(chunk)
-            if real_len < DEFAULT_AUDIO_LENGTH:
-                chunk = np.pad(chunk, (0, DEFAULT_AUDIO_LENGTH - real_len))
-            chunks.append((chunk, real_len))
-        return chunks
 
     def _transcribe_chunk(self, chunk: np.ndarray, real_len: int) -> str:
         """Run model inference on a single fixed-size audio chunk.

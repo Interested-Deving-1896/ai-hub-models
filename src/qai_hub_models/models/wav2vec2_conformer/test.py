@@ -7,15 +7,17 @@ from __future__ import annotations
 
 import pytest
 
-from qai_hub_models.models.funasr_conformer_en.app import FunASRConformerEnApp
-from qai_hub_models.models.funasr_conformer_en.demo import load_demo_audio, main
-from qai_hub_models.models.funasr_conformer_en.model import (
+from qai_hub_models.models.templates.conformer.test import conformer_transcribe_test_e2e
+from qai_hub_models.models.wav2vec2_conformer.app import Wav2Vec2ConformerApp
+from qai_hub_models.models.wav2vec2_conformer.demo import load_demo_audio, main
+from qai_hub_models.models.wav2vec2_conformer.model import (
     MODEL_ASSET_VERSION,
     MODEL_ID,
-    FunASRConformerEn,
+    Wav2Vec2Conformer,
 )
-from qai_hub_models.models.templates.conformer.test import conformer_transcribe_test_e2e
-from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
+from qai_hub_models.utils.asset_loaders import (
+    CachedWebModelAsset,
+)
 
 GROUND_TRUTH_RESULT = CachedWebModelAsset.from_asset_store(
     MODEL_ID, MODEL_ASSET_VERSION, "ground_truth.txt"
@@ -23,16 +25,16 @@ GROUND_TRUTH_RESULT = CachedWebModelAsset.from_asset_store(
 
 
 def test_transcribe() -> None:
-    model = FunASRConformerEn.from_pretrained()
-    app = FunASRConformerEnApp(model, model.frontend, model.token_list)
+    model = Wav2Vec2Conformer.from_pretrained()
+    app = Wav2Vec2ConformerApp(model)
     conformer_transcribe_test_e2e(app, load_demo_audio, GROUND_TRUTH_RESULT)
 
 
 @pytest.mark.trace
 def test_trace() -> None:
-    model = FunASRConformerEn.from_pretrained()
+    model = Wav2Vec2Conformer.from_pretrained()
     traced = model.convert_to_torchscript()
-    app = FunASRConformerEnApp(traced, model.frontend, model.token_list)
+    app = Wav2Vec2ConformerApp(traced)
     conformer_transcribe_test_e2e(app, load_demo_audio, GROUND_TRUTH_RESULT)
 
 

@@ -5,57 +5,36 @@
 
 from __future__ import annotations
 
-import jiwer
 import torch
 
 from qai_hub_models.models.funasr_conformer_en.utils import CTC_BLANK_ID, ctc_bpe_decode
-from qai_hub_models.utils.base_evaluator import BaseEvaluator
-from qai_hub_models.utils.metrics import (
-    WORD_ERROR_RATE,
-    MetricMetadata,
+from qai_hub_models.models.templates.conformer.evaluator import (
+    ConformerCTCWERBase,
 )
 
 
-class FunASRConformerEvaluator(BaseEvaluator):
-    """
-    WER evaluator for FunASR Conformer-EN using BPE CTC decode.
-
-    Uses the conformer's own CTC greedy decode + BPE detokenization rather than
-    the WavLM-specific processor.batch_decode() in LibriSpeechEvaluator.
-    """
+class FunASRConformerEvaluator(ConformerCTCWERBase):
+    """WER evaluator for FunASR Conformer-EN using BPE CTC decode."""
 
     def __init__(self, token_list: list[str]) -> None:
         self.token_list = token_list
         self._blank_id = CTC_BLANK_ID
-        self.reset()
+        super().__init__()
 
-    def add_batch(
+    def decode_predictions(
         self,
-        output: torch.Tensor,
+        logits: torch.Tensor,
         target: tuple[torch.Tensor, torch.Tensor],
-    ) -> None:
-        logits = output if isinstance(output, torch.Tensor) else output[0]
-        gt_text_batch, valid_frames_batch = target
+    ) -> list[str]:
+        _, valid_frames_batch = target
+        predictions = []
         for i in range(logits.shape[0]):
             valid_len = int(valid_frames_batch[i].item())
-            decoded = ctc_bpe_decode(
-                logits[i, :valid_len], self.token_list, self._blank_id
+            predictions.append(
+                ctc_bpe_decode(logits[i, :valid_len], self.token_list, self._blank_id)
             )
-            self.predictions.append(decoded)
-        clean_targets = [
-            "".join(chr(int(c)) for c in t if int(c) != 0) for t in gt_text_batch
-        ]
-        self.references.extend(clean_targets)
+        return predictions
 
-    def reset(self) -> None:
-        self.predictions: list[str] = []
-        self.references: list[str] = []
-
-    def get_accuracy_score(self) -> float:
-        return jiwer.wer(self.references, self.predictions) * 100
-
-    def formatted_accuracy(self) -> str:
-        return f"Word Error Rate: {self.get_accuracy_score():.3f}"
-
-    def get_metric_metadata(self) -> MetricMetadata:
-        return WORD_ERROR_RATE
+    def decode_references(self, target: tuple[torch.Tensor, torch.Tensor]) -> list[str]:
+        gt_text_batch, _ = target
+        return ["".join(chr(int(c)) for c in t if int(c) != 0) for t in gt_text_batch]

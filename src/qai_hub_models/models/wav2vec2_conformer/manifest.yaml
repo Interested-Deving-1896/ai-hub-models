@@ -1,0 +1,50 @@
+name: Wav2Vec2-Conformer-Large-960h
+id: wav2vec2_conformer
+status: pending
+headline: English speech recognition with Wav2Vec2-Conformer encoder and CTC decoder.
+domain: Audio
+description: Facebook Wav2Vec2-Conformer-Large is an English ASR model fine-tuned on 960 hours of LibriSpeech. It uses a Conformer encoder with relative-position attention (24 layers, 1024 hidden dim, 16 heads) and a CTC head for decoding. The model accepts raw 16kHz audio and outputs transcribed text via CTC greedy decoding.
+use_case: Speech Recognition
+tags:
+  - real-time
+applicable_scenarios:
+  - Smart Home
+  - Accessibility
+  - Transcription
+related_models:
+  - whisper_small
+  - distil_whisper
+  - huggingface_wavlm_base_plus
+form_factors:
+  - Phone
+  - Tablet
+  - IoT
+has_static_banner: true
+has_animated_banner: false
+dataset:
+  - librispeech
+technical_details:
+  Model checkpoint: facebook/wav2vec2-conformer-rel-pos-large-960h-ft
+  Input resolution: 1x160000 (10s at 16kHz)
+  Number of parameters: ~600M
+  Model size (float): ~2.4 GB
+license_type: apache-2.0
+research_paper: https://arxiv.org/abs/2006.11477
+research_paper_title: "wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations"
+source_repo: https://huggingface.co/facebook/wav2vec2-conformer-rel-pos-large-960h-ft
+license: https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md
+numerics_benchmark:
+  dataset_name: librispeech
+  metric_name: Word Error Rate
+  value: 1.85
+  unit: WER
+  source: https://huggingface.co/facebook/wav2vec2-conformer-rel-pos-large-960h-ft
+has_on_target_demo: true
+supported_precisions:
+  - float
+  - w8a16
+templates:
+- conformer
+requires_aot_prepare: true
+readme_install_system_deps: "#### Linux\n```bash\nsudo apt install ffmpeg\n```\n\n
+#### Windows\n```\nwinget install ffmpeg\n```\n"
