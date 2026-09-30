@@ -96,7 +96,7 @@ repos:
     -   id: mypy-src
         name: mypy (src)
         files: ^src/qai_hub_models/.*(py|pyi|ipynb)$
-        entry: scripts/util/run_mypy.sh src
+        entry: python scripts/util/run_mypy.py src
         language: system
         # By default, precommit will split the files into groups and run
         # mypy on each group in parallel. This causes mypy to miss issues
@@ -107,6 +107,6 @@ repos:
     -   id: mypy-cli
         name: mypy (cli)
         files: ^cli/qai_hub_models_cli/.*(py|pyi|ipynb)$
-        entry: scripts/util/run_mypy.sh cli
+        entry: python scripts/util/run_mypy.py cli
         language: system
         require_serial: true
