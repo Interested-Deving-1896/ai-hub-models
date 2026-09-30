@@ -184,7 +184,9 @@ def main() -> None:
             continue
         try:
             if not skip_compile:
-                supported_paths = manifest.get_supported_paths_for_testing()
+                supported_paths = manifest.get_supported_paths_for_testing(
+                    only_include_passing=True
+                )
                 for precision in precisions:
                     if not (runtimes := supported_paths.get(precision)):
                         print(
