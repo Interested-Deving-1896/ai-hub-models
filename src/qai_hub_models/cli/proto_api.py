@@ -18,17 +18,15 @@ from tqdm import tqdm
 from qai_hub_models._version import __version__
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
-from qai_hub_models.scorecard.devices_and_chipsets_yaml import DevicesAndChipsetsYaml
-from qai_hub_models.scorecard.numerics_yaml import QAIHMModelNumerics
-from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
-from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
 from qai_hub_models.utils.path_helpers import MODEL_IDS, is_internal_repo
 
 
 def get_manifest_proto() -> ReleaseManifest:
     """Build a ReleaseManifest from local model configs (dev installs)."""
-    # The scripts package is not available in release builds, so import here
-    # to avoid failures.
+    # Neither the scripts package nor the scorecard one is present in release
+    # builds, so import from both here rather than at module scope.
+    from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
+    from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
     from qai_hub_models.scripts.build_release_proto import _manifest_filter_fields
 
     def _build_entry(model_id: str) -> ManifestModelEntry | None:
@@ -69,6 +67,10 @@ def get_info_proto(model_id: str) -> ModelInfo:
 
 def get_perf_proto(model_id: str) -> ModelPerf:
     """Build a ModelPerf proto from local model config (dev installs)."""
+    # The scorecard artifact schemas live in the internal-only package, so
+    # import them here to keep this module importable without it.
+    from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
+
     return QAIHMModelPerf.from_model(model_id, not_exists_ok=True).to_proto(
         __version__, model_id
     )
@@ -76,6 +78,11 @@ def get_perf_proto(model_id: str) -> ModelPerf:
 
 def get_numerics_proto(model_id: str) -> ModelNumerics:
     """Build a ModelNumerics proto from local model config (dev installs)."""
+    # The scorecard artifact schemas live in the internal-only package, so
+    # import them here to keep this module importable without it.
+    from qai_hub_models.scorecard.numerics_yaml import QAIHMModelNumerics
+    from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
+
     numerics = QAIHMModelNumerics.from_model(model_id, not_exists_ok=True)
     if numerics:
         # Cross-reference SDK/tool versions from perf (same as the release build).
@@ -86,6 +93,12 @@ def get_numerics_proto(model_id: str) -> ModelNumerics:
 
 def get_platform_proto() -> PlatformInfo:
     """Build a PlatformInfo proto from local config (dev installs)."""
+    # The scorecard artifact schemas live in the internal-only package, so
+    # import them here to keep this module importable without it.
+    from qai_hub_models.scorecard.devices_and_chipsets_yaml import (
+        DevicesAndChipsetsYaml,
+    )
+
     return DevicesAndChipsetsYaml.load().to_proto(__version__)
 
 
