@@ -4,6 +4,7 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
+import argparse
 import gc
 from collections.abc import Mapping
 from typing import Any
@@ -34,6 +35,7 @@ from qai_hub_models.models.templates.llm.model import (
     SplitForwardMixin,
 )
 from qai_hub_models.utils.args import (
+    QAIHMArgumentParser,
     add_input_spec_args,
     get_model_cli_parser,
     get_model_kwargs,
@@ -262,16 +264,13 @@ def evaluate(
     return score, formatted
 
 
-def llm_evaluate(
+def build_llm_evaluate_parser(
     quantized_model_cls: type[LLM_AIMETOnnx],
     fp_model_cls: type[LLMBase],
-    qnn_model_cls: type[LLM_QNN],
     default_sequence_length: list[int] | int | None = None,
     vision_encoder_cls: Any = None,
-    hf_repo_name: str | None = None,
-    vlm_image_size: tuple[int, int] | None = None,
-    end_tokens: set[str] | None = None,
-) -> None:
+    has_presplit: bool = False,
+) -> QAIHMArgumentParser:
     parser = get_model_cli_parser(
         quantized_model_cls,
         suppress_help_arguments=["--host-device", "--fp-model", "--precision"],
@@ -372,8 +371,26 @@ def llm_evaluate(
             "is searched for under both the home dir and the repo root."
         ),
     )
+    if has_presplit:
+        parser.add_argument(
+            "--use-presplit",
+            action="store_true",
+            help="Evaluate the monolithic PreSplit model instead of the split Parts.",
+        )
+    return parser
 
-    args = parser.parse_args()
+
+def llm_evaluate(
+    quantized_model_cls: type[LLM_AIMETOnnx],
+    fp_model_cls: type[LLMBase],
+    qnn_model_cls: type[LLM_QNN],
+    parser: QAIHMArgumentParser,
+    args: argparse.Namespace,
+    vision_encoder_cls: Any = None,
+    hf_repo_name: str | None = None,
+    vlm_image_size: tuple[int, int] | None = None,
+    end_tokens: set[str] | None = None,
+) -> None:
     args.task = resolve_task_name(args.task)
 
     kwargs = dict(get_model_kwargs(quantized_model_cls, vars(args)))

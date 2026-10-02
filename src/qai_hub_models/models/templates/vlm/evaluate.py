@@ -5,15 +5,19 @@
 
 from __future__ import annotations
 
+import argparse
+
 from qai_hub_models.models.templates.llm.evaluate import llm_evaluate
 from qai_hub_models.models.templates.llm.model import LLM_QNN
+from qai_hub_models.utils.args import QAIHMArgumentParser
 
 
 def vlm_evaluate(
     *,
     quantized_model_cls: type,
     fp_model_cls: type,
-    default_sequence_length: int | list[int] | None = None,
+    parser: QAIHMArgumentParser,
+    args: argparse.Namespace,
     vision_encoder_cls: type | None = None,
     hf_repo_name: str | None = None,
     vlm_image_size: tuple[int, int] | None = None,
@@ -29,7 +33,8 @@ def vlm_evaluate(
         quantized_model_cls=quantized_model_cls,
         fp_model_cls=fp_model_cls,
         qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
-        default_sequence_length=default_sequence_length,
+        parser=parser,
+        args=args,
         vision_encoder_cls=vision_encoder_cls,
         hf_repo_name=hf_repo_name,
         vlm_image_size=vlm_image_size,

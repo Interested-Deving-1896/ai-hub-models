@@ -521,6 +521,7 @@ def add_numerics_parser(
 
 _RECIPE_COMMANDS = (
     "demo",
+    "quantize",
     "export",
     "evaluate",
     "install",
@@ -686,6 +687,21 @@ def add_demo_parser(
             f"Run `{CLI_NAME} demo <model> --help` to see the model's native "
             "demo options. By default the demo runs locally in PyTorch; pass "
             "`--eval-mode on-device` to run it on a cloud-hosted target device."
+        ),
+        args=[("model", str)],
+    )
+
+
+def add_quantize_parser(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    return add_qaihm_required_help_only_parser(
+        subparsers,
+        name="quantize",
+        helpmsg="Quantize a model whose recipe ships a quantize script.",
+        description=(
+            f"Run `{CLI_NAME} quantize <model> --help` to see the model's "
+            "native quantize options."
         ),
         args=[("model", str)],
     )
@@ -1695,6 +1711,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_find_parser(subparsers)
     add_versions_parser(subparsers)
     add_demo_parser(subparsers)
+    add_quantize_parser(subparsers)
     add_export_parser(subparsers)
     add_evaluate_parser(subparsers)
     add_install_parser(subparsers)
@@ -1719,6 +1736,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "Customized Models (export from source)": [
             "install",
             "demo",
+            "quantize",
             "export",
             "evaluate",
             "generate-files",

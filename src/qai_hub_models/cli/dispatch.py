@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import runpy
 import sys
 from pathlib import Path
 from typing import cast
@@ -149,7 +150,7 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         ``script="configure-dataset"`` this is not a recipe at all but a
         dotted dataset class path, forwarded verbatim.
     script
-        Script name: ``"demo"``, ``"export"``, ``"evaluate"``, ``"install"``,
+        Script name: ``"demo"``, ``"quantize"``, ``"export"``, ``"evaluate"``, ``"install"``,
         ``"generate-files"``, ``"validate"``, ``"upload-to-hf"``, or
         ``"configure-dataset"``.
     forwarded
@@ -178,18 +179,22 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         return
 
     source_dir = resolve_recipe_dir(model_id)
-    if script == "demo":
-        demo_module = importlib.import_module(
-            f"{import_recipe_module(source_dir).__name__}.demo"
-        )
+    if script in ("demo", "quantize"):
+        module_name = f"{import_recipe_module(source_dir).__name__}.{script}"
+        module = importlib.import_module(module_name)
         if not _confirm_run_ok(source_dir):
             return
-        # Demo scripts build their own parser internally and read sys.argv
+        # These scripts build their own parser internally and read sys.argv
         # rather than taking argv, so the tail is handed over that way.
         saved_argv = sys.argv
-        sys.argv = [f"{source_dir.name}.demo", *forwarded]
+        sys.argv = [f"{source_dir.name}.{script}", *forwarded]
         try:
-            demo_module.main()
+            if hasattr(module, "main"):
+                module.main()
+            else:
+                # Some recipes only have an `if __name__ == "__main__":` block.
+                sys.modules.pop(module_name)
+                runpy.run_module(module_name, run_name="__main__")
         finally:
             sys.argv = saved_argv
         return
@@ -204,15 +209,33 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
         return
 
     if script == "evaluate":
-        parser = build_evaluate_parser_for(source_dir)
+        # Recipes with a bespoke evaluate (LLMs) add flags the generic parser
+        # lacks, so their own build_parser()/main() pair wins when present.
+        evaluate_module = (
+            importlib.import_module(
+                f"{import_recipe_module(source_dir).__name__}.evaluate"
+            )
+            if (source_dir / "evaluate.py").exists()
+            else None
+        )
+        if evaluate_module is not None and hasattr(evaluate_module, "build_parser"):
+            parser = evaluate_module.build_parser()
+            manifest = resolve_manifest(source_dir)
+            parser.set_preferred_precision_runtimes(
+                _passing_paths(manifest, manifest.get_supported_paths_for_export())
+            )
+            run = evaluate_module.main
+        else:
+            parser = build_evaluate_parser_for(source_dir)
+            run = lambda args: select_evaluate_pipeline(source_dir)(**vars(args))  # noqa: E731
         parser.prog = f"qai_hub_models evaluate {source_dir.name}"
         args = parser.parse_args(forwarded)
         if not _confirm_run_ok(source_dir, args):
             return
-        select_evaluate_pipeline(source_dir)(**vars(args))
+        run(args)
         return
 
     raise ValueError(
-        "This function currently only supports demo, evaluate, export, install, "
+        "This function currently only supports demo, quantize, evaluate, export, install, "
         "generate-files, validate, and upload-to-hf."
     )

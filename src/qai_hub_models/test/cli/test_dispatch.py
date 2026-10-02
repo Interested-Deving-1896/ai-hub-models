@@ -499,3 +499,65 @@ class TestDispatchDemo:
 
     def test_declining_the_prompt_skips_the_demo(self) -> None:
         assert self._run([], confirm=False) == []
+
+
+def test_dispatch_evaluate_prefers_recipe_build_parser(tmp_path: Path) -> None:
+    """LLM recipes add flags (--task, --use-presplit) the generic parser lacks.
+
+    Building the generic parser for them rejected every one of those flags.
+    """
+    (tmp_path / "evaluate.py").write_text("")
+    seen: list[argparse.Namespace] = []
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task")
+    evaluate_module = types.ModuleType("fake_model.evaluate")
+    evaluate_module.build_parser = lambda: parser  # type: ignore[attr-defined]
+    evaluate_module.main = seen.append  # type: ignore[attr-defined]
+
+    with (
+        patch.dict(sys.modules, {"fake_model.evaluate": evaluate_module}),
+        patch("qai_hub_models.cli.dispatch.resolve_recipe_dir", return_value=tmp_path),
+        patch(
+            "qai_hub_models.cli.dispatch.import_recipe_module",
+            return_value=types.ModuleType("fake_model"),
+        ),
+        patch("qai_hub_models.cli.dispatch.resolve_manifest"),
+        patch("qai_hub_models.cli.dispatch._passing_paths", return_value={}),
+        patch("qai_hub_models.cli.dispatch.build_evaluate_parser_for") as generic,
+        patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=True),
+    ):
+        parser.set_preferred_precision_runtimes = Mock()  # type: ignore[attr-defined]
+        run_model_script("fake_model", "evaluate", ["--task", "mmlu"])
+
+    generic.assert_not_called()
+    assert [ns.task for ns in seen] == ["mmlu"]
+
+
+def test_dispatch_demo_without_main_runs_main_block(tmp_path: Path) -> None:
+    """22 recipes' demo.py has only an `if __name__ == "__main__":` block.
+
+    Calling `.main()` on those crashed with AttributeError instead of running.
+    """
+    pkg = tmp_path / "fake_recipe_pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    out = tmp_path / "argv.txt"
+    (pkg / "demo.py").write_text(
+        "import sys\n"
+        'if __name__ == "__main__":\n'
+        f"    open({str(out)!r}, 'w').write(' '.join(sys.argv[1:]))\n"
+    )
+    with (
+        patch.object(sys, "path", [str(tmp_path), *sys.path]),
+        patch("qai_hub_models.cli.dispatch.resolve_recipe_dir", return_value=pkg),
+        patch(
+            "qai_hub_models.cli.dispatch.import_recipe_module",
+            return_value=types.ModuleType("fake_recipe_pkg"),
+        ),
+        patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=True),
+    ):
+        run_model_script("fake_recipe_pkg", "demo", ["--prompt", "hi"])
+    sys.modules.pop("fake_recipe_pkg.demo", None)
+    sys.modules.pop("fake_recipe_pkg", None)
+
+    assert out.read_text() == "--prompt hi"

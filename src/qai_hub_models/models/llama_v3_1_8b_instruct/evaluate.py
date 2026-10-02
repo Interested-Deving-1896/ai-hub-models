@@ -4,7 +4,8 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-import sys
+import argparse
+import warnings
 
 from qai_hub_models.models.llama_v3_1_8b_instruct.model import (
     FPSplitModelWrapper,
@@ -12,15 +13,44 @@ from qai_hub_models.models.llama_v3_1_8b_instruct.model import (
     Llama3_1_8B_QuantizablePreSplit,
     QuantizedSplitModelWrapper,
 )
-from qai_hub_models.models.templates.llm.evaluate import llm_evaluate
+from qai_hub_models.models.templates.llm.evaluate import (
+    build_llm_evaluate_parser,
+    llm_evaluate,
+)
 from qai_hub_models.models.templates.llm.model import LLM_QNN
+from qai_hub_models.utils.args import QAIHMArgumentParser
 
-if __name__ == "__main__":
-    use_presplit = "--use-presplit" in sys.argv
+
+def build_parser() -> QAIHMArgumentParser:
+    return build_llm_evaluate_parser(
+        quantized_model_cls=QuantizedSplitModelWrapper,
+        fp_model_cls=FPSplitModelWrapper,
+        has_presplit=True,
+    )
+
+
+def main(args: argparse.Namespace | None = None) -> None:
+    parser = build_parser()
+    if args is None:
+        warnings.warn(
+            "Running `python -m qai_hub_models.models.llama_v3_1_8b_instruct.evaluate` is "
+            "deprecated and will be removed in a future release. "
+            "Use `qai-hub-models evaluate llama_v3_1_8b_instruct` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        args = parser.parse_args()
+    use_presplit = args.use_presplit
     llm_evaluate(
         quantized_model_cls=Llama3_1_8B_QuantizablePreSplit
         if use_presplit
         else QuantizedSplitModelWrapper,
         fp_model_cls=Llama3_1_8B_PreSplit if use_presplit else FPSplitModelWrapper,
         qnn_model_cls=LLM_QNN,  # type: ignore[type-abstract]
+        parser=parser,
+        args=args,
     )
+
+
+if __name__ == "__main__":
+    main()

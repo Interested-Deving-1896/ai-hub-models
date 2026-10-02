@@ -4,7 +4,8 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-import sys
+import argparse
+import warnings
 
 from qai_hub_models.models.qwen3_vl_4b_instruct.model import (
     DEFAULT_IMAGE_HEIGHT,
@@ -16,18 +17,46 @@ from qai_hub_models.models.qwen3_vl_4b_instruct.model import (
     Qwen3_VL_4B_QuantizablePreSplit,
     Qwen3_VL_4B_VisionEncoder,
 )
+from qai_hub_models.models.templates.llm.evaluate import (
+    build_llm_evaluate_parser,
+)
 from qai_hub_models.models.templates.vlm.evaluate import vlm_evaluate
+from qai_hub_models.utils.args import QAIHMArgumentParser
 
-if __name__ == "__main__":
-    use_presplit = "--use-presplit" in sys.argv
-    if use_presplit:
-        sys.argv.remove("--use-presplit")
+
+def build_parser() -> QAIHMArgumentParser:
+    return build_llm_evaluate_parser(
+        quantized_model_cls=QuantizedSplitModelWrapper,
+        fp_model_cls=FPSplitModelWrapper,
+        vision_encoder_cls=Qwen3_VL_4B_VisionEncoder,
+        has_presplit=True,
+    )
+
+
+def main(args: argparse.Namespace | None = None) -> None:
+    parser = build_parser()
+    if args is None:
+        warnings.warn(
+            "Running `python -m qai_hub_models.models.qwen3_vl_4b_instruct.evaluate` is "
+            "deprecated and will be removed in a future release. "
+            "Use `qai-hub-models evaluate qwen3_vl_4b_instruct` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        args = parser.parse_args()
+    use_presplit = args.use_presplit
     vlm_evaluate(
         quantized_model_cls=Qwen3_VL_4B_QuantizablePreSplit
         if use_presplit
         else QuantizedSplitModelWrapper,
         fp_model_cls=Qwen3_VL_4B_PreSplit if use_presplit else FPSplitModelWrapper,
+        parser=parser,
+        args=args,
         vision_encoder_cls=Qwen3_VL_4B_VisionEncoder,
         hf_repo_name=HF_REPO_NAME,
         vlm_image_size=(DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT),
     )
+
+
+if __name__ == "__main__":
+    main()

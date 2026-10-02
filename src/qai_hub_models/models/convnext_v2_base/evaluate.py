@@ -51,9 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace | None = None) -> None:
-    if not check_unpublished_model_warning():
-        return
     if args is None:
+        # The CLI dispatcher prompts before passing args, so only prompt here.
+        if not check_unpublished_model_warning():
+            return
         warnings.warn(
             "Running `python -m qai_hub_models.models.convnext_v2_base.evaluate` is "
             "deprecated and will be removed in a future release. "
