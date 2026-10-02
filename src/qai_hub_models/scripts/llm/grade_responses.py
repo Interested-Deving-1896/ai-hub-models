@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import torch
@@ -46,6 +47,8 @@ from qai_hub_models.models.templates.llm.grader.report import (
     category_scores,
     resolve_categories,
 )
+
+GRADER_SEED = 42
 
 
 def main() -> None:
@@ -113,6 +116,10 @@ def main() -> None:
         help="Print the per-item score and the grader's rationale.",
     )
     args = parser.parse_args()
+
+    # Keep this before the model loads: once CUDA has started,
+    # CUBLAS_WORKSPACE_CONFIG is silently ignored.
+    _make_deterministic()
 
     # Resolved up front so a misconfigured venv fails before a model download.
     try:
@@ -221,6 +228,31 @@ def main() -> None:
         )
         Path(args.output_json).write_text(json.dumps(out, indent=2))
         print(f"Wrote grading summary to {args.output_json}")
+
+
+def _make_deterministic() -> None:
+    """Make the grader's output repeat bit for bit.
+
+    Decoding is greedy, so a tiny numeric difference can flip a near-tied token
+    and change the rest of the rationale, and sometimes the rating.
+    """
+    # Read only when the CUDA context is created.
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    # warn_only: an op with no deterministic kernel warns instead of failing.
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    torch.backends.cudnn.benchmark = False
+    # cuDNN attention, which torch picks for fp16/bf16 on H100, is not
+    # repeatable, and the deterministic flag above does not cover it.
+    # Torch falls back to flash attention.
+    torch.backends.cuda.enable_cudnn_sdp(False)
+    # Nothing random is expected in a greedy decode; seeded to be safe.
+    torch.manual_seed(GRADER_SEED)
+    print(
+        f"Grader deterministic mode: seed={GRADER_SEED}, "
+        f"CUBLAS_WORKSPACE_CONFIG={os.environ['CUBLAS_WORKSPACE_CONFIG']}, "
+        f"deterministic_algorithms={torch.are_deterministic_algorithms_enabled()}, "
+        f"cudnn_sdp={torch.backends.cuda.cudnn_sdp_enabled()}"
+    )
 
 
 if __name__ == "__main__":
