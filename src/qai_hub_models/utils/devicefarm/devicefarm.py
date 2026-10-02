@@ -189,6 +189,8 @@ class JobOutcome(str, Enum):
 class JobRecord:
     job_id: str
     attempts_left: int = DEFAULT_RETRIES
+    # Saved at submit so collect needn't re-download the bundle for metadata.json.
+    context_lengths: list[int] | None = None
 
 
 def make_key(model_id: str, precision: str, runtime: str, device_name: str) -> str:
@@ -205,6 +207,11 @@ def load_jobs(jobs_file: str | Path) -> dict[str, JobRecord]:
         k: JobRecord(
             job_id=str(v["job_id"]),
             attempts_left=int(v.get("attempts_left", DEFAULT_RETRIES)),
+            context_lengths=(
+                [int(c) for c in v["context_lengths"]]
+                if "context_lengths" in v
+                else None
+            ),
         )
         for k, v in raw.items()
         if isinstance(v, dict) and "job_id" in v
@@ -241,6 +248,7 @@ def save_job(
     key: str,
     job_id: str,
     attempts_left: int = DEFAULT_RETRIES,
+    context_lengths: list[int] | None = None,
 ) -> None:
     """Upsert one row into ``jobs_file``. FileLock-guarded for parallel submitters."""
     p = Path(jobs_file)
@@ -251,7 +259,10 @@ def save_job(
         mapping: dict[str, Any] = (
             dict(ruamel.yaml.YAML().load(raw) or {}) if raw.strip() else {}
         )
-        mapping[key] = {"job_id": job_id, "attempts_left": attempts_left}
+        row: dict[str, Any] = {"job_id": job_id, "attempts_left": attempts_left}
+        if context_lengths is not None:
+            row["context_lengths"] = list(context_lengths)
+        mapping[key] = row
         f.seek(0)
         f.truncate(0)
         ruamel.yaml.YAML().dump(mapping, f)

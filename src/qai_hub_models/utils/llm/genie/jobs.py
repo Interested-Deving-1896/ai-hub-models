@@ -1027,12 +1027,19 @@ def fetch_genie_bundle_for_perf(
         verbose=True,
     )
     shutil.unpack_archive(str(zip_path), extract_dir=str(output_dir))
+    zip_path.unlink()
     if not bundle_dir.exists():
         raise RuntimeError(
             f"Extracted genie bundle missing expected directory {bundle_dir}; "
             f"contents of {output_dir}: {sorted(p.name for p in output_dir.iterdir())}"
         )
     return bundle_dir
+
+
+def _bundle_context_lengths(bundle_dir: Path) -> list[int]:
+    metadata = ModelMetadata.from_json(bundle_dir / "metadata.json")
+    assert metadata is not None and metadata.genie is not None
+    return list(metadata.genie.context_lengths)
 
 
 def get_genie_bundle_url(model_id: str, precision: Precision, chipset: str) -> str:
@@ -1064,10 +1071,9 @@ def submit_llm_perf_job(
 ) -> str:
     """Fetch the genie bundle, submit one device-farm job, upsert its record.
 
-    Does not wait. Returns the job id. The collect side re-derives the
-    bundle from (model_id, precision, chipset) via
-    ``fetch_genie_bundle_for_perf`` -- nothing about local paths is
-    persisted.
+    Does not wait. Returns the job id. The bundle is deleted once submitted
+    (its upload is done by then); the record keeps the context lengths so
+    collect only re-fetches the bundle if it has to resubmit.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1075,26 +1081,36 @@ def submit_llm_perf_job(
     genie_bundle_path = fetch_genie_bundle_for_perf(
         model_id, precision, device.chipset, output_dir
     )
-    genie_bundle_url = get_genie_bundle_url(model_id, precision, device.chipset)
+    try:
+        context_lengths = _bundle_context_lengths(genie_bundle_path)
+        genie_bundle_url = get_genie_bundle_url(model_id, precision, device.chipset)
 
-    eval_prompts = _USE_DEFAULT_PROMPTS if device == get_llm_eval_device() else None
-    job_name = f"Genie {model_id} {precision}"
+        eval_prompts = _USE_DEFAULT_PROMPTS if device == get_llm_eval_device() else None
+        job_name = f"Genie {model_id} {precision}"
 
-    backend = get_device_farm(device)
-    job_id = submit_genie_bundle(
-        backend,
-        device.reference_device.name,
-        str(genie_bundle_path),
-        job_name=job_name,
-        qairt_sdk_path=qairt_sdk_path,
-        qairt_version=QAIRTVersionEnvvar.get_on_device_sdk_version(),
-        eval_prompts=eval_prompts,
-        model_id=model_id,
-        genie_bundle_url=genie_bundle_url,
-    )
+        backend = get_device_farm(device)
+        job_id = submit_genie_bundle(
+            backend,
+            device.reference_device.name,
+            str(genie_bundle_path),
+            job_name=job_name,
+            qairt_sdk_path=qairt_sdk_path,
+            qairt_version=QAIRTVersionEnvvar.get_on_device_sdk_version(),
+            eval_prompts=eval_prompts,
+            model_id=model_id,
+            genie_bundle_url=genie_bundle_url,
+        )
+    finally:
+        shutil.rmtree(genie_bundle_path, ignore_errors=True)
 
     key = make_key(model_id, str(precision), "GENIE", device.name)
-    save_job(jobs_file, key, job_id, attempts_left=DEFAULT_RETRIES)
+    save_job(
+        jobs_file,
+        key,
+        job_id,
+        attempts_left=DEFAULT_RETRIES,
+        context_lengths=context_lengths,
+    )
     return job_id
 
 
@@ -1131,26 +1147,32 @@ def collect_llm_perf_job(
     hub_device_name = device.reference_device.name
     backend = get_device_farm(device)
     qairt_version = QAIRTVersionEnvvar.get_on_device_sdk_version()
+    context_lengths = record.context_lengths
 
     def _resubmit() -> str:
         # Re-derive both the local path and the presigned URL fresh on every
         # resubmit -- never reuse a URL/path from a previous attempt, so a
         # just-recompiled asset (not a stale one) is always what's signed.
+        nonlocal context_lengths
         bundle_path = fetch_genie_bundle_for_perf(
             model_id, precision, device.chipset, Path(output_dir)
         )
-        bundle_url = get_genie_bundle_url(model_id, precision, device.chipset)
-        return submit_genie_bundle(
-            backend,
-            hub_device_name,
-            str(bundle_path),
-            job_name=job_name,
-            qairt_sdk_path=qairt_sdk_path,
-            qairt_version=qairt_version,
-            eval_prompts=eval_prompts,
-            model_id=model_id,
-            genie_bundle_url=bundle_url,
-        )
+        try:
+            context_lengths = _bundle_context_lengths(bundle_path)
+            bundle_url = get_genie_bundle_url(model_id, precision, device.chipset)
+            return submit_genie_bundle(
+                backend,
+                hub_device_name,
+                str(bundle_path),
+                job_name=job_name,
+                qairt_sdk_path=qairt_sdk_path,
+                qairt_version=qairt_version,
+                eval_prompts=eval_prompts,
+                model_id=model_id,
+                genie_bundle_url=bundle_url,
+            )
+        finally:
+            shutil.rmtree(bundle_path, ignore_errors=True)
 
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
         tps, prefill_tps, ttft, eval_results, outcome, reason = collect_genie_bundle(
@@ -1169,20 +1191,22 @@ def collect_llm_perf_job(
         collect_fn=_collect,
         resubmit_fn=_resubmit,
         on_new_job_id=lambda new_id, left: save_job(
-            jobs_file, key, new_id, attempts_left=left
+            jobs_file, key, new_id, attempts_left=left, context_lengths=context_lengths
         ),
     )
 
-    metadata = ModelMetadata.from_json(
-        fetch_genie_bundle_for_perf(
+    if context_lengths is None:
+        # Jobs file written before submit recorded context_lengths.
+        bundle_path = fetch_genie_bundle_for_perf(
             model_id, precision, device.chipset, Path(output_dir)
         )
-        / "metadata.json"
-    )
-    assert metadata is not None and metadata.genie is not None
-    context_lengths = metadata.genie.context_lengths
+        try:
+            context_lengths = _bundle_context_lengths(bundle_path)
+        finally:
+            shutil.rmtree(bundle_path, ignore_errors=True)
 
     if not skip_perf_update and tps is not None and ttft is not None:
+        # Genie runs a single measurement, reported at the largest exported length.
         update_perf_yaml(
             model_id,
             device.reference_device_name,
