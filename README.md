@@ -384,7 +384,6 @@ and many more.
 | [Zipformer](https://aihub.qualcomm.com/models/zipformer) | [qai_hub_models.models.zipformer](src/qai_hub_models/models/zipformer/README.md) |
 | | |
 | **Audio Classification**
-| [Pyannote-Speaker-Diarization](https://aihub.qualcomm.com/models/pyannote_speaker_diarization) | [qai_hub_models.models.pyannote_speaker_diarization](src/qai_hub_models/models/pyannote_speaker_diarization/README.md) |
 | [YamNet](https://aihub.qualcomm.com/models/yamnet) | [qai_hub_models.models.yamnet](src/qai_hub_models/models/yamnet/README.md) |
 | | |
 | **Audio Generation**
@@ -397,6 +396,9 @@ and many more.
 | | |
 | **Voice Activity Detection**
 | [Silero-VAD](https://aihub.qualcomm.com/models/silero_vad) | [qai_hub_models.models.silero_vad](src/qai_hub_models/models/silero_vad/README.md) |
+| | |
+| **Speaker Diarization**
+| [Pyannote-Speaker-Diarization](https://aihub.qualcomm.com/models/pyannote_speaker_diarization) | [qai_hub_models.models.pyannote_speaker_diarization](src/qai_hub_models/models/pyannote_speaker_diarization/README.md) |
 
 ### Generative AI
 
