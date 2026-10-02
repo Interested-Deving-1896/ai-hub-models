@@ -96,11 +96,10 @@ CTX_LIST="${CTX_LIST//,/ }"
 # never skips the accuracy eval below.
 failed_ctxs=""
 if [ "$RUN_PERF" = "1" ]; then
+  # One matrix (and one geniex-bench process) per ctx+backend: a fatal error
+  # in one backend (compute unit) could otherwise prevent subsequent ones.
   declare -A TSV
-  for ctx in $CTX_LIST; do
-    TSV[$ctx]=/data/local/tmp/matrix-$ctx.tsv
-    : > "${TSV[$ctx]}"
-  done
+  ctx_devs=""
 
   while IFS='|' read -r name plugin devs model_id vlm image; do
     [ -z "$name" ] && continue
@@ -112,25 +111,32 @@ if [ "$RUN_PERF" = "1" ]; then
     IFS=',' read -ra dev_arr <<< "$devs"
     for d in "${dev_arr[@]}"; do
       for ctx in $CTX_LIST; do
+        key="$ctx-$d"
+        if [ -z "${TSV[$key]}" ]; then
+          TSV[$key]=/data/local/tmp/matrix-$key.tsv
+          : > "${TSV[$key]}"
+          ctx_devs="$ctx_devs $key"
+        fi
         printf '%s-%s-%s-c%s\t%s\t%s\t%s\t\t\t%s\t%s\n' \
           "$name" "$plugin" "$d" "$ctx" "$plugin" "$d" "$model_id" "$imgpath" "$vlm" \
-          >> "${TSV[$ctx]}"
+          >> "${TSV[$key]}"
       done
     done
   done <<'EOF'
 {MODELS}
 EOF
 
-  for ctx in $CTX_LIST; do
-    tsv="${TSV[$ctx]}"
-    echo "=== matrix ctx=$ctx ==="
+  for key in $ctx_devs; do
+    tsv="${TSV[$key]}"
+    ctx="${key%%-*}"
+    echo "=== matrix ctx=$ctx device=${key#*-} ==="
     cat "$tsv"
     geniex_retry ./bin/geniex-bench --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
       "${QAIRT_LIB_ARGS[@]}" {BENCH_SIZE_FLAGS} \
       --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
     bench_rc=$?
     echo "rc=$bench_rc  ($(ls "$OUT" | wc -l) cell json files so far)"
-    [ "$bench_rc" -ne 0 ] && failed_ctxs="$failed_ctxs $ctx"
+    [ "$bench_rc" -ne 0 ] && failed_ctxs="$failed_ctxs $key"
   done
 else
   echo "=== perf sweep disabled (RUN_PERF=0); eval only ==="
@@ -217,7 +223,7 @@ fi
 
 echo "=== done ==="
 if [ -n "$failed_ctxs" ]; then
-  echo "FATAL: geniex-bench failed for context lengths:$failed_ctxs"
+  echo "FATAL: geniex-bench failed for ctx-device:$failed_ctxs"
   exit 1
 fi
 exit 0
