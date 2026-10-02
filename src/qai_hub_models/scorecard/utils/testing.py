@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import contextlib
-import inspect
 import shutil
 from collections import defaultdict
 from collections.abc import Callable, Generator
@@ -71,7 +70,6 @@ __all__ = [
     "get_val_dataset_id_keys",
     "has_get_unsupported_reason",
     "hub_test_deployment",
-    "make_cached_from_pretrained_fixture",
     "mock_get_calibration_data",
     "mock_on_device_model_call",
     "mock_tabulate_fn",
@@ -87,70 +85,6 @@ AnyModel = (
     | MultiGraphCollectionModel
 )
 AnyModelCls = type[AnyModel]
-
-
-def make_cached_from_pretrained_fixture(
-    model_cls: type[FromPretrainedProtocol],
-) -> Callable[[], Generator[pytest.MonkeyPatch, None, None]]:
-    """Build the module-scoped autouse fixture that memoizes
-    ``model_cls.from_pretrained``.
-
-    Instantiating the model is expensive, so we load it once per test module and
-    monkeypatch ``from_pretrained`` to return the cached instance on subsequent
-    calls (keyed by args/kwargs).
-
-    A model that has been torn down by ``release()`` (its ``quant_sim`` freed to
-    reclaim CUDA memory between parametrized cases, which sets ``_released``) is
-    treated as a cache miss and rebuilt. Models that were not released keep the
-    ``getattr`` default and stay cacheable.
-
-    Assign the return value to a module-level name in a conftest, e.g.:
-
-        cached_from_pretrained = make_cached_from_pretrained_fixture(Model)
-    """
-
-    @pytest.fixture(scope="module", autouse=True)
-    def cached_from_pretrained() -> Generator[pytest.MonkeyPatch, None, None]:
-        with pytest.MonkeyPatch.context() as mp:
-            pretrained_cache: dict[str, Any] = {}
-            from_pretrained = model_cls.from_pretrained
-            sig = inspect.signature(from_pretrained)
-
-            def _cached_from_pretrained(*args: Any, **kwargs: Any) -> Any:
-                # Key the cache on the exact from_pretrained arguments so that
-                # different checkpoints/precisions get distinct cached models.
-                cache_key = str(args) + str(kwargs)
-                model = pretrained_cache.get(cache_key)
-                # A cached AIMET model may have been torn down by release()
-                # between parametrized test cases: release() frees quant_sim
-                # (and its ORT/CUDA session) to avoid OOM and sets _released.
-                # Such an instance is unusable (forward() asserts on quant_sim),
-                # so treat it as a miss and rebuild a fresh one. We check the
-                # explicit _released flag rather than inferring from _quant_sim:
-                # some AIMET models construct lazily with _quant_sim == None and
-                # populate it on first access, so a None _quant_sim does not
-                # imply the model was released. Non-released and non-AIMET models
-                # (no _released attribute) keep the getattr default and stay
-                # cached.
-                if model is not None and getattr(model, "_released", False):
-                    # Drop the released shell so it can be garbage collected
-                    # (freeing any remaining resources) before the rebuild.
-                    del pretrained_cache[cache_key]
-                    model = None
-                # Cache hit with a usable model: return it without reloading.
-                if model is not None:
-                    return model
-                # Cache miss (or rebuilt-after-release): load, cache, return.
-                non_none_model = from_pretrained(*args, **kwargs)
-                pretrained_cache[cache_key] = non_none_model
-                return non_none_model
-
-            _cached_from_pretrained.__signature__ = sig  # type: ignore[attr-defined]
-
-            mp.setattr(model_cls, "from_pretrained", _cached_from_pretrained)
-            yield mp
-
-    return cached_from_pretrained
 
 
 @pytest.fixture(scope="session", autouse=True)

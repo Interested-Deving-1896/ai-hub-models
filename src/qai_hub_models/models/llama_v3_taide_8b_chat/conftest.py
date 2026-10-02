@@ -11,7 +11,7 @@ import pytest
 import torch.jit._trace
 
 from qai_hub_models.models.llama_v3_taide_8b_chat import Model
-from qai_hub_models.scorecard.utils.testing import make_cached_from_pretrained_fixture
+from qai_hub_models.utils.test_helpers import make_cached_from_pretrained_fixture
 
 
 def pytest_configure(config: pytest.Config) -> None:
