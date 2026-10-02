@@ -30,6 +30,10 @@ class ClassificationEvaluator(BaseEvaluator):
         batch_size = output.shape[0]
         self.total_samples += batch_size
 
+        # torch.topk doesn't support uint16, uint32, or uint64
+        if output.dtype == torch.uint16:
+            output = output.to(torch.int32)
+
         top5 = torch.topk(output, 5).indices
         self.top5_count += torch.sum(top5 == gt_tensor).item()
         self.top1_count += torch.sum(top5[:, :1] == gt_tensor).item()
