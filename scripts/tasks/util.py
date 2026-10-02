@@ -205,11 +205,8 @@ def is_quantized_llm_model(model_name: str) -> bool:
 
 
 def can_support_aimet(platform: str = sys.platform) -> bool:
-    return (
-        platform in {"linux", "linux2"}
-        and sys.version_info.major == 3
-        and sys.version_info.minor == 10
-    )
+    # aimet-onnx >= 2.28 ships cp310-abi3 wheels, so any python >= 3.10 is installable.
+    return platform in {"linux", "linux2"} and sys.version_info >= (3, 10)
 
 
 def get_is_hub_quantized(model_name: str) -> bool:

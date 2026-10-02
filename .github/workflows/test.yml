@@ -176,12 +176,6 @@ jobs:
          pre-commit run --config .pre-commit-line-ending-check.yaml --show-diff-on-failure --color=always --all-files) ||
         (echo "NOTE: If mypy failed and you can't reproduce the failure locally, run 'python scripts/build_and_test.py install_global_requirements' and try again."; exit 1)
 
-    - name: Reset global-requirements for python != 3.10
-      if: ${{ inputs.python_version != '3.10' }}
-      # Global requirements are different per python version. We check in python 3.10 reqs.
-      # We only need to check for 3.10 if the requirements are checked in correctly.
-      run: git checkout src/qai_hub_models/global_requirements.txt
-
     - name: Build Protobuf Python Files
       # 3.13 and above don't support our version of grpcio-tools, which is needed to build proto.
       if: ${{ inputs.python_version == '3.10' || inputs.python_version == '3.11' || inputs.python_version == '3.12' }}
@@ -340,8 +334,10 @@ jobs:
       python_version: ${{ inputs.python_version }}
       disable_override_workbench_job_timeout: ${{ inputs.disable_override_workbench_job_timeout }}
       force_kube: ${{ inputs.force_kube }}
-      run_nightly_tests: ${{ inputs.run_nightly_tests }}
-      use_per_model_venv: ${{ inputs.use_per_model_venv }}
+      # workflow_call-only (dispatch is capped at 10 inputs); an unset dispatch value
+      # is '', which fails the callee's boolean validation at startup before any job exists.
+      run_nightly_tests: ${{ inputs.run_nightly_tests || false }}
+      use_per_model_venv: ${{ inputs.use_per_model_venv || false }}
 
   verify_model_tests:
     name: Verify Model Tests

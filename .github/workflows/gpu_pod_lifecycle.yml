@@ -185,6 +185,9 @@ jobs:
         fetch-depth: 0
 
     - name: Install system dependencies
+      env:
+        # GPU LLM path is pinned to 3.12; callers don't pass python_version here.
+        QAIHM_POD_PYTHON_VERSION: '3.12'
       run: bash src/qai_hub_models/scripts/kube/setup_pod.sh
 
     - name: CI Setup
@@ -303,6 +306,9 @@ jobs:
         fetch-depth: 1
 
     - name: Install system dependencies
+      env:
+        # GPU LLM path is pinned to 3.12; callers don't pass python_version here.
+        QAIHM_POD_PYTHON_VERSION: '3.12'
       run: bash src/qai_hub_models/scripts/kube/setup_pod.sh
 
     - name: CI Setup

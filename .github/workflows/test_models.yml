@@ -55,7 +55,7 @@ on:
         default: ''
 
       python_version:
-        description: Python version for artifact naming
+        description: Python version to install and test with; also used for artifact naming
         type: string
         default: '3.10'
 
@@ -167,6 +167,8 @@ jobs:
 
       - name: Install system dependencies (Kube/container only)
         if: ${{ !contains(runner.name, 'tetra') }}
+        env:
+          QAIHM_POD_PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
         run: bash src/qai_hub_models/scripts/kube/setup_pod.sh
 
       - name: Check Out Updated Static Asset Configs
@@ -185,7 +187,7 @@ jobs:
         uses: ./.github/actions/ci-setup
         with:
           sudo-password: ${{ contains(inputs.runs_on, 'self-hosted') && secrets.TETRASERVICE_PASSWORD || '' }}
-          python-version: ${{ contains(inputs.runs_on, 'self-hosted') && env.PYTHON_VERSION || 'USE_EXISTING_INSTALL' }}
+          python-version: ${{ contains(runner.name, 'tetra') && env.PYTHON_VERSION || 'USE_EXISTING_INSTALL' }}
           venv-path: ${{ env.VENV_PATH }}
           aws-role-arn: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
           hub-deployments: ${{ env.QAIHM_TEST_DEPLOYMENT }},prod

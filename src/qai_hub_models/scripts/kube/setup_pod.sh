@@ -11,9 +11,11 @@ else
   SUDO="sudo"
 fi
 
+PY_VERSION="${QAIHM_POD_PYTHON_VERSION:?must be set by the calling workflow step}"
+
 echo "=== Installing system dependencies ==="
 $SUDO apt-get update -qq
-$SUDO apt-get install -y -qq \
+$SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
   ca-certificates \
   curl \
   git \
@@ -36,13 +38,12 @@ $SUDO apt-get install -y -qq \
 echo "=== Configuring git ==="
 git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-echo "=== Installing Python 3.10 ==="
+echo "=== Installing Python $PY_VERSION ==="
 $SUDO add-apt-repository -y ppa:deadsnakes/ppa
 $SUDO apt-get update -qq
-$SUDO apt-get install -y -qq python3.10 python3.10-venv python3.10-dev
-$SUDO update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
-$SUDO ln -sf /usr/bin/python3.10 /usr/bin/python
-python3 -m pip install --upgrade pip
+$SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "python$PY_VERSION" "python$PY_VERSION-venv" "python$PY_VERSION-dev"
+$SUDO update-alternatives --install /usr/bin/python3 python3 "/usr/bin/python$PY_VERSION" 1
+$SUDO ln -sf "/usr/bin/python$PY_VERSION" /usr/bin/python
 
 echo "=== Installing AWS CLI ==="
 curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip

@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext, suppress
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, TypeVar, cast
+from typing import Any, TypeAlias, TypeVar, cast
 from unittest import mock
 
 import numpy as np
@@ -20,7 +20,6 @@ import qai_hub as hub
 import torch
 from filelock import FileLock
 from mypy_boto3_s3.service_resource import Bucket
-from typing_extensions import assert_never
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
@@ -982,7 +981,6 @@ def run_llm_compile(
 
 
 def fetch_cached_jobs_if_compile_jobs_are_identical(
-    job_type_to_fetch_from_cache: (Literal[hub.JobType.PROFILE, hub.JobType.INFERENCE]),
     params: ScExportTestParams,
 ) -> (
     JobTypeVar
@@ -993,13 +991,11 @@ def fetch_cached_jobs_if_compile_jobs_are_identical(
 ):
     """
     Checks if the compile jobs are the same, the QAIRT version matches, and the override flag is not set.
-    If all conditions are met, returns the cached profile or inference job and saves the job to the YAML cache.
+    If all conditions are met, returns the cached profile job and saves the job to the YAML cache.
     Otherwise, returns None.
 
     Parameters
     ----------
-    job_type_to_fetch_from_cache
-        Type of job to fetch from cache (PROFILE or INFERENCE).
     params
         Export test parameters.
 
@@ -1029,13 +1025,7 @@ def fetch_cached_jobs_if_compile_jobs_are_identical(
     ):
         return None
 
-    yaml: ScorecardJobYaml
-    if job_type_to_fetch_from_cache == hub.JobType.INFERENCE:
-        yaml = InferenceScorecardJobYaml.from_intermediates()
-    elif job_type_to_fetch_from_cache == hub.JobType.PROFILE:
-        yaml = ProfileScorecardJobYaml.from_intermediates()
-    else:
-        assert_never(job_type_to_fetch_from_cache)
+    yaml = ProfileScorecardJobYaml.from_intermediates()
 
     compile_jobs_identical_cache_file = (
         ScorecardArtifact.COMPILE_JOBS_IDENTICAL_CACHE.touch()
@@ -1153,9 +1143,7 @@ def profile_via_export(
         component_graph_names=component_graph_names,
     )
 
-    if profile_output := fetch_cached_jobs_if_compile_jobs_are_identical(
-        hub.JobType.PROFILE, test_params
-    ):
+    if profile_output := fetch_cached_jobs_if_compile_jobs_are_identical(test_params):
         print(
             test_params.str_with_description(
                 "The compiled assets from the previous scorecard are identical. Copying over profile job(s).",

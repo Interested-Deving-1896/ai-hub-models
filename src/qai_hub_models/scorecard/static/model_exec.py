@@ -306,7 +306,6 @@ def profile_model(
 
         job: ProfileJob | None = None
         if prev_profile_job := fetch_cached_jobs_if_compile_jobs_are_identical(
-            JobType.PROFILE,
             ScExportTestParams(
                 params.model_id, params.path, params.precision, params.device
             ),
