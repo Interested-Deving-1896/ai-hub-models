@@ -48,17 +48,18 @@ class PromptProcessor_Part1(PrecompiledWorkbenchModel):
             "_model_embed_tokens_Gather_Gather_output_0": TensorSpec(),
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_1_of_4"
+            inference_options
+            + " --qnn_options context_enable_graphs=ar128_cl4096_1_of_4"
         )
 
 
@@ -107,17 +108,18 @@ class PromptProcessor_Part2(PrecompiledWorkbenchModel):
             ]
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_2_of_4"
+            inference_options
+            + " --qnn_options context_enable_graphs=ar128_cl4096_2_of_4"
         )
 
 
@@ -166,17 +168,18 @@ class PromptProcessor_Part3(PrecompiledWorkbenchModel):
             ]
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_3_of_4"
+            inference_options
+            + " --qnn_options context_enable_graphs=ar128_cl4096_3_of_4"
         )
 
 
@@ -225,17 +228,18 @@ class PromptProcessor_Part4(PrecompiledWorkbenchModel):
             ]
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar128_cl4096_4_of_4"
+            inference_options
+            + " --qnn_options context_enable_graphs=ar128_cl4096_4_of_4"
         )
 
 
@@ -259,17 +263,17 @@ class TokenGenerator_Part1(PrecompiledWorkbenchModel):
             "_model_embed_tokens_Gather_Gather_output_0": TensorSpec(),
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_1_of_4"
+            inference_options + " --qnn_options context_enable_graphs=ar1_cl4096_1_of_4"
         )
 
 
@@ -318,17 +322,17 @@ class TokenGenerator_Part2(PrecompiledWorkbenchModel):
             ]
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_2_of_4"
+            inference_options + " --qnn_options context_enable_graphs=ar1_cl4096_2_of_4"
         )
 
 
@@ -377,17 +381,17 @@ class TokenGenerator_Part3(PrecompiledWorkbenchModel):
             ]
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_3_of_4"
+            inference_options + " --qnn_options context_enable_graphs=ar1_cl4096_3_of_4"
         )
 
 
@@ -436,17 +440,17 @@ class TokenGenerator_Part4(PrecompiledWorkbenchModel):
             ]
         }
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         return (
-            profile_options + " --qnn_options context_enable_graphs=ar1_cl4096_4_of_4"
+            inference_options + " --qnn_options context_enable_graphs=ar1_cl4096_4_of_4"
         )
 
 

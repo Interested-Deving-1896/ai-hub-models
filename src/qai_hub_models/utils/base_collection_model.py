@@ -37,8 +37,8 @@ from qai_hub_models.utils.kwarg_helpers import (
 )
 from qai_hub_models.utils.qai_hub_helpers import (
     build_compile_options,
+    build_inference_options,
     build_link_options,
-    build_profile_options,
     build_quantize_options,
     expand_to_batch_size,
     make_sample_inputs,
@@ -157,16 +157,16 @@ class CollectionModel(ABC, FromPretrainedProtocol):
             other_link_options,
         )
 
-    def get_component_hub_profile_options(
+    def get_component_hub_inference_options(
         self,
         component_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        """Return AI Hub profile option string for a component."""
-        return build_profile_options(
-            target_runtime, context_graph_name, other_profile_options
+        """Return AI Hub inference option string for a component."""
+        return build_inference_options(
+            target_runtime, context_graph_name, other_inference_options
         )
 
     def get_component_sample_inputs(
@@ -291,16 +291,16 @@ class CollectionModel(ABC, FromPretrainedProtocol):
             }
         )
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> ComponentGroup[str]:
-        """Return AI Hub profile options for all components."""
+        """Return AI Hub inference options for all components."""
         return ComponentGroup(
             {
-                name: self.get_component_hub_profile_options(
-                    name, target_runtime, other_profile_options
+                name: self.get_component_hub_inference_options(
+                    name, target_runtime, other_inference_options
                 )
                 for name in self.component_names
             }
@@ -436,15 +436,15 @@ class WorkbenchModelCollection(CollectionModel, Generic[WorkbenchModelT]):
             target_runtime, other_link_options
         )
 
-    def get_component_hub_profile_options(
+    def get_component_hub_inference_options(
         self,
         component_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        return self.components[component_name].get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        return self.components[component_name].get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
 
     def get_component_sample_inputs(
@@ -546,15 +546,15 @@ class PrecompiledWorkbenchModelCollection(
     ) -> str:
         raise NotImplementedError()
 
-    def get_component_hub_profile_options(
+    def get_component_hub_inference_options(
         self,
         component_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        return self.components[component_name].get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        return self.components[component_name].get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
 
     def get_component_sample_inputs(

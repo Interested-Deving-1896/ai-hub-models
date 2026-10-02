@@ -112,7 +112,7 @@ These have default implementations but can be overridden:
 | Method | Description |
 |--------|-------------|
 | `_sample_inputs_impl()` | Provide real sample inputs instead of random data. Important for more accurate PSNR data, since `export.py` runs a single sample inference and reports the PSNR difference between torch and device. |
-| `get_hub_compile_options()` / `get_hub_profile_options()` | Custom AI Hub Workbench flags |
+| `get_hub_compile_options()` / `get_hub_inference_options()` | Custom AI Hub Workbench flags |
 | `get_unsupported_reason()` | Mark specific device attributes that can't be supported. Rarely defined in practice; only necessary if a specific Hexagon version is required for advanced models. |
 | `get_eval_dataset_classes()` | List of `BaseDataset` classes on which this model can be evaluated. If unset, model will not support eval. |
 | `get_evaluator()` | Return evaluator instance for accuracy measurement. If unset, model will not support eval. |

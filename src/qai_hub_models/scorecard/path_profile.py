@@ -324,15 +324,7 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
             return ScorecardCompilePath.VOICE_AI
         assert_never(self)
 
-    @property
-    def has_nonstandard_profile_options(self) -> bool:
-        """
-        If this path passes additional options beyond what the underlying TargetRuntime
-        passes (eg --compute_unit), then it's considered nonstandard.
-        """
-        return self.value not in TargetRuntime._value2member_map_
-
-    def get_profile_options(
+    def get_inference_options(
         self,
         precision: Precision,
         device: ScorecardDevice,

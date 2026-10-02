@@ -1741,22 +1741,22 @@ class DynamicSplitPartBase(LLMPartBase, torch.nn.Module, MultiGraphWorkbenchMode
             device,
         )
 
-    def get_graph_hub_profile_options(
+    def get_graph_hub_inference_options(
         self,
         graph_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> str:
         if self._is_quantized:
-            return self._presplit.get_hub_profile_options(
+            return self._presplit.get_hub_inference_options(
                 target_runtime=target_runtime,
-                other_profile_options=other_profile_options,
+                other_inference_options=other_inference_options,
                 context_graph_name=graph_name,
             )
-        return super().get_graph_hub_profile_options(
+        return super().get_graph_hub_inference_options(
             graph_name,
             target_runtime=target_runtime,
-            other_profile_options=other_profile_options,
+            other_inference_options=other_inference_options,
         )
 
 
@@ -3254,17 +3254,19 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
             instantiation_type = LLMInstantiationType.PROMPT_PROCESSOR
         return f"{instantiation_type.value}_ar{self.sequence_length}_cl{self.context_length}_{split_index + 1}_of_{num_splits}"
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name=context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime,
+            other_inference_options,
+            context_graph_name=context_graph_name,
         )
-        profile_options += " --max_profiler_iterations 50"
-        return profile_options
+        inference_options += " --max_profiler_iterations 50"
+        return inference_options
 
     def get_evaluator(
         self,

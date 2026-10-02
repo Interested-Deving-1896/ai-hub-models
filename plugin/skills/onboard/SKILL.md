@@ -176,7 +176,7 @@ Standalone folder contains everything the CLI needs. No generated files ship in 
 
    **Optional overrides:**
    - `_sample_inputs_impl()` — real sample inputs instead of random data.
-   - `get_hub_compile_options()` / `get_hub_profile_options()` / `get_hub_quantize_options()` — custom AI Hub flags. `get_hub_quantize_options()` is required when the model needs a specific range scheme (e.g. `--range_scheme min_max`). Grep existing detectors for a working pattern.
+   - `get_hub_compile_options()` / `get_hub_inference_options()` / `get_hub_quantize_options()` — custom AI Hub flags. `get_hub_quantize_options()` is required when the model needs a specific range scheme (e.g. `--range_scheme min_max`). Grep existing detectors for a working pattern.
    - `get_unsupported_reason()` — mark device attributes (e.g. Hexagon version) that can't be supported.
    - `get_eval_dataset_classes()` — *classmethod*, `Sequence[type[BaseDataset]]`. Default `()`.
    - `get_evaluator()` — *instance method*, returns a `BaseEvaluator` **instance** (not a class). Bind hyperparameters (score/IoU thresholds, class count) inside — evaluator is instantiated once and reused.

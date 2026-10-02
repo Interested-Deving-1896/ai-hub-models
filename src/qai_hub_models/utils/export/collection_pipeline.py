@@ -71,7 +71,7 @@ def export_model(
     output_dir: str | None = None,
     compile_options: str = "",
     quantize_options: str = "",
-    profile_options: str = "",
+    inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
 ) -> CollectionExportResult:
@@ -120,7 +120,7 @@ def export_model(
         Extra options for the compile job.
     quantize_options
         Extra options for the quantize job.
-    profile_options
+    inference_options
         Extra options for the profile job.
     zip_assets
         If set, zip the assets after downloading.
@@ -242,7 +242,7 @@ def export_model(
         )
     target_models = assert_success_and_get_target_models(link_jobs or compile_jobs)
 
-    profile_opts = model.get_hub_profile_options(target_runtime, profile_options)
+    inference_opts = model.get_hub_inference_options(target_runtime, inference_options)
 
     # 5. Profile each component.
     profile_jobs: ComponentGroup[hub.client.ProfileJob] | None = None
@@ -250,7 +250,7 @@ def export_model(
         profile_jobs = run_collection_profile(
             model_name,
             device,
-            profile_opts,
+            inference_opts,
             target_models,
             components,
         )
@@ -265,7 +265,7 @@ def export_model(
             ),
             model_name,
             device,
-            profile_opts,
+            inference_opts,
             target_models,
             components,
         )

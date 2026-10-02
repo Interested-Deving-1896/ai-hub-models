@@ -121,7 +121,7 @@ def test_parse_resnet18_export() -> None:
         "num_calibration_samples",
         "target_runtime",
         "compile_options",
-        "profile_options",
+        "inference_options",
         "quantize_options",
         "weights",
         "batch_size",
@@ -218,7 +218,7 @@ def test_parse_llama_export(llama_parser: argparse.ArgumentParser) -> None:
     assert set(vars(args).keys()) == {
         "target_runtime",
         "compile_options",
-        "profile_options",
+        "inference_options",
         "link_options",
         "checkpoint",
         "host_device",
@@ -295,7 +295,7 @@ def test_parse_whisper_export() -> None:
         "num_calibration_samples",
         "target_runtime",
         "compile_options",
-        "profile_options",
+        "inference_options",
         "quantize_options",
         "precision",
         "device",
@@ -330,7 +330,7 @@ def test_parse_qwen2_7b_export() -> None:
     args = parser.parse_args([])
     gt_set = {
         "target_runtime",
-        "profile_options",
+        "inference_options",
         "device",
         "device_str",
         "chipset",
@@ -388,7 +388,7 @@ def test_parse_resnet18_evaluate() -> None:
         "num_calibration_samples",
         "target_runtime",
         "compile_options",
-        "profile_options",
+        "inference_options",
         "quantize_options",
         "weights",
         "batch_size",
@@ -414,6 +414,24 @@ def test_parse_resnet18_evaluate() -> None:
     assert args.dataset_cls == ImagenetDataset
 
 
+@pytest.mark.parametrize("flag", ["--inference-options", "--profile-options"])
+@pytest.mark.parametrize("parser_kind", ["export", "evaluate"])
+def test_inference_options_alias(parser_kind: str, flag: str) -> None:
+    # Existing --profile-options scripts must keep working while users move to --inference-options.
+    if parser_kind == "export":
+        parser = export_parser(
+            model_cls=ResnetModel,
+            export_fn=select_pipeline(resolve_recipe_dir("resnet18")),
+        )
+    else:
+        parser = evaluate_parser(
+            model_cls=ResnetModel,
+            supported_dataset_classes=[ImagenetDataset],
+        )
+    args = parser.parse_args([flag, "--max_profiler_iterations 1"])
+    assert args.inference_options == "--max_profiler_iterations 1"
+
+
 def test_parse_whisper_evaluate() -> None:
     parser = evaluate_parser(
         model_cls=WhisperModel,
@@ -423,7 +441,7 @@ def test_parse_whisper_evaluate() -> None:
     gt_set = {
         "target_runtime",
         "compile_options",
-        "profile_options",
+        "inference_options",
         "quantize_options",
         "precision",
         "device",

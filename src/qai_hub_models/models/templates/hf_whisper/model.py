@@ -106,21 +106,21 @@ class HfWhisperEncoder(BaseModel):
         model = HfWhisper.load_whisper_model(hf_whisper_version)
         return cls(cast(WhisperConfig, model.config), model.get_encoder())
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
         if (
             target_runtime == TargetRuntime.TFLITE
-            and "--compute_unit" not in profile_options
+            and "--compute_unit" not in inference_options
         ):
-            profile_options = profile_options + " --compute_unit gpu"
-        return profile_options + " --max_profiler_iterations 10"
+            inference_options = inference_options + " --compute_unit gpu"
+        return inference_options + " --max_profiler_iterations 10"
 
     def get_hub_compile_options(
         self,

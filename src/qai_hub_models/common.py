@@ -440,7 +440,7 @@ class InferenceEngine(Enum):
                     " 1. Run `qai-hub-models fetch <model>` to fetch pre-released "
                     f"assets compatible with QAIRT {qairt_version}.\n"
                     f" OR\n"
-                    f" 2. Pass --compile-options='--qairt_version=default' and/or --profile-options='--qairt_version=default' to use the current default available on AI Hub Workbench. "
+                    f" 2. Pass --compile-options='--qairt_version=default' and/or --inference-options='--qairt_version=default' to use the current default available on AI Hub Workbench. "
                     "DO THIS AT YOUR OWN RISK -- Older versions of AI Hub Models are not guaranteed to work with newer versions of QAIRT."
                 ) from None
             raise

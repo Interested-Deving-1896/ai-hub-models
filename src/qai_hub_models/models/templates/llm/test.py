@@ -549,7 +549,7 @@ def test_cli_chipset_with_options(
         mock_onnx_checker.return_value = None
         mock_split_onnx.return_value = None
         compile_options = "compile_extra"
-        profile_options = "profile_extra"
+        inference_options = "profile_extra"
         link_options = "link_extra"
 
         os.makedirs("build", exist_ok=True)
@@ -562,7 +562,7 @@ def test_cli_chipset_with_options(
             "--compile-options",
             compile_options,
             "--profile-options",
-            profile_options,
+            inference_options,
             "--link-options",
             link_options,
             "--sequence-length",
@@ -627,13 +627,13 @@ def test_cli_chipset_with_options(
 
         # Profile parts * 2 times
         assert mock_hub.submit_profile_job.call_count == parts * 2
-        mock_get_hub_profile_options = (
-            mock_from_pretrained.return_value.get_hub_profile_options
+        mock_get_hub_inference_options = (
+            mock_from_pretrained.return_value.get_hub_inference_options
         )
-        assert mock_get_hub_profile_options.call_count == parts * 2
-        for call in mock_get_hub_profile_options.call_args_list:
+        assert mock_get_hub_inference_options.call_count == parts * 2
+        for call in mock_get_hub_inference_options.call_args_list:
             assert len(call.args) == 3
-            assert call.args[:2] == (target_runtime, profile_options)
+            assert call.args[:2] == (target_runtime, inference_options)
             assert (
                 call.args[2]._mock_new_parent._mock_name
                 == mock_from_pretrained.return_value.get_qnn_context_graph_name._mock_name

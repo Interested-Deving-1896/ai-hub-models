@@ -87,8 +87,8 @@ class DummyMockModel(LLM_AIMETOnnx):
         model.get_hub_compile_options.side_effect = functools.partial(
             LLM_AIMETOnnx.get_hub_compile_options, model
         )
-        model.get_hub_profile_options.side_effect = functools.partial(
-            LLM_AIMETOnnx.get_hub_profile_options, model
+        model.get_hub_inference_options.side_effect = functools.partial(
+            LLM_AIMETOnnx.get_hub_inference_options, model
         )
         model.get_hub_link_options.side_effect = functools.partial(
             LLM_AIMETOnnx.get_hub_link_options, model
@@ -127,7 +127,7 @@ class DummyMockModel(LLM_AIMETOnnx):
         "output_dir",
         "compile_options",
         "link_options",
-        "profile_options",
+        "inference_options",
         "synchronous",
         "model_cache_mode",
     ),
@@ -165,7 +165,7 @@ def test_export_cli(
     output_dir: str | None,
     compile_options: str,
     link_options: str,
-    profile_options: str,
+    inference_options: str,
     synchronous: bool,
     model_cache_mode: CacheMode,
 ) -> None:
@@ -249,9 +249,9 @@ def test_export_cli(
     if link_options:
         cli_args.extend(["--link-options", link_options])
         args["link_options"] = link_options
-    if profile_options:
-        cli_args.extend(["--profile-options", profile_options])
-        args["profile_options"] = profile_options
+    if inference_options:
+        cli_args.extend(["--profile-options", inference_options])
+        args["inference_options"] = inference_options
     if synchronous:
         cli_args.append("--synchronous")
         args["synchronous"] = True

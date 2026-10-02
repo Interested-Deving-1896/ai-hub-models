@@ -28,8 +28,8 @@ from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, get_channel_l
 from qai_hub_models.utils.kwarg_helpers import filter_kwargs
 from qai_hub_models.utils.qai_hub_helpers import (
     build_compile_options,
+    build_inference_options,
     build_link_options,
-    build_profile_options,
     build_quantize_options,
     expand_to_batch_size,
     make_sample_inputs,
@@ -174,15 +174,17 @@ class MultiGraphCollectionModel(ABC, FromPretrainedProtocol):
             other_link_options,
         )
 
-    def get_component_graph_hub_profile_options(
+    def get_component_graph_hub_inference_options(
         self,
         component_name: str,
         graph_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> str:
-        """Return AI Hub profile option string for a component graph."""
-        return build_profile_options(target_runtime, graph_name, other_profile_options)
+        """Return AI Hub inference option string for a component graph."""
+        return build_inference_options(
+            target_runtime, graph_name, other_inference_options
+        )
 
     def get_component_graph_sample_inputs(
         self,
@@ -344,22 +346,22 @@ class MultiGraphCollectionModel(ABC, FromPretrainedProtocol):
             }
         )
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> MultiGraphComponentGroup[str]:
-        """Return AI Hub profile options for all component graphs."""
+        """Return AI Hub inference options for all component graphs."""
         return MultiGraphComponentGroup[str](
             {
                 (
                     component_name,
                     graph_name,
-                ): self.get_component_graph_hub_profile_options(
+                ): self.get_component_graph_hub_inference_options(
                     component_name,
                     graph_name,
                     target_runtime,
-                    other_profile_options,
+                    other_inference_options,
                 )
                 for component_name, graph_name in self.all_flattened_component_graph_names
             }
@@ -512,19 +514,21 @@ class MultiGraphWorkbenchModelCollection(
             target_runtime, other_link_options
         )
 
-    def get_component_graph_hub_profile_options(
+    def get_component_graph_hub_inference_options(
         self,
         component_name: str,
         graph_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> str:
         component = self.components[component_name]
         if isinstance(component, MultiGraphWorkbenchModel):
-            return component.get_graph_hub_profile_options(
-                graph_name, target_runtime, other_profile_options
+            return component.get_graph_hub_inference_options(
+                graph_name, target_runtime, other_inference_options
             )
-        return component.get_hub_profile_options(target_runtime, other_profile_options)
+        return component.get_hub_inference_options(
+            target_runtime, other_inference_options
+        )
 
     def get_component_graph_sample_inputs(
         self,

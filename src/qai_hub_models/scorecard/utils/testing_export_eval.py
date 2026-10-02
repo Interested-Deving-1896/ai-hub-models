@@ -1154,9 +1154,9 @@ def profile_via_export(
         target_models = (
             assert_success_and_get_target_models(compile_jobs) if compile_jobs else None
         )
-        profile_options = model.get_hub_profile_options(
+        inference_options = model.get_hub_inference_options(
             scorecard_path.runtime,
-            scorecard_path.get_profile_options(precision, device),
+            scorecard_path.get_inference_options(precision, device),
         )
         # Only collection profile runners accept `components`; single-model ones
         # have nothing to restrict, and `components` is never set for them.
@@ -1164,7 +1164,7 @@ def profile_via_export(
         profile_output = profile_model(  # type: ignore[assignment]
             model_id,
             device.execution_device,
-            profile_options,
+            inference_options,
             target_models,
             **component_kwarg,
         )
@@ -1240,8 +1240,8 @@ def inference_via_export(
     inference_inputs = model.sample_inputs(
         use_channel_last_format=runtime.channel_last_native_execution
     )
-    inference_options = model.get_hub_profile_options(
-        scorecard_path.runtime, scorecard_path.get_profile_options(precision, device)
+    inference_options = model.get_hub_inference_options(
+        scorecard_path.runtime, scorecard_path.get_inference_options(precision, device)
     )
     inference_output = inference_model(
         inference_inputs,
@@ -1471,7 +1471,7 @@ def export_test_e2e(
                     precision=precision,
                     target_runtime=scorecard_path.runtime,
                     compile_options=scorecard_path.compile_path.get_compile_options(),
-                    profile_options=scorecard_path.get_profile_options(
+                    inference_options=scorecard_path.get_inference_options(
                         precision, device
                     ),
                     skip_profiling=not has_cached_profile_jobs,

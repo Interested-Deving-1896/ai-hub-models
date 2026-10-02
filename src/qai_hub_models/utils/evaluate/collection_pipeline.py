@@ -38,7 +38,7 @@ def evaluate_model(
     target_runtime: TargetRuntime = TargetRuntime.TFLITE,
     precision: Precision = Precision.float,
     compile_options: str = "",
-    profile_options: str = "",
+    inference_options: str = "",
     quantize_options: str = "",
     hub_model_id: str | None = None,
     dataset_cls: type[BaseDataset] | None = None,
@@ -71,7 +71,7 @@ def evaluate_model(
         Precision (e.g. ``Precision.float``).
     compile_options
         Additional options to pass when submitting the compile job.
-    profile_options
+    inference_options
         Additional options to pass when submitting the profile job.
     quantize_options
         Additional options to pass when submitting the quantize job.
@@ -125,7 +125,7 @@ def evaluate_model(
             "skip_downloading": True,
             "skip_profiling": True,
             "compile_options": compile_options,
-            "profile_options": profile_options,
+            "inference_options": inference_options,
             **model_kwargs,
         }
         if num_calibration_samples is not None:
@@ -178,7 +178,7 @@ def evaluate_model(
                 target_runtime=target_runtime,
                 precision=precision,
                 compile_options=compile_options,
-                profile_options=profile_options,
+                inference_options=inference_options,
                 quantize_options=quantize_options,
                 num_calibration_samples=num_calibration_samples,
             )
@@ -200,7 +200,7 @@ def evaluate_model(
                     model=compiled_model,
                     input_names=None,
                     device=device,
-                    inference_options=profile_options,
+                    inference_options=inference_options,
                 )
             )
 

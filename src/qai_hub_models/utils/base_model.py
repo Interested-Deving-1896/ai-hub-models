@@ -37,8 +37,8 @@ from qai_hub_models.utils.input_spec import (
 from qai_hub_models.utils.kwarg_helpers import cli_friendly_class_name
 from qai_hub_models.utils.qai_hub_helpers import (
     build_compile_options,
+    build_inference_options,
     build_link_options,
-    build_profile_options,
     build_quantize_options,
     expand_to_batch_size,
     make_sample_inputs,
@@ -228,15 +228,15 @@ class WorkbenchModel(ABC, FromPretrainedProtocol, EvaluatableModelProtocol):
         """AI Hub Workbench link options recommended for the model."""
         return build_link_options(target_runtime, other_link_options)
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
-        """AI Hub Workbench profile options recommended for the model."""
-        return build_profile_options(
-            target_runtime, context_graph_name, other_profile_options
+        """AI Hub Workbench inference options recommended for the model."""
+        return build_inference_options(
+            target_runtime, context_graph_name, other_inference_options
         )
 
     def sample_inputs(

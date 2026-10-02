@@ -58,7 +58,7 @@ def export_model(
     skip_summary: bool = False,
     output_dir: str | None = None,
     compile_options: str = "",
-    profile_options: str = "",
+    inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
 ) -> MultiGraphExportResult:
@@ -95,7 +95,7 @@ def export_model(
         Directory to store generated assets. Defaults to ``<cwd>/export_assets``.
     compile_options
         Extra options for the compile job.
-    profile_options
+    inference_options
         Extra options for the profile job.
     zip_assets
         If set, zip the assets after downloading.
@@ -163,7 +163,7 @@ def export_model(
     target_model = link_job.get_target_model()
     assert target_model is not None, f"Link job failed: {link_job}"
 
-    profile_opts = model.get_hub_profile_options(target_runtime, profile_options)
+    inference_opts = model.get_hub_inference_options(target_runtime, inference_options)
 
     # 4. Profile each graph against the linked model.
     profile_jobs: MultiGraphGroup[hub.client.ProfileJob] | None = None
@@ -171,7 +171,7 @@ def export_model(
         profile_jobs = run_multi_graph_profile(
             model_name,
             device,
-            profile_opts,
+            inference_opts,
             target_model,
         )
 

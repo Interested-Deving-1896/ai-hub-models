@@ -65,7 +65,7 @@ def _export_precompiled_single(
     skip_downloading: bool,
     skip_summary: bool,
     download_dir: Path,
-    profile_options: str,
+    inference_options: str,
     zip_assets: bool,
     target_runtime: TargetRuntime,
 ) -> ExportResult:
@@ -76,9 +76,9 @@ def _export_precompiled_single(
         hub.upload_model(model.get_target_model_path()) if not skip_profiling else None
     )
 
-    profile_opts = model.get_hub_profile_options(target_runtime, profile_options)
+    inference_opts = model.get_hub_inference_options(target_runtime, inference_options)
     profile_job = (
-        run_profile(model_id, device, profile_opts, uploaded)
+        run_profile(model_id, device, inference_opts, uploaded)
         if uploaded is not None
         else None
     )
@@ -124,7 +124,7 @@ def _export_precompiled_collection(
     skip_downloading: bool,
     skip_summary: bool,
     download_dir: Path,
-    profile_options: str,
+    inference_options: str,
     zip_assets: bool,
     target_runtime: TargetRuntime,
 ) -> CollectionExportResult:
@@ -143,9 +143,9 @@ def _export_precompiled_collection(
                 model.get_component_target_model_path(name)
             )
 
-    profile_opts = model.get_hub_profile_options(target_runtime, profile_options)
+    inference_opts = model.get_hub_inference_options(target_runtime, inference_options)
     profile_jobs: ComponentGroup[hub.client.ProfileJob] | None = (
-        run_collection_profile(model_id, device, profile_opts, uploaded, components)
+        run_collection_profile(model_id, device, inference_opts, uploaded, components)
         if not skip_profiling
         else None
     )
@@ -191,7 +191,7 @@ def export_model(
     skip_downloading: bool = False,
     skip_summary: bool = False,
     output_dir: str | None = None,
-    profile_options: str = "",
+    inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
 ) -> ExportResult | CollectionExportResult:
@@ -221,7 +221,7 @@ def export_model(
         If set, skips waiting for and summarizing results.
     output_dir
         Directory to store generated assets. Defaults to ``<cwd>/export_assets``.
-    profile_options
+    inference_options
         Extra options for the profile job.
     zip_assets
         If set, zip the assets after downloading.
@@ -267,7 +267,7 @@ def export_model(
             skip_downloading,
             skip_summary,
             download_dir,
-            profile_options,
+            inference_options,
             zip_assets,
             target_runtime,
         )
@@ -280,7 +280,7 @@ def export_model(
         skip_downloading,
         skip_summary,
         download_dir,
-        profile_options,
+        inference_options,
         zip_assets,
         target_runtime,
     )

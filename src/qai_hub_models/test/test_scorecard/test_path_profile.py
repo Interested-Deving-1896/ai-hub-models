@@ -22,7 +22,7 @@ from qai_hub_models.utils.set_env import set_temp_env
 
 def test_profile_qnn_version() -> None:
     """
-    This verifies behavior of ScorecardProfilePath.get_profile_options(Precision.float, cs_universal) with
+    This verifies behavior of ScorecardProfilePath.get_inference_options(Precision.float, cs_universal) with
     different combinations of:
       * default AI Hub Workbench QAIRT version
       * default AI Hub Models QAIRT version
@@ -92,10 +92,10 @@ def test_profile_qnn_version() -> None:
             with set_temp_env(
                 {QAIRTVersionEnvvar.VARNAME: QAIRTVersionEnvvar.default()}
             ):
-                assert QAIRTVersion.HUB_FLAG not in profile_path.get_profile_options(
+                assert QAIRTVersion.HUB_FLAG not in profile_path.get_inference_options(
                     Precision.float, cs_universal
                 )
-                assert default_qaihm_qnn_flag in profile_path.get_profile_options(
+                assert default_qaihm_qnn_flag in profile_path.get_inference_options(
                     Precision.float,
                     cs_universal,
                     include_default_qaihm_qnn_version=True,
@@ -106,13 +106,13 @@ def test_profile_qnn_version() -> None:
                 ) in paths_with_different_qairt_version:
                     assert (
                         QAIRTVersion.HUB_FLAG
-                        not in profile_path_with_different_qairt_version.get_profile_options(
+                        not in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float, cs_universal
                         )
                     )
                     assert (
                         path_flag_with_different_qairt_version
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float,
                             cs_universal,
                             include_default_qaihm_qnn_version=True,
@@ -121,10 +121,10 @@ def test_profile_qnn_version() -> None:
 
             # No flag set (same behavior as if flag was the same as the default QAIRT version)
             with set_temp_env({QAIRTVersionEnvvar.VARNAME: None}):
-                assert QAIRTVersion.HUB_FLAG not in profile_path.get_profile_options(
+                assert QAIRTVersion.HUB_FLAG not in profile_path.get_inference_options(
                     Precision.float, cs_universal
                 )
-                assert default_qaihm_qnn_flag in profile_path.get_profile_options(
+                assert default_qaihm_qnn_flag in profile_path.get_inference_options(
                     Precision.float,
                     cs_universal,
                     include_default_qaihm_qnn_version=True,
@@ -135,13 +135,13 @@ def test_profile_qnn_version() -> None:
                 ) in paths_with_different_qairt_version:
                     assert (
                         QAIRTVersion.HUB_FLAG
-                        not in profile_path_with_different_qairt_version.get_profile_options(
+                        not in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float, cs_universal
                         )
                     )
                     assert (
                         path_flag_with_different_qairt_version
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float,
                             cs_universal,
                             include_default_qaihm_qnn_version=True,
@@ -152,10 +152,10 @@ def test_profile_qnn_version() -> None:
             with set_temp_env({QAIRTVersionEnvvar.VARNAME: "2.31"}):
                 os.environ[QAIRTVersionEnvvar.VARNAME] = "2.31"
                 override_qairt_flag = QAIRTVersion("2.31").explicit_hub_option
-                assert override_qairt_flag in profile_path.get_profile_options(
+                assert override_qairt_flag in profile_path.get_inference_options(
                     Precision.float, cs_universal
                 )
-                assert override_qairt_flag in profile_path.get_profile_options(
+                assert override_qairt_flag in profile_path.get_inference_options(
                     Precision.float,
                     cs_universal,
                     include_default_qaihm_qnn_version=True,
@@ -166,13 +166,13 @@ def test_profile_qnn_version() -> None:
                 ) in paths_with_different_qairt_version:
                     assert (
                         override_qairt_flag
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float, cs_universal
                         )
                     )
                     assert (
                         override_qairt_flag
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float,
                             cs_universal,
                             include_default_qaihm_qnn_version=True,
@@ -188,10 +188,10 @@ def test_profile_qnn_version() -> None:
                 override_qairt_flag = QAIRTVersion(
                     QAIRTVersion.DEFAULT_AIHUB_TAG
                 ).explicit_hub_option
-                assert override_qairt_flag in profile_path.get_profile_options(
+                assert override_qairt_flag in profile_path.get_inference_options(
                     Precision.float, cs_universal
                 )
-                assert override_qairt_flag in profile_path.get_profile_options(
+                assert override_qairt_flag in profile_path.get_inference_options(
                     Precision.float,
                     cs_universal,
                     include_default_qaihm_qnn_version=True,
@@ -202,13 +202,13 @@ def test_profile_qnn_version() -> None:
                 ) in paths_with_different_qairt_version:
                     assert (
                         override_qairt_flag
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float, cs_universal
                         )
                     )
                     assert (
                         override_qairt_flag
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float,
                             cs_universal,
                             include_default_qaihm_qnn_version=True,
@@ -225,10 +225,10 @@ def test_profile_qnn_version() -> None:
                 override_qairt_flag = (
                     profile_path.runtime.default_qairt_version.explicit_hub_option
                 )
-                assert override_qairt_flag in profile_path.get_profile_options(
+                assert override_qairt_flag in profile_path.get_inference_options(
                     Precision.float, cs_universal
                 )
-                assert override_qairt_flag in profile_path.get_profile_options(
+                assert override_qairt_flag in profile_path.get_inference_options(
                     Precision.float,
                     cs_universal,
                     include_default_qaihm_qnn_version=True,
@@ -239,13 +239,13 @@ def test_profile_qnn_version() -> None:
                 ) in paths_with_different_qairt_version:
                     assert (
                         override_qairt_flag
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float, cs_universal
                         )
                     )
                     assert (
                         override_qairt_flag
-                        in profile_path_with_different_qairt_version.get_profile_options(
+                        in profile_path_with_different_qairt_version.get_inference_options(
                             Precision.float,
                             cs_universal,
                             include_default_qaihm_qnn_version=True,

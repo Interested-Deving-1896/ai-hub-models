@@ -182,7 +182,7 @@ def export_model(
     target_runtime: VALID_TARGET_RUNTIMES = TargetRuntime.GENIEX_QAIRT,
     compile_options: str = "",
     link_options: str = "",
-    profile_options: str = "",
+    inference_options: str = "",
     synchronous: bool = False,
     model_cache_mode: CacheMode = CacheMode.DISABLE,
     onnx_export_dir: str = "",
@@ -228,7 +228,7 @@ def export_model(
         Additional options to pass when submitting the compile job.
     link_options
         Additional options to pass when submitting the link job.
-    profile_options
+    inference_options
         Additional options to pass when submitting the profile job.
     synchronous
         If set, waits for each job to finish before submitting the next.
@@ -323,7 +323,7 @@ def export_model(
     input_specs: dict[str, Any] = {}
     output_specs: dict[str, Any] = {}
     link_jobs: dict[str, hub.client.LinkJob] = {}
-    profile_options_per_subcomponent: dict[str, str] = {}
+    inference_options_per_subcomponent: dict[str, str] = {}
     llm_config: PretrainedConfig
 
     sub_component_names: dict[str, list[str]] = {}
@@ -520,10 +520,10 @@ def export_model(
             )
             component_from_sub_component_names[sub_component_name] = component_name
 
-            profile_options_per_subcomponent[sub_component_name] = (
-                model.get_hub_profile_options(
+            inference_options_per_subcomponent[sub_component_name] = (
+                model.get_hub_inference_options(
                     target_runtime,
-                    profile_options,
+                    inference_options,
                     model.get_qnn_context_graph_name(i, num_splits),
                 )
             )
@@ -575,7 +575,7 @@ def export_model(
                     model=link_job.get_target_model(),
                     device=device,
                     name=full_name,
-                    options=profile_options_per_subcomponent[sub_component_name],
+                    options=inference_options_per_subcomponent[sub_component_name],
                 )
                 if synchronous:
                     submitted_profile_job.wait()
@@ -618,7 +618,7 @@ def export_model(
                     inputs=sample_inputs,
                     device=device,
                     name=full_name,
-                    options=profile_options_per_subcomponent[sub_component_name],
+                    options=inference_options_per_subcomponent[sub_component_name],
                 )
                 if synchronous:
                     submitted_inference_job.wait()

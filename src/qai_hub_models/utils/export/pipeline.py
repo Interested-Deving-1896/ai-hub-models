@@ -66,7 +66,7 @@ def export_model(
     output_dir: str | None = None,
     compile_options: str = "",
     quantize_options: str = "",
-    profile_options: str = "",
+    inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
 ) -> ExportResult:
@@ -115,7 +115,7 @@ def export_model(
         Extra options to pass when submitting the compile job.
     quantize_options
         Extra options to pass when submitting the quantize job.
-    profile_options
+    inference_options
         Extra options to pass when submitting the profile job.
     zip_assets
         If set, zip the assets after downloading.
@@ -235,13 +235,13 @@ def export_model(
             target_model = compiled_model
         assert target_model is not None, "Link job did not produce a target model"
 
-    profile_opts = model.get_hub_profile_options(target_runtime, profile_options)
+    inference_opts = model.get_hub_inference_options(target_runtime, inference_options)
 
     # 5. Profile.
     profile_job: hub.client.ProfileJob | None = None
     if not skip_profiling:
         assert target_model is not None
-        profile_job = run_profile(model_name, device, profile_opts, target_model)
+        profile_job = run_profile(model_name, device, inference_opts, target_model)
 
     # 6. Inference.
     inference_job: hub.client.InferenceJob | None = None
@@ -254,7 +254,7 @@ def export_model(
             ),
             model_name,
             device,
-            profile_opts,
+            inference_opts,
             target_model,
         )
 

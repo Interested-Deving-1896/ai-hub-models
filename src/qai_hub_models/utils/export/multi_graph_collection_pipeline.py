@@ -66,7 +66,7 @@ def export_model(
     skip_summary: bool = False,
     output_dir: str | None = None,
     compile_options: str = "",
-    profile_options: str = "",
+    inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
 ) -> MultiGraphCollectionExportResult:
@@ -105,7 +105,7 @@ def export_model(
         Directory to store generated assets. Defaults to ``<cwd>/export_assets``.
     compile_options
         Extra options for the compile job.
-    profile_options
+    inference_options
         Extra options for the profile job.
     zip_assets
         If set, zip the assets after downloading.
@@ -187,7 +187,7 @@ def export_model(
             ComponentGroup(first_per_component)
         )
 
-    profile_opts = model.get_hub_profile_options(target_runtime, profile_options)
+    inference_opts = model.get_hub_inference_options(target_runtime, inference_options)
 
     # 4. Profile each (component, graph).
     profile_jobs: MultiGraphComponentGroup[hub.client.ProfileJob] | None = None
@@ -195,7 +195,7 @@ def export_model(
         profile_jobs = run_multi_graph_collection_profile(
             model_name,
             device,
-            profile_opts,
+            inference_opts,
             target_models,
             components,
         )

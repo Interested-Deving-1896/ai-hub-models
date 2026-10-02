@@ -567,22 +567,22 @@ def build_link_options(
     return other_link_options
 
 
-def build_profile_options(
+def build_inference_options(
     target_runtime: TargetRuntime,
     context_graph_name: str | None = None,
-    other_profile_options: str = "",
+    other_inference_options: str = "",
 ) -> str:
-    if QAIRTVersion.HUB_FLAG not in other_profile_options:
-        other_profile_options += f" {target_runtime.default_qairt_version.hub_option}"
+    if QAIRTVersion.HUB_FLAG not in other_inference_options:
+        other_inference_options += f" {target_runtime.default_qairt_version.hub_option}"
     if context_graph_name is not None:
         if not target_runtime.is_aot_compiled:
             raise ValueError(
                 "Cannot specify a context binary graph name if the target is not precompiled QAIRT."
             )
-        other_profile_options += (
+        other_inference_options += (
             f" --qnn_options context_enable_graphs={context_graph_name}"
         )
-    return other_profile_options
+    return other_inference_options
 
 
 def make_sample_inputs(input_spec: InputSpec) -> SampleInputsType:

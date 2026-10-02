@@ -30,8 +30,8 @@ from qai_hub_models.utils.input_spec import (
 )
 from qai_hub_models.utils.qai_hub_helpers import (
     build_compile_options,
+    build_inference_options,
     build_link_options,
-    build_profile_options,
     build_quantize_options,
 )
 from qai_hub_models.utils.transpose_channel import transpose_channel_first_to_last
@@ -175,16 +175,18 @@ class MultiGraphWorkbenchModel(ABC, FromPretrainedProtocol):
         )
         return build_link_options(target_runtime, other_link_options)
 
-    def get_graph_hub_profile_options(
+    def get_graph_hub_inference_options(
         self,
         graph_name: str,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> str:
         assert target_runtime.is_aot_compiled, (
             "Multi-graph models only support AOT-compiled target runtimes."
         )
-        return build_profile_options(target_runtime, graph_name, other_profile_options)
+        return build_inference_options(
+            target_runtime, graph_name, other_inference_options
+        )
 
     # -- Auto-built from per-graph getters --
 
@@ -233,15 +235,15 @@ class MultiGraphWorkbenchModel(ABC, FromPretrainedProtocol):
             }
         )
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> MultiGraphGroup[str]:
         return MultiGraphGroup(
             {
-                name: self.get_graph_hub_profile_options(
-                    name, target_runtime, other_profile_options
+                name: self.get_graph_hub_inference_options(
+                    name, target_runtime, other_inference_options
                 )
                 for name in self.graph_names
             }

@@ -310,20 +310,20 @@ class BEVDetPooler(BaseModel):
             compile_options += " --truncate_64bit_tensors True"
         return compile_options
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
         # Pin to the CPU backend: the fp32 voxel quantization + large-magnitude
         # pooling cumsum cannot run on the HTP.
-        profile_options = super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+        inference_options = super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
-        if "--compute_unit" not in profile_options:
-            profile_options += " --compute_unit cpu"
-        return profile_options
+        if "--compute_unit" not in inference_options:
+            inference_options += " --compute_unit cpu"
+        return inference_options
 
     def component_precision(self) -> Precision:
         # No learned weights and needs fp32 for the cumsum.

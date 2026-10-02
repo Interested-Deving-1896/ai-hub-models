@@ -323,7 +323,7 @@ def profile_model(
                     compile_job.get_target_model(),
                     params.device.execution_device,
                     job_name,
-                    params.path.get_profile_options(
+                    params.path.get_inference_options(
                         precision, params.device, include_default_qaihm_qnn_version=True
                     ),
                 ),
@@ -394,7 +394,7 @@ def inference_model(
                 params.device.execution_device,
                 dataset,
                 job_name,
-                params.path.get_profile_options(
+                params.path.get_inference_options(
                     precision, params.device, include_default_qaihm_qnn_version=True
                 ),
             ),

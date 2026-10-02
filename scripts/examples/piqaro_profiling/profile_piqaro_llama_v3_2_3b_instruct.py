@@ -110,7 +110,7 @@ if __name__ == "__main__":
         compile_options += " --enable_piqaro"
 
     link_options = " --qairt_version 2.38"
-    profile_options = " --qairt_version 2.38"
+    inference_options = " --qairt_version 2.38"
 
     trunc_name = "_trunc" if truncate_model else ""
     output_dir = args.output_dir or str(
@@ -255,6 +255,6 @@ if __name__ == "__main__":
             model_cache_mode=cache,
             compile_options=compile_options,
             link_options=link_options,
-            profile_options=profile_options,
+            inference_options=inference_options,
             onnx_export_dir=output_dir,
         )

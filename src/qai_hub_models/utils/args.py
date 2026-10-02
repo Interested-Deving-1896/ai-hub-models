@@ -1106,6 +1106,19 @@ def _evaluate_export_common_parser(
     return parser
 
 
+def _add_inference_options_arg(parser: QAIHMArgumentParser) -> None:
+    # --profile-options is kept as an alias now that AI Hub folds profile jobs into inference jobs.
+    parser.add_argument(
+        "--inference-options",
+        "--profile-options",
+        dest="inference_options",
+        metavar="INFERENCE_OPTIONS",
+        type=str,
+        default="",
+        help="Additional options to pass when submitting the inference job.",
+    )
+
+
 def add_export_function_args(
     export_fn: Callable,
     parser: QAIHMArgumentParser,
@@ -1141,6 +1154,10 @@ def add_export_function_args(
             action="store_true",
             help="If set, downloaded assets are zipped.",
         )
+
+    if "inference_options" in signature:
+        signature.pop("inference_options")
+        _add_inference_options_arg(parser)
 
     raw_doc = inspect.getdoc(export_fn)
     assert raw_doc is not None, "Export function must have a docstring."
@@ -1278,12 +1295,7 @@ def evaluate_parser(
         default="",
         help="Additional options to pass when submitting the compile job.",
     )
-    parser.add_argument(
-        "--profile-options",
-        type=str,
-        default="",
-        help="Additional options to pass when submitting the profile job.",
-    )
+    _add_inference_options_arg(parser)
     if uses_quantize_job:
         parser.add_argument(
             "--quantize-options",

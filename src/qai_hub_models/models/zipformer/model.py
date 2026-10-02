@@ -216,20 +216,20 @@ class ZipformerEncoder(BaseModel):
     def context_graph_name(self) -> str:
         return "encoder_model"
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
         context_graph_name: str | None = None,
     ) -> str:
         if (
             target_runtime == TargetRuntime.TFLITE
-            and "--compute_unit" not in other_profile_options
+            and "--compute_unit" not in other_inference_options
         ):
-            other_profile_options += " --compute_unit gpu"
-        other_profile_options += " --max_profiler_iterations 10"
-        return super().get_hub_profile_options(
-            target_runtime, other_profile_options, context_graph_name
+            other_inference_options += " --compute_unit gpu"
+        other_inference_options += " --max_profiler_iterations 10"
+        return super().get_hub_inference_options(
+            target_runtime, other_inference_options, context_graph_name
         )
 
     def get_hub_compile_options(

@@ -1121,24 +1121,24 @@ class Qwen2_5_VL_7B_PartBase(LLMPartBase, torch.nn.Module, MultiGraphWorkbenchMo
             target_runtime, precision, other_compile_options, device
         )
 
-    def get_hub_profile_options(
+    def get_hub_inference_options(
         self,
         target_runtime: TargetRuntime,
-        other_profile_options: str = "",
+        other_inference_options: str = "",
     ) -> MultiGraphGroup[str]:
-        """Get profile options keyed by graph name."""
+        """Get inference options keyed by graph name."""
         if self._is_quantized:
             out: MultiGraphGroup[str] = MultiGraphGroup()
             for graph_name in self.graph_names:
-                out[graph_name] = self._presplit.get_hub_profile_options(
+                out[graph_name] = self._presplit.get_hub_inference_options(
                     target_runtime=target_runtime,
-                    other_profile_options=other_profile_options,
+                    other_inference_options=other_inference_options,
                     context_graph_name=graph_name,
                 )
             return out
-        return super().get_hub_profile_options(
+        return super().get_hub_inference_options(
             target_runtime=target_runtime,
-            other_profile_options=other_profile_options,
+            other_inference_options=other_inference_options,
         )
 
 
