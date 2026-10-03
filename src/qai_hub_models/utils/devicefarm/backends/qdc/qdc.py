@@ -440,6 +440,13 @@ class QDCDeviceFarm(DeviceFarm):
             f"Last status: {job_status}"
         )
 
+    def is_done(self, job_id: str) -> bool:
+        job_status = _call_with_retry(
+            lambda: qdc_api.get_job_status(self.client, job_id),
+            f"get_job_status({job_id})",
+        )
+        return job_status not in _RUNNING_STATES
+
     def result(self, job_id: str) -> str | None:
         """Return the terminal result of a job (e.g. "Successful"/"Unsuccessful").
 

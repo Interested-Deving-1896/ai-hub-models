@@ -113,12 +113,26 @@ def _preflight_url(url: str) -> None:
         text=True,
     )
     http_code = preflight.stdout.strip()
-    if preflight.returncode != 0 or not http_code.startswith(("2", "3")):
+    if preflight.returncode == 0 and http_code.startswith(("2", "3")):
+        return
+    if preflight.returncode == 0 and http_code.startswith("4"):
+        # The device has network; surface S3's error body (e.g. ExpiredToken).
+        body = subprocess.run(
+            ["adb", "shell", f"curl -sS --max-time 15 '{url}' | head -c 600"],
+            check=False,
+            capture_output=True,
+            text=True,
+            errors="replace",
+        ).stdout
         pytest.fail(
-            f"Device cannot reach {url} (rc={preflight.returncode}, "
-            f"http_code={http_code!r}, stderr={preflight.stderr!r}). "
-            "Likely QDC device-side wifi failure — file a QDC infra ticket and re-run."
+            f"Server rejected {url} (http_code={http_code!r}); device network is "
+            f"fine, the URL is likely expired or invalid. Response: {body!r}"
         )
+    pytest.fail(
+        f"Device cannot reach {url} (rc={preflight.returncode}, "
+        f"http_code={http_code!r}, stderr={preflight.stderr!r}). "
+        "Likely QDC device-side wifi failure — file a QDC infra ticket and re-run."
+    )
 
 
 def _preflight_network() -> None:

@@ -96,3 +96,38 @@ def test_long_lived_client_signs_each_call_with_refreshed_credentials(
     client.get_run(arn=RUN_ARN)
     client.get_run(arn=RUN_ARN)
     assert signed_keys == ["AKIAFIRST", "AKIASECOND"]
+
+
+S25_ARN, S26_ARN = (
+    aws.get_aws_device_arns(n)[0] for n in ("Samsung Galaxy S25", "Samsung Galaxy S26")
+)
+
+
+def _run(status: str, device_arn: str) -> dict:
+    return {
+        "status": status,
+        "deviceSelectionResult": {"filters": [{"values": [device_arn]}]},
+    }
+
+
+def test_count_waiting_jobs_counts_only_queued_runs_for_the_device() -> None:
+    farm = aws.AwsDeviceFarm.__new__(aws.AwsDeviceFarm)
+    farm.config = AwsDeviceFarmConfig(project_arn="p")
+    farm.client = mock.MagicMock()
+    farm.client.list_runs.side_effect = [
+        {
+            "runs": [
+                _run("PENDING_DEVICE", S26_ARN),
+                _run("RUNNING", S26_ARN),
+                _run("SCHEDULING", S26_ARN),
+                _run("PENDING", S25_ARN),
+            ],
+            "nextToken": "t1",
+        },
+        {"runs": [_run("PENDING_CONCURRENCY", S26_ARN)], "nextToken": "t2"},
+        {"runs": [_run("COMPLETED", S26_ARN)], "nextToken": "t3"},
+    ]
+
+    assert farm.count_waiting_jobs("Samsung Galaxy S26") == 3
+    # Stops at the first all-completed page instead of walking the whole history.
+    assert farm.client.list_runs.call_count == 3

@@ -30,6 +30,10 @@ from qai_hub_models.utils.devicefarm.devicefarm import (
 )
 
 POLL_INTERVAL = 15
+# Run states before a phone is allocated. PREPARING/RUNNING already hold one.
+_WAITING_RUN_STATES = frozenset(
+    {"PENDING", "PENDING_CONCURRENCY", "PENDING_DEVICE", "PROCESSING", "SCHEDULING"}
+)
 # AWS Device Farm itself caps a single job at 150 minutes; this is a client
 # cap on top of that, generous enough for the perf sweep and the 100-prompt
 # accuracy eval.
@@ -375,6 +379,31 @@ class AwsDeviceFarm(DeviceFarm):
             elapsed += POLL_INTERVAL
         self.client.stop_run(arn=run_arn)
         raise TimeoutError(f"Run {run_arn} did not complete within {timeout}s")
+
+    def is_done(self, run_arn: str) -> bool:
+        return self.client.get_run(arn=run_arn)["run"]["status"] == "COMPLETED"
+
+    def count_waiting_jobs(self, hub_device_name: str) -> int:
+        """Runs in this project still waiting for a phone of ``hub_device_name``.
+
+        Device Farm has no per-device queue API, so this pages ``list_runs``
+        (newest first) and stops at the first page with no unfinished runs.
+        """
+        device_arns = set(get_aws_device_arns(hub_device_name))
+        waiting = 0
+        kwargs: dict[str, str] = {"arn": self.config.project_arn}
+        while True:
+            page = self.client.list_runs(**kwargs)
+            runs = page["runs"]
+            for run in runs:
+                filters = run.get("deviceSelectionResult", {}).get("filters", [])
+                run_arns = {v for f in filters for v in f.get("values", [])}
+                if run["status"] in _WAITING_RUN_STATES and run_arns & device_arns:
+                    waiting += 1
+            token = page.get("nextToken")
+            if not token or all(r["status"] == "COMPLETED" for r in runs):
+                return waiting
+            kwargs["nextToken"] = token
 
     def result(self, run_arn: str) -> str | None:
         """PASSED/FAILED/ERRORED/STOPPED/SKIPPED/WARNED, or None if absent."""

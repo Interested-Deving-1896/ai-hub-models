@@ -10,7 +10,9 @@ import json
 import os
 import shutil
 import sys
+import time
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 
 from qai_hub_models import Precision, QAIRTVersion, TargetRuntime
@@ -41,6 +43,7 @@ from qai_hub_models.scorecard.utils.fetch_prerelease_assets import (
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.devicefarm.devicefarm import (
     DEFAULT_RETRIES,
+    DeviceFarm,
     JobOutcome,
     JobRecord,
     get_device_farm,
@@ -84,6 +87,11 @@ _TTFT_BASELINE_PROMPT_TOKENS = 128
 # Number of accuracy-eval prompts to run (of the built-in 100-prompt set). A
 # smaller number is sampled evenly across the 10 categories, not sliced.
 _EVAL_NUM_PROMPTS = 100
+
+# Queued (not running) jobs allowed per device type: enough that a freed phone
+# picks up the next job immediately, small enough that nothing waits for hours.
+DEFAULT_MAX_WAITING = 2
+DEFAULT_RUN_POLL_INTERVAL = 60
 
 
 def _qairt_precisions(model_id: str) -> list[Precision]:
@@ -206,6 +214,14 @@ def _scorecard_device(name: str) -> ScorecardDevice:
     return ScorecardDevice.get(name)
 
 
+def _device_alias(plugin: str) -> str:
+    return ",".join(LLAMACPP_DEVICE_ALIASES) if plugin == "llama_cpp" else "npu"
+
+
+def _runtime(plugin: str) -> str:
+    return "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
+
+
 def write_csv(rows: list[dict], path: str) -> None:
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
@@ -324,6 +340,7 @@ def _submit_one(
     eval_prompts: list[str] | None = None,
     run_perf: bool = True,
     qairt_version: str | None = None,
+    attempts_left: int = DEFAULT_RETRIES,
 ) -> str:
     """Submit one geniex-bench job and upsert a jobs_file entry.
 
@@ -332,7 +349,7 @@ def _submit_one(
     ``fetch_geniex_qairt_bundle`` -- nothing local-path is persisted.
     """
     sd = _scorecard_device(device_token)
-    device_alias = ",".join(LLAMACPP_DEVICE_ALIASES) if plugin == "llama_cpp" else "npu"
+    device_alias = _device_alias(plugin)
     _print_job_banner(
         model_id,
         sd,
@@ -369,10 +386,83 @@ def _submit_one(
         qairt_bundle_urls=qairt_bundle_urls,
         qairt_version=qairt_version,
     )
-    runtime = "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
-    key = make_key(model_id, str(precision), runtime, sd.name)
-    save_job(jobs_file, key, job_id, attempts_left=DEFAULT_RETRIES)
+    key = make_key(model_id, str(precision), _runtime(plugin), sd.name)
+    save_job(jobs_file, key, job_id, attempts_left=attempts_left)
     return job_id
+
+
+def _has_all_results(
+    metrics: list[GenieXBenchMetrics],
+    eval_results: list[dict],
+    plugin: str,
+    ctx_list: list[int],
+    eval_prompts: list[str] | None,
+    run_perf: bool,
+) -> bool:
+    if not run_perf and not eval_prompts:
+        return False
+    expected = {(a, c) for a in _device_alias(plugin).split(",") for c in ctx_list}
+    got = {(m.device_alias, m.context_length) for m in metrics}
+    perf_ok = not run_perf or expected <= got
+    eval_ok = not eval_prompts or len(eval_results) >= len(eval_prompts)
+    return perf_ok and eval_ok
+
+
+def _collect_attempt(
+    backend: DeviceFarm,
+    sd: ScorecardDevice,
+    model_id: str,
+    precision: Precision,
+    plugin: str,
+    job_id: str,
+    save_dir_root: str,
+    ctx_list: list[int],
+    eval_prompts: list[str] | None,
+    run_perf: bool,
+) -> tuple[list[GenieXBenchMetrics], list[dict], JobOutcome, str | None, str | None]:
+    """Collect one job. Returns ``(metrics, eval_results, outcome, reason, kept_failure)``.
+
+    A failed job whose logs hold every expected result is upgraded to SUCCESS,
+    and its failure reason is returned as ``kept_failure``.
+    """
+    logs_dir = _device_logs_dir(
+        save_dir_root, model_id, precision, sd.name, _runtime(plugin), job_id
+    )
+    metrics, eval_results, outcome, reason = collect_geniex_bench(
+        backend,
+        sd.reference_device_name,
+        job_id,
+        save_results_dir=os.path.join(save_dir_root, model_id, sd.name),
+        eval_prompts=eval_prompts,
+        run_perf=run_perf,
+        save_logs_dir=logs_dir,
+    )
+    # e.g. geniex-bench segfaulting in teardown fails the job after every
+    # result landed; a resubmit would crash the same way.
+    if outcome is not JobOutcome.SUCCESS and _has_all_results(
+        metrics, eval_results, plugin, ctx_list, eval_prompts, run_perf
+    ):
+        print(f"Keeping all results from failed job: {reason}")
+        return metrics, eval_results, JobOutcome.SUCCESS, reason, reason
+    return metrics, eval_results, outcome, reason, None
+
+
+def _final_status(
+    metrics: list[GenieXBenchMetrics],
+    eval_results: list[dict],
+    run_perf: bool,
+    eval_prompts: list[str] | None,
+) -> str:
+    if metrics:
+        return "success"
+    # With perf off the device runs eval only, so an empty metrics list is
+    # expected rather than a failure. But the eval must still return one result
+    # per prompt sent; a short count means the run crashed or was truncated.
+    if run_perf:
+        return "no_metrics"
+    if eval_prompts and len(eval_results) != len(eval_prompts):
+        return f"eval_incomplete ({len(eval_results)}/{len(eval_prompts)})"
+    return "eval_only"
 
 
 def _collect_one(
@@ -402,11 +492,9 @@ def _collect_one(
     kept job failed, if it did.
     """
     sd = ScorecardDevice.get(device_name)
-    device_alias = ",".join(LLAMACPP_DEVICE_ALIASES) if plugin == "llama_cpp" else "npu"
+    device_alias = _device_alias(plugin)
     job_name = f"geniex-bench {plugin} {model_id}"
-    save_dir = os.path.join(save_dir_root, model_id, sd.name)
-    runtime = "GENIEX_QAIRT" if plugin == "qairt" else "GENIEX_LLAMACPP"
-    key = make_key(model_id, str(precision), runtime, sd.name)
+    key = make_key(model_id, str(precision), _runtime(plugin), sd.name)
 
     if plugin == "llama_cpp" and (
         llamacpp_urls is None or precision not in llamacpp_urls
@@ -457,41 +545,23 @@ def _collect_one(
         )
         return new_job_id
 
-    def _has_all_results(
-        metrics: list[GenieXBenchMetrics], eval_results: list[dict]
-    ) -> bool:
-        if not run_perf and not eval_prompts:
-            return False
-        expected = {(a, c) for a in device_alias.split(",") for c in ctx_list}
-        got = {(m.device_alias, m.context_length) for m in metrics}
-        perf_ok = not run_perf or expected <= got
-        eval_ok = not eval_prompts or len(eval_results) >= len(eval_prompts)
-        return perf_ok and eval_ok
-
     job_failure: str | None = None
 
     def _collect(job_id: str) -> tuple[tuple, JobOutcome, str | None]:
         nonlocal job_failure
-        logs_dir = _device_logs_dir(
-            save_dir_root, model_id, precision, sd.name, runtime, job_id
-        )
-        metrics, eval_results, outcome, reason = collect_geniex_bench(
+        metrics, eval_results, outcome, reason, kept = _collect_attempt(
             backend,
-            sd.reference_device_name,
+            sd,
+            model_id,
+            precision,
+            plugin,
             job_id,
-            save_results_dir=save_dir,
-            eval_prompts=eval_prompts,
-            run_perf=run_perf,
-            save_logs_dir=logs_dir,
+            save_dir_root,
+            ctx_list,
+            eval_prompts,
+            run_perf,
         )
-        # e.g. geniex-bench segfaulting in teardown fails the job after every
-        # result landed; a resubmit would crash the same way.
-        if outcome is not JobOutcome.SUCCESS and _has_all_results(
-            metrics, eval_results
-        ):
-            print(f"Keeping all results from failed job: {reason}")
-            job_failure = reason
-            outcome = JobOutcome.SUCCESS
+        job_failure = kept or job_failure
         return (metrics, eval_results), outcome, reason
 
     try:
@@ -511,17 +581,7 @@ def _collect_one(
         )
         return [], [], "failed", None
 
-    if metrics:
-        return metrics, eval_results, "success", job_failure
-    # With perf off the device runs eval only, so an empty metrics list is
-    # expected rather than a failure. But the eval must still return one result
-    # per prompt sent; a short count means the run crashed or was truncated.
-    if run_perf:
-        status = "no_metrics"
-    elif eval_prompts and len(eval_results) != len(eval_prompts):
-        status = f"eval_incomplete ({len(eval_results)}/{len(eval_prompts)})"
-    else:
-        status = "eval_only"
+    status = _final_status(metrics, eval_results, run_perf, eval_prompts)
     return metrics, eval_results, status, job_failure
 
 
@@ -1019,42 +1079,264 @@ def _cmd_collect(args: argparse.Namespace) -> int:
             )
             continue
 
-        _save_eval_results(eval_results, model_id, sd, precision, plugin)
-
-        # Its results are applied like any other, but the extra row keeps the
-        # failed job red in the CSV, step summary, and exit code.
-        if job_failure:
-            print(
-                f"::warning::{model_id} [{precision}] @ {sd.name}: results kept "
-                f"from a failed job. {job_failure}"
-            )
-            rows.append(
-                {
-                    "model": model_id,
-                    "plugin": plugin,
-                    "precision": str(precision),
-                    "device": sd.name,
-                    "status": "job_failed (results kept)",
-                }
-            )
-
-        if status != "success":
-            rows.append(
-                {
-                    "model": model_id,
-                    "plugin": plugin,
-                    "precision": str(precision),
-                    "device": sd.name,
-                    "status": status,
-                }
-            )
-            continue
-
-        csv_rows, updates = _rows_and_updates_from_metrics(
-            model_id, sd, plugin, precision, metrics, args.skip_perf_update
+        _record_outcome(
+            rows,
+            perf_updates,
+            model_id,
+            sd,
+            plugin,
+            precision,
+            metrics,
+            eval_results,
+            status,
+            job_failure,
+            args.skip_perf_update,
         )
-        rows.extend(csv_rows)
-        perf_updates.extend(updates)
+
+    return _write_final_outputs(rows, perf_updates, args.csv, args.perf_updates_json)
+
+
+def _status_row(
+    model_id: str, plugin: str, precision: Precision, sd: ScorecardDevice, status: str
+) -> dict:
+    return {
+        "model": model_id,
+        "plugin": plugin,
+        "precision": str(precision),
+        "device": sd.name,
+        "status": status,
+    }
+
+
+def _record_outcome(
+    rows: list[dict],
+    perf_updates: list[dict],
+    model_id: str,
+    sd: ScorecardDevice,
+    plugin: str,
+    precision: Precision,
+    metrics: list[GenieXBenchMetrics],
+    eval_results: list[dict],
+    status: str,
+    job_failure: str | None,
+    skip_perf_update: bool,
+) -> None:
+    """Fold one finished (model, precision, device) into the output rows/updates."""
+    _save_eval_results(eval_results, model_id, sd, precision, plugin)
+
+    # Its results are applied like any other, but the extra row keeps the
+    # failed job red in the CSV, step summary, and exit code.
+    if job_failure:
+        print(
+            f"::warning::{model_id} [{precision}] @ {sd.name}: results kept "
+            f"from a failed job. {job_failure}"
+        )
+        rows.append(
+            _status_row(model_id, plugin, precision, sd, "job_failed (results kept)")
+        )
+
+    if status != "success":
+        rows.append(_status_row(model_id, plugin, precision, sd, status))
+        return
+
+    csv_rows, updates = _rows_and_updates_from_metrics(
+        model_id, sd, plugin, precision, metrics, skip_perf_update
+    )
+    rows.extend(csv_rows)
+    perf_updates.extend(updates)
+
+
+@dataclass
+class _Case:
+    plugin: str
+    model_id: str
+    precision: Precision
+    sd: ScorecardDevice
+    model_ref: str
+    ctx_list: list[int]
+    llamacpp_quant: str | None
+    eval_prompts: list[str] | None
+    attempts_left: int = DEFAULT_RETRIES
+    job_id: str | None = None
+
+    @property
+    def name(self) -> str:
+        return f"{self.model_id}/{self.plugin}/{self.precision}@{self.sd.name}"
+
+
+def _cmd_run(args: argparse.Namespace) -> int:
+    """Submit and collect in one loop, keeping a bounded backlog per device.
+
+    A new job is submitted only while fewer than ``--max-waiting`` jobs are
+    queued for that device (across every submitter on the account), so phones
+    never idle and no job waits long enough for its presigned URL to lapse.
+    Retries go back through the same gate, freshly signed.
+    """
+    eval_prompts = _resolve_eval_prompts(args.run_eval)
+    qairt_version = _resolve_qairt_version(args)
+    if os.path.exists(args.jobs_file):
+        os.unlink(args.jobs_file)
+
+    pending: list[_Case] = []
+    for plugin, model_id, precision, token, model_ref, ctx, quant in _iter_work(
+        args.models,
+        args.devices,
+        args.plugin,
+        args.precisions,
+        args.results_dir,
+        args.geniex_version,
+    ):
+        sd = _scorecard_device(token)
+        pending.append(
+            _Case(
+                plugin,
+                model_id,
+                precision,
+                sd,
+                model_ref,
+                ctx,
+                quant,
+                _eval_prompts_for_device(eval_prompts, sd, args.devices),
+            )
+        )
+
+    backends: dict[str, DeviceFarm] = {}
+    in_flight: list[_Case] = []
+    rows: list[dict] = []
+    perf_updates: list[dict] = []
+
+    def _backend(case: _Case) -> DeviceFarm:
+        return backends.setdefault(case.sd.name, get_device_farm(case.sd))
+
+    def _submit(case: _Case) -> None:
+        is_resubmit = case.job_id is not None
+        if case.plugin == "qairt" and is_resubmit:
+            # Re-resolve the bundle so a just-recompiled asset is what's used.
+            bundle_dir, case.ctx_list = fetch_geniex_qairt_bundle(
+                case.model_id,
+                case.precision,
+                case.sd.chipset,
+                Path(args.results_dir) / "qairt_bundles",
+            )
+            case.model_ref = str(bundle_dir)
+        case.job_id = _submit_one(
+            case.model_id,
+            case.model_ref,
+            case.sd.name,
+            case.ctx_list,
+            args.results_dir,
+            case.plugin,
+            args.geniex_version,
+            case.precision,
+            args.jobs_file,
+            llamacpp_quant=case.llamacpp_quant,
+            eval_prompts=case.eval_prompts,
+            run_perf=args.run_perf,
+            qairt_version=qairt_version if case.plugin == "qairt" else None,
+            attempts_left=case.attempts_left,
+        )
+        if args.run_perf and not is_resubmit:
+            # Like collect: only submitted buckets are scoped, so a failed
+            # submit keeps its committed numbers but a failed job drops them.
+            record_perf_scope(
+                model_id=case.model_id,
+                profile_path=ScorecardProfilePath[_runtime(case.plugin)],
+                device_name=case.sd.reference_device_name,
+                precision=case.precision,
+            )
+
+    def _is_done(case: _Case) -> bool:
+        try:
+            return _backend(case).is_done(case.job_id or "")
+        except Exception as e:
+            # A throttled or flaky status call shouldn't abort every other job.
+            print(f"Status check failed for {case.name} ({type(e).__name__})")
+            return False
+
+    def _finish(
+        case: _Case,
+        status: str,
+        metrics: list[GenieXBenchMetrics],
+        evals: list[dict],
+        kept: str | None,
+    ) -> None:
+        _record_outcome(
+            rows,
+            perf_updates,
+            case.model_id,
+            case.sd,
+            case.plugin,
+            case.precision,
+            metrics,
+            evals,
+            status,
+            kept,
+            args.skip_perf_update,
+        )
+
+    def _collect(case: _Case) -> None:
+        assert case.job_id is not None
+        metrics, evals, outcome, reason, kept = _collect_attempt(
+            _backend(case),
+            case.sd,
+            case.model_id,
+            case.precision,
+            case.plugin,
+            case.job_id,
+            args.results_dir,
+            case.ctx_list,
+            case.eval_prompts,
+            args.run_perf,
+        )
+        if outcome is JobOutcome.SUCCESS:
+            status = _final_status(metrics, evals, args.run_perf, case.eval_prompts)
+            _finish(case, status, metrics, evals, kept)
+        elif case.attempts_left > 0:
+            case.attempts_left -= 1
+            print(
+                f"Requeueing {case.name} (attempts_left={case.attempts_left}): {reason}"
+            )
+            pending.append(case)
+        else:
+            print(
+                f"ERROR: {reason} after exhausting retry budget for {case.name}",
+                file=sys.stderr,
+            )
+            _finish(case, "failed", [], [], None)
+
+    while pending or in_flight:
+        for case in [c for c in in_flight if _is_done(c)]:
+            in_flight.remove(case)
+            try:
+                _collect(case)
+            except Exception as e:
+                print(f"ERROR: collection failed for {case.name}: {e}", file=sys.stderr)
+                _finish(case, "failed", [], [], None)
+
+        # One fresh queue count per device per pass, bumped locally as we submit.
+        waiting: dict[str, int | None] = {}
+        for case in list(pending):
+            device = case.sd.name
+            if device not in waiting:
+                waiting[device] = _backend(case).count_waiting_jobs(
+                    case.sd.reference_device_name
+                )
+            count = waiting[device]
+            if count is not None and count >= args.max_waiting:
+                continue
+            pending.remove(case)
+            try:
+                _submit(case)
+            except Exception as e:
+                print(f"ERROR: submission failed for {case.name}: {e}", file=sys.stderr)
+                _finish(case, "not_submitted", [], [], None)
+                continue
+            in_flight.append(case)
+            if count is not None:
+                waiting[device] = count + 1
+
+        if pending or in_flight:
+            time.sleep(args.poll_interval)
 
     return _write_final_outputs(rows, perf_updates, args.csv, args.perf_updates_json)
 
@@ -1084,6 +1366,31 @@ def main() -> int:
     )
     _add_output_args(p_collect)
 
+    p_run = sub.add_parser(
+        "run",
+        help="Submit and collect in one loop, capping each device's queued backlog.",
+    )
+    _add_shared_args(p_run)
+    p_run.add_argument(
+        "--jobs-file",
+        default="geniex_jobs.yaml",
+        help="Path to record submitted job ids (for debugging/resume).",
+    )
+    p_run.add_argument(
+        "--max-waiting",
+        type=int,
+        default=DEFAULT_MAX_WAITING,
+        help="Max jobs queued (not yet on a device) per device type. Running "
+        "jobs never count, so every phone the farm frees up is used.",
+    )
+    p_run.add_argument(
+        "--poll-interval",
+        type=int,
+        default=DEFAULT_RUN_POLL_INTERVAL,
+        help="Seconds between status passes over in-flight jobs.",
+    )
+    _add_output_args(p_run)
+
     args = ap.parse_args()
 
     if not args.run_perf and not args.run_eval:
@@ -1096,6 +1403,8 @@ def main() -> int:
 
     if args.cmd == "submit":
         return _cmd_submit(args)
+    if args.cmd == "run":
+        return _cmd_run(args)
     return _cmd_collect(args)
 
 

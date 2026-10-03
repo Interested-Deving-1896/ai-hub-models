@@ -10,12 +10,16 @@ import logging
 import os
 import re
 import sys
+import time
 
 import boto3
 import botocore.exceptions
+import requests
 import tqdm
 from boto3.s3.transfer import TransferConfig
+from botocore.config import Config
 from botocore.exceptions import ClientError, NoCredentialsError
+from mypy_boto3_s3.client import S3Client
 from mypy_boto3_s3.service_resource import Bucket, ObjectSummary
 from qai_hub_models_cli._internal.aws import (
     QAIHM_PRIVATE_S3_BUCKET,
@@ -31,6 +35,7 @@ from qai_hub_models_cli._internal.aws import (
 
 __all__ = [
     "PRESIGNED_URL_EXPIRY_S",
+    "PRESIGN_ROLE_ARN_ENVVAR",
     "QAIHM_AWS_PROFILE",
     "QAIHM_PRIVATE_S3_BUCKET",
     "QAIHM_PUBLIC_S3_BUCKET",
@@ -52,9 +57,48 @@ __all__ = [
 QAIHM_PUBLIC_S3_BUCKET = "qaihub-public-assets"
 QAIHM_AWS_PROFILE = "qaihm"
 
-# 24h -- ~2x the largest job timeout (GENIE/GENIEX_BENCH_JOB_TIMEOUT = 43200s),
-# covering unbounded device-farm queueing delay before a device is allocated.
-PRESIGNED_URL_EXPIRY_S = 86400
+# A presigned URL dies with the credentials that signed it, and a role session
+# caps at 12h regardless of ExpiresIn -- so sign with a freshly assumed session.
+PRESIGNED_URL_EXPIRY_S = 43200
+PRESIGN_ROLE_ARN_ENVVAR = "AWS_ROLE_ARN"
+_OIDC_TOKEN_TIMEOUT = (30, 60)
+
+
+def _fetch_github_oidc_token() -> str:
+    resp = requests.get(
+        f"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=sts.amazonaws.com",
+        headers={
+            "Authorization": f"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"
+        },
+        timeout=_OIDC_TOKEN_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return str(resp.json()["value"])
+
+
+def _fresh_presign_client(region: str) -> S3Client | None:
+    """S3 client on a just-assumed role session, or None outside GitHub Actions OIDC."""
+    role_arn = os.environ.get(PRESIGN_ROLE_ARN_ENVVAR)
+    if not (
+        role_arn
+        and os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+        and os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    ):
+        return None
+    creds = boto3.client("sts", region_name=region).assume_role_with_web_identity(
+        RoleArn=role_arn,
+        RoleSessionName=f"qaihm-presign-{int(time.time())}",
+        WebIdentityToken=_fetch_github_oidc_token(),
+        DurationSeconds=PRESIGNED_URL_EXPIRY_S,
+    )["Credentials"]
+    return boto3.client(
+        "s3",
+        aws_access_key_id=creds["AccessKeyId"],
+        aws_secret_access_key=creds["SecretAccessKey"],
+        aws_session_token=creds["SessionToken"],
+        region_name=region,
+        config=Config(signature_version="s3v4"),
+    )
 
 
 def get_presigned_download_url(
@@ -64,8 +108,14 @@ def get_presigned_download_url(
 
     Lets a device with no AWS identity download directly from S3 (bypassing
     the device-farm backend's own ~4GB artifact-upload cap) via plain curl.
+
+    In CI, every call assumes a fresh role session so the URL gets a full 12h no
+    matter how old the job's own credentials are. Elsewhere, the bucket's
+    credentials sign it, so its lifetime is whatever those have left.
     """
-    return bucket.meta.client.generate_presigned_url(
+    region = bucket.meta.client.meta.region_name
+    client = _fresh_presign_client(region) or bucket.meta.client
+    return client.generate_presigned_url(
         "get_object", Params={"Bucket": bucket.name, "Key": key}, ExpiresIn=expires_in
     )
 

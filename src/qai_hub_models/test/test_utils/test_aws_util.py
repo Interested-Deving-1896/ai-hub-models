@@ -9,8 +9,14 @@ from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock
 
+import boto3
+import pytest
+
+from qai_hub_models.utils import aws
 from qai_hub_models.utils.asset_loaders import EXECUTING_IN_CI_ENVIRONMENT
 from qai_hub_models.utils.aws import (
+    PRESIGN_ROLE_ARN_ENVVAR,
+    PRESIGNED_URL_EXPIRY_S,
     QAIHM_PRIVATE_S3_BUCKET,
     get_files_to_upload_remove,
     get_presigned_download_url,
@@ -213,12 +219,28 @@ def test_get_files_to_upload_remove_folders() -> None:
             }
 
 
-def test_get_presigned_download_url() -> None:
+OIDC_ENV = {
+    "ACTIONS_ID_TOKEN_REQUEST_URL": "https://token.example/?x=1",
+    "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "gh-token",
+}
+
+
+def _bucket() -> MagicMock:
     bucket = MagicMock(name="my-bucket")
     bucket.name = "my-bucket"
+    bucket.meta.client.meta.region_name = "us-west-2"
     bucket.meta.client.generate_presigned_url.return_value = (
         "https://example.com/signed"
     )
+    return bucket
+
+
+def test_get_presigned_download_url_outside_ci_uses_bucket_creds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for var in [PRESIGN_ROLE_ARN_ENVVAR, *OIDC_ENV]:
+        monkeypatch.delenv(var, raising=False)
+    bucket = _bucket()
 
     url = get_presigned_download_url(bucket, "some/s3/key.zip", expires_in=123)
 
@@ -228,6 +250,47 @@ def test_get_presigned_download_url() -> None:
         Params={"Bucket": "my-bucket", "Key": "some/s3/key.zip"},
         ExpiresIn=123,
     )
+
+
+def test_get_presigned_download_url_assumes_fresh_role_per_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(PRESIGN_ROLE_ARN_ENVVAR, "arn:aws:iam::1:role/ci")
+    for var, value in OIDC_ENV.items():
+        monkeypatch.setenv(var, value)
+    keys = iter(["ASIAFIRST", "ASIASECOND"])
+    sts = MagicMock()
+    sts.assume_role_with_web_identity.side_effect = lambda **kw: {
+        "Credentials": {
+            "AccessKeyId": next(keys),
+            "SecretAccessKey": "secret",
+            "SessionToken": "token",
+        }
+    }
+    real_client = boto3.client
+    bucket = _bucket()
+
+    with (
+        mock.patch.object(aws, "_fetch_github_oidc_token", return_value="jwt"),
+        mock.patch.object(
+            boto3,
+            "client",
+            side_effect=lambda svc, **kw: sts
+            if svc == "sts"
+            else real_client(svc, **kw),
+        ),
+    ):
+        first = get_presigned_download_url(bucket, "some/s3/key.zip")
+        second = get_presigned_download_url(bucket, "some/s3/key.zip")
+
+    bucket.meta.client.generate_presigned_url.assert_not_called()
+    assert sts.assume_role_with_web_identity.call_count == 2
+    call = sts.assume_role_with_web_identity.call_args.kwargs
+    assert call["RoleArn"] == "arn:aws:iam::1:role/ci"
+    assert call["DurationSeconds"] == PRESIGNED_URL_EXPIRY_S
+    assert "X-Amz-Credential=ASIAFIRST" in first
+    assert "X-Amz-Credential=ASIASECOND" in second
+    assert f"X-Amz-Expires={PRESIGNED_URL_EXPIRY_S}" in second
 
 
 def test_ci_private_aws_access() -> None:

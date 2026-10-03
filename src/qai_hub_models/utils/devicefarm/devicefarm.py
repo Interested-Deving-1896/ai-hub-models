@@ -347,6 +347,18 @@ class DeviceFarm(ABC):
         """
 
     @abstractmethod
+    def is_done(self, job_id: str) -> bool:
+        """Whether ``job_id`` has reached a terminal state. One call, never blocks."""
+
+    def count_waiting_jobs(self, hub_device_name: str) -> int | None:
+        """Jobs this account has queued for ``hub_device_name`` but not yet on a device.
+
+        Counts every submitter (parallel CI legs included), not only this
+        process. None means the backend can't tell, so callers shouldn't throttle.
+        """
+        return None
+
+    @abstractmethod
     def result(self, job_id: str) -> str | None:
         """
         Return the terminal, backend-native result string for a completed job.

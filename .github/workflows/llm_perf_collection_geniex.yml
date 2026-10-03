@@ -223,11 +223,8 @@ jobs:
         name: Scorecard LLM Perf Release Assets (${{ inputs.release_assets_action_id }})
         path: ${{ github.workspace }}/llm-release-assets
 
-    - name: Submit geniex-bench Jobs
-      id: submit
-      # A partial submission failure (e.g. a transient AWS upload error) must
-      # not block collect from running for the jobs that did submit -- only
-      # the affected jobs should show as not_submitted, not the whole leg.
+    - name: Run geniex-bench Jobs
+      id: run_benchmarks
       continue-on-error: true
       env:
         QAIHM_MODELS: ${{ inputs.model || 'all' }}
@@ -241,6 +238,8 @@ jobs:
         GENIEX_SCOPE: ${{ inputs.scope || 'perf' }}
         QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
+        # Re-assumed via OIDC for every presigned URL, so each gets a full 12h.
+        AWS_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
         AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
         AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
         AWS_DEVICEFARM_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
@@ -260,45 +259,9 @@ jobs:
         if [ "$GENIEX_SCOPE" = "accuracy" ]; then
           extra+=(--no-run-perf)
         fi
-        python -m qai_hub_models.scripts.run_geniex_bench_benchmarks submit \
-          --models "$QAIHM_MODELS" \
-          --devices "$QAIHM_TEST_DEVICES" \
-          --plugin "$GENIEX_BENCH_PLUGIN" \
-          --precisions "$GENIEX_BENCH_PRECISIONS" \
-          --jobs-file "$JOBS_FILE" \
-          "${extra[@]}"
-
-    - name: Collect geniex-bench Results
-      id: run_benchmarks
-      continue-on-error: true
-      env:
-        QAIHM_MODELS: ${{ inputs.model || 'all' }}
-        QAIHM_TEST_DEVICES: ${{ matrix.devices }}
-        QAIHM_LLM_EVAL_DEVICE_SCOPE: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
-        GENIEX_BENCH_PLUGIN: ${{ inputs.geniex_bench_plugin || 'all' }}
-        GENIEX_BENCH_PRECISIONS: ${{ inputs.precision || 'default' }}
-        GENIEX_VERSION: ${{ inputs.geniex_version || '' }}
-        GENIEX_SCOPE: ${{ inputs.scope || 'perf' }}
-        QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
-        QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
-        AWS_DEVICEFARM_PROJECT_ARN: ${{ secrets.QAIHM_AWS_DEVICEFARM_PROJECT_ARN }}
-        AWS_DEVICEFARM_PROFILE: qaihm-devicefarm
-        AWS_DEVICEFARM_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_DEVICEFARM_ROLE_ARN }}
-        AWS_DEVICEFARM_REGION: us-west-2
-      run: |
-        source ${{ env.VENV_PATH }}/bin/activate
-        cd $GITHUB_WORKSPACE
-        extra=()
-        if [ -n "$GENIEX_VERSION" ]; then
-          extra+=(--geniex-version "$GENIEX_VERSION")
-        fi
-        if [ "$GENIEX_SCOPE" != "perf" ]; then
-          extra+=(--run-eval)
-        fi
-        if [ "$GENIEX_SCOPE" = "accuracy" ]; then
-          extra+=(--no-run-perf)
-        fi
-        python -m qai_hub_models.scripts.run_geniex_bench_benchmarks collect \
+        # Submits as each device's queued backlog drains, collecting as jobs
+        # finish -- so no job waits long enough for its presigned URL to lapse.
+        python -m qai_hub_models.scripts.run_geniex_bench_benchmarks run \
           --models "$QAIHM_MODELS" \
           --devices "$QAIHM_TEST_DEVICES" \
           --plugin "$GENIEX_BENCH_PLUGIN" \
