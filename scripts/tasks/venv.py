@@ -67,7 +67,7 @@ def get_torch_cpu_install_command(
     Parameters
     ----------
     extras
-        Extras to check for model-specific torch version requirements.
+        QAIHM extras being installed; "dev" adds the dev requirements' torch pins.
     search_global_reqs
         Whether to also check global requirements
     packages
@@ -87,15 +87,8 @@ def get_torch_cpu_install_command(
     reqfiles_to_check = [REQUIREMENTS_PATH]
     if search_global_reqs:
         reqfiles_to_check.append(GLOBAL_REQUIREMENTS_PATH)
-    for extra in extras:
-        if extra == "dev":
-            reqfiles_to_check.append(DEV_REQUIREMENTS_PATH)
-        else:
-            model_requirements_path = os.path.join(
-                PY_PACKAGE_MODELS_ROOT, extra, "requirements.txt"
-            )
-            if os.path.exists(model_requirements_path):
-                reqfiles_to_check.append(model_requirements_path)
+    if "dev" in extras:
+        reqfiles_to_check.append(DEV_REQUIREMENTS_PATH)
 
     # Get versions for each package.
     packages_to_versions: dict[str, str | None] = dict.fromkeys(

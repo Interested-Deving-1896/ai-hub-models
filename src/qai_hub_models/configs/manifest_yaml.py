@@ -485,8 +485,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
     # If set, only the runtimes in orchestrator runtimes will be supported.
     only_allow_orchestrator_runtimes: bool = False
 
-    # pip commands to run before ``pip install -r requirements.txt`` (or the
-    # equivalent extras install of qai-hub-models[model]).
+    # pip commands to run before ``pip install -r requirements.txt``.
     #
     # Each entry is a :class:`PipCommand`. Every command must start with
     # ``"pip "`` and contain no shell metacharacters outside of quoted

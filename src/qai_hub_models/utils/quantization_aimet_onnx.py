@@ -72,17 +72,17 @@ def ensure_aimet_onnx_installed(
             errstr += "It is not supported on this operating system. You must use either Linux or Windows Subsystem for Linux to install AIMET-ONNX."
         else:
             if model_id is not None:
-                install_target = f'"qai_hub_models[{model_id}]"'
+                install_cmd = f"qai-hub-models install {model_id}"
             elif expected_version is not None:
-                install_target = f"aimet-onnx=={expected_version}"
+                install_cmd = f"pip install aimet-onnx=={expected_version}"
             else:
-                install_target = '"qai_hub_models[<your_target_model_id_here>]"'
+                install_cmd = "qai-hub-models install <your_target_model_id_here>"
 
             if sys.platform in ["win32", "cygwin"]:
                 errstr += "AIMET-ONNX is not supported on Windows. We suggest using Windows Subsystem for Linux (WSL) to create a python environment compatible with AIMET-ONNX.\nIn a compatible WSL python env, run "
             else:
                 errstr += "Run "
-            errstr += f"`pip install {install_target}` to install the correct version of AIMET-ONNX."
+            errstr += f"`{install_cmd}` to install the correct version of AIMET-ONNX."
 
         if model_id is not None:
             errstr += f"\nAlternatively, run `qai-hub-models fetch {model_id}` to fetch pre-compiled assets for this model."

@@ -80,23 +80,10 @@ def _load_requirements(path: str | os.PathLike) -> list[str]:
 
 
 def _get_extras() -> dict[str, list[str]]:
-    """Generate the valid extras for this version of AI Hub Models."""
+    # Model deps come from `qai-hub-models install <model>`, which also runs the
+    # manifest's pip commands that a pip extra can't express.
     with open(PACKAGE_ROOT / "requirements-dev.txt") as reqf:
-        extras_require = {"dev": [line.split("#")[0].strip() for line in reqf]}
-
-    # Create extra for every model that requires one.
-    for model_dir in MODELS_ROOT.iterdir():
-        if (
-            not model_dir.is_file()
-            and (model_dir / REQS_FILENAME).exists()
-            and model_dir.name not in _get_unpublished_models()
-        ):
-            extra_with_dash = model_dir.name.replace("_", "-")
-            reqs = _load_requirements(model_dir / REQS_FILENAME)
-            extras_require[model_dir.name] = reqs
-            extras_require[extra_with_dash] = reqs
-
-    return extras_require
+        return {"dev": [line.split("#")[0].strip() for line in reqf]}
 
 
 def _get_excluded_package_data() -> dict[str, list[str]]:

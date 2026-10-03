@@ -10,6 +10,7 @@ from pathlib import Path
 
 from packaging import version
 
+from qai_hub_models.cli.install import Node, NodeKind, build_install_order
 from qai_hub_models.scorecard.scorecard_config_yaml import QAIHMModelScorecardConfig
 from qai_hub_models.utils.asset_loaders import load_yaml
 from qai_hub_models.utils.path_helpers import (
@@ -62,7 +63,9 @@ def get_files_to_process() -> list[Path]:
             if l_version and current_version >= version.parse(l_version):
                 continue
 
-        files.append(file)
+        for node in build_install_order(Node(NodeKind.MODEL, model_name)):
+            if node.requirements_path.exists() and node.requirements_path not in files:
+                files.append(node.requirements_path)
 
     return files
 
