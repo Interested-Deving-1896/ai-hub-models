@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import torch
@@ -42,12 +41,6 @@ DEFAULT_AUDIO_LENGTH = 160000  # 10s x 16kHz
 # WavFrontend: 25ms window / 10ms shift → ~998 fbank frames, LFR n=6 → ceil(998/6)=167.
 # This must match the model's traced input shape and the OnDeviceModel input spec.
 DEFAULT_NUM_FRAMES = 167
-
-
-def audio_len_to_valid_frames(real_len: int) -> int:
-    """Frame count for real_len samples at 16kHz with 25ms/10ms windows and LFR n=6."""
-    num_fbank = max(real_len - 400, 0) // 160 + 1
-    return math.ceil(num_fbank / LFR_N)
 
 
 class FunASRConformerEn(BaseModel):
@@ -141,3 +134,10 @@ class FunASRConformerEn(BaseModel):
         )
 
         return [ConformerLibriSpeechDataset]
+
+    def get_calibration_dataset_cls(self) -> type[BaseDataset]:
+        from qai_hub_models.models.funasr_conformer_en.dataset import (
+            ConformerLibriSpeechDataset,
+        )
+
+        return ConformerLibriSpeechDataset

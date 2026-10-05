@@ -13,10 +13,8 @@ from qai_hub_models.datasets.librispeech.librispeech import (
     DEFAULT_SEQUENCE_LENGTH,
     LibriSpeechDataset,
 )
-from qai_hub_models.models.funasr_conformer_en.model import (
-    HF_MODEL_ID,
-    audio_len_to_valid_frames,
-)
+from qai_hub_models.models.funasr_conformer_en.model import HF_MODEL_ID, LFR_N
+from qai_hub_models.models.funasr_conformer_en.utils import audio_len_to_valid_frames
 from qai_hub_models.utils.base_dataset import DatasetSplit
 from qai_hub_models.utils.input_spec import InputSpec
 
@@ -66,7 +64,7 @@ class ConformerLibriSpeechDataset(LibriSpeechDataset):
             (max_text_length,) int32, and scalar int64 valid frame count
             derived from the real (pre-padding) audio length. The frame
             count is used by the evaluator to bound CTC decoding to the
-            same region that app._transcribe_chunk would decode.
+            same region that app.transcribe would decode.
         """
         (audio, attention_mask), gt = super().__getitem__(index)
 
@@ -78,9 +76,9 @@ class ConformerLibriSpeechDataset(LibriSpeechDataset):
 
         feats, _ = self.frontend(audio_tensor, audio_len)
 
-        # Compute valid frame count using the same formula as app._transcribe_chunk.
+        # Compute valid frame count using the same formula as app.transcribe.
         valid_frames = torch.tensor(
-            audio_len_to_valid_frames(real_len), dtype=torch.int64
+            audio_len_to_valid_frames(real_len, LFR_N), dtype=torch.int64
         )
 
         # frontend returns (1, T, 560); squeeze batch dim so DataLoader stacks

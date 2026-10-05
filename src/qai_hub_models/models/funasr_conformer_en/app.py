@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -14,11 +14,16 @@ import torchaudio
 
 from qai_hub_models.models.funasr_conformer_en.model import (
     DEFAULT_AUDIO_LENGTH,
+    LFR_N,
     SAMPLE_RATE,
-    audio_len_to_valid_frames,
 )
-from qai_hub_models.models.funasr_conformer_en.utils import CTC_BLANK_ID, ctc_bpe_decode
+from qai_hub_models.models.funasr_conformer_en.utils import (
+    CTC_BLANK_ID,
+    audio_len_to_valid_frames,
+    ctc_bpe_decode,
+)
 from qai_hub_models.models.templates.conformer.utils import chunk_audio
+from qai_hub_models.utils.inference import OnDeviceModel
 
 
 class FunASRConformerEnApp:
@@ -27,9 +32,9 @@ class FunASRConformerEnApp:
 
     Pipeline:
     1. Resample + pad/truncate audio to fixed length
-    2. WavFrontend: raw audio → mel-LFR features (560-dim)
-    3. Model: features → CTC log-probabilities (4200-dim)
-    4. CTC greedy decode → text
+    2. WavFrontend: raw audio -> mel-LFR features (560-dim)
+    3. Model: features -> CTC log-probabilities (4200-dim)
+    4. CTC greedy decode -> text
 
     """
 
@@ -96,38 +101,37 @@ class FunASRConformerEnApp:
             audio = audio_t.squeeze(0).numpy()
 
         chunks = chunk_audio(DEFAULT_AUDIO_LENGTH, audio)
-        parts: list[str] = []
+
+        # Preprocess: run WavFrontend on every chunk before any inference.
+        feats_list: list[torch.Tensor] = []
+        valid_frames_list = []
         for chunk, real_len in chunks:
-            result = self._transcribe_chunk(chunk, real_len)
-            if result:
-                parts.append(result)
+            audio_tensor = torch.from_numpy(chunk).unsqueeze(0)
+            # Always pass DEFAULT_AUDIO_LENGTH so the frontend produces exactly
+            # DEFAULT_NUM_FRAMES (167) frames, matching the compiled model shape.
+            full_lengths = torch.tensor([DEFAULT_AUDIO_LENGTH], dtype=torch.int64)
+            feats, _ = self._preprocess_audio(audio_tensor, full_lengths)
+            feats_list.append(feats)
+            # Derive valid frame count analytically (25ms window / 10ms shift at
+            # 16kHz, LFR n=6), avoiding a second WavFrontend pass for feats_len.
+            valid_frames_list.append(audio_len_to_valid_frames(real_len, LFR_N))
 
-        return " ".join(parts)
+        if isinstance(self.model, OnDeviceModel):
+            # One job over all chunks (each a batch-1 entry), like evaluate/helpers.py.
+            output = self.model.async_model(
+                cast(list[torch.Tensor | np.ndarray], feats_list)
+            ).wait()
+        else:
+            output = self.model(torch.cat(feats_list, dim=0))
 
-    def _transcribe_chunk(self, chunk: np.ndarray, real_len: int) -> str:
-        """Run model inference on a single fixed-size audio chunk.
-
-        chunk is always DEFAULT_AUDIO_LENGTH samples (zero-padded if needed).
-        real_len is used to derive the valid frame count analytically, bounding
-        CTC decoding without running a second WavFrontend pass.
-        """
-        audio_tensor = torch.from_numpy(chunk).unsqueeze(0)
-        # Always pass DEFAULT_AUDIO_LENGTH so the frontend produces exactly
-        # DEFAULT_NUM_FRAMES (167) frames — matching the compiled model shape.
-        full_lengths = torch.tensor([DEFAULT_AUDIO_LENGTH], dtype=torch.int64)
-
-        feats, _ = self._preprocess_audio(audio_tensor, full_lengths)
-
-        # Derive valid frame count analytically (25ms window / 10ms shift at 16kHz,
-        # LFR n=6) — avoids a second full WavFrontend pass just to get feats_len.
-        valid_frames = audio_len_to_valid_frames(real_len)
-        output = self.model(feats)
-
-        # OnDeviceModel may return a tuple; unwrap to the log_probs tensor.
         log_probs = output[0] if isinstance(output, (tuple, list)) else output
+        all_log_probs = [log_probs[i] for i in range(log_probs.shape[0])]
 
         if self.token_list is None:
             return ""
-        return ctc_bpe_decode(
-            log_probs[0][:valid_frames], self.token_list, self._blank_id
-        )
+
+        parts = [
+            ctc_bpe_decode(lp[:vf], self.token_list, self._blank_id)
+            for lp, vf in zip(all_log_probs, valid_frames_list, strict=True)
+        ]
+        return " ".join(p for p in parts if p)

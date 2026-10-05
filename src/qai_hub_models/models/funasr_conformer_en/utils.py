@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 
 # <blank> is always index 0 in FunASR models.
@@ -51,3 +53,23 @@ def ctc_bpe_decode(
         prev = t
     parts = [tok[:-2] if tok.endswith("@@") else tok + " " for tok in collapsed]
     return "".join(parts).strip()
+
+
+def audio_len_to_valid_frames(real_len: int, lfr_n: int) -> int:
+    """
+    Frame count for real_len samples at 16kHz with 25ms/10ms windows and LFR n=6.
+
+    Parameters
+    ----------
+    real_len
+        Number of audio samples at 16kHz.
+    lfr_n
+        LFR frame-stacking factor.
+
+    Returns
+    -------
+    int
+        Number of valid LFR frames.
+    """
+    num_fbank = max(real_len - 400, 0) // 160 + 1
+    return math.ceil(num_fbank / lfr_n)
