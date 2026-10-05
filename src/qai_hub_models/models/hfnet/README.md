@@ -1,0 +1,86 @@
+> [!WARNING]
+> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
+
+# [HFNet: Lightweight hierarchical feature model for visual localization and matching](https://aihub.qualcomm.com/models/hfnet)
+
+HFNet provides local keypoints and descriptors together with a global descriptor for image matching and localization pipelines.
+
+This is based on the implementation of HFNet found [here](https://github.com/ethz-asl/hfnet).
+This repository contains scripts for optimized on-device export suitable to run on Qualcomm® devices. More details on model performance across various devices, can be found [here](https://aihub.qualcomm.com/models/hfnet).
+
+Qualcomm AI Hub Models uses [Qualcomm AI Hub Workbench](https://workbench.aihub.qualcomm.com) to compile, profile, and evaluate this model. [Sign up](https://myaccount.qualcomm.com/signup) to run these models on a hosted Qualcomm® device.
+
+## Quick Start
+
+Use our lightweight command-line interface to inspect and download HFNet:
+
+```bash
+pip install qai_hub_models_cli # (the CLI is also available with the qai-hub-models package)
+
+# Inspect the model and list the available download options
+qai-hub-models info HFNet
+
+# Print performance and accuracy metrics
+qai-hub-models perf HFNet
+qai-hub-models numerics HFNet
+
+# Download a ready-to-deploy asset
+qai-hub-models fetch HFNet --runtime tflite --precision float
+```
+See the [CLI README](../../../../cli/README.md)
+for the full list of commands and filters.
+
+## Setup
+### 1. Install the package
+Install the base package, then use the `qai-hub-models` CLI to install this
+recipe's dependencies:
+```bash
+# NOTE: 3.10 <= PYTHON_VERSION < 3.14 is supported.
+pip install qai-hub-models
+qai-hub-models install hfnet
+```
+
+### 2. Configure Qualcomm® AI Hub Workbench
+Sign-in to [Qualcomm® AI Hub Workbench](https://workbench.aihub.qualcomm.com/) with your
+Qualcomm® ID. Once signed in navigate to `Account -> Settings -> API Token`.
+
+With this API token, you can configure your client to run models on the cloud
+hosted devices.
+```bash
+qai-hub configure --api_token API_TOKEN
+```
+Navigate to [docs](https://workbench.aihub.qualcomm.com/docs/) for more information.
+
+## Run CLI Demo
+Run the following simple CLI demo to verify the model is working end to end:
+
+```bash
+qai-hub-models demo hfnet
+```
+More details on the CLI tool can be found with the `--help` option. See
+[demo.py](demo.py) for sample usage of the model including pre/post processing
+scripts. Please refer to our [general instructions on using
+models](../../../#getting-started) for more usage instructions.
+
+By default, the demo will run locally in PyTorch. Pass `--eval-mode on-device` to run the model on a cloud-hosted target device.
+
+## Export for on-device deployment
+To run the model on Qualcomm® devices, you must export the model for use with an edge runtime such as
+TensorFlow Lite, ONNX Runtime, or Qualcomm AI Engine Direct.
+Use the following command to export the model:
+```bash
+qai-hub-models export hfnet
+```
+Additional options are documented with the `--help` option.
+
+## License
+* The license for the original implementation of HFNet can be found
+  [here](https://github.com/ethz-asl/hfnet/blob/master/LICENSE).
+
+## References
+* [HF-Net: Combining Hierarchical Local and Global Features for Visual Localization](https://arxiv.org/abs/1812.03506)
+* [Source Model Implementation](https://github.com/ethz-asl/hfnet)
+
+## Community
+* Join [our AI Hub Slack community](https://aihub.qualcomm.com/community/slack) to collaborate, post questions and learn more about on-device AI.
+* For questions or feedback please [reach out to us](mailto:ai-hub-support@qti.qualcomm.com).
