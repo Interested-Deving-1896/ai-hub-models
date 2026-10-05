@@ -23,13 +23,15 @@ END = "===BREEZE_COMMENT_B64_END==="
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        print(f"usage: {sys.argv[0]} <comment.md>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(f"usage: {sys.argv[0]} <comment.md> [tag]", file=sys.stderr)
         sys.exit(1)
     data = Path(sys.argv[1]).read_bytes()
-    print(BEGIN)
+    # A tag lets one agent run emit several comments (e.g. one per nightly issue).
+    suffix = f":{sys.argv[2]}" if len(sys.argv) == 3 else ""
+    print(f"{BEGIN[:-3]}{suffix}===")
     print(base64.b64encode(data).decode())
-    print(END)
+    print(f"{END[:-3]}{suffix}===")
 
 
 if __name__ == "__main__":

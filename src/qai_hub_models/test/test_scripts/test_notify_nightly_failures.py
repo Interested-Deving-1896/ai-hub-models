@@ -5,13 +5,41 @@
 """Unit tests for qai_hub_models.scripts.notify_nightly_failures."""
 
 import json
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from qai_hub_models.scripts.notify_nightly_failures import (
     categorize_failures,
     load_failed_jobs_json,
+    main,
     render_issue_body,
 )
+
+_VERIFY = "Run Tests (py 3.10) / Verify Model Tests"
+_WEBSITE = "Sync Performance Data with Public Website / Test Public Website Import"
+
+
+def _run_main(tmp_path: Path, failed_jobs_json: Path) -> Path:
+    out = tmp_path / "issues"
+    argv = ["notify_nightly_failures"]
+    for name in (_VERIFY, _WEBSITE):
+        argv += ["--workflow-failure", name, "--workflow-failure-url", "https://x/job"]
+    argv += [
+        "--output-dir",
+        str(out),
+        "--repository",
+        "org/repo",
+        "--run-url",
+        "https://x/run",
+        "--ref-name",
+        "main",
+        "--failed-jobs-json",
+        str(failed_jobs_json),
+    ]
+    with patch.object(sys, "argv", argv):
+        main()
+    return out
 
 
 def test_categorize_failures() -> None:
@@ -75,3 +103,22 @@ def test_render_general_issue() -> None:
     assert "Test Failures" in body
     assert "Run QAIHM Tests" in body
     assert "Nightly Failure Log" in body
+
+
+def test_issue_job_lists_scope_breeze_comments(tmp_path: Path) -> None:
+    """Each issue's job list names only its own failures.
+
+    The Breeze analyst scopes each issue's comment to this list; if the lists
+    overlapped, both issues would again carry the same analysis.
+    """
+    aihub = tmp_path / "failed.json"
+    aihub.write_text(json.dumps({"quantize/owl_vit_w8a16": "https://x/jobs/j1"}))
+    out = _run_main(tmp_path, aihub)
+    assert (out / "workbench_jobs.txt").read_text() == _VERIFY
+    assert (out / "general_jobs.txt").read_text() == _WEBSITE
+
+    # No AI Hub job failed, so the verify failure is infra and moves to the
+    # general issue — its job list must follow it there.
+    out = _run_main(tmp_path / "no_aihub", tmp_path / "missing.json")
+    assert not (out / "workbench_jobs.txt").exists()
+    assert (out / "general_jobs.txt").read_text() == f"{_WEBSITE}; {_VERIFY}"

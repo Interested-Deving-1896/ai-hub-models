@@ -10,6 +10,9 @@ Injected via the workflow prompt:
 - `RUN_ID` — the failed workflow run ID
 - `REPO` — the repository (owner/name)
 - `RUN_URL` — direct link to the workflow run
+- `WORKBENCH_ISSUE_URL` / `WORKBENCH_FAILED_JOBS` — the "Workbench Job Failures"
+  issue and the failed job names it covers (`; `-separated). Empty if not filed.
+- `GENERAL_ISSUE_URL` / `GENERAL_FAILED_JOBS` — same, for the "Test Failures" issue.
 
 ## Critical `gh` CLI Rules
 
@@ -134,7 +137,7 @@ For each category: count, unique error signatures, first stack trace (max 10 lin
 
 **STOP-AND-POST RULE — non-negotiable:**
 If you have used ~30 tool calls and have not yet started Step 5 (posting the comment),
-STOP investigating immediately. Post the comment with whatever you have, marking
+STOP investigating immediately. Post the comment(s) with whatever you have, marking
 unresolved failures as confidence `LOW` or `MEDIUM`. A best-effort analysis posted on
 the issue is far more useful to the czar than a perfect analysis that hits the turn cap
 and posts nothing. The goal is to deliver, not to be exhaustive.
@@ -211,23 +214,30 @@ You do NOT post the comment directly. The Breeze runner's `GITHUB_TOKEN` is
 repo-scoped to `ai-hub-models-internal` and cannot write to
 `qcom-ai-hub/tetracode` — `gh issue comment` will 404 and burn turns. Instead,
 a separate `post_breeze_comment` job (with `STAGING_GH_TOKEN`) recovers your
-comment from this job's log and posts it to every URL in `ISSUE_URLS`.
+comments from this job's log and posts each to its own issue.
 
-Your only post step from here is a two-command emit:
+**Write one comment per filed issue.** The nightly files separate issues so
+Workbench and test failures are triaged apart. A comment on one issue covers
+ONLY the failures in that issue's `*_FAILED_JOBS`. Do not mention the other
+issue's failures, not even in the summary table. Steps 1-4 (investigation)
+stay shared; only the write-up is split.
 
-1. Write the full comment markdown (format below) to a flat `/tmp/` file:
+For each tag whose `*_ISSUE_URL` is non-empty (`workbench`, `general`):
+
+1. Write that issue's comment (format below) to a flat `/tmp/` file:
    ```
-   Write /tmp/breeze_comment.md
+   Write /tmp/breeze_comment_<tag>.md
    ```
    NOT `/tmp/claude/...` — subdirectory writes under `/tmp/` are blocked by the
    sandbox. Flat filename only.
 
-2. Emit the file base64-encoded between recovery markers (ONE Bash call):
+2. Emit it with its tag (ONE Bash call per comment):
    ```
-   python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment.md
+   python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment_<tag>.md <tag>
    ```
 
-That's the entire post-step from your side. Do NOT call `gh issue comment` or
+That's the entire post-step from your side. An issue with no emitted comment
+gets no comment. Do NOT call `gh issue comment` or
 `gh api /repos/qcom-ai-hub/tetracode/...` — you don't have the credentials, and
 retries will exhaust the turn cap. Keep the comment under 65,000 characters.
 
@@ -236,7 +246,7 @@ retries will exhaust the turn cap. Keep the comment under 65,000 characters.
 ```markdown
 ## Breeze AI Nightly Analysis
 
-**Run:** [View Workflow]($RUN_URL) | **Date:** YYYY-MM-DD | **Failures:** X across Y suites
+**Run:** [View Workflow]($RUN_URL) | **Date:** YYYY-MM-DD | **Scope:** <Workbench Job Failures OR Test Failures> | **Failures:** X across Y suites (this issue only)
 
 ---
 

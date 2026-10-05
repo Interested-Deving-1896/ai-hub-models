@@ -12,7 +12,7 @@ stdout contains our marker pair, JSON-unescapes the inner string, extracts
 the base64 between markers, and writes the decoded bytes.
 
 Usage:
-    extract_comment_from_log.py <log_path> <out_path>
+    extract_comment_from_log.py <log_path> <out_path> [tag]
 
 Exit codes:
     0  success — comment file written
@@ -31,28 +31,33 @@ from pathlib import Path
 BEGIN = "===BREEZE_COMMENT_B64_BEGIN==="
 END = "===BREEZE_COMMENT_B64_END==="
 
-STDOUT_RE = re.compile(
-    r'"stdout"\s*:\s*"((?:\\.|[^"\\])*'
-    + re.escape(BEGIN)
-    + r'(?:\\.|[^"\\])*'
-    + re.escape(END)
-    + r'(?:\\.|[^"\\])*)"',
-    re.DOTALL,
-)
+
+def _markers(tag: str | None) -> tuple[str, str]:
+    suffix = f":{tag}" if tag else ""
+    return f"{BEGIN[:-3]}{suffix}===", f"{END[:-3]}{suffix}==="
 
 
 def main() -> None:
-    if len(sys.argv) != 3:
-        print(f"usage: {sys.argv[0]} <log_path> <out_path>", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print(f"usage: {sys.argv[0]} <log_path> <out_path> [tag]", file=sys.stderr)
         sys.exit(1)
     log_path = Path(sys.argv[1])
     out_path = Path(sys.argv[2])
+    begin, end = _markers(sys.argv[3] if len(sys.argv) == 4 else None)
+    stdout_re = re.compile(
+        r'"stdout"\s*:\s*"((?:\\.|[^"\\])*'
+        + re.escape(begin)
+        + r'(?:\\.|[^"\\])*'
+        + re.escape(end)
+        + r'(?:\\.|[^"\\])*)"',
+        re.DOTALL,
+    )
 
     log_text = log_path.read_text(errors="replace")
-    matches = list(STDOUT_RE.finditer(log_text))
+    matches = list(stdout_re.finditer(log_text))
     if not matches:
         print(
-            f"ERROR: no tool stdout containing {BEGIN!r} found in {log_path}.\n"
+            f"ERROR: no tool stdout containing {begin!r} found in {log_path}.\n"
             "The agent may have failed before emitting the comment, or the "
             "SDK log format changed.",
             file=sys.stderr,
@@ -61,7 +66,7 @@ def main() -> None:
 
     # Take last match: earlier matches may be the agent echoing its own script.
     raw = matches[-1].group(1).encode("utf-8").decode("unicode_escape")
-    body = raw.split(BEGIN, 1)[1].split(END, 1)[0]
+    body = raw.split(begin, 1)[1].split(end, 1)[0]
     try:
         decoded = base64.b64decode(body, validate=False)
     except Exception as e:

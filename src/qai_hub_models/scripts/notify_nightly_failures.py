@@ -10,6 +10,8 @@ Splits failures into two categories and writes issue bodies to an
 output directory:
   - workbench_issue.md + workbench_title.txt (AI Hub compile/profile/inference/link)
   - general_issue.md + general_title.txt (unit tests, pre-commit, model tests, etc.)
+  - workbench_jobs.txt / general_jobs.txt: each issue's failed job names, so the
+    Breeze analyst can scope its comment to the issue it's posted on
 
 The workflow shell step then uses `gh issue create --body-file` to
 push them to GitHub.
@@ -160,6 +162,9 @@ def main() -> None:
         )
         (output_dir / "workbench_title.txt").write_text(title)
         (output_dir / "workbench_issue.md").write_text(body)
+        (output_dir / "workbench_jobs.txt").write_text(
+            "; ".join(f["name"] for f in workbench_failures)
+        )
         print(f"Wrote workbench issue to {output_dir}")
     elif workbench_failures:
         # The verify job failed but no workbench jobs were actually affected
@@ -180,6 +185,9 @@ def main() -> None:
         )
         (output_dir / "general_title.txt").write_text(title)
         (output_dir / "general_issue.md").write_text(body)
+        (output_dir / "general_jobs.txt").write_text(
+            "; ".join(f["name"] for f in general_failures)
+        )
         print(f"Wrote general issue to {output_dir}")
 
 

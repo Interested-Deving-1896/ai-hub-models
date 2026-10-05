@@ -249,6 +249,10 @@ jobs:
         runs-on: [tetra-ubuntu-2204, self-hosted]
         outputs:
             issue_urls: ${{ steps.create-github-issues.outputs.issue_urls }}
+            workbench_issue_url: ${{ steps.create-github-issues.outputs.workbench_issue_url }}
+            workbench_jobs: ${{ steps.create-github-issues.outputs.workbench_jobs }}
+            general_issue_url: ${{ steps.create-github-issues.outputs.general_issue_url }}
+            general_jobs: ${{ steps.create-github-issues.outputs.general_jobs }}
         permissions:
             contents: read
             issues: write
@@ -306,6 +310,8 @@ jobs:
                 --label p0 --label ai-hub-models)
               echo "Created workbench issue: $URL"
               ISSUE_URLS="$URL"
+              echo "workbench_issue_url=$URL" >> "$GITHUB_OUTPUT"
+              echo "workbench_jobs=$(cat build/nightly-issues/workbench_jobs.txt)" >> "$GITHUB_OUTPUT"
             fi
 
             if [ -f build/nightly-issues/general_issue.md ]; then
@@ -316,6 +322,8 @@ jobs:
                 --label p0 --label ai-hub-models)
               echo "Created general issue: $URL"
               ISSUE_URLS="${ISSUE_URLS:+$ISSUE_URLS$'\n'}$URL"
+              echo "general_issue_url=$URL" >> "$GITHUB_OUTPUT"
+              echo "general_jobs=$(cat build/nightly-issues/general_jobs.txt)" >> "$GITHUB_OUTPUT"
             fi
 
             # Write URLs to GITHUB_OUTPUT for Slack step
@@ -331,7 +339,7 @@ jobs:
       secrets: inherit
       with:
         agent_name: "nightly-analyst"
-        claude_model: "us.anthropic.claude-opus-4-7"
+        claude_model: "us.anthropic.claude-opus-5-5"
         github_token_scope: organization
         base_allowed_tools: >-
           Read,
@@ -355,18 +363,22 @@ jobs:
           IMPORTANT — Step 5 changed: you do NOT call 'gh issue comment' yourself.
           Your 'GITHUB_TOKEN' is repo-scoped and cannot write to
           qcom-ai-hub/tetracode (retrying will 404 and burn turns). Instead:
-            1. Write the full comment markdown to '/tmp/breeze_comment.md' (flat,
-               NOT '/tmp/claude/...').
-            2. Emit it via
-               'python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment.md'
-          A downstream 'post_breeze_comment' job recovers the file from this
-          job's log and posts to every URL in ISSUE_URLS.
+            1. For EACH non-empty issue URL below, write a comment covering ONLY
+               that issue's failed jobs to a flat file (NOT '/tmp/claude/...'):
+               '/tmp/breeze_comment_workbench.md' and/or '/tmp/breeze_comment_general.md'.
+            2. Emit each with its tag, e.g.
+               'python3 scripts/breeze_nightly/emit_comment_b64.py /tmp/breeze_comment_workbench.md workbench'
+          A downstream 'post_breeze_comment' job recovers each tagged comment from
+          this job's log and posts it only to its matching issue.
 
           Context variables for the skill:
           - RUN_ID: ${{ github.run_id }}
           - REPO: ${{ github.repository }}
           - RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          - ISSUE_URLS: ${{ needs.notify_failure.outputs.issue_urls }}
+          - WORKBENCH_ISSUE_URL: ${{ needs.notify_failure.outputs.workbench_issue_url }}
+          - WORKBENCH_FAILED_JOBS: ${{ needs.notify_failure.outputs.workbench_jobs }}
+          - GENERAL_ISSUE_URL: ${{ needs.notify_failure.outputs.general_issue_url }}
+          - GENERAL_FAILED_JOBS: ${{ needs.notify_failure.outputs.general_jobs }}
         system_prompt: |
           You are Breeze AI, a nightly CI failure analyst for QAI Hub Models.
           Your job: analyze test failures, find breaking commits, propose fixes,
@@ -382,7 +394,7 @@ jobs:
           - RUN_ID: ${{ github.run_id }}
           - REPO: ${{ github.repository }}
           - RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          - ISSUE_URLS: ${{ needs.notify_failure.outputs.issue_urls }}
+          - WORKBENCH_ISSUE_URL / GENERAL_ISSUE_URL and their *_FAILED_JOBS: see prompt
           - Full gh CLI access (authenticated) and complete repo checkout
           - Test results artifact: "nightly-test-results"
           - Issues filed in qcom-ai-hub/tetracode with labels p0, ai-hub-models
@@ -427,23 +439,35 @@ jobs:
               gh api --allow-escape-sequences \
                   "repos/${{ github.repository }}/actions/jobs/$AGENT_JOB_ID/logs" \
                   > /tmp/breeze/agent.log
-              python3 scripts/breeze_nightly/extract_comment_from_log.py \
-                  /tmp/breeze/agent.log /tmp/breeze/comment.md
 
-        - name: Post comment to each tetracode issue
+        - name: Post each issue's comment to its tetracode issue
           env:
               GH_TOKEN: ${{ secrets.STAGING_GH_TOKEN }}
-              ISSUE_URLS: ${{ needs.notify_failure.outputs.issue_urls }}
+              WORKBENCH_ISSUE_URL: ${{ needs.notify_failure.outputs.workbench_issue_url }}
+              GENERAL_ISSUE_URL: ${{ needs.notify_failure.outputs.general_issue_url }}
           run: |
-              if [ -z "$ISSUE_URLS" ]; then
+              if [ -z "$WORKBENCH_ISSUE_URL" ] && [ -z "$GENERAL_ISSUE_URL" ]; then
                   echo "::warning::No issue URLs; skipping."
                   exit 0
               fi
-              printf '%b\n' "$ISSUE_URLS" | while IFS= read -r URL; do
+              POSTED=0
+              for TAG in workbench general; do
+                  URL_VAR="${TAG^^}_ISSUE_URL"
+                  URL="${!URL_VAR}"
                   [ -z "$URL" ] && continue
-                  echo "Posting Breeze comment to $URL"
-                  gh issue comment "$URL" --body-file /tmp/breeze/comment.md
+                  if ! python3 scripts/breeze_nightly/extract_comment_from_log.py \
+                      /tmp/breeze/agent.log "/tmp/breeze/comment_$TAG.md" "$TAG"; then
+                      echo "::warning::No '$TAG' comment in agent log; not posting to $URL"
+                      continue
+                  fi
+                  echo "Posting $TAG Breeze comment to $URL"
+                  gh issue comment "$URL" --body-file "/tmp/breeze/comment_$TAG.md"
+                  POSTED=$((POSTED + 1))
               done
+              if [ "$POSTED" -eq 0 ]; then
+                  echo "::error::No Breeze comment was posted"
+                  exit 1
+              fi
 
     notify_slack:
         if: ${{ always() && needs.notify_failure.result == 'success' && github.event_name == 'schedule' }}
