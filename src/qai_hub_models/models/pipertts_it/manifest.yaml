@@ -25,6 +25,8 @@ orchestrator_runtimes:
 - voice_ai
 pre_pip_install_commands:
 - pip install git+https://github.com/rhasspy/piper.git#subdirectory=src/python --no-deps
+python_version_less_than: '3.13'
+python_version_less_than_reason: piper-phonemize-cross 1.2.1 (latest) has no Python 3.13 wheels
 readme_install_system_deps: |
   #### Linux
   ```bash

@@ -28,6 +28,8 @@ post_pip_install_commands:
   machine: gpu
 - command: pip install --force-reinstall --no-deps onnxruntime-gpu==1.23.2
   machine: gpu
+python_version_less_than: '3.13'
+python_version_less_than_reason: numpy<2 and onnxsim have no Python 3.13 wheels
 related_models:
 - pi05
 requires_aot_prepare: true
