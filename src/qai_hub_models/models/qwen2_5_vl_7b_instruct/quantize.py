@@ -189,7 +189,7 @@ def main() -> None:
     print()
     print("Export:")
     print(
-        f"    python -m qai_hub_models.models.{MODEL_ID}.export "
+        f"    qai-hub-models export {MODEL_ID} "
         f"--checkpoint {args.output_dir} --device 'Samsung Galaxy S25' "
         "--skip-profiling --skip-inferencing --output-dir output"
     )

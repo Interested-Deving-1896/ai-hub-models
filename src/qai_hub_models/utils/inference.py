@@ -93,7 +93,7 @@ def compile_model_from_args(
     model_name = model_id + (f".{component}" if component else "")
     print(f"Compiling on-device model asset for {model_name}.")
     print(
-        f"Running python -m qai_hub_models.models.{model_id}.export {cli_str} --target-runtime {cli_args.target_runtime.name.lower()}\n"
+        f"Running qai-hub-models export {model_id} {cli_str} --target-runtime {cli_args.target_runtime.name.lower()}\n"
     )
     component_kwargs = {}
     if component is not None:
