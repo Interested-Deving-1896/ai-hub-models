@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from qai_hub_models import Precision, SampleInputsType
+from qai_hub_models import Precision
 from qai_hub_models.models.grootn15 import MODEL_ID, Model
 from qai_hub_models.models.grootn15.app import (
     GrootApp,
@@ -25,6 +25,7 @@ from qai_hub_models.models.grootn15.model import (
     load_checkpoint,
 )
 from qai_hub_models.models.grootn15.utils import (
+    ComponentArrays,
     ComponentIOSink,
     ComponentIOType,
     get_cossim,
@@ -64,7 +65,7 @@ def quantize_eval(
     """
     input_names = list(quant_component.get_input_spec().keys())
     output_names = list(quant_component.get_output_names())
-    eval_inputs: SampleInputsType = sink_eval.load(
+    eval_inputs: ComponentArrays = sink_eval.load(
         component_name,
         quant_component.get_input_spec(),
         io_type=ComponentIOType.INPUTS,
@@ -72,7 +73,7 @@ def quantize_eval(
     )
 
     output_spec: dict[str, Any] = dict.fromkeys(output_names)
-    eval_outputs: SampleInputsType = sink_eval.load(
+    eval_outputs: ComponentArrays = sink_eval.load(
         component_name,
         output_spec,
         io_type=ComponentIOType.OUTPUTS,
@@ -236,14 +237,13 @@ def main() -> None:
 
         # Load calib inputs
         input_spec = component.get_input_spec()
-        calib_inputs: SampleInputsType = sink_calib.load(
+        calib_inputs: ComponentArrays = sink_calib.load(
             component_name=component_name,
             spec=input_spec,
             io_type=ComponentIOType.INPUTS,
             num_samples=args.num_samples,
         )
         input_names = list(input_spec.keys())
-        calib_inputs = cast(dict[str, list[np.ndarray]], calib_inputs)
         calib_ds_entry = make_hub_dataset_entries(
             tuple(
                 [

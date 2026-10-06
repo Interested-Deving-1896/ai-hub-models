@@ -11,11 +11,12 @@ import onnx
 import torch
 from numpy.linalg import norm
 
-from qai_hub_models import SampleInputsType
 from qai_hub_models.models.grootn15.constants import MODEL_ASSET_VERSION, MODEL_ID
 from qai_hub_models.utils.asset_loaders import ASSET_CONFIG
 from qai_hub_models.utils.evaluate.helpers import EvalMode
 from qai_hub_models.utils.input_spec import InputSpec
+
+ComponentArrays = dict[str, np.ndarray]
 
 
 class DataSplit(str, Enum):
@@ -131,7 +132,7 @@ class ComponentIOSink:
         spec: InputSpec,
         io_type: ComponentIOType = ComponentIOType.INPUTS,
         num_samples: int = 1,
-    ) -> SampleInputsType:
+    ) -> ComponentArrays:
         base = self._io_dir(component_name, io_type)
 
         if not base.is_dir():
@@ -140,7 +141,7 @@ class ComponentIOSink:
                 f"Ensure ComponentIOSink.dump() was called first."
             )
 
-        result: SampleInputsType = {}
+        result: ComponentArrays = {}
         for name in spec:
             samples = []
             for idx in range(num_samples):
