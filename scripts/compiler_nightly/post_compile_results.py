@@ -52,7 +52,7 @@ def print_summary(
     passing_known: dict,
     infra_failures: dict,
     job_yaml_tag: str,
-) -> None:
+) -> PrettyTable:
     summary_table = PrettyTable()
     summary_table.field_names = ["Metric", "Count"]
     summary_table.align["Metric"] = "l"
@@ -122,6 +122,8 @@ def print_summary(
             logger.info(DISPLAY_SEPARATOR)
             for line in str(table).split("\n"):
                 logger.info(line)
+
+    return summary_table
 
 
 def main() -> int:
@@ -200,7 +202,7 @@ def main() -> int:
         passing = {**passed, **progressions}
         passing_known = find_passing_known_failures(passing, JobType.COMPILE)
 
-        print_summary(
+        summary_table = print_summary(
             regressions,
             progressions,
             failures,
@@ -210,6 +212,10 @@ def main() -> int:
             infra_failures,
             job_yaml_tag,
         )
+
+        summary_path = args.results_dir / f"compile-summary__{job_yaml_tag}.txt"
+        summary_path.write_text(str(summary_table) + "\n")
+        log_and_print(f"Saved summary table: {summary_path}", logger)
 
         exit_code = 0
 

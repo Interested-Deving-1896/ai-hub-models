@@ -147,7 +147,9 @@ def save_full_table_csv(status_changes: dict, output_dir: Path, tag: str) -> Pat
     )
 
 
-def print_summary(status_changes: dict, regressions: dict, progressions: dict) -> None:
+def print_summary(
+    status_changes: dict, regressions: dict, progressions: dict
+) -> PrettyTable:
     total = len(status_changes)
     prod_success = sum(1 for s in status_changes.values() if s["prod_success"])
     dev_success = sum(1 for s in status_changes.values() if s["dev_success"])
@@ -174,6 +176,8 @@ def print_summary(status_changes: dict, regressions: dict, progressions: dict) -
     log_and_print(DISPLAY_SEPARATOR, logger)
     for line in str(summary_table).split("\n"):
         log_and_print(line, logger)
+
+    return summary_table
 
 
 def main() -> int:
@@ -243,7 +247,11 @@ def main() -> int:
         passing = {k: v for k, v in status_changes.items() if v["dev_success"]}
         passing_known = find_passing_known_failures(passing, JobType.LINK)
 
-        print_summary(status_changes, regressions, progressions)
+        summary_table = print_summary(status_changes, regressions, progressions)
+        summary_path = output_dir / f"link-summary__{tag}.txt"
+        summary_path.write_text(str(summary_table) + "\n")
+        log_and_print(f"Saved summary table: {summary_path}", logger)
+
         print_status_table(
             progressions,
             f"FIXES: {len(progressions)} models now succeed in dev",

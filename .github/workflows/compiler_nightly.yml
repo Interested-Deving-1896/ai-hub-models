@@ -375,6 +375,48 @@ jobs:
     if: ${{ failure() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.hub_env || 'dev') != 'dev')) }}
     runs-on: [tetra-ubuntu-2204, self-hosted]
     steps:
+      - name: Download compile results
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: compiler-scorecard-results-${{ github.run_number }}
+          path: results/
+
+      - name: Download link results
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: compiler-scorecard-link-results-${{ github.run_number }}
+          path: results/
+
+      - name: Read compile summary
+        id: compile_summary
+        run: |
+          SUMMARY_FILE=$(ls -t results/compile-summary__*.txt 2>/dev/null | head -1)
+          if [ -n "$SUMMARY_FILE" ]; then
+            SUMMARY=$(cat "$SUMMARY_FILE")
+          else
+            SUMMARY="(compile summary unavailable)"
+          fi
+          # Slack payload below is a double-quoted YAML scalar, so newlines must be the literal \n escape.
+          echo "summary=${SUMMARY//$'\n'/\\n}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Read link summary
+        id: link_summary
+        run: |
+          SUMMARY_FILE=$(ls -t results/link-summary__*.txt 2>/dev/null | head -1)
+          if [ -n "$SUMMARY_FILE" ]; then
+            SUMMARY=$(cat "$SUMMARY_FILE")
+          else
+            SUMMARY="(link summary unavailable)"
+          fi
+          # Slack payload below is a double-quoted YAML scalar, so newlines must be the literal \n escape.
+          echo "summary=${SUMMARY//$'\n'/\\n}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v4
         with:
@@ -382,4 +424,4 @@ jobs:
           token: ${{ secrets.SLACK_NOTIFIER_TOKEN }}
           payload: |
             channel: "C08EYJJCW87"
-            text: "Compiler Nightly Scorecard Failed\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}"
+            text: "Compiler Nightly Scorecard Failed\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}\n\n```${{ steps.compile_summary.outputs.summary }}```\n\n```${{ steps.link_summary.outputs.summary }}```"
