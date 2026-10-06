@@ -25,7 +25,7 @@ qai-hub-models perf D-FINE
 qai-hub-models numerics D-FINE
 
 # Download a ready-to-deploy asset
-qai-hub-models fetch D-FINE --runtime qnn_dlc --precision float
+qai-hub-models fetch D-FINE --runtime tflite --precision float
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.

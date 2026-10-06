@@ -1,0 +1,21 @@
+metrics:
+- dataset_link: https://www.openslr.org/12
+  dataset_name: wav2_vec2_conformer_libri_speech
+  dataset_split_description: test-clean
+  device_metric:
+    Samsung Galaxy S25:
+      float:
+        precompiled_qnn_onnx:
+          partial_metric: 21.0
+        qnn_context_binary:
+          partial_metric: 21.0
+  higher_is_better: false
+  metric_description: The percentage of words incorrectly predicted.
+  metric_enablement_threshold: 10.0
+  metric_name: Word Error Rate
+  metric_range:
+    max: 100.0
+    min: 0.0
+  metric_unit: WER
+  num_partial_samples: 50
+  partial_torch_metric: 20.9

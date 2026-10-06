@@ -374,10 +374,12 @@ and many more.
 | [DeepSpeech2](https://aihub.qualcomm.com/models/deepspeech2) | `qai_hub_models.models.deepspeech2` |
 | [Distil-Whisper](https://aihub.qualcomm.com/models/distil_whisper) | `qai_hub_models.models.distil_whisper` |
 | [FunASR-Conformer-EN](https://aihub.qualcomm.com/models/funasr_conformer_en) | `qai_hub_models.models.funasr_conformer_en` |
+| [Wav2Vec2-Conformer-Large-960h](https://aihub.qualcomm.com/models/wav2vec2_conformer) | `qai_hub_models.models.wav2vec2_conformer` |
 | [Whisper-Base](https://aihub.qualcomm.com/models/whisper_base) | `qai_hub_models.models.whisper_base` |
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | `qai_hub_models.models.whisper_large_v3_turbo` |
 | [Whisper-Large-V3-Turbo-Quantized](https://aihub.qualcomm.com/models/whisper_large_v3_turbo_quantized) | `qai_hub_models.models.whisper_large_v3_turbo_quantized` |
 | [Whisper-Medium](https://aihub.qualcomm.com/models/whisper_medium) | `qai_hub_models.models.whisper_medium` |
+| [Whisper-Medium-Quantized](https://aihub.qualcomm.com/models/whisper_medium_quantized) | `qai_hub_models.models.whisper_medium_quantized` |
 | [Whisper-Small](https://aihub.qualcomm.com/models/whisper_small) | `qai_hub_models.models.whisper_small` |
 | [Whisper-Small-Quantized](https://aihub.qualcomm.com/models/whisper_small_quantized) | `qai_hub_models.models.whisper_small_quantized` |
 | [Whisper-Tiny](https://aihub.qualcomm.com/models/whisper_tiny) | `qai_hub_models.models.whisper_tiny` |

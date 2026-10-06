@@ -17,21 +17,7 @@ from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.export.context import resolve_recipe_dir
 from qai_hub_models.utils.export.dispatch import select_pipeline
 
-SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
-    Precision.float: [
-        TargetRuntime.TFLITE,
-        TargetRuntime.QNN_DLC,
-        TargetRuntime.QNN_CONTEXT_BINARY,
-        TargetRuntime.ONNX,
-        TargetRuntime.PRECOMPILED_QNN_ONNX,
-    ],
-    Precision.w8a16: [
-        TargetRuntime.QNN_DLC,
-        TargetRuntime.QNN_CONTEXT_BINARY,
-        TargetRuntime.ONNX,
-        TargetRuntime.PRECOMPILED_QNN_ONNX,
-    ],
-}
+SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {}
 
 
 DEFAULT_EXPORT_DEVICE = "Samsung Galaxy S25 (Family)"

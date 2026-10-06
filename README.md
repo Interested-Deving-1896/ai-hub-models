@@ -374,10 +374,12 @@ and many more.
 | [DeepSpeech2](https://aihub.qualcomm.com/models/deepspeech2) | [qai_hub_models.models.deepspeech2](src/qai_hub_models/models/deepspeech2/README.md) |
 | [Distil-Whisper](https://aihub.qualcomm.com/models/distil_whisper) | [qai_hub_models.models.distil_whisper](src/qai_hub_models/models/distil_whisper/README.md) |
 | [FunASR-Conformer-EN](https://aihub.qualcomm.com/models/funasr_conformer_en) | [qai_hub_models.models.funasr_conformer_en](src/qai_hub_models/models/funasr_conformer_en/README.md) |
+| [Wav2Vec2-Conformer-Large-960h](https://aihub.qualcomm.com/models/wav2vec2_conformer) | [qai_hub_models.models.wav2vec2_conformer](src/qai_hub_models/models/wav2vec2_conformer/README.md) |
 | [Whisper-Base](https://aihub.qualcomm.com/models/whisper_base) | [qai_hub_models.models.whisper_base](src/qai_hub_models/models/whisper_base/README.md) |
 | [Whisper-Large-V3-Turbo](https://aihub.qualcomm.com/models/whisper_large_v3_turbo) | [qai_hub_models.models.whisper_large_v3_turbo](src/qai_hub_models/models/whisper_large_v3_turbo/README.md) |
 | [Whisper-Large-V3-Turbo-Quantized](https://aihub.qualcomm.com/models/whisper_large_v3_turbo_quantized) | [qai_hub_models.models.whisper_large_v3_turbo_quantized](src/qai_hub_models/models/whisper_large_v3_turbo_quantized/README.md) |
 | [Whisper-Medium](https://aihub.qualcomm.com/models/whisper_medium) | [qai_hub_models.models.whisper_medium](src/qai_hub_models/models/whisper_medium/README.md) |
+| [Whisper-Medium-Quantized](https://aihub.qualcomm.com/models/whisper_medium_quantized) | [qai_hub_models.models.whisper_medium_quantized](src/qai_hub_models/models/whisper_medium_quantized/README.md) |
 | [Whisper-Small](https://aihub.qualcomm.com/models/whisper_small) | [qai_hub_models.models.whisper_small](src/qai_hub_models/models/whisper_small/README.md) |
 | [Whisper-Small-Quantized](https://aihub.qualcomm.com/models/whisper_small_quantized) | [qai_hub_models.models.whisper_small_quantized](src/qai_hub_models/models/whisper_small_quantized/README.md) |
 | [Whisper-Tiny](https://aihub.qualcomm.com/models/whisper_tiny) | [qai_hub_models.models.whisper_tiny](src/qai_hub_models/models/whisper_tiny/README.md) |

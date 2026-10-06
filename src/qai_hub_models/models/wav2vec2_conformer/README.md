@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [Wav2Vec2-Conformer-Large-960h: English speech recognition with Wav2Vec2-Conformer encoder and CTC decoder](https://aihub.qualcomm.com/models/wav2vec2_conformer)
 
 Facebook Wav2Vec2-Conformer-Large is an English ASR model fine-tuned on 960 hours of LibriSpeech. It uses a Conformer encoder with relative-position attention (24 layers, 1024 hidden dim, 16 heads) and a CTC head for decoding. The model accepts raw 16kHz audio and outputs transcribed text via CTC greedy decoding.
