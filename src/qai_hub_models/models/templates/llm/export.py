@@ -619,6 +619,7 @@ def export_model(
                     device=device,
                     name=full_name,
                     options=inference_options_per_subcomponent[sub_component_name],
+                    profile=False,
                 )
                 if synchronous:
                     submitted_inference_job.wait()

@@ -397,6 +397,7 @@ def inference_model(
                 params.path.get_inference_options(
                     precision, params.device, include_default_qaihm_qnn_version=True
                 ),
+                profile=False,
             ),
         )
         _print_if_not_verbose(hub, f"{job_name} | Submitted: {job.job_id} | {job.url}")

@@ -27,6 +27,7 @@ def run_inference(
         device=device,
         name=model_name,
         options=options,
+        profile=False,
     )
 
 
@@ -49,5 +50,6 @@ def run_collection_inference(
             device=device,
             name=f"{model_name}_{name}",
             options=options_per_component.get(name, ""),
+            profile=False,
         )
     return inference_jobs

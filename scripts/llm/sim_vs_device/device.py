@@ -204,6 +204,7 @@ def submit_feed_inference(
             device=device,
             name=f"{label}_{ci + 1}_of_{len(chunks)}",
             options=options,
+            profile=False,
         )
         submitted.append(InferenceChunkJob(label, ci, len(chunks), job))
     return submitted
@@ -313,6 +314,7 @@ def submit_part_inference(
             device=device,
             name=f"debug_{cap.part_name}_injected_{ci + 1}_of_{len(chunks)}",
             options=options,
+            profile=False,
         )
         submitted.append(InferenceChunkJob(cap.part_name, ci, len(chunks), job))
     return submitted
