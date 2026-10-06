@@ -114,12 +114,15 @@ def get_torch_cpu_install_command(
 
 
 class CreateVenvTask(RunCommandsTask):
-    def __init__(self, venv_path: str, python_executable: str | None = None) -> None:
+    def __init__(
+        self, venv_path: str | None, python_executable: str | None = None
+    ) -> None:
         super().__init__(
             f"Creating virtual environment at {venv_path}",
             f'source "{Path(REPO_ROOT, "scripts", "util", "env_create.sh").as_posix()}" '
             f'"--python={python_executable or DEFAULT_PYTHON}" '
-            f'"--venv={Path(venv_path).as_posix()}" --no-sync',
+            + (f'"--venv={Path(venv_path).as_posix()}" ' if venv_path else "")
+            + "--no-sync",
         )
 
 
