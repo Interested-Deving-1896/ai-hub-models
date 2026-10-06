@@ -317,7 +317,7 @@ def quantize_vlm(
     print()
     print("Export:")
     print(
-        f"    python -m qai_hub_models.models.{model_id}.export "
+        f"    qai-hub-models export {model_id} "
         f"--checkpoint {args.output_dir} --device 'Samsung Galaxy S25' "
         "--skip-profiling --skip-inferencing --output-dir output"
     )

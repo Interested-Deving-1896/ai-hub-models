@@ -62,7 +62,7 @@ python -m qai_hub_models.models.llama_v3_2_3b_instruct.demo \
 Export to QNN context binaries that can be on device.
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.export \
+qai_hub_models llama_v3_2_3b_instruct export \
     --checkpoint ./quantized_model \
     --device "Snapdragon 8 Elite QRD" \
     --skip-inferencing \
@@ -266,7 +266,7 @@ make sure to add the `--checkpoint` option so that it picks up our custom
 quantization parameters:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_chat_quantized.export \
+qai-hub-models export llama_v3_2_3b_chat_quantized \
     --checkpoint ./quantized_model \
     --device "Snapdragon 8 Elite QRD" \
     --skip-inferencing \

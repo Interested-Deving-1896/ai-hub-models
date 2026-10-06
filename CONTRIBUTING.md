@@ -397,7 +397,7 @@ python scripts/build_and_test.py test_qaihm
 Run model-specific tests:
 ```bash
 # Test export (install model dependencies first per README)
-python -m qai_hub_models.models.<model_id>.export --target-runtime tflite --chipset qualcomm-snapdragon-8gen3
+qai-hub-models export <model_id> --target-runtime tflite --chipset qualcomm-snapdragon-8gen3
 
 # Test evaluation (if available)
 python -m qai_hub_models.models.<model_id>.evaluate

@@ -62,7 +62,7 @@ repeating long explanations inline>
 - "Qwen2-7B ... no precompiled assets"
 - "Qwen3 ... Snapdragon X2 Elite (V81)"
 
-**Question shape:** Customer can't find precompiled Qwen w4a16 Genie bundle for Snapdragon X2 Elite via `python -m qai_hub_models.models.<qwen>.export`.
+**Question shape:** Customer can't find precompiled Qwen w4a16 Genie bundle for Snapdragon X2 Elite via `qai_hub_models export <qwen_model_id>`.
 
 **Answer:**
 - Qwen3-4B-Instruct-2507 assets for X2 Elite are available at https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/qwen3_4b_instruct_2507/releases/v0.56.0/qwen3_4b_instruct_2507-genie-w4a16-qualcomm_snapdragon_x2_elite.zip (also downloadable from the AI Hub website).
@@ -1103,7 +1103,7 @@ Two separate constraints:
 - "StableDiffusion source repo removed"
 - "sd2-community/stable-diffusion-2-1"
 
-**Question shape:** `python -m qai_hub_models.models.stable_diffusion_v2_1.export` fails because the upstream HF repo was removed.
+**Question shape:** `qai-hub-models export stable_diffusion_v2_1` fails because the upstream HF repo was removed.
 
 **Answer:**
 The original StableDiffusion v2.1 HF repo went away. Two fixes:

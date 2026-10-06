@@ -307,7 +307,7 @@ Every command takes a `<target>`: either a **folder name or path** (`my_model`) 
 | `qai-hub-models demo <target> [args...]` | Runs the recipe's `demo.py`. Locally in PyTorch by default; `--eval-mode on-device` runs it on a hosted device. |
 | `qai-hub-models upload-to-hf <target>` | Publishes the recipe source + model card to your own Hugging Face namespace, public and tagged `qai-hub-models`. `--help` for the flags. |
 
-Legacy `python -m qai_hub_models.models.<id>.export` / `.evaluate` paths are being phased out.
+The legacy `python -m qai_hub_models.models.<id>.evaluate` path is being phased out.
 
 ## Authoring correctness — `qai-hub-models validate`
 
