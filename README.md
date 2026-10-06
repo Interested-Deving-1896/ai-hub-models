@@ -346,6 +346,7 @@ and many more.
 | | |
 | **Robotics**
 | [ACT](https://aihub.qualcomm.com/models/act) | [qai_hub_models.models.act](src/qai_hub_models/models/act/README.md) |
+| [HFNet](https://aihub.qualcomm.com/models/hfnet) | [qai_hub_models.models.hfnet](src/qai_hub_models/models/hfnet/README.md) |
 
 ### Multimodal
 

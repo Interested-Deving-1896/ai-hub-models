@@ -1,6 +1,3 @@
-> [!WARNING]
-> This model is not published. Use with caution; it may not meet performance/accuracy standards and may not support some runtimes or chipsets/devices. We do not provide support for unpublished models. If this model was previously published, use earlier releases.
-
 # [HFNet: Lightweight hierarchical feature model for visual localization and matching](https://aihub.qualcomm.com/models/hfnet)
 
 HFNet provides local keypoints and descriptors together with a global descriptor for image matching and localization pipelines.
