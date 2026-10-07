@@ -194,8 +194,6 @@ In this example the parts will look like this:
 
 Each part and each sequence-length variant is compiled separately using **AI Hub**. After compilation, the **AR-1** and **AR-128** variants for each part are linked together to form a context binary with shared weights. These linked parts are then downloaded into your Genie bundle.
 
-The compile and link job submissions are implemented in `templates/llm/export.py` and typically does not require modification for new LLM architectures.
-
 ## AI Hub Model Code Structure
 
 ### Overview

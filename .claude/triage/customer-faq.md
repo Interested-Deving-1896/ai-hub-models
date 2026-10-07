@@ -912,7 +912,6 @@ Two options:
 The standalone GenAI Jupyter notebooks are **not supported by the AI Hub team** — AI Hub Slack doesn't have anyone who can debug them. Use the AI Hub Models path instead:
 1. Pick a model from the [AI Hub Models LLM list](https://github.com/qualcomm/ai-hub-models/tree/main/src/qai_hub_models/models) (Llama 3.2 family is a good starting point).
 2. Follow the LLM on Genie tutorial: https://github.com/qualcomm/ai-hub-apps/blob/main/tutorials/llm_on_genie/README.md
-3. If you already have per-split ONNX + encodings from notebook 2, you can hand them to `qai_hub_models/models/templates/llm/export.py` to submit compile + link jobs.
 
 **Confidence floor:** high
 **Last updated:** 2026-06-25

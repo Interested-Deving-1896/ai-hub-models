@@ -4,7 +4,6 @@
 # ---------------------------------------------------------------------
 from __future__ import annotations
 
-import argparse
 import importlib.abc
 import importlib.machinery
 import sys
@@ -90,7 +89,6 @@ from qai_hub_models.models.qwen2_7b_instruct import Model as Qwen2Model  # noqa:
 from qai_hub_models.models.resnet18 import MODEL_ID as RESNET_MODEL_ID  # noqa: E402
 from qai_hub_models.models.resnet18 import Model as ResnetModel  # noqa: E402
 from qai_hub_models.models.swin_tiny import Model as SwinModel  # noqa: E402
-from qai_hub_models.models.templates.llm.export import get_llm_parser  # noqa: E402
 from qai_hub_models.models.whisper_base import Model as WhisperModel  # noqa: E402
 from qai_hub_models.utils.args import (  # noqa: E402
     demo_model_from_cli_args,
@@ -108,7 +106,6 @@ from qai_hub_models.utils.inference import (  # noqa: E402
     OnDeviceModel,
     compile_model_from_args,
 )
-from qai_hub_models.utils.model_cache import CacheMode  # noqa: E402
 
 
 def test_parse_resnet18_export() -> None:
@@ -158,131 +155,6 @@ def test_parse_resnet18_export() -> None:
     gt_set.add("quantize")
     assert set(vars(args).keys()) == gt_set
     assert args.device is None
-
-
-@pytest.fixture
-def llama_parser() -> argparse.ArgumentParser:
-    with (
-        patch(
-            "qai_hub_models.utils.quantization_aimet_onnx.ensure_min_aimet_onnx_version",
-            return_value=True,
-        ),
-        patch(
-            "qai_hub_models.utils.version_helpers.ensure_supported_version",
-            return_value=True,
-        ),
-    ):
-        return get_llm_parser(
-            model_cls=LlamaModel,
-            supported_precision_runtimes={
-                Precision.w4a16: [
-                    TargetRuntime.QNN_CONTEXT_BINARY,
-                    TargetRuntime.PRECOMPILED_QNN_ONNX,
-                    TargetRuntime.GENIE,
-                    TargetRuntime.GENIEX_QAIRT,
-                ]
-            },
-            default_precision=Precision.w4a16,
-            default_export_device="Samsung Galaxy S25",
-        )
-
-
-def test_device_parsing(llama_parser: argparse.ArgumentParser) -> None:
-    device = llama_parser.parse_args(["--device", "Samsung Galaxy S25"]).device
-    assert device.name == "Samsung Galaxy S25"
-    assert any(a.startswith("chipset:") for a in device.attributes)
-    assert "htp-supports-fp16:true" in device.attributes
-
-    device = llama_parser.parse_args(["--chipset", "qualcomm-snapdragon-8gen3"]).device
-    assert "chipset:qualcomm-snapdragon-8gen3" in device.attributes
-
-    device = llama_parser.parse_args(
-        ["--chipset", "qualcomm-snapdragon-8gen3", "--device-os", "14"]
-    ).device
-    assert device.os.startswith("14")
-    assert "chipset:qualcomm-snapdragon-8gen3" in device.attributes
-
-    device = llama_parser.parse_args([]).device
-    assert device.name == "Samsung Galaxy S25"
-
-    for action in llama_parser._actions:
-        if action.dest == "device_str":
-            assert (
-                action.help
-                == "The name of the device used to run this script. Run `qai-hub list-devices` to see the list of options. If not set, defaults to `Samsung Galaxy S25`."
-            )
-
-
-def test_parse_llama_export(llama_parser: argparse.ArgumentParser) -> None:
-    args = llama_parser.parse_args([])
-    assert set(vars(args).keys()) == {
-        "target_runtime",
-        "compile_options",
-        "inference_options",
-        "link_options",
-        "checkpoint",
-        "host_device",
-        "fp_model",
-        "_skip_quantsim_creation",
-        "llm_config",
-        "llm_io_type",
-        "sequence_length",
-        "context_length",
-        "precision",
-        "device",
-        "chipset",
-        "device_os",
-        "skip_profiling",
-        "skip_inferencing",
-        "skip_downloading",
-        "skip_summary",
-        "output_dir",
-        "device_str",
-        "model_cache_mode",
-        "synchronous",
-        "quantize",
-        "onnx_export_dir",
-        "zip_assets",
-    }
-    assert args.target_runtime == TargetRuntime.GENIEX_QAIRT
-
-    args = llama_parser.parse_args(["--do-inferencing"])
-    assert args.skip_inferencing is False
-
-    args = llama_parser.parse_args(["--do-inferencing", "--skip-inferencing"])
-    assert args.skip_inferencing is True
-
-    args = llama_parser.parse_args(["--skip-inferencing", "--do-inferencing"])
-    assert args.skip_inferencing is False
-
-
-def test_llama_parser_help(llama_parser: argparse.ArgumentParser) -> None:
-    for action in llama_parser._actions:
-        if action.option_strings[0] == "--do-inferencing":
-            assert action.default is True
-            assert isinstance(action, argparse._StoreFalseAction)
-            assert action.dest == "skip_inferencing"
-            assert (
-                action.help
-                == "If set, does computing on-device outputs from sample data."
-            )
-        if action.dest == "skip_profiling":
-            assert action.default is False
-            assert isinstance(action, argparse._StoreTrueAction)
-            assert action.option_strings[0] == "--skip-profiling"
-            assert (
-                action.help
-                == "If set, skips profiling of compiled model on real devices."
-            )
-        if action.dest == "model_cache_mode":
-            assert action.default == CacheMode.DISABLE
-            assert set(action.choices or []) == {"enable", "disable", "overwrite"}
-            assert (
-                llama_parser.parse_args(
-                    ["--model-cache-mode", "overwrite"]
-                ).model_cache_mode
-                == CacheMode.OVERWRITE
-            )
 
 
 def test_parse_whisper_export() -> None:
@@ -348,7 +220,7 @@ def test_parse_qwen2_7b_export() -> None:
 
 def test_omit_precision_resolves_from_checkpoint() -> None:
     """separate_quantize_script models omit --precision; the CLI dispatch path
-    (unlike the deprecated export.py main) relies on parse_args to resolve it
+    relies on parse_args to resolve it
     from --checkpoint so the export pipeline gets a precision.
     """
     with (
