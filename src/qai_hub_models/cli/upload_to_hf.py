@@ -59,6 +59,7 @@ from huggingface_hub import (
     upload_folder,
     whoami,
 )
+from huggingface_hub.errors import HfHubHTTPError
 from huggingface_hub.utils import HFValidationError, validate_repo_id
 
 from qai_hub_models.cli.generate_files import write_readme
@@ -88,6 +89,20 @@ _REPO_MANAGED_FILES = (".gitattributes", ".gitignore")
 _EXTERNAL_REPOS_DIR_NAME = "external_repos"
 
 _VERSION_TAG_RE = re.compile(r"^v(\d+)$")
+
+_COMMUNITY_ORG_ACCESS_HELP = """\
+Your token does not have permission to upload to the `qualcomm-ai-hub-community`
+organization on Hugging Face.
+
+To upload to the community org:
+
+  1. Join the organization at:
+     https://huggingface.co/organizations/qualcomm-ai-hub-community
+
+  2. Make sure your Hugging Face token has write access to the org. Create or
+     update your token with the appropriate permissions at:
+     https://huggingface.co/settings/tokens
+"""
 
 _NO_TOKEN_HELP = """\
 No Hugging Face token found, so there is nothing to authenticate the upload with.
@@ -129,6 +144,35 @@ then give it to the CLI the way you gave it this one:
 `--token hf_xxx` overrides both. To see what would be uploaded without a token
 at all, add --dry-run.
 """
+
+
+def _is_community_org_repo(repo_id: str) -> bool:
+    """Check if repo_id is in the community org namespace."""
+    namespace = repo_id.split("/", 1)[0]
+    return namespace == "qualcomm-ai-hub-community"
+
+
+def _handle_upload_permission_error(repo_id: str, token: str | None) -> ValueError:
+    """Raise a descriptive error for 403 permission errors during upload.
+
+    Parameters
+    ----------
+    repo_id
+        The repo that failed to upload.
+    token
+        HuggingFace token.
+
+    Returns
+    -------
+    ValueError
+        Descriptive error message based on the repo and token owner.
+    """
+    if _is_community_org_repo(repo_id):
+        return ValueError(_COMMUNITY_ORG_ACCESS_HELP)
+    return ValueError(
+        f"Permission denied uploading to {repo_id}. Check that your "
+        "token has write access to this namespace."
+    )
 
 
 def _resolve_upload_dir(target: str) -> Path:
@@ -401,6 +445,37 @@ def _validate_repo_name(folder_name: str) -> None:
         ) from e
 
 
+def _prompt_upload_destination(folder_name: str, token: str | None) -> str:
+    """Prompt user to choose between personal namespace or community org.
+
+    Parameters
+    ----------
+    folder_name
+        The recipe folder's name.
+    token
+        Hugging Face token.
+
+    Returns
+    -------
+    str
+        The repo_id.
+    """
+    username = _hf_username(token) or _USERNAME_PLACEHOLDER
+    normalized_name = folder_name.replace("_", "-")
+
+    print("\nWhere would you like to upload this model?")
+    print(f"  1. Your namespace (default): {username}/{normalized_name}")
+    print(f"  2. Community org: qualcomm-ai-hub-community/{normalized_name}-{username}")
+
+    while True:
+        choice = input("\nEnter 1 or 2 (default 1): ").strip()
+        if choice in ("", "1"):
+            return f"{username}/{normalized_name}"
+        if choice == "2":
+            return f"qualcomm-ai-hub-community/{normalized_name}-{username}"
+        print("Invalid choice. Please enter 1 or 2.")
+
+
 def _default_repo_id(folder_name: str, token: str | None) -> str:
     """Return ``<username>/<folder_name>``.
 
@@ -521,7 +596,6 @@ def _print_next_steps(
     private: bool,
     commit_sha: str | None,
     tag: str | None,
-    own_namespace: bool,
     unchanged: bool = False,
 ) -> None:
     print(f"\nPublished to {url}")
@@ -532,8 +606,7 @@ def _print_next_steps(
         print(
             f"\nNothing changed, so no new version was created -- the repo is "
             f"still {version}. To pin it:\n"
-            f"  qai-hub-models register {repo_id} --version {pin}\n"
-            f"Versions: {url}/tags     History: {url}/commits/main"
+            f"  qai-hub-models register {repo_id} --version {pin}"
         )
     elif pin:
         version = f"version {tag}" if tag else f"commit {commit_sha[:7]}"  # type: ignore[index]
@@ -541,8 +614,7 @@ def _print_next_steps(
         print(
             f"\nThis upload is {version}{detail}. Earlier versions stay "
             "reachable -- to pin this exact one:\n"
-            f"  qai-hub-models register {repo_id} --version {pin}\n"
-            f"Versions: {url}/tags     History: {url}/commits/main"
+            f"  qai-hub-models register {repo_id} --version {pin}"
         )
 
     if private:
@@ -555,11 +627,6 @@ def _print_next_steps(
             "visibility alone."
         )
 
-    if own_namespace:
-        print(
-            "\nIt is in your own namespace, so it is yours -- nobody else can "
-            "overwrite it."
-        )
     listed = "Once public it is" if private else "It is public and"
     print(
         f"\n{listed} tagged `{COMMUNITY_TAG}`, listed alongside every other "
@@ -625,10 +692,12 @@ def upload_to_hf(
     # needs no token, but still uses one if present so it can show the real id.
     resolved_token = (token or get_token()) if dry_run else _resolve_token(token)
 
-    own_namespace = repo_id is None
     if repo_id is None:
         _validate_repo_name(source_dir.name)
-        repo_id = _default_repo_id(source_dir.name, resolved_token)
+        if sys.stdin.isatty() and not assume_yes:
+            repo_id = _prompt_upload_destination(source_dir.name, resolved_token)
+        else:
+            repo_id = _default_repo_id(source_dir.name, resolved_token)
     else:
         try:
             validate_repo_id(repo_id)
@@ -677,34 +746,44 @@ def upload_to_hf(
 
         tag = None if no_tag else ("v1" if not exists else None)
 
-        timeout_retry(
-            lambda: create_repo(
-                repo_id=repo_id,
-                exist_ok=True,
-                private=private,
-                token=resolved_token,
-            ),
-            5,
-        )
-        # Read after create_repo so an existing repo's tags are visible, and a
-        # brand-new one is already addressable.
+        try:
+            timeout_retry(
+                lambda: create_repo(
+                    repo_id=repo_id,
+                    exist_ok=True,
+                    private=private,
+                    token=resolved_token,
+                ),
+                5,
+            )
+        except HfHubHTTPError as e:
+            if e.response and e.response.status_code == 403:
+                raise _handle_upload_permission_error(repo_id, resolved_token) from e
+            raise
+
         existing_tags: list[Any] = []
         if not no_tag and tag is None:
             existing_tags = _repo_tags(repo_id, resolved_token)
             tag = _next_version_tag(existing_tags)
 
-        commit = timeout_retry(
-            lambda: upload_folder(
-                repo_id=repo_id,
-                folder_path=str(staging),
-                commit_message=(
-                    f"Upload {source_dir.name} recipe" + (f" ({tag})" if tag else "")
+        try:
+            commit = timeout_retry(
+                lambda: upload_folder(
+                    repo_id=repo_id,
+                    folder_path=str(staging),
+                    commit_message=(
+                        f"Upload {source_dir.name} recipe"
+                        + (f" ({tag})" if tag else "")
+                    ),
+                    token=resolved_token,
+                    delete_patterns=stale or None,
                 ),
-                token=resolved_token,
-                delete_patterns=stale or None,
-            ),
-            5,
-        )
+                5,
+            )
+        except HfHubHTTPError as e:
+            if e.response and e.response.status_code == 403:
+                raise _handle_upload_permission_error(repo_id, resolved_token) from e
+            raise
 
     commit_sha = getattr(commit, "oid", None)
     if not isinstance(commit_sha, str):
@@ -742,7 +821,6 @@ def upload_to_hf(
         private and not exists,
         commit_sha,
         tag,
-        own_namespace,
         unchanged=bool(unchanged_as),
     )
     return url

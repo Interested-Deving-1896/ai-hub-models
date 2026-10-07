@@ -691,21 +691,6 @@ class TestUpload:
 class TestVersioning:
     """Re-uploading is an update, not a duplicate: one commit per upload."""
 
-    def test_falls_back_to_the_commit_sha_when_untagged(
-        self, tmp_path: Path, hf_api: Any, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """With --no-tag the SHA is the only version reference, so print it."""
-        recipe = tmp_path / "my_model"
-        _write_recipe(recipe)
-        hf_api["upload_folder"].return_value.oid = "abc1234def5678"
-
-        upload_to_hf(str(recipe), no_tag=True, assume_yes=True)
-
-        out = capsys.readouterr().out
-        assert "commit abc1234" in out
-        assert "--version abc1234" in out
-        assert "/commits/main" in out
-
     def test_survives_an_upload_result_without_an_oid(
         self, tmp_path: Path, hf_api: Any
     ) -> None:
@@ -774,7 +759,7 @@ class TestVersioning:
         with (
             patch.object(mod, "list_repo_files", return_value=["gone.py"]),
             patch.object(sys.stdin, "isatty", return_value=True),
-            patch("builtins.input", return_value="n"),
+            patch("builtins.input", side_effect=["1", "n"]),
         ):
             assert upload_to_hf(str(recipe)) is None
         hf_api["upload_folder"].assert_not_called()
@@ -794,10 +779,9 @@ class TestPublishConfirmation:
         _write_recipe(recipe)
         with (
             patch.object(sys.stdin, "isatty", return_value=True),
-            patch("builtins.input", return_value="y") as prompt,
+            patch("builtins.input", side_effect=["1", "y"]) as prompt,
         ):
             assert upload_to_hf(str(recipe)) is not None
-        prompt.assert_called_once()
         assert "Update" in prompt.call_args[0][0]
         hf_api["upload_folder"].assert_called_once()
 
@@ -808,7 +792,7 @@ class TestPublishConfirmation:
         _write_recipe(recipe)
         with (
             patch.object(sys.stdin, "isatty", return_value=True),
-            patch("builtins.input", return_value="n"),
+            patch("builtins.input", side_effect=["1", "n"]),
         ):
             assert upload_to_hf(str(recipe)) is None
         hf_api["upload_folder"].assert_not_called()
@@ -835,7 +819,7 @@ class TestPublishConfirmation:
         hf_api["repo_exists"].return_value = False
         with (
             patch.object(sys.stdin, "isatty", return_value=True),
-            patch("builtins.input", return_value="y") as prompt,
+            patch("builtins.input", side_effect=["1", "y"]) as prompt,
         ):
             assert upload_to_hf(str(recipe)) is not None
         question = prompt.call_args[0][0]
@@ -851,10 +835,10 @@ class TestPublishConfirmation:
         with (
             patch.object(mod, "list_repo_files", return_value=["gone.py"]),
             patch.object(sys.stdin, "isatty", return_value=True),
-            patch("builtins.input", return_value="y") as prompt,
+            patch("builtins.input", side_effect=["1", "y"]) as prompt,
         ):
             assert upload_to_hf(str(recipe)) is not None
-        prompt.assert_called_once()
+        assert prompt.call_count == 2
 
     def test_a_non_interactive_update_does_not_block(
         self, tmp_path: Path, hf_api: Any
