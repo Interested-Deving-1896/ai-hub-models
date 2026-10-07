@@ -120,11 +120,15 @@ def test_dropped_component_leaves_no_stale_graph_key() -> None:
     assert committed_graphs.get("m", "B") is None
 
 
+@pytest.mark.parametrize("using_prod_hub", [True, False], ids=["prod", "dev"])
 @pytest.mark.parametrize("all_models", [True, False], ids=["clear-all", "per-model"])
-def test_previous_job_ids_survive_ignore_existing_clear(all_models: bool) -> None:
+def test_previous_job_ids_survive_ignore_existing_clear(
+    all_models: bool, using_prod_hub: bool
+) -> None:
     """CI always sets ignore-existing; the clear must not erase "Previous *" job IDs.
 
-    Snapshotting after the clear left them all N/A (tetracode #21471).
+    Snapshotting after the clear left them all N/A (tetracode #21471). Dev runs
+    also link to the committed prod jobs, so they need the same IDs.
     """
     key = "not_a_real_model_float_tflite_cs_8_gen_3"
     with (
@@ -140,7 +144,7 @@ def test_previous_job_ids_survive_ignore_existing_clear(all_models: bool) -> Non
         ),
     ):
         state = mod._load_intermediate_state(
-            using_prod_hub=True,
+            using_prod_hub=using_prod_hub,
             ignore_existing=True,
             model_list=["not_a_real_model"],
             all_models=all_models,

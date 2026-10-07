@@ -140,7 +140,8 @@ def _load_intermediate_state(
     all_models: bool,
 ) -> _IntermediateState:
     if not using_prod_hub:
-        # Previous scorecard state is applicable only on prod
+        # Previous scorecard state is applicable only on prod, but the committed
+        # prod job IDs still back the "Previous * (prod)" columns on dev runs.
         return _IntermediateState(
             ComponentNamesYaml(),
             GraphNamesYaml(),
@@ -150,8 +151,8 @@ def _load_intermediate_state(
             LinkScorecardJobYaml(),
             ProfileScorecardJobYaml(),
             InferenceScorecardJobYaml(),
-            CompileScorecardJobYaml(),
-            InferenceScorecardJobYaml(),
+            CompileScorecardJobYaml.from_intermediates(),
+            InferenceScorecardJobYaml.from_intermediates(),
         )
 
     component_names_yaml = ComponentNamesYaml.from_intermediates()
