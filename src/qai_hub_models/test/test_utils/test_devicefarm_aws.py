@@ -10,6 +10,7 @@ import boto3
 import pytest
 from botocore.awsrequest import AWSPreparedRequest, AWSResponse, HTTPHeaders
 from botocore.credentials import DeferredRefreshableCredentials
+from qai_hub_models_cli._internal import aws as cli_aws
 
 from qai_hub_models.utils.devicefarm.backends.aws import aws
 from qai_hub_models.utils.devicefarm.backends.aws.aws import (
@@ -56,7 +57,9 @@ def test_make_session_with_oidc_refreshes_expired_credentials(
         _creds(now + datetime.timedelta(hours=1), "second"),
     ]
     config = AwsDeviceFarmConfig(project_arn="p", role_arn="arn:role")
-    with mock.patch.object(aws, "AssumeRoleWithWebIdentityCredentialFetcher", fetcher):
+    with mock.patch.object(
+        cli_aws, "AssumeRoleWithWebIdentityCredentialFetcher", fetcher
+    ):
         session = _make_session(config)
 
     creds = session.get_credentials()
@@ -79,7 +82,9 @@ def test_long_lived_client_signs_each_call_with_refreshed_credentials(
         _creds(now + datetime.timedelta(hours=1), "AKIASECOND"),
     ]
     config = AwsDeviceFarmConfig(project_arn="p", role_arn="arn:role")
-    with mock.patch.object(aws, "AssumeRoleWithWebIdentityCredentialFetcher", fetcher):
+    with mock.patch.object(
+        cli_aws, "AssumeRoleWithWebIdentityCredentialFetcher", fetcher
+    ):
         client = _make_session(config).client("devicefarm", region_name="us-west-2")
 
     signed_keys: list[str] = []

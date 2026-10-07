@@ -14,7 +14,6 @@ import time
 
 import boto3
 import botocore.exceptions
-import requests
 import tqdm
 from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
@@ -22,9 +21,13 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from mypy_boto3_s3.client import S3Client
 from mypy_boto3_s3.service_resource import Bucket, ObjectSummary
 from qai_hub_models_cli._internal.aws import (
+    QAIHM_AWS_ROLE_ARN_ENVVAR,
     QAIHM_PRIVATE_S3_BUCKET,
     NoAWSCredsError,
     attempt_with_s3_credentials_warning,
+    fetch_github_oidc_token,
+    github_oidc_available,
+    qaihm_session,
 )
 from qai_hub_models_cli._internal.aws import (
     s3_download as _cli_s3_download,
@@ -60,35 +63,21 @@ QAIHM_AWS_PROFILE = "qaihm"
 # A presigned URL dies with the credentials that signed it, and a role session
 # caps at 12h regardless of ExpiresIn -- so sign with a freshly assumed session.
 PRESIGNED_URL_EXPIRY_S = 43200
-PRESIGN_ROLE_ARN_ENVVAR = "AWS_ROLE_ARN"
-_OIDC_TOKEN_TIMEOUT = (30, 60)
-
-
-def _fetch_github_oidc_token() -> str:
-    resp = requests.get(
-        f"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=sts.amazonaws.com",
-        headers={
-            "Authorization": f"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"
-        },
-        timeout=_OIDC_TOKEN_TIMEOUT,
-    )
-    resp.raise_for_status()
-    return str(resp.json()["value"])
+PRESIGN_ROLE_ARN_ENVVAR = QAIHM_AWS_ROLE_ARN_ENVVAR
 
 
 def _fresh_presign_client(region: str) -> S3Client | None:
-    """S3 client on a just-assumed role session, or None outside GitHub Actions OIDC."""
+    """S3 client on a just-assumed role session, or None outside GitHub Actions OIDC.
+
+    Not qaihm_session(): its refreshing credentials may have minutes left, and the URL dies with them.
+    """
     role_arn = os.environ.get(PRESIGN_ROLE_ARN_ENVVAR)
-    if not (
-        role_arn
-        and os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
-        and os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-    ):
+    if not (role_arn and github_oidc_available()):
         return None
     creds = boto3.client("sts", region_name=region).assume_role_with_web_identity(
         RoleArn=role_arn,
         RoleSessionName=f"qaihm-presign-{int(time.time())}",
-        WebIdentityToken=_fetch_github_oidc_token(),
+        WebIdentityToken=fetch_github_oidc_token(),
         DurationSeconds=PRESIGNED_URL_EXPIRY_S,
     )["Credentials"]
     return boto3.client(
@@ -268,7 +257,7 @@ def get_qaihm_s3(bucket_name: str, requires_admin: bool = False) -> tuple[Bucket
         Whether the current credentials have admin permissions.
     """
     try:
-        session = boto3.Session(profile_name=QAIHM_AWS_PROFILE)
+        session = qaihm_session()
         session.client("sts").get_caller_identity()  # Verifies no session expiry
         bucket = session.resource("s3").Bucket(bucket_name)
     except (botocore.exceptions.BotoCoreError, ClientError, NoCredentialsError) as e:

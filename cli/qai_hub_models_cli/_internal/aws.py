@@ -16,6 +16,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
+import requests
 import tqdm
 
 from qai_hub_models_cli.common import sample_command
@@ -24,6 +25,11 @@ from qai_hub_models_cli.envvars import AWS_SESSION_DURATION_ENVVAR, bool_envvar_
 try:
     import boto3
     import botocore.exceptions
+    import botocore.session
+    from botocore.credentials import (
+        AssumeRoleWithWebIdentityCredentialFetcher,
+        DeferredRefreshableCredentials,
+    )
     from botocore.exceptions import ClientError, NoCredentialsError
     from mypy_boto3_s3.service_resource import Bucket
 except ImportError as e:
@@ -39,6 +45,9 @@ REGION = "us-west-2"
 DEFAULT_SESSION_DURATION = 3600
 MIN_SESSION_DURATION = 3600
 MAX_SESSION_DURATION = 28800
+# Role behind the qaihm profile; set in CI steps that need S3 past the 12h session cap.
+QAIHM_AWS_ROLE_ARN_ENVVAR = "AWS_ROLE_ARN"
+_OIDC_TOKEN_TIMEOUT = (30, 60)
 
 
 def _get_session_duration() -> int:
@@ -87,6 +96,58 @@ def attempt_with_s3_credentials_warning(
         ) in ["400", "ExpiredToken"]:
             raise NoAWSCredsError() from e
         raise
+
+
+def github_oidc_available() -> bool:
+    """Whether this is a GitHub Actions job with ``id-token: write``."""
+    return bool(
+        os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+        and os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    )
+
+
+def fetch_github_oidc_token() -> str:
+    resp = requests.get(
+        f"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=sts.amazonaws.com",
+        headers={
+            "Authorization": f"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"
+        },
+        timeout=_OIDC_TOKEN_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return str(resp.json()["value"])
+
+
+def oidc_refreshing_session(
+    role_arn: str, region: str, session_name: str
+) -> boto3.Session:
+    """Session whose credentials re-assume ``role_arn`` via GitHub OIDC as they near expiry."""
+    bc_session = botocore.session.Session()
+    bc_session.set_config_variable("region", region)
+    fetcher = AssumeRoleWithWebIdentityCredentialFetcher(
+        client_creator=bc_session.create_client,
+        web_identity_token_loader=fetch_github_oidc_token,
+        role_arn=role_arn,
+        extra_args={"RoleSessionName": session_name},
+    )
+    # botocore has no public setter for refreshable credentials.
+    bc_session._credentials = DeferredRefreshableCredentials(  # type: ignore[attr-defined]
+        refresh_using=fetcher.fetch_credentials,
+        method="assume-role-with-web-identity",
+    )
+    return boto3.Session(botocore_session=bc_session, region_name=region)
+
+
+def qaihm_session() -> boto3.Session:
+    """Session for the qaihm role.
+
+    The static qaihm profile written by CI dies after 12h, which long LLM perf
+    jobs outlive (run 37102182278), so under GitHub OIDC credentials self-refresh.
+    """
+    role_arn = os.environ.get(QAIHM_AWS_ROLE_ARN_ENVVAR)
+    if role_arn and github_oidc_available():
+        return oidc_refreshing_session(role_arn, REGION, "qaihm-ci")
+    return boto3.Session(profile_name=QAIHM_AWS_PROFILE)
 
 
 def _load_env(name: str) -> str:
@@ -334,7 +395,7 @@ def validate_credentials() -> None:
 def get_bucket(bucket_name: str = QAIHM_PRIVATE_S3_BUCKET) -> Bucket:
     """Get a boto3 Bucket object using the qaihm AWS profile."""
     try:
-        session = boto3.Session(profile_name=QAIHM_AWS_PROFILE)
+        session = qaihm_session()
         session.client("sts").get_caller_identity()
         return session.resource("s3").Bucket(bucket_name)
     except (botocore.exceptions.BotoCoreError, ClientError, NoCredentialsError) as e:

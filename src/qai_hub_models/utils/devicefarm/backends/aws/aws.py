@@ -17,11 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import boto3
-import botocore.session
 import requests
-from botocore.credentials import (
-    AssumeRoleWithWebIdentityCredentialFetcher,
-    DeferredRefreshableCredentials,
+from qai_hub_models_cli._internal.aws import (
+    github_oidc_available,
+    oidc_refreshing_session,
 )
 
 from qai_hub_models.utils.devicefarm.devicefarm import (
@@ -172,45 +171,17 @@ def get_aws_devicefarm_config() -> AwsDeviceFarmConfig:
     )
 
 
-def _fetch_github_oidc_token() -> str:
-    resp = requests.get(
-        f"{os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']}&audience=sts.amazonaws.com",
-        headers={
-            "Authorization": f"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"
-        },
-        timeout=DOWNLOAD_TIMEOUT,
-    )
-    resp.raise_for_status()
-    return str(resp.json()["value"])
-
-
 def _make_session(config: AwsDeviceFarmConfig) -> boto3.Session:
     """Build a boto3 session for Device Farm.
 
     A static profile expires mid-collect (ExpiredTokenException, run
     36655411185), so in CI use credentials that re-assume the role via OIDC.
     """
-    has_oidc = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL") and os.environ.get(
-        "ACTIONS_ID_TOKEN_REQUEST_TOKEN"
-    )
-    if not (config.role_arn and has_oidc):
+    if not (config.role_arn and github_oidc_available()):
         return boto3.Session(
             profile_name=config.profile_name, region_name=config.region
         )
-    bc_session = botocore.session.Session()
-    bc_session.set_config_variable("region", config.region)
-    fetcher = AssumeRoleWithWebIdentityCredentialFetcher(
-        client_creator=bc_session.create_client,
-        web_identity_token_loader=_fetch_github_oidc_token,
-        role_arn=config.role_arn,
-        extra_args={"RoleSessionName": "qaihm-devicefarm"},
-    )
-    # botocore has no public setter for refreshable credentials.
-    bc_session._credentials = DeferredRefreshableCredentials(  # type: ignore[attr-defined]
-        refresh_using=fetcher.fetch_credentials,
-        method="assume-role-with-web-identity",
-    )
-    return boto3.Session(botocore_session=bc_session, region_name=config.region)
+    return oidc_refreshing_session(config.role_arn, config.region, "qaihm-devicefarm")
 
 
 @dataclass

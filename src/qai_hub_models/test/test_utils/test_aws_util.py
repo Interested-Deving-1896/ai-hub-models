@@ -271,7 +271,7 @@ def test_get_presigned_download_url_assumes_fresh_role_per_call(
     bucket = _bucket()
 
     with (
-        mock.patch.object(aws, "_fetch_github_oidc_token", return_value="jwt"),
+        mock.patch.object(aws, "fetch_github_oidc_token", return_value="jwt"),
         mock.patch.object(
             boto3,
             "client",
