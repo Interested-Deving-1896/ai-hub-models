@@ -4,6 +4,8 @@
 # ---------------------------------------------------------------------
 
 
+from pathlib import Path
+
 from .constants import REPO_ROOT
 from .task import ConditionalTask, NoOpTask, RunCommandsWithVenvTask
 from .util import on_ci
@@ -11,7 +13,7 @@ from .util import on_ci
 
 class ValidateAwsCredentialsTask(ConditionalTask):
     def __init__(self, venv_path: str | None) -> None:
-        aws_script_path = f"{REPO_ROOT}/scripts/aws"
+        aws_script_path = Path(REPO_ROOT, "scripts", "aws").as_posix()
         install_saml2aws_path = f"{aws_script_path}/install_saml2aws.sh"
         super().__init__(
             group_name=None,
@@ -21,7 +23,7 @@ class ValidateAwsCredentialsTask(ConditionalTask):
                 "Validating AWS credentials",
                 venv_path,
                 [
-                    f'if [ -d "{aws_script_path}" ]; then bash {install_saml2aws_path}; fi',
+                    f'if [ -d "{aws_script_path}" ]; then bash "{install_saml2aws_path}"; fi',
                     "qai-hub-models validate_aws_credentials",
                 ],
             ),

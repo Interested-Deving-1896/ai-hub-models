@@ -38,7 +38,8 @@ def bash_argv(command: str) -> list[str]:
 
 def venv_activate_command(venv: str) -> str:
     subdir = "Scripts" if ON_WINDOWS else "bin"
-    return f'source "{venv.replace(os.sep, "/")}/{subdir}/activate"'
+    # Unset so activate's "deactivate" doesn't restore a Windows PATH inherited from an active venv.
+    return f'unset _OLD_VIRTUAL_PATH; source "{venv.replace(os.sep, "/")}/{subdir}/activate"'
 
 
 def run_and_get_output(command: str, check: bool = True) -> str:
