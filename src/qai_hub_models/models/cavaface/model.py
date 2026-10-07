@@ -8,8 +8,11 @@ from __future__ import annotations
 import torch
 from typing_extensions import Self
 
-from qai_hub_models.utils.asset_loaders import CachedWebModelAsset
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.models.cavaface.external_repos.cavaface.backbone.resnet_irse import (
+    IR_SE_100,
+)
+from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_torch
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import (
     ColorFormat,
     ImageMetadata,
@@ -19,32 +22,26 @@ from qai_hub_models.utils.input_spec import (
     TensorSpec,
 )
 
-SOURCE_REPO = "https://github.com/cavalleria/cavaface"
-COMMIT_HASH = "822651f0e6d4d08df5441922acead39dc5375103"
 MODEL_ID = __name__.split(".")[-2]
 MODEL_ASSET_VERSION = 2
 DEFAULT_WEIGHTS = "IR_SE_100"
+# Plain state_dict converted from the originally-published scripted checkpoint
+# (see convert_checkpoint.py), so the eager Backbone loads directly.
 DEFAULT_WEIGHTS_FILE = CachedWebModelAsset.from_asset_store(
-    MODEL_ID, MODEL_ASSET_VERSION, "IR_SE_100_Combined_Epoch_24.pth"
+    MODEL_ID, MODEL_ASSET_VERSION, "IR_SE_100_state_dict.pth"
 )
 
 
 class CavaFace(BaseModel):
     def __init__(self, model: torch.nn.Module | None = None) -> None:
-        super().__init__(
-            model=model,
-            serialization_settings=SerializationSettings(use_pt2=False),
-        )
+        super().__init__(model=model)
 
     @classmethod
     def from_pretrained(cls, weights_name: str = DEFAULT_WEIGHTS) -> Self:
-        if weights_name == DEFAULT_WEIGHTS:
-            weights_file = DEFAULT_WEIGHTS_FILE
-        else:
+        if weights_name != DEFAULT_WEIGHTS:
             raise NotImplementedError("Unsupported weights")
-
-        # This model checkpoint was published as a torchscript module rather than state_dict
-        net = torch.jit.load(weights_file.fetch(), map_location="cpu")
+        net = IR_SE_100((112, 112))
+        net.load_state_dict(load_torch(DEFAULT_WEIGHTS_FILE))
         return cls(net).eval()
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
@@ -65,7 +62,7 @@ class CavaFace(BaseModel):
         image = (image * 255 - 127.5) / 128.0
 
         # Get raw embeddings
-        embeddings = self.model(image)[0]
+        embeddings = self.model(image)
 
         # Normalize embeddings to unit length
         norm = torch.norm(embeddings, dim=1, keepdim=True) + 1e-9
