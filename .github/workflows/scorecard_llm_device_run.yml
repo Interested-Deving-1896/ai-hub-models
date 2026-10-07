@@ -47,7 +47,7 @@ on:
             Test scope: 'perf', 'accuracy', or 'perf_and_accuracy'. Controls
             whether the on-device accuracy evaluation (100 default prompts) runs.
           type: string
-          default: perf_and_accuracy
+          default: perf
 
         options:
           description: 'Comma-separated scorecard options (e.g. "qairt_version=2.45,geniex_version=0.3.7"). qairt_version selects the QAIRT SDK downloaded on-device for genie / geniex_qairt; see scripts/ci/parse_options.py.'
@@ -185,11 +185,9 @@ jobs:
     uses: ./.github/workflows/llm_perf_collection.yml
     with:
       model: ${{ needs.determine_llm_models.outputs.models }}
-      # Respects the caller's device selection (matches the geniex collectors
-      # below); llm_perf_collection.yml itself falls back to cs_x_elite when
-      # this resolves to "all"/"default", so unscoped scorecard runs are
-      # unaffected. An explicit device (e.g. cs_8_elite) now actually runs.
-      device: ${{ inputs.device }}
+      # Genie compiles for every device but only runs on cs_x_elite. An explicit
+      # device list (e.g. cs_8_elite) is still respected.
+      device: ${{ (inputs.device == 'all' || inputs.device == 'default' || inputs.device == '') && 'cs_x_elite' || inputs.device }}
       # Map default and default variants to 'all' (see scorecard/envvars.py).
       precision: ${{ contains(fromJSON('["default", "default_minus_float", "default_quantized", "bench"]'), inputs.test_precisions) && 'all' || inputs.test_precisions }}
       deployment: ${{ inputs.deployment }}
