@@ -44,9 +44,8 @@ jobs:
       secrets: inherit
       uses: ./.github/workflows/test.yml
       with:
-        precommit_scope: "all"
-        enable_compile_tests: true
-        enable_wheel_test: true
+        precommit_scope: "NO_CODEGEN" # Codegen is python version-specific, we test it only on py3.12
+        enable_compile_tests: false
         python_version: "3.10"
         models: ${{ inputs.models || 'pytorch' }}
         deployment: prod
@@ -62,7 +61,7 @@ jobs:
       secrets: inherit
       uses: ./.github/workflows/test.yml
       with:
-        precommit_scope: "NO_CODEGEN" # Codegen is python version-specific, we test it only on py3.10
+        precommit_scope: "NO_CODEGEN" # Codegen is python version-specific, we test it only on py3.12
         enable_compile_tests: false
         python_version: "3.11"
         models: ${{ inputs.models || 'pytorch' }}
@@ -77,8 +76,9 @@ jobs:
       secrets: inherit
       uses: ./.github/workflows/test.yml
       with:
-        precommit_scope: "NO_CODEGEN" # Codegen is python version-specific, we test it only on py3.10
-        enable_compile_tests: false
+        precommit_scope: "all"
+        enable_compile_tests: true
+        enable_wheel_test: true
         python_version: "3.12"
         models: ${{ inputs.models || 'pytorch' }}
         deployment: prod
@@ -92,7 +92,7 @@ jobs:
       secrets: inherit
       uses: ./.github/workflows/test.yml
       with:
-        precommit_scope: "NO_CODEGEN" # Codegen is python version-specific, we test it only on py3.10
+        precommit_scope: "NO_CODEGEN" # Codegen is python version-specific, we test it only on py3.12
         enable_compile_tests: false
         python_version: "3.13"
         models: ${{ inputs.models || 'pytorch' }}
@@ -172,13 +172,13 @@ jobs:
               --name "py3.10 QAIHM Tests" --junit-xml build/all-test-results/py310/qaihm-unit-tests-junit.xml \
               --name "py3.10 CLI Tests" --junit-xml build/all-test-results/py310/qaihm-cli-tests-junit.xml \
               --name "py3.10 Model Tests" --junit-xml build/all-test-results/py310/qaihm-model-tests-junit.xml \
-              --name "py3.10 Verify Workbench Jobs" --junit-xml build/all-test-results/py310/qaihm-verify-workbench-jobs-junit.xml \
               --name "py3.11 QAIHM Tests" --junit-xml build/all-test-results/py311/qaihm-unit-tests-junit.xml \
               --name "py3.11 CLI Tests" --junit-xml build/all-test-results/py311/qaihm-cli-tests-junit.xml \
               --name "py3.11 Model Tests" --junit-xml build/all-test-results/py311/qaihm-model-tests-junit.xml \
               --name "py3.12 QAIHM Tests" --junit-xml build/all-test-results/py312/qaihm-unit-tests-junit.xml \
               --name "py3.12 CLI Tests" --junit-xml build/all-test-results/py312/qaihm-cli-tests-junit.xml \
               --name "py3.12 Model Tests" --junit-xml build/all-test-results/py312/qaihm-model-tests-junit.xml \
+              --name "py3.12 Verify Workbench Jobs" --junit-xml build/all-test-results/py312/qaihm-verify-workbench-jobs-junit.xml \
               --name "py3.13 QAIHM Tests" --junit-xml build/all-test-results/py313/qaihm-unit-tests-junit.xml \
               --name "py3.13 CLI Tests" --junit-xml build/all-test-results/py313/qaihm-cli-tests-junit.xml \
               --name "py3.13 Model Tests" --junit-xml build/all-test-results/py313/qaihm-model-tests-junit.xml \
@@ -295,7 +295,7 @@ jobs:
               --repository "${{ github.repository }}" \
               --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}" \
               --ref-name "${{ github.ref_name }}" \
-              --failed-jobs-json "build/nightly-test-results/py310-failed-workbench-jobs.json"
+              --failed-jobs-json "build/nightly-test-results/py312-failed-workbench-jobs.json"
 
         - name: Create GitHub Issues
           id: create-github-issues
