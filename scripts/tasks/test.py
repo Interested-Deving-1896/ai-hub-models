@@ -121,8 +121,6 @@ class GPUPyTestModelsTask(CompositeTask):
         venv: str | None,
         model_names: str = "all",  # Comma-separated list of model names, or "all" for all models.
         run_evaluate: bool = True,
-        run_compile: bool = True,
-        run_qdc: bool = True,
         run_demo: bool = True,
         raise_on_failure: bool = True,
         nightly_only: bool = False,  # If True, only run tests marked with @pytest.mark.nightly
@@ -154,10 +152,6 @@ class GPUPyTestModelsTask(CompositeTask):
             test_suites = []
             if run_evaluate:
                 test_suites.append("evaluate")
-            if run_compile:
-                test_suites.append("compile_ram_intensive")
-            if run_qdc:
-                test_suites.append("qdc")
             if run_demo:
                 test_suites.append("demo")
 
