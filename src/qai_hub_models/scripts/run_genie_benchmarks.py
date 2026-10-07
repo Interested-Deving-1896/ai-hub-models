@@ -8,6 +8,14 @@ import argparse
 import os
 import pathlib
 import sys
+import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from qai_hub_models.scorecard.device import ScorecardDevice
+
+DEFAULT_MAX_WAITING = 2
+DEFAULT_POLL_INTERVAL = 60
 
 
 def _write_junit(junit_path: str, cases: list[tuple[str, str | None]]) -> None:
@@ -37,10 +45,21 @@ def _cmd_submit(args: argparse.Namespace) -> int:
         get_llm_eval_device,
     )
     from qai_hub_models.scorecard.test.test_llm_perf import _build_params
+    from qai_hub_models.utils.devicefarm.devicefarm import get_device_farm
     from qai_hub_models.utils.llm.genie.jobs import (
         GENIE_BUNDLES_ROOT,
         submit_llm_perf_job,
     )
+
+    def _wait_for_queue_room(device: ScorecardDevice) -> None:
+        # A job queued too long outlives its 12h presigned URL; backends that
+        # can't count their queue (QDC) return None and are never throttled.
+        backend = get_device_farm(device)
+        while (
+            waiting := backend.count_waiting_jobs(device.reference_device_name)
+        ) is not None and waiting >= args.max_waiting:
+            print(f"{waiting} job(s) queued for {device.name}; waiting to submit more")
+            time.sleep(args.poll_interval)
 
     if os.path.exists(args.jobs_file):
         os.unlink(args.jobs_file)
@@ -52,6 +71,7 @@ def _cmd_submit(args: argparse.Namespace) -> int:
     for model_id, precision, device in _build_params():
         case_name = f"{model_id}-{precision}-{device.name}"
         try:
+            _wait_for_queue_room(device)
             submit_llm_perf_job(
                 model_id=model_id,
                 device=device,
@@ -155,6 +175,19 @@ def main() -> int:
     )
     p_submit.add_argument("--jobs-file", required=True)
     p_submit.add_argument("--junit-xml", default=None)
+    p_submit.add_argument(
+        "--max-waiting",
+        type=int,
+        default=DEFAULT_MAX_WAITING,
+        help="Max jobs queued (not yet on a device) per device type before "
+        "submitting another. Running jobs never count.",
+    )
+    p_submit.add_argument(
+        "--poll-interval",
+        type=int,
+        default=DEFAULT_POLL_INTERVAL,
+        help="Seconds between queue checks while throttled.",
+    )
 
     p_collect = sub.add_parser(
         "collect", help="Poll jobs listed in the jobs file and update perf.yaml."
