@@ -104,7 +104,7 @@ Additional options are documented with the `--help` option.
   [here](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct/blob/main/LICENSE.txt).
 
 ## References
-* [LLaMA: Open and Efficient Foundation Language Models](https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_2/)
+* [LLaMA: Open and Efficient Foundation Language Models](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/MODEL_CARD.md)
 * [Source Model Implementation](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct/)
 
 ## Community
