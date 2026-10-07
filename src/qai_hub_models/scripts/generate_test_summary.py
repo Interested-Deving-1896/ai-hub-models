@@ -14,6 +14,8 @@ from typing import Any
 import pandas as pd
 from tabulate import tabulate
 
+PREREQUISITE_SKIP_PATTERN = re.compile(r"Prerequisite \w+ job ")
+
 
 def clean_message(message: str) -> str:
     """Clean up a failure message for better display."""
@@ -262,8 +264,30 @@ def parse_junit_xml(
                     }
                 )
 
-    # Collect test statistics
+    # Tests skipped because a prerequisite Workbench job failed are real failures.
+    blocked = 0
+    for testcase in root.findall(".//testcase"):
+        skipped_element = testcase.find("skipped")
+        if skipped_element is None:
+            continue
+        raw_message = skipped_element.get("message") or skipped_element.text or ""
+        if not PREREQUISITE_SKIP_PATTERN.search(raw_message):
+            continue
+        blocked += 1
+        failures.append(
+            {
+                "Test Class": testcase.get("classname", ""),
+                "Test Name": testcase.get("name", "Unknown"),
+                "Failure Reason": clean_message(raw_message),
+                "File": None,
+                "Line": None,
+                "Stack Trace": raw_message,
+            }
+        )
+
     stats = collect_test_statistics(root)
+    stats["failures"] += blocked
+    stats["skipped"] -= blocked
 
     return failures, stats
 

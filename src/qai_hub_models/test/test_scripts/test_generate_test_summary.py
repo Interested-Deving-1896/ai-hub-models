@@ -3,9 +3,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # ---------------------------------------------------------------------
 
+from pathlib import Path
+
 from qai_hub_models.scripts.generate_test_summary import (
     extract_file_and_line,
     extract_relevant_stack_trace,
+    parse_junit_xml,
 )
 
 """
@@ -138,3 +141,31 @@ def test_extract_relevant_stack_trace_with_complex_error_message() -> None:
     # Should find the error type correctly despite multiple colons
     assert result is not None
     assert "ValueError: Invalid URL: https://example.com/path" in result
+
+
+_JUNIT_WITH_SKIPS = """<?xml version="1.0" encoding="utf-8"?>
+<testsuites><testsuite name="pytest" tests="3" failures="0" errors="0" skipped="2">
+<testcase classname="m.test_generated" name="test_compile[a]"/>
+<testcase classname="m.test_generated" name="test_link[a]">
+<skipped type="pytest.skip" message="m | w4a16 | cs_x_elite | : Prerequisite Compile job Failed: https://hub/jobs/j1/"/>
+</testcase>
+<testcase classname="m.test_generated" name="test_profile[a]">
+<skipped type="pytest.skip" message="Unsupported runtime"/>
+</testcase>
+</testsuite></testsuites>
+"""
+
+
+def test_parse_junit_xml_counts_prerequisite_skips_as_failures(
+    tmp_path: Path,
+) -> None:
+    xml_path = tmp_path / "junit.xml"
+    xml_path.write_text(_JUNIT_WITH_SKIPS)
+
+    failures, stats = parse_junit_xml(str(xml_path))
+
+    assert [f["Test Name"] for f in failures] == ["test_link[a]"]
+    assert "Prerequisite Compile job Failed" in failures[0]["Failure Reason"]
+    assert stats["failures"] == 1
+    assert stats["skipped"] == 1
+    assert stats["passed"] == 1

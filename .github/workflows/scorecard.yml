@@ -345,7 +345,7 @@ jobs:
 
           # Build test input arguments, excluding skipped tests
           TEST_ARGS=(
-            --name "Workbench Job Submission (Quantize, Compile, Profile, Inference)" --junit-xml build/all-test-results/model-tests/qaihm-model-tests-junit.xml
+            --name "Workbench Job Submission" --junit-xml build/all-test-results/model-tests/qaihm-model-tests-junit.xml
           )
           if [[ "$ACCURACY_SKIPPED" != "true" ]]; then
             TEST_ARGS+=(--name "On-Device Accuracy Results Collection" --junit-xml build/all-test-results/accuracy/qaihm-device-accuracy-tests-junit.xml)
