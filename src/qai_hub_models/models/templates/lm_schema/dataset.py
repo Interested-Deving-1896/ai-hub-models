@@ -75,6 +75,42 @@ class ImagenetteSpec(_DatasetSpecBase):
     image_size: tuple[int, int] | None = None
 
 
+class ERQASpec(_DatasetSpecBase):
+    name: Literal["ERQA"]
+    split: str | None = None
+
+
+class Where2PlaceSpec(_DatasetSpecBase):
+    name: Literal["Where2Place"]
+    split: str | None = None
+    image_size: tuple[int, int] | None = None
+
+
+class HypersimSpec(_DatasetSpecBase):
+    name: Literal["Hypersim"]
+    split: str | None = None
+    image_size: tuple[int, int] | None = None
+
+
+class LibriSpeechSpec(_DatasetSpecBase):
+    """LibriSpeech ASR audio dataset (calibration + WER/CER evaluation).
+
+    ``split`` uses the pinned ``all`` config's names (``validation.clean``,
+    ``test.clean``). ``num_samples`` takes from the head of the split.
+    ``language`` forces the transcription language. ``include_reference`` attaches
+    the reference transcript -- evaluation needs it, calibration wants pure tensors.
+
+    ``n_window`` is deliberately not a knob: the dataset reads it from the
+    processor, so a YAML value could only disagree with the model.
+    """
+
+    name: Literal["LibriSpeech"]
+    split: str | None = None
+    num_samples: int | None = None
+    language: str | None = None
+    include_reference: bool | None = None
+
+
 class GeneratedDatasetSpec(_DatasetSpecBase):
     name: Literal["GeneratedDataset"]
     model_id: str | None = None
@@ -103,7 +139,11 @@ DatasetSpec = Annotated[
         MMMUSpec,
         C4Spec,
         AOKVQASpec,
+        ERQASpec,
+        Where2PlaceSpec,
+        HypersimSpec,
         ImagenetteSpec,
+        LibriSpeechSpec,
         GeneratedDatasetSpec,
         InterleavedSpec,
     ],
