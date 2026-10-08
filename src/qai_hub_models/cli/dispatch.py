@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import runpy
+import shlex
 import sys
 from pathlib import Path
 from typing import cast
@@ -156,6 +157,21 @@ def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) ->
     forwarded
         Argv tail handed to the target's parser.
     """
+    try:
+        _run_model_script(model_id, script, forwarded)
+    except (ModuleNotFoundError, ImportError) as e:
+        model_id = str(model_id)
+        rerun = shlex.join(["qai-hub-models", script, model_id, *forwarded])
+        raise ValueError(
+            f"{type(e).__name__} encountered during {script}:\n    {e}\n\n"
+            f"You might be missing required dependencies for {model_id}. "
+            f"Try running the following:\n"
+            f"   qai-hub-models install {shlex.quote(model_id)}\n"
+            f"   {rerun}"
+        ) from e
+
+
+def _run_model_script(model_id: str | Path, script: str, forwarded: list[str]) -> None:
     if script == "install":
         install_main([str(model_id), *forwarded])
         return
