@@ -44,6 +44,8 @@ def yolo_detection_demo(
     stride_multiple: int | None = None,
     is_test: bool = False,
     default_score_threshold: float = 0.45,
+    default_iou_threshold: float = 0.7,
+    output_fn: Callable[[YoloObjectDetectionApp, Any, Any], None] | None = None,
 ) -> None:
     # Demo parameters
     parser = get_model_cli_parser(model_type)
@@ -62,7 +64,7 @@ def yolo_detection_demo(
     parser.add_argument(
         "--iou-threshold",
         type=float,
-        default=0.7,
+        default=default_iou_threshold,
         help="Intersection over Union (IoU) threshold for NonMaximumSuppression",
     )
     args = parser.parse_args([] if is_test else None)
@@ -82,10 +84,13 @@ def yolo_detection_demo(
 
     print("Model Loaded")
     image = load_image(args.image)
-    pred_images = app.predict_boxes_from_image(image, False)
-    out = Image.fromarray(pred_images[0])
-    if not is_test:
-        display_or_save_image(out, args.output_dir, "yolo_demo_output.png")
+    if output_fn is not None:
+        output_fn(app, image, args)
+    else:
+        pred_images = app.predict_boxes_from_image(image, False)
+        out = Image.fromarray(pred_images[0])
+        if not is_test:
+            display_or_save_image(out, args.output_dir, "yolo_demo_output.png")
 
 
 # Run Yolo end-to-end on a sample image.

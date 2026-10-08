@@ -331,5 +331,19 @@ RECALL_AT_1 = _register_metric(
     )
 )
 
+PLATE_STRING_ACCURACY = _register_metric(
+    MetricMetadata(
+        name="Plate String Accuracy",
+        unit="%",
+        description=(
+            "Fraction of images where plate category (characters left of the "
+            "emirate logo), plate number (characters right of the logo), and "
+            "plate state (emirate) all exactly match ground truth."
+        ),
+        range=(0.0, 100.0),
+        float_vs_device_threshold=10.0,
+    )
+)
+
 # Freeze the valid pairs set now that all metrics are registered.
 VALID_METRIC_PAIRS: frozenset[tuple[str, str]] = frozenset(_VALID_METRIC_PAIRS)
