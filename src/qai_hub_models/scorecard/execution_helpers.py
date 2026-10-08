@@ -15,6 +15,7 @@ from typing import TypeVar, cast
 import qai_hub as hub
 
 from qai_hub_models import Precision, TargetRuntime
+from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard import ScorecardCompilePath, ScorecardProfilePath
 from qai_hub_models.scorecard.device import (
     DEFAULT_QDC_DEVICE,
@@ -393,6 +394,14 @@ def get_model_test_parameterizations(
         include_unsupported_paths,
     )
 
+    if include_unsupported_paths is None:
+        include_unsupported_paths = IgnoreKnownFailuresEnvvar.get()
+    manifest = (
+        QAIHMModelManifest.from_model(model_id)
+        if (QAIHM_MODELS_ROOT / model_id / "manifest.yaml").exists()
+        else None
+    )
+
     # When the user passes QAIHM_TEST_DEVICES=default for an LLM run,
     # use DEFAULT_QDC_DEVICE instead of DEFAULT_SCORECARD_DEVICE
     llm_default_override = is_llm and EnabledDevicesEnvvar.default_set()
@@ -425,6 +434,16 @@ def get_model_test_parameterizations(
                 if (
                     isinstance(sc_path, ScorecardProfilePath)
                     and sc_path not in device.profile_paths
+                ):
+                    continue
+                # Ignoring known failures still skips device paths that hang scorecard.
+                if manifest is not None and not manifest.is_supported(
+                    precision,
+                    sc_path.runtime,
+                    consider_scorecard_failures=False,
+                    consider_user_defined_failures=not include_unsupported_paths,
+                    consider_timeouts=True,
+                    device=device.device_name,
                 ):
                     continue
                 ret.append((precision, sc_path, device))

@@ -318,6 +318,11 @@ class ScorecardDevice(HubDeviceAttributes):
     def __repr__(self) -> str:
         return self.name.lower()
 
+    @property
+    def device_name(self) -> str:
+        """The Hub device name this scorecard device runs on (matches RegisteredDevice.device_name)."""
+        return self.execution_device_name or self.reference_device_name
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ScorecardDevice):
             return False

@@ -173,17 +173,24 @@ class ResultsSpreadsheet(list):
                 if field_name == "branch":
                     return branch
                 if field_name == "known_issue":
-                    if (
-                        (meta := self._model_metadata.get(model_id))
-                        and (
-                            failure_reasons
-                            := meta.known_failure_reasons.get_disable_reasons(
-                                entry.precision, entry.runtime.runtime
-                            )
+                    if (meta := self._model_metadata.get(model_id)) and (
+                        failure_reasons
+                        := meta.known_failure_reasons.get_disable_reasons(
+                            entry.precision, entry.runtime.runtime
                         )
-                        and failure_reasons.has_failure
                     ):
-                        return failure_reasons.failure_reason
+                        # Rows only carry a chipset, so match scoped devices by chipset.
+                        row_devices = [
+                            d.device_name
+                            for d in failure_reasons.disable_devices_as_registered()
+                            if d.chipset == entry.chipset
+                        ]
+                        return (
+                            failure_reasons.failure_reason_for_device(
+                                row_devices[0] if row_devices else None
+                            )
+                            or ""
+                        )
                     return ""
 
                 val = getattr(entry, field_name)

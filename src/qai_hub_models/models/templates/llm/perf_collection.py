@@ -32,6 +32,7 @@ from qai_hub_models.scorecard.device import (
     LLM_W4FP16_COMPILE_DEVICES,
 )
 from qai_hub_models.scorecard.envvars import (
+    IgnoreKnownFailuresEnvvar,
     LLMPerfPrecisionsEnvvar,
     LLMPerfReleaseAssetsEnvvar,
     LLMPerfUpdatesEnvvar,
@@ -102,6 +103,7 @@ def load_release_assets_for_model(model_id: str) -> QAIHMModelReleaseAssets:
 
 
 def _get_devices_for_precision(
+    model_id: str,
     precision: Precision,
     override_devices: list[ScorecardDevice] | None,
 ) -> list[ScorecardDevice]:
@@ -110,11 +112,24 @@ def _get_devices_for_precision(
     If override_devices is provided (from QAIHM_TEST_DEVICES), intersects
     that list with the compile-device sets so only valid combos are returned.
     Otherwise uses LLM_COMPILE_DEVICES (+ LLM_W4FP16_COMPILE_DEVICES for w4).
+    Devices the manifest disables for this precision are dropped.
     """
+    manifest = QAIHMModelManifest.from_model(model_id)
     compile_devices: list[ScorecardDevice] = list(LLM_COMPILE_DEVICES)
     if precision == Precision.w4:
         compile_devices += LLM_W4FP16_COMPILE_DEVICES
-    compile_devices = [d for d in compile_devices if d.qdc_enabled]
+    compile_devices = [
+        d
+        for d in compile_devices
+        if d.qdc_enabled
+        and manifest.is_supported(
+            precision,
+            TargetRuntime.GENIE,
+            consider_scorecard_failures=False,
+            consider_user_defined_failures=not IgnoreKnownFailuresEnvvar.get(),
+            device=d.device_name,
+        )
+    ]
 
     if override_devices is None:
         return compile_devices
@@ -224,7 +239,9 @@ def get_llm_perf_parametrization(
     for precision in precisions:
         result.extend(
             (precision, device)
-            for device in _get_devices_for_precision(precision, override_devices)
+            for device in _get_devices_for_precision(
+                model_id, precision, override_devices
+            )
         )
     return result
 

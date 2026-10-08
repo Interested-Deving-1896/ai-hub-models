@@ -32,6 +32,7 @@ from qai_hub_models.models.templates.llm.perf_collection import (
 from qai_hub_models.scorecard import ScorecardProfilePath
 from qai_hub_models.scorecard.device import ScorecardDevice
 from qai_hub_models.scorecard.envvars import (
+    IgnoreKnownFailuresEnvvar,
     LLMPerfPrecisionsEnvvar,
     QAIRTVersionEnvvar,
     SpecialLLMPerfPrecisionSetting,
@@ -725,9 +726,26 @@ def _iter_work(
                 )
                 continue
 
+            manifest = QAIHMModelManifest.from_model(model_id)
+            runtime = (
+                TargetRuntime.GENIEX_QAIRT
+                if plugin == "qairt"
+                else TargetRuntime.GENIEX_LLAMACPP
+            )
             for precision in precisions:
                 for device_token in devices:
                     sd = _scorecard_device(device_token)
+                    if not manifest.is_supported(
+                        precision,
+                        runtime,
+                        consider_scorecard_failures=False,
+                        consider_user_defined_failures=not IgnoreKnownFailuresEnvvar.get(),
+                        device=sd.device_name,
+                    ):
+                        print(
+                            f"Skipping {model_id} [{precision}] @ {device_token}: disabled in manifest."
+                        )
+                        continue
                     if plugin == "qairt":
                         try:
                             bundle_dir, ctx_list = fetch_geniex_qairt_bundle(

@@ -852,6 +852,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         consider_scorecard_failures: bool = True,
         consider_user_defined_failures: bool = True,
         consider_timeouts: bool = True,
+        device: str | None = None,
     ) -> bool:
         """
         Return true if this precision + runtime combo is supported by this model.
@@ -859,6 +860,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
 
         If consider_scorecard_failures is False, then scorecard failures in manifest
         are ignored for the purposes of determining if a path is supported.
+        If a reason lists disable_devices, it only counts when device is one of them.
         """
         return not bool(
             self.failure_reason(
@@ -867,6 +869,7 @@ class QAIHMModelManifest(BaseQAIHMConfig):
                 consider_scorecard_failures,
                 consider_user_defined_failures,
                 consider_timeouts,
+                device,
             )
         )
 
@@ -877,8 +880,14 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         include_scorecard_failures: bool = True,
         include_user_defined_failures: bool = True,
         include_timeouts: bool = True,
+        device: str | None = None,
     ) -> str | None:
-        """Return the reason a model failed or None if the model did not fail."""
+        """
+        Return the reason a model failed or None if the model did not fail.
+
+        If a reason lists disable_devices, its issue and causes_timeout only apply
+        when device is one of them.
+        """
         if (
             not runtime.is_orchestrator_runtime
             and self.only_allow_orchestrator_runtimes
@@ -931,10 +940,11 @@ class QAIHMModelManifest(BaseQAIHMConfig):
                 or reason.scorecard_accuracy_failure
             ):
                 return scorecard_failure
-            if include_user_defined_failures and reason.issue is not None:
-                return reason.issue
-            if include_timeouts and reason.causes_timeout:
-                return reason.issue or "Timeout"
+            if reason.issue_applies_to_device(device):
+                if include_user_defined_failures and reason.issue is not None:
+                    return reason.issue
+                if include_timeouts and reason.causes_timeout:
+                    return reason.issue or "Timeout"
         return None
 
     @property

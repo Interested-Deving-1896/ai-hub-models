@@ -12,6 +12,7 @@ from pydantic import Field, model_serializer, model_validator
 
 from qai_hub_models import Precision, TargetRuntime
 from qai_hub_models.utils.base_config import BaseQAIHMConfig
+from qai_hub_models.utils.device import RegisteredDevice
 
 
 class ModelDisableReasons(BaseQAIHMConfig):
@@ -45,6 +46,11 @@ class ModelDisableReasons(BaseQAIHMConfig):
     # This requires that disable_issue is set above.
     causes_timeout: bool = False
 
+    # If set, issue and causes_timeout only apply to these Hub device names
+    # (e.g. "Samsung Galaxy S25 (Family)") instead of every device.
+    # This requires that issue is set above.
+    disable_devices: list[str] = Field(default_factory=list)
+
     @model_validator(mode="after")
     def check_fields(self) -> ModelDisableReasons:
         if self.causes_timeout and not self.issue:
@@ -58,6 +64,16 @@ class ModelDisableReasons(BaseQAIHMConfig):
                 raise ValueError(
                     f"'disable_issue' must include a full link to an issue or JIRA (expected format: `{issue_link}1234` )"
                 )
+        if self.disable_devices and not self.issue:
+            raise ValueError(
+                "If disable_devices is set, issue must also be provided for the same precision + runtime pair."
+            )
+        for device_name in self.disable_devices:
+            if device_name not in RegisteredDevice._registry:
+                raise ValueError(
+                    f"Unknown device '{device_name}' in disable_devices. "
+                    f"Use a registered device name, e.g. '{RegisteredDevice.get_default().device_name}'."
+                )
         return self
 
     @property
@@ -68,10 +84,23 @@ class ModelDisableReasons(BaseQAIHMConfig):
             or self.issue is not None
         )
 
-    @property
-    def failure_reason(self) -> str:
-        assert self.has_failure
-        return self.scorecard_failure or self.scorecard_accuracy_failure or self.issue  # type: ignore[return-value]
+    def issue_applies_to_device(self, device: str | None) -> bool:
+        """Whether issue / causes_timeout apply to the device (None = no specific device)."""
+        return not self.disable_devices or device in self.disable_devices
+
+    def disable_devices_as_registered(self) -> list[RegisteredDevice]:
+        return [RegisteredDevice.get(name) for name in self.disable_devices]
+
+    def failure_reason_for_device(self, device: str | None = None) -> str | None:
+        """
+        The reason this path fails for the device, or None if it does not.
+        With device=None, an issue scoped by disable_devices is not reported.
+        """
+        if reason := self.scorecard_failure or self.scorecard_accuracy_failure:
+            return reason
+        if self.issue and self.issue_applies_to_device(device):
+            return self.issue
+        return None
 
 
 class ModelDisableReasonsMapping(BaseQAIHMConfig):
