@@ -90,26 +90,6 @@ def _extract_runtime_and_precision_options(
 ) -> dict[str, Any]:
     manifest_dict = manifest_dict or {}
 
-    # All runtime + precision pairs that are enabled for testing and are compatibile with this model.
-    # NOTE:
-    #   Certain supported pairs may be excluded from this list if they are not enabled for testing.
-    #   For example, models that allow JIT (on-device) compile will not test AOT runtimes; we assume that if it works on JIT it will work on AOT.
-    test_enabled_precision_runtimes: dict[str, list[str]] = {
-        str(precision): [rt.name for rt in runtimes]
-        for precision, runtimes in manifest.get_supported_paths_for_testing().items()
-    }
-
-    # All runtime + precision pairs that are enabled for testing and have no known failure reasons set in manifest.yaml
-    # NOTE:
-    #   Certain supported pairs may be excluded from this list if they are not enabled for testing.
-    #   For example, models that allow JIT (on-device) compile will not test AOT runtimes; we assume that if it works on JIT it will work on AOT.
-    test_passing_precision_runtimes: dict[str, list[str]] = {
-        str(precision): [rt.name for rt in runtimes]
-        for precision, runtimes in manifest.get_supported_paths_for_testing(
-            only_include_passing=True
-        ).items()
-    }
-
     # All runtime + precision pairs that are supported for this model, for use in the export script.
     def _supported_runtimes(precision: Precision) -> list[str]:
         rts = [r for r in TargetRuntime if manifest.is_supported(precision, r)]
@@ -127,8 +107,6 @@ def _extract_runtime_and_precision_options(
 
     manifest_dict["default_runtime"] = manifest.default_runtime.name
     manifest_dict["supported_precision_runtimes"] = supported_precision_runtimes
-    manifest_dict["test_enabled_precision_runtimes"] = test_enabled_precision_runtimes
-    manifest_dict["test_passing_precision_runtimes"] = test_passing_precision_runtimes
     manifest_dict["default_aihub_job_precision"] = str(manifest.default_precision)
     manifest_dict["can_use_quantize_job"] = manifest.can_use_quantize_job
     manifest_dict["supports_quantization"] = manifest.supports_quantization

@@ -42,7 +42,6 @@ from qai_hub_models.scorecard.static.model_config import ScorecardModelConfig
 from qai_hub_models.scorecard.static.model_exec import (
     get_static_model_test_parameterizations,
 )
-from qai_hub_models.scripts.run_codegen import _extract_runtime_and_precision_options
 from qai_hub_models.utils.device import FormFactor
 
 # Scorecard limits
@@ -65,7 +64,6 @@ def _extract_codegen_test_options(
 ]:
     sc = QAIHMModelScorecardConfig.from_model(model_id)
     manifest = sc.manifest
-    options = _extract_runtime_and_precision_options(manifest)
     return (
         sc.skip_hub_tests_and_scorecard or sc.skip_scorecard,
         (
@@ -74,24 +72,10 @@ def _extract_codegen_test_options(
         )
         if manifest.is_collection_model
         else None,
-        {
-            Precision.parse(precision_name): [
-                TargetRuntime(rt_name.lower()) for rt_name in rt_names
-            ]
-            for precision_name, rt_names in options[
-                "test_enabled_precision_runtimes"
-            ].items()
-        },
-        {
-            Precision.parse(precision_name): [
-                TargetRuntime(rt_name.lower()) for rt_name in rt_names
-            ]
-            for precision_name, rt_names in options[
-                "test_passing_precision_runtimes"
-            ].items()
-        },
+        manifest.get_supported_paths_for_testing(),
+        manifest.get_supported_paths_for_testing(only_include_passing=True),
         ScorecardDevice.get(manifest.default_device),
-        options["can_use_quantize_job"],
+        manifest.can_use_quantize_job,
         manifest.requires_aot_prepare,
     )
 
