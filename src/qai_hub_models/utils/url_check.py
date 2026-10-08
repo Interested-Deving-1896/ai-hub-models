@@ -30,6 +30,9 @@ URL_VALIDATION_SKIPLIST = {
     "https://drive.google.com/file/d/1ICTxogjS9Bc2O3K1P9ZauQYVoruT13n5/view?pli=1",
     # indus_1b research paper - intermittent 403
     "https://www.techmahindra.com/makers-lab/indus-project/",
+    # llama research papers - blocked by the corporate firewall in CI
+    "https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_1/",
+    "https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_2/",
 }
 
 

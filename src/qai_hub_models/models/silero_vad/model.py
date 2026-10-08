@@ -5,14 +5,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from silero_vad import load_silero_vad
 from torch import nn
+from torch.nn import functional as F
 from typing_extensions import Self
 
 from qai_hub_models import Precision
 from qai_hub_models.utils.base_dataset import BaseDataset
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import InputSpec, IoType, OutputSpec, TensorSpec
 
 MODEL_ID = __name__.split(".")[-2]
@@ -26,6 +29,45 @@ STATE_SHAPE = (
     2,
     128,
 )  # LSTM state: (h_and_c, hidden_dim) — batch dim is dim 0 in get_input_spec
+
+
+class _NativeSTFT(nn.Module):
+    """Eager copy of Silero's scripted STFT magnitude transform."""
+
+    def __init__(self, jit_stft: Any) -> None:
+        super().__init__()
+        self.pad = tuple(jit_stft.padding.padding)
+        self.hop_length = int(jit_stft.hop_length)
+        self.cutoff = int(jit_stft.filter_length) // 2 + 1
+        self.forward_basis_buffer: torch.Tensor
+        self.register_buffer(
+            "forward_basis_buffer",
+            jit_stft.forward_basis_buffer.detach().clone(),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = F.pad(x, self.pad, mode="reflect").unsqueeze(1)
+        transform = F.conv1d(x, self.forward_basis_buffer, stride=self.hop_length)
+        real = transform[:, : self.cutoff]
+        imag = transform[:, self.cutoff :]
+        return torch.sqrt(real**2 + imag**2)
+
+
+def _native_encoder(jit_encoder: Any) -> nn.Sequential:
+    blocks: list[nn.Module] = []
+    for _, block in jit_encoder.named_children():
+        jit_conv: Any = block.reparam_conv
+        conv = nn.Conv1d(
+            jit_conv.in_channels,
+            jit_conv.out_channels,
+            kernel_size=tuple(jit_conv.kernel_size),
+            stride=tuple(jit_conv.stride),
+            padding=tuple(jit_conv.padding),
+        )
+        conv.weight = nn.Parameter(jit_conv.weight.detach().clone())
+        conv.bias = nn.Parameter(jit_conv.bias.detach().clone())
+        blocks.extend([conv, nn.ReLU()])
+    return nn.Sequential(*blocks)
 
 
 class _SileroInnerNative(nn.Module):
@@ -52,9 +94,9 @@ class _SileroInnerNative(nn.Module):
 
     def __init__(self, jit_inner: torch.jit.RecursiveScriptModule) -> None:
         super().__init__()
-        # STFT and encoder are conv-based — no LSTM op issue, keep as JIT.
-        self.stft = jit_inner.stft
-        self.encoder = jit_inner.encoder
+        # JIT submodules hold plain tensors, which torch.export rejects; copy into native modules.
+        self.stft = _NativeSTFT(jit_inner.stft)
+        self.encoder = _native_encoder(jit_inner.encoder)
 
         # Replace torch.lstm_cell with nn.LSTMCell (module form).
         # nn.LSTMCell traces to raw gate ops; torch.lstm_cell traces to
@@ -148,7 +190,7 @@ class SileroVAD(BaseModel):
     """
 
     def __init__(self, inner: _SileroInnerNative) -> None:
-        super().__init__(serialization_settings=SerializationSettings(use_pt2=False))
+        super().__init__()
         self.inner = inner
 
     def forward(

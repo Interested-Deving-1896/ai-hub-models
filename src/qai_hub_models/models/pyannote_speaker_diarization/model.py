@@ -13,11 +13,12 @@ import torch
 import torch.nn.functional as F
 from asteroid_filterbanks import Encoder, ParamSincFB
 from einops import rearrange
-from pyannote.audio import Pipeline
-from pyannote.audio.core.task import Problem, Resolution, Specifications
 from torch import nn
 
 from qai_hub_models import Precision
+from qai_hub_models.models.pyannote_speaker_diarization._torchaudio_compat import (
+    torchaudio_compat,
+)
 from qai_hub_models.models.pyannote_speaker_diarization.dataset import (
     AMIDiarizationEvalDataset,
     AMIEmbeddingDataset,
@@ -27,12 +28,16 @@ from qai_hub_models.models.pyannote_speaker_diarization.evaluator import (
 )
 from qai_hub_models.utils.base_collection_model import WorkbenchModelCollection
 from qai_hub_models.utils.base_dataset import BaseDataset
-from qai_hub_models.utils.base_model import BaseModel, SerializationSettings
+from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.input_spec import InputSpec, OutputSpec, TensorSpec
 from qai_hub_models.utils.model_adapters import (
     Conv2dFromConv1d,
     InstanceNorm2dFromInstanceNorm1d,
 )
+
+with torchaudio_compat():
+    from pyannote.audio import Pipeline
+    from pyannote.audio.core.task import Problem, Resolution, Specifications
 
 MODEL_ID = __name__.split(".")[-2]
 
@@ -122,7 +127,7 @@ class PyannoteSegmentation(BaseModel):
     """Pyannote segmentation model: waveforms (B,1,80000) → powerset output (B,293,7)."""
 
     def __init__(self, orig_model: nn.Module) -> None:
-        super().__init__(serialization_settings=SerializationSettings(use_pt2=False))
+        super().__init__()
         orig: Any = orig_model
         self.sincnet = _QCSincNet(orig.sincnet)
         self.lstm: nn.LSTM = orig.lstm
@@ -174,7 +179,7 @@ class PyannoteEmbedding(BaseModel):
     """Pyannote speaker embedding model: fbank (B,T,80) → embedding (B,256)."""
 
     def __init__(self, orig_model: nn.Module) -> None:
-        super().__init__(serialization_settings=SerializationSettings(use_pt2=False))
+        super().__init__()
         resnet: Any = orig_model.resnet
         self.conv1: nn.Conv2d = resnet.conv1
         self.bn1: nn.BatchNorm2d = resnet.bn1
@@ -290,9 +295,10 @@ def load_pyannote_pipeline() -> Pipeline:
             Resolution,
         ]
     )
-    pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
-    )
+    with torchaudio_compat():
+        pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+        )
     if pipeline is None:
         raise RuntimeError(
             "Failed to load pyannote/speaker-diarization-3.1. "

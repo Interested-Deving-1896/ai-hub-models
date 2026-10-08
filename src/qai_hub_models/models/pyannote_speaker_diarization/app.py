@@ -15,11 +15,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from einops import rearrange
-from pyannote.audio import Audio, Pipeline
-from pyannote.audio.core.io import AudioFile
 from pyannote.core import Annotation, SlidingWindow, SlidingWindowFeature
 
 from qai_hub_models.models.protocols import ExecutableModelProtocol
+from qai_hub_models.models.pyannote_speaker_diarization._torchaudio_compat import (
+    torchaudio_compat,
+)
 from qai_hub_models.models.pyannote_speaker_diarization.dataset import (
     _apply_speaker_masks,
     decode_path,
@@ -32,6 +33,10 @@ from qai_hub_models.utils.base_app import (
     CollectionModelEvalGenerator,
 )
 from qai_hub_models.utils.inference import AsyncOnDeviceModel
+
+with torchaudio_compat():
+    from pyannote.audio import Audio, Pipeline
+    from pyannote.audio.core.io import AudioFile
 
 
 class PyannoteSpeakerDiarizationApp(CollectionAppEvaluateProtocol):
