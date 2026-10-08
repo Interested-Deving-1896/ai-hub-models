@@ -11,21 +11,19 @@ import argparse
 import warnings
 
 from qai_hub_models import Precision, TargetRuntime
-from qai_hub_models.models.vjepa2 import MODEL_ID, Model
+from qai_hub_models.models.detectron2_panoptic_seg import MODEL_ID, Model
 from qai_hub_models.utils.args import evaluate_parser
-from qai_hub_models.utils.asset_loaders import check_unpublished_model_warning
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
 from qai_hub_models.utils.export.context import resolve_recipe_dir
 
 SUPPORTED_PRECISION_RUNTIMES: dict[Precision, list[TargetRuntime]] = {
     Precision.float: [
-        TargetRuntime.TFLITE,
         TargetRuntime.QNN_DLC,
         TargetRuntime.QNN_CONTEXT_BINARY,
         TargetRuntime.ONNX,
         TargetRuntime.PRECOMPILED_QNN_ONNX,
     ],
-    Precision.w8a16: [
+    Precision.mixed: [
         TargetRuntime.QNN_DLC,
         TargetRuntime.QNN_CONTEXT_BINARY,
         TargetRuntime.ONNX,
@@ -55,13 +53,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(args: argparse.Namespace | None = None) -> None:
     if args is None:
-        # The CLI dispatcher prompts before passing args, so only prompt here.
-        if not check_unpublished_model_warning():
-            return
         warnings.warn(
-            "Running `python -m qai_hub_models.models.vjepa2.evaluate` is "
+            "Running `python -m qai_hub_models.models.detectron2_panoptic_seg.evaluate` is "
             "deprecated and will be removed in a future release. "
-            "Use `qai-hub-models evaluate vjepa2` instead.",
+            "Use `qai-hub-models evaluate detectron2_panoptic_seg` instead.",
             DeprecationWarning,
             stacklevel=2,
         )

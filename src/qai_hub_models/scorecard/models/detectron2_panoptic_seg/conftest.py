@@ -10,7 +10,7 @@ import warnings
 import pytest
 import torch.jit._trace
 
-from qai_hub_models.models.vjepa2 import Model
+from qai_hub_models.models.detectron2_panoptic_seg import Model
 from qai_hub_models.utils.test_helpers import make_cached_from_pretrained_fixture
 
 

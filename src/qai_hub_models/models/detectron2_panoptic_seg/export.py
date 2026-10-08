@@ -14,7 +14,7 @@ def main(args: argparse.Namespace | None = None) -> None:
     args_str = f" {' '.join(sys.argv[1:])}" if len(sys.argv) > 1 else ""
     print(
         "\n-------------------------------------\n\n"
-        f"Please use `qai-hub-models export lpdm{args_str}`\n\n"
+        f"Please use `qai-hub-models export detectron2_panoptic_seg{args_str}`\n\n"
         "Use of `python -m` to invoke export is no longer supported.\n\n"
         "-------------------------------------\n\n"
         "This message will be removed in a future release."

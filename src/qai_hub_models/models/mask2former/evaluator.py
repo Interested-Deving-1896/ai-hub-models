@@ -7,11 +7,18 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from panopticapi.evaluation import PQStat
-from panopticapi.utils import rgb2id
 
+from qai_hub_models.datasets.coco import CocoPanopticSegmentationDataset
 from qai_hub_models.models.mask2former.app import Mask2FormerApp as app
-from qai_hub_models.models.mask2former.dataset import CocoPanopticSegmentationDataset
+from qai_hub_models.models.templates.panoptic_seg.external_repos.panopticapi.panopticapi.evaluation import (
+    PQStat,
+)
+from qai_hub_models.models.templates.panoptic_seg.external_repos.panopticapi.panopticapi.utils import (
+    rgb2id,
+)
+from qai_hub_models.models.templates.panoptic_seg.pq_metric import (
+    pq_compute_single_image,
+)
 from qai_hub_models.utils.base_evaluator import BaseEvaluator
 from qai_hub_models.utils.metrics import (
     PANOPTIC_QUALITY,
@@ -61,7 +68,8 @@ class PanopticSegmentationEvaluator(BaseEvaluator):
     def add_batch(
         self,
         output: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-        gt_data: tuple[torch.Tensor, torch.Tensor],
+        gt_data: tuple[torch.Tensor, torch.Tensor]
+        | tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
     ) -> None:
         """Process model predictions and ground truth for panoptic segmentation evaluation.
 
@@ -70,13 +78,15 @@ class PanopticSegmentationEvaluator(BaseEvaluator):
         output
             Model predictions with class logits, class labels, and mask logits.
         gt_data
-            Ground truth panoptic masks and image IDs.
+            Ground truth panoptic masks and image IDs, optionally followed by
+            letterbox scale/pad metadata (unused here; CocoPanopticSegmentationDataset
+            may return either a 2-tuple or a 4-tuple).
         """
         pred_scores, pred_labels, pred_masks_logits = output
         batch_results = app.post_process_panoptic_segmentation(
             pred_scores, pred_labels, pred_masks_logits
         )
-        batched_gt_masks, batched_img_ids = gt_data
+        batched_gt_masks, batched_img_ids = gt_data[0], gt_data[1]
 
         for i in range(batched_gt_masks.shape[0]):
             result = batch_results[i]
@@ -146,115 +156,14 @@ class PanopticSegmentationEvaluator(BaseEvaluator):
         PQStat
             Updated panoptic quality statistics for the image.
         """
-        pq_stat = self.pq_compute_single_image(
-            gt_mask, pred_mask, gt_segments_info, pred_segments_info
+        pq_stat = pq_compute_single_image(
+            gt_mask,
+            pred_mask,
+            gt_segments_info,
+            pred_segments_info,
+            label_divisor=self.label_divisor,
         )
         self.pq_stat += pq_stat
-
-    def pq_compute_single_image(
-        self,
-        gt_mask: np.ndarray,
-        pred_mask: np.ndarray,
-        gt_segments_info: list[dict],
-        pred_segments_info: list[dict],
-        ignore_label: int = 0,
-    ) -> PQStat:
-        """Compute panoptic quality statistics for a single image.
-
-        Parameters
-        ----------
-        gt_mask
-            Ground truth panoptic mask of shape (H, W) with panoptic IDs or 0 for ignored regions.
-        pred_mask
-            Predicted panoptic mask of shape (H, W) with panoptic IDs (category_id * label_divisor + instance_id).
-        gt_segments_info
-            Ground truth segment info with id, category_id, area, iscrowd (0 or 1).
-        pred_segments_info
-            Predicted segment info with id, category_id, area, iscrowd (0), score.
-        ignore_label
-            Value for ignored regions (default: 0).
-
-        Returns
-        -------
-        PQStat
-            Statistics with true positives, false positives, false negatives, and IoU for matched segments.
-        """
-        pq_stat = PQStat()
-        VOID = ignore_label
-        OFFSET = self.label_divisor * self.label_divisor
-
-        # Use provided segment info directly
-        gt_segms = {el["id"]: el for el in gt_segments_info}
-        pred_segms = {el["id"]: el for el in pred_segments_info}
-
-        # Update areas from masks
-        for seg_id, count in zip(
-            *np.unique(pred_mask, return_counts=True), strict=False
-        ):
-            if seg_id in pred_segms and seg_id != VOID:
-                pred_segms[seg_id]["area"] = int(count)
-        for seg_id, count in zip(*np.unique(gt_mask, return_counts=True), strict=False):
-            if seg_id in gt_segms and seg_id != VOID:
-                gt_segms[seg_id]["area"] = int(count)
-
-        # Confusion matrix calculation
-        pan_gt_pred = gt_mask.astype(np.uint64) * OFFSET + pred_mask.astype(np.uint64)
-        gt_pred_map = {}
-        labels, labels_cnt = np.unique(pan_gt_pred, return_counts=True)
-        for label, intersection in zip(labels, labels_cnt, strict=False):
-            gt_id = label // OFFSET
-            pred_id = label % OFFSET
-            if gt_id in gt_segms and pred_id in pred_segms:
-                gt_pred_map[(gt_id, pred_id)] = intersection
-
-        # Count all matched pairs
-        gt_matched = set()
-        pred_matched = set()
-        for (gt_id, pred_id), intersection in gt_pred_map.items():
-            if gt_id not in gt_segms or pred_id not in pred_segms:
-                continue
-            if gt_segms[gt_id]["iscrowd"] == 1:
-                continue
-            # Extract category_id from panoptic_id (using label_divisor)
-            gt_cat_id = gt_segms[gt_id]["category_id"]
-            pred_cat_id = pred_segms[pred_id]["category_id"]
-            if gt_cat_id == pred_cat_id:
-                union = (
-                    gt_segms[gt_id]["area"]
-                    + pred_segms[pred_id]["area"]
-                    - intersection
-                    - gt_pred_map.get((VOID, pred_id), 0)
-                )
-                iou = intersection / union if union > 0 else 0
-                if iou > 0.5:
-                    pq_stat[gt_cat_id].tp += 1
-                    pq_stat[gt_cat_id].iou += iou
-                    gt_matched.add(gt_id)
-                    pred_matched.add(pred_id)
-
-        # Count false negatives
-        for gt_id, gt_info in gt_segms.items():
-            if gt_id in gt_matched or gt_info["iscrowd"] == 1 or gt_id == VOID:
-                continue
-            pq_stat[gt_info["category_id"]].fn += 1
-
-        # Count false positives
-        crowd_labels_dict = {
-            gt_info["category_id"]: gt_id
-            for gt_id, gt_info in gt_segms.items()
-            if gt_info["iscrowd"] == 1
-        }
-        for pred_id, pred_info in pred_segms.items():
-            if pred_id in pred_matched or pred_id == VOID:
-                continue
-            intersection = gt_pred_map.get((VOID, pred_id), 0)
-            if pred_info["category_id"] in crowd_labels_dict:
-                intersection += gt_pred_map.get(
-                    (crowd_labels_dict[pred_info["category_id"]], pred_id), 0
-                )
-            if intersection / pred_info["area"] <= 0.5:
-                pq_stat[pred_info["category_id"]].fp += 1
-
         return pq_stat
 
     def compute_pq(self) -> dict[str, dict]:

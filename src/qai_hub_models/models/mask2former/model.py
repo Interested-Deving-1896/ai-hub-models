@@ -21,7 +21,7 @@ from qai_hub_models import (
     Precision,
     TargetRuntime,
 )
-from qai_hub_models.models.mask2former.dataset import CocoPanopticSegmentationDataset
+from qai_hub_models.datasets.coco import CocoPanopticSegmentationDataset
 from qai_hub_models.models.mask2former.evaluator import (
     PanopticSegmentationEvaluator,
 )

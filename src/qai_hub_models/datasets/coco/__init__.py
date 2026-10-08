@@ -17,6 +17,9 @@ from qai_hub_models.datasets.coco.coco_keypoints import (
     CocoKeypointsDataset,
 )
 from qai_hub_models.datasets.coco.coco_owl import CocoOwlDataset
+from qai_hub_models.datasets.coco.coco_panoptic_seg import (
+    CocoPanopticSegmentationDataset,
+)
 from qai_hub_models.datasets.coco.coco_person_keypoints import (
     COCO_PERSON_DETECTION_RESULTS,
     CocoDetectorKeypointsDataset,
@@ -43,5 +46,6 @@ __all__ = [
     "CocoDetectorKeypointsDataset",
     "CocoKeypointsDataset",
     "CocoOwlDataset",
+    "CocoPanopticSegmentationDataset",
     "CocoSegDataset",
 ]

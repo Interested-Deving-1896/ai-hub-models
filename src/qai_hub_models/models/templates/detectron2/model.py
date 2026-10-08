@@ -11,8 +11,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.layers import ROIAlign
 from detectron2.model_zoo import get_checkpoint_url, get_config_file
-from detectron2.modeling import build_model
-from typing_extensions import Self
+from detectron2.modeling import GeneralizedRCNN, build_model
 
 from qai_hub_models.models.templates.detectron2.model_patches import ROIAlign_forward
 from qai_hub_models.utils.asset_loaders import (
@@ -29,8 +28,16 @@ IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
 
 
 class Detectron2(BaseModel):
-    @classmethod
-    def from_pretrained(cls, config: str) -> Self:
+    @staticmethod
+    def load_pretrained_model(config: str) -> GeneralizedRCNN:
+        """
+        Build and checkpoint-load the detectron2 GeneralizedRCNN for `config`.
+
+        Exposed as a standalone step (rather than folded into
+        from_pretrained) so multi-component models can build this once and
+        share the same GeneralizedRCNN between components, instead of each
+        component loading its own independent copy of the checkpoint.
+        """
         # Make Functional in QNN
         ROIAlign.forward = ROIAlign_forward
 
@@ -53,4 +60,4 @@ class Detectron2(BaseModel):
             ).fetch()
         )
         checkpointer.load(weight)
-        return cls(model)
+        return model

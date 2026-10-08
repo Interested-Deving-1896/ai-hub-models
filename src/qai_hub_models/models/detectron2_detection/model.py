@@ -51,6 +51,10 @@ class Detectron2ProposalGenerator(Detectron2):
         self.backbone = model.backbone
         self.proposal_generator = model.proposal_generator
 
+    @classmethod
+    def from_pretrained(cls, config: str = DEFAULT_CONFIG) -> Self:
+        return cls(cls.load_pretrained_model(config))
+
     def forward(
         self, image: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -133,6 +137,10 @@ class Detectron2ROIHead(Detectron2):
         self.model = model
         self.roi_heads = model.roi_heads
         self.box_predictor = model.roi_heads.box_predictor
+
+    @classmethod
+    def from_pretrained(cls, config: str = DEFAULT_CONFIG) -> Self:
+        return cls(cls.load_pretrained_model(config))
 
     def forward(
         self, features: torch.Tensor, proposals_boxes: torch.Tensor
