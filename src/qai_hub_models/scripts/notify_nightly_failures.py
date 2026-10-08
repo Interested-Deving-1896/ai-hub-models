@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +41,11 @@ from jinja2 import Environment, FileSystemLoader
 
 # Must match the matrix job display name defined in .github/workflows/nightly.yml
 _WORKBENCH_JOB_NAME_FRAGMENT = "Verify Model Tests"
+
+# Must match the --name / "### {name} Failures" sections written by
+# generate_test_summary in .github/workflows/nightly.yml
+_WORKBENCH_LANE_FRAGMENT = "Verify Workbench Jobs"
+_LANE_FAILURES_HEADING = re.compile(r"### (?!Workflow Failures).+ Failures\n")
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 
@@ -57,6 +63,20 @@ def clip_test_summary(
         return summary
     footer = "\n\n_…summary truncated; see full details in the workflow run._"
     return summary[: budget - len(footer)] + footer
+
+
+def scope_test_summary(summary: str | None, workbench: bool) -> str | None:
+    """Keep only the per-lane failure sections that belong to this issue."""
+    if summary is None:
+        return None
+    head, *sections = re.split(r"(?m)^(?=### )", summary)
+    kept = [
+        s
+        for s in sections
+        if not _LANE_FAILURES_HEADING.match(s)
+        or (_WORKBENCH_LANE_FRAGMENT in s.split("\n", 1)[0]) == workbench
+    ]
+    return head + "".join(kept)
 
 
 def load_failed_jobs_json(json_path: str | None) -> dict[str, str]:
@@ -139,11 +159,10 @@ def main() -> None:
         args.workflow_failures, args.workflow_failure_urls
     )
 
-    # Load test summary if available (shared by both issues)
     test_summary = None
     summary_path = Path("build/nightly-test-results/summary.md")
     if summary_path.exists():
-        test_summary = clip_test_summary(summary_path.read_text())
+        test_summary = summary_path.read_text()
 
     # Workbench issue — only file if there's actual evidence of workbench
     # job failures (not just the verify job crashing due to infra issues).
@@ -155,7 +174,9 @@ def main() -> None:
             today=today,
             failures=workbench_failures,
             failed_aihub_jobs=failed_aihub_jobs or None,
-            test_summary=test_summary,
+            test_summary=clip_test_summary(
+                scope_test_summary(test_summary, workbench=True)
+            ),
             run_url=args.run_url,
             repository=args.repository,
             ref_name=args.ref_name,
@@ -166,6 +187,7 @@ def main() -> None:
             "; ".join(f["name"] for f in workbench_failures)
         )
         print(f"Wrote workbench issue to {output_dir}")
+        test_summary = scope_test_summary(test_summary, workbench=False)
     elif workbench_failures:
         # The verify job failed but no workbench jobs were actually affected
         # (e.g. GitHub infra outage). Reclassify as general failures.
@@ -178,7 +200,7 @@ def main() -> None:
             "general_issue.j2",
             today=today,
             failures=general_failures,
-            test_summary=test_summary,
+            test_summary=clip_test_summary(test_summary),
             run_url=args.run_url,
             repository=args.repository,
             ref_name=args.ref_name,

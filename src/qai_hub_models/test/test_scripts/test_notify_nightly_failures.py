@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from qai_hub_models.scripts.notify_nightly_failures import (
     categorize_failures,
     load_failed_jobs_json,
@@ -122,3 +124,45 @@ def test_issue_job_lists_scope_breeze_comments(tmp_path: Path) -> None:
     out = _run_main(tmp_path / "no_aihub", tmp_path / "missing.json")
     assert not (out / "workbench_jobs.txt").exists()
     assert (out / "general_jobs.txt").read_text() == f"{_WEBSITE}; {_VERIFY}"
+
+
+def test_issue_summaries_show_only_own_failure_traces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stack trace on the wrong issue sends triagers to the wrong place.
+
+    On 2026-10-07 the centernet quantize-timeout trace appeared on the general
+    issue too, and the triage discussion landed there instead of the workbench one.
+    """
+    summary = (
+        "## Nightly Test Summary\n\n"
+        "### Workflow Failures\n\nWORKFLOW_TABLE\n\n"
+        "### Test Results\n\nRESULTS_TABLE\n\n"
+        "### py3.10 Verify Workbench Jobs Failures\n\nWORKBENCH_TRACE\n"
+        "#### Stack Traces\nWORKBENCH_STACK\n"
+        "### py3.10 Model Tests Failures\n\nMODEL_TRACE\n"
+    )
+    summary_dir = tmp_path / "build" / "nightly-test-results"
+    summary_dir.mkdir(parents=True)
+    (summary_dir / "summary.md").write_text(summary)
+    monkeypatch.chdir(tmp_path)
+
+    aihub = tmp_path / "failed.json"
+    aihub.write_text(json.dumps({"quantize/centernet_3d": "https://x/jobs/j1"}))
+    out = _run_main(tmp_path, aihub)
+    workbench = (out / "workbench_issue.md").read_text()
+    general = (out / "general_issue.md").read_text()
+    for body in (workbench, general):
+        assert "WORKFLOW_TABLE" in body
+        assert "RESULTS_TABLE" in body
+    assert "WORKBENCH_STACK" in workbench
+    assert "MODEL_TRACE" not in workbench
+    assert "MODEL_TRACE" in general
+    assert "WORKBENCH_TRACE" not in general
+
+    # With no workbench issue filed, the general issue is the only place the
+    # verify failure is reported, so it must keep that trace.
+    out = _run_main(tmp_path / "no_aihub", tmp_path / "missing.json")
+    general = (out / "general_issue.md").read_text()
+    assert "WORKBENCH_STACK" in general
+    assert "MODEL_TRACE" in general
