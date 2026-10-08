@@ -280,6 +280,55 @@ def test_get_asset_url_no_match(mock_assets: MagicMock) -> None:
     # The list-all hint carries the browsed version so it stays pinned.
     assert "fetch mobilenet_v2 -v 0.52.0 -i" in msg
     assert "Precision" not in msg  # no table
+    assert "find" not in msg
+    assert "sdk_versions" not in msg
+
+
+@patch("qai_hub_models_cli.fetch.get_platform", _platform)
+@patch("qai_hub_models_cli.fetch.get_model_release_assets")
+def test_get_asset_url_no_match_sdk_version_suggests_find(
+    mock_assets: MagicMock,
+) -> None:
+    """An SDK filter can match only older releases, so point the user at `find`.
+
+    The user's other filters must carry over, or `find` reports a release whose
+    match `fetch` would still reject.
+    """
+    mock_assets.return_value = _assets((_FLOAT, _TFLITE, None))
+    with pytest.raises(AssetNotFoundError) as exc:
+        get_asset_url(
+            model="mobilenet_v2",
+            runtime="tflite",
+            precision=None,
+            version=_VERSION,
+            sdk_versions={"qairt": "2.45"},
+        )
+    msg = str(exc.value)
+    assert "sdk_versions={'qairt': '2.45'}" in msg
+    assert "find mobilenet_v2 -r 'tflite' -s 'qairt=2.45'" in msg
+    # The list-all hint must stay pinned to the browsed release alongside `find`.
+    assert (
+        "fetch mobilenet_v2 -v 0.52.0 -i` to see all available assets in your chosen release"
+        in msg
+    )
+
+
+@patch("qai_hub_models_cli.fetch.get_platform", _platform)
+@patch("qai_hub_models_cli.fetch.get_model_release_assets")
+def test_get_asset_url_no_match_multiple_sdk_versions_single_flag(
+    mock_assets: MagicMock,
+) -> None:
+    """A repeated -s overwrites the previous one, so the hint must use a single -s."""
+    mock_assets.return_value = _assets((_FLOAT, _TFLITE, None))
+    with pytest.raises(AssetNotFoundError) as exc:
+        get_asset_url(
+            model="mobilenet_v2",
+            runtime=None,
+            precision=None,
+            version=_VERSION,
+            sdk_versions={"qairt": "2.45", "litert": "1.4"},
+        )
+    assert "find mobilenet_v2 -s 'qairt=2.45' 'litert=1.4'" in str(exc.value)
 
 
 @patch("qai_hub_models_cli.fetch.get_platform", _platform)

@@ -203,10 +203,35 @@ def get_asset_url(
 
         # Nothing matched: the user's filters don't correspond to any asset.
         if not matches.assets:
+            sdk_msg = f", sdk_versions={sdk_versions!r}" if sdk_versions else ""
+            message = (
+                f"No asset found in v{version} for model={model!r} with runtime={runtime!r}, "
+                f"precision={precision!r}, chipset={chipset!r}, device={device!r}{sdk_msg}.\n"
+            )
+            if not sdk_versions:
+                raise AssetNotFoundError(message + show_all)
+            sdk_values = " ".join(f"'{t}={v}'" for t, v in sdk_versions.items())
+            # Carry the user's other filters so `find` doesn't match an asset
+            # they would still be unable to fetch.
+            set_filters = [
+                f"{flag} '{value}'"
+                for flag, value in (
+                    ("-r", runtime),
+                    ("-p", precision),
+                    ("-c", chipset),
+                    ("-d", device),
+                )
+                if isinstance(value, str)
+            ]
+            find_cmd = sample_command("find", model, *set_filters, f"-s {sdk_values}")
+            fetch_cmd = sample_command("fetch", model, version_flag(version), "-i")
             raise AssetNotFoundError(
-                f"No asset found for model={model!r} with runtime={runtime!r}, "
-                f"precision={precision!r}, chipset={chipset!r}, device={device!r}.\n"
-                f"{show_all}"
+                f"{message}\n"
+                f"No asset in this release matches {sdk_values}; an older release "
+                "may have one.\n\n"
+                "Run:\n"
+                f"  `{fetch_cmd}` to see all available assets in your chosen release.\n"
+                f"  `{find_cmd}` to search all previous releases for compatible assets."
             )
 
         # Several assets match, so the request is ambiguous. Explain why, then
