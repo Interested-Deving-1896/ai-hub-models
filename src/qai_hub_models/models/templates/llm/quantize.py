@@ -512,12 +512,12 @@ def llm_quantize(
     print()
     print("Evaluate:")
     print(
-        f"    python -m qai_hub_models.models.{model_id}.evaluate --checkpoint {args.output_dir} --task wikitext"
+        f"    qai-hub-models evaluate {model_id} --checkpoint {args.output_dir} --task wikitext"
     )
     print()
     print("Demo:")
     print(
-        f"    python -m qai_hub_models.models.{model_id}.demo --checkpoint {args.output_dir} --prompt 'What is gravity?'"
+        f"    qai-hub-models demo {model_id} --checkpoint {args.output_dir} --prompt 'What is gravity?'"
     )
     print()
     print("Export:")

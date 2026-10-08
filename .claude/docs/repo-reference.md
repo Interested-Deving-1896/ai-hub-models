@@ -58,8 +58,8 @@ QAIHM_TEST_MODELS=<model_id> python scripts/build_and_test.py test_changed_model
 
 If a model's architecture changed substantially, also verify export and evaluate:
 ```bash
-qai_hub_models export <model_id> --target-runtime tflite --chipset qualcomm-snapdragon-8gen3
-python -m qai_hub_models.models.<model_id>.evaluate  # if available
+qai-hub-models export <model_id> --target-runtime tflite --chipset qualcomm-snapdragon-8gen3
+qai-hub-models evaluate <model_id> # if available
 ```
 
 ### Branch Naming

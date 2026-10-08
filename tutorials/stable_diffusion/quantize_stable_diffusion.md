@@ -23,11 +23,11 @@ We first download the weights and run floating point evaluation in PyTorch:
 
 ```sh
 # See the options
-python -m qai_hub_models.models.stable_diffusion_v2_1.demo -h
+qai-hub-models demo stable_diffusion_v2_1 -h
 
 # Run inference
 export PROMPT="realistic futuristic city-downtown with short buildings, sunset"
-python -m qai_hub_models.models.stable_diffusion_v2_1.demo --eval-mode fp --checkpoint yandex/stable-diffusion-2-1-alchemist --num-steps 20 --prompt "$PROMPT"
+qai-hub-models demo stable_diffusion_v2_1 --eval-mode fp --checkpoint yandex/stable-diffusion-2-1-alchemist --num-steps 20 --prompt "$PROMPT"
 ```
 
 This will output an image to `export/torch_fp32/image.png` that might look
@@ -57,7 +57,7 @@ sequentially allows the second job to reuse the cached calibration data.
 The quantized models will be exported to `build/alchemist`. We can generate the image using quantized model via simulated quantization with
 
 ```sh
-python -m qai_hub_models.models.stable_diffusion_v2_1.demo --eval-mode quantsim --checkpoint build/alchemist --num-steps 20 --prompt "$PROMPT"
+qai-hub-models demo stable_diffusion_v2_1 --eval-mode quantsim --checkpoint build/alchemist --num-steps 20 --prompt "$PROMPT"
 ```
 
 The image might look like

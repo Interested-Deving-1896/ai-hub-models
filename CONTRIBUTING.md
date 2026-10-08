@@ -350,7 +350,7 @@ supported_precisions:
 
 ```bash
 python qai_hub_models/scripts/run_codegen.py -m <model_id>
-python -m qai_hub_models.models.<model_id>.evaluate --precision w8a8
+qai-hub-models evaluate <model_id> --precision w8a8
 ```
 
 Accuracy drop from float should be reasonable (10 points or less). Consider mixed precision (e.g., `w8a8_mixed_int16`) if accuracy is too low.
@@ -400,7 +400,7 @@ Run model-specific tests:
 qai-hub-models export <model_id> --target-runtime tflite --chipset qualcomm-snapdragon-8gen3
 
 # Test evaluation (if available)
-python -m qai_hub_models.models.<model_id>.evaluate
+qai-hub-models evaluate <model_id>
 ```
 
 - `export.py` should produce a model that profiles successfully on device (for all added precisions)

@@ -44,7 +44,7 @@ Using the output checkpoint will run evaluation on quantized model and passing H
 Evaluate command:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
+qai-hub-models evaluate llama_v3_2_3b_instruct \
     --checkpoint ./quantized_model \
     --task wikitext-ppl
 ```
@@ -52,7 +52,7 @@ python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
 Demo command:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.demo \
+qai-hub-models demo llama_v3_2_3b_instruct \
     --checkpoint ./quantized_model \
     --prompt "What is gravity?"
 ```
@@ -175,7 +175,7 @@ To evaluate on the quantized model, you will have to provide the Hugging Face mo
 Evaluate PPL score on [WikiText (English)](../../src/qai_hub_models/datasets/wikitext/wikitext.py) using the unquantized model:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
+qai-hub-models evaluate llama_v3_2_3b_instruct \
     --checkpoint meta-llama/Llama-3.2-3B-Instruct \
     --task wikitext-ppl
 ```
@@ -183,7 +183,7 @@ python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
 Evaluate using the quantized model:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
+qai-hub-models evaluate llama_v3_2_3b_instruct \
     --checkpoint ./quantized_model \
     --task wikitext-ppl
 ```
@@ -205,7 +205,7 @@ To evaluate on the quantized model, you will have to provide the Hugging Face mo
 Evaluate [tinyMMLU](https://HuggingFace.co/datasets/tinyBenchmarks/tinyMMLU) using the unquantized model:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
+qai-hub-models evaluate llama_v3_2_3b_instruct \
     --checkpoint meta-llama/Llama-3.2-3B-Instruct \
     --task tiny_mmlu
 ```
@@ -213,7 +213,7 @@ python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
 Evaluate using the quantized model:
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.evaluate \
+qai-hub-models evaluate llama_v3_2_3b_instruct \
     --checkpoint ./quantized_model \
     --task tiny_mmlu
 ```
@@ -241,7 +241,7 @@ interest; PPL may not capture this adequately. Note that the script itself will
 add the system prompt appropriate for the model.
 
 ```sh
-python -m qai_hub_models.models.llama_v3_2_3b_instruct.demo \
+qai-hub-models demo llama_v3_2_3b_instruct \
     --checkpoint ./quantized_model \
     --prompt "What is gravity? Answer concisely."
 ```

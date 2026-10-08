@@ -182,7 +182,7 @@ def main() -> None:
     sample_image = SAMPLE_IMAGE.fetch()
     print("Demo:")
     print(
-        f"    python -m qai_hub_models.models.{MODEL_ID}.demo "
+        f"    qai-hub-models demo {MODEL_ID}"
         f"--checkpoint {args.output_dir} --image {sample_image} "
         "--prompt 'Describe this image'"
     )

@@ -244,7 +244,7 @@ def _run_model_script(model_id: str | Path, script: str, forwarded: list[str]) -
         else:
             parser = build_evaluate_parser_for(source_dir)
             run = lambda args: select_evaluate_pipeline(source_dir)(**vars(args))  # noqa: E731
-        parser.prog = f"qai_hub_models evaluate {source_dir.name}"
+        parser.prog = f"qai-hub-models evaluate {source_dir.name}"
         args = parser.parse_args(forwarded)
         if not _confirm_run_ok(source_dir, args):
             return

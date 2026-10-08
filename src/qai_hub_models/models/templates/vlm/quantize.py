@@ -310,7 +310,7 @@ def quantize_vlm(
     )
     print("Demo:")
     print(
-        f"    python -m qai_hub_models.models.{model_id}.demo "
+        f"    qai-hub-models demo {model_id} "
         f"--checkpoint {args.output_dir} --image {fetched_sample_image} "
         "--prompt 'Describe this image'"
     )
