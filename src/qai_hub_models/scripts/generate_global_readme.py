@@ -56,7 +56,10 @@ def _get_model_row(model: QAIHMModelManifest) -> dict[str, str]:
 def _get_model_directory(models: list[QAIHMModelManifest]) -> list[dict[str, Any]]:
     """Build structured model directory data grouped by domain and use case."""
     domains = []
-    for domain in MODEL_DOMAIN:
+    ordered_domains = sorted(
+        MODEL_DOMAIN, key=lambda d: d != MODEL_DOMAIN.GENERATIVE_AI
+    )
+    for domain in ordered_domains:
         domain_models = [m for m in models if m.domain == domain]
         if not domain_models:
             continue
