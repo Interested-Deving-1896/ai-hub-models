@@ -305,6 +305,17 @@ def _clear_saved_password() -> None:
             text=True,
             check=False,
         )
+    elif sys.platform == "linux" and _pass_initialized():
+        subprocess.run(
+            [
+                "pass",
+                "delete",
+                "-f",
+                "saml2aws/https:/account.activedirectory.windowsazure.com",
+            ],
+            capture_output=True,
+            check=False,
+        )
 
 
 @functools.cache
