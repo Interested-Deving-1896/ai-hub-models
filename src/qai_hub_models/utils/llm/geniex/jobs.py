@@ -63,7 +63,7 @@ _N_GEN = 128
 # Each accuracy prompt runs as its own geniex-bench process: the timeout kills a
 # crashed/hung DSP run so the loop advances, the sleep lets the DSP release
 # before the next process attaches.
-_EVAL_N_GEN = 4096
+_EVAL_N_GEN = 2048
 _EVAL_TIMEOUT_S = 600
 _EVAL_SLEEP_S = 10
 
