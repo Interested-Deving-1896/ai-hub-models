@@ -44,6 +44,7 @@ class ScorecardProfilePathMeta(EnumMeta):
 @unique
 class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
     TFLITE = "tflite"
+    TFL_CONVERTER = "tfl_converter"
     QNN_DLC = "qnn_dlc"
     QNN_DLC_VIA_QNN_EP = "qnn_dlc_via_qnn_ep"
     QNN_CONTEXT_BINARY = "qnn_context_binary"
@@ -268,7 +269,10 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
 
     @property
     def runtime(self) -> TargetRuntime:
-        if self == ScorecardProfilePath.TFLITE:
+        if (
+            self == ScorecardProfilePath.TFLITE  # noqa: PLR1714 | Can't merge comparisons and use assert_never
+            or self == ScorecardProfilePath.TFL_CONVERTER
+        ):
             return TargetRuntime.TFLITE
         if (
             self == ScorecardProfilePath.ONNX  # noqa: PLR1714 | Can't merge comparisons and use assert_never
@@ -299,6 +303,8 @@ class ScorecardProfilePath(Enum, metaclass=ScorecardProfilePathMeta):
     def compile_path(self) -> ScorecardCompilePath:
         if self == ScorecardProfilePath.TFLITE:
             return ScorecardCompilePath.TFLITE
+        if self == ScorecardProfilePath.TFL_CONVERTER:
+            return ScorecardCompilePath.TFL_CONVERTER
         if self == ScorecardProfilePath.ONNX:
             return ScorecardCompilePath.ONNX
         if self == ScorecardProfilePath.PRECOMPILED_QNN_ONNX:

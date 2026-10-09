@@ -24,6 +24,7 @@ from qai_hub_models.utils.hub_clients import (
 class ScorecardCompilePath(Enum):
     ONNX_FOR_QUANTIZATION = "onnx_for_quantization"  # used only as input to the quantization step, not an actual compile path that produces an asset
     TFLITE = "tflite"
+    TFL_CONVERTER = "tfl_converter"
     QNN_DLC = "qnn_dlc"
     QNN_DLC_VIA_QNN_EP = "qnn_dlc_via_qnn_ep"
     QNN_CONTEXT_BINARY = "qnn_context_binary"
@@ -79,7 +80,10 @@ class ScorecardCompilePath(Enum):
 
     @property
     def runtime(self) -> TargetRuntime:
-        if self == ScorecardCompilePath.TFLITE:
+        if (
+            self == ScorecardCompilePath.TFLITE  # noqa: PLR1714 | Can't merge comparisons and use assert_never
+            or self == ScorecardCompilePath.TFL_CONVERTER
+        ):
             return TargetRuntime.TFLITE
         if (
             self == ScorecardCompilePath.ONNX  # noqa: PLR1714 | Can't merge comparisons and use assert_never
@@ -180,6 +184,9 @@ class ScorecardCompilePath(Enum):
 
         if self == ScorecardCompilePath.QNN_DLC_VIA_QNN_EP:
             out = out + " --use_qnn_onnx_ep_converter"
+
+        if self == ScorecardCompilePath.TFL_CONVERTER:
+            out = out + " --use_tfl_converter"
 
         return out.strip()
 
