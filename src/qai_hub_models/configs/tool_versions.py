@@ -223,7 +223,7 @@ class ToolVersions(BaseQAIHMConfig):
             if tool_version.name == "TensorFlow Lite":
                 out.tflite = tool_version.version
 
-            if tool_version.name == "LiteRT":
+            if tool_version.name in {"LiteRT", "Lite RT"}:
                 out.litert = tool_version.version
         if add_aihm_version:
             out.ai_hub_models = pkg_version.__version__

@@ -419,7 +419,7 @@ def test_extract_tool_versions_from_inference_job(
             [
                 ToolVersion(name="QNN", version="2.25.1234"),
                 ToolVersion(name="TensorFlow Lite", version="1.22.1"),
-                ToolVersion(name="LiteRT", version="1.4.2"),
+                ToolVersion(name="Lite RT", version="1.4.2"),
             ]
         ),
     ):
