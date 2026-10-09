@@ -16,10 +16,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytest
 
 from qai_hub_models import Precision
+from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard.devices_and_chipsets_yaml import DevicesAndChipsetsYaml
 from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
 from qai_hub_models.scorecard.release_assets_yaml import QAIHMModelReleaseAssets
+from qai_hub_models.test.test_configs.manifest_path_check import (
+    get_manifest_support_violations,
+)
 from qai_hub_models.utils.aws import (
     QAIHM_PRIVATE_S3_BUCKET,
     can_access_private_s3,
@@ -81,19 +85,35 @@ def get_models_with_release_assets() -> list[str]:
 def test_release_assets_yaml_schema() -> None:
     """Validate that all release-assets.yaml files conform to the schema."""
     chipsets = DevicesAndChipsetsYaml.load().chipsets.keys()
+    path_errors: list[str] = []
     for model_id in get_models_with_release_assets():
         try:
             yaml = QAIHMModelReleaseAssets.from_model(model_id)
-            for a in yaml.precisions.values():
+            manifest = QAIHMModelManifest.from_model(model_id)
+            for precision, a in yaml.precisions.items():
                 for c in a.chipset_assets:
                     if c not in chipsets:
                         raise ValueError(  # noqa: TRY301
                             f"Chipset {c} is not available in devices-and-chipsets.yaml; thus it can't be referenced here."
                         )
+
+                paths = set(a.universal_assets)
+                for chipset_paths in a.chipset_assets.values():
+                    paths.update(chipset_paths)
+                path_errors.extend(
+                    get_manifest_support_violations(
+                        manifest, "release-assets.yaml", precision, paths
+                    )
+                )
         except Exception as err:  # noqa: PERF203
             raise AssertionError(
                 f"{model_id} release-assets.yaml validation failed: {err!s}"
             ) from err
+
+    assert not path_errors, (
+        f"{len(path_errors)} release-assets.yaml entries conflict with manifest.yaml:\n"
+        + "\n".join(path_errors)
+    )
 
 
 def test_llm_perf_rows_have_a_release_asset() -> None:

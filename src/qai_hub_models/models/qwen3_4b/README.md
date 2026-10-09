@@ -88,7 +88,7 @@ Export the pre-quantized model (published on AI Hub) for on-device deployment:
 ```bash
 qai-hub-models export qwen3_4b --checkpoint DEFAULT_W4A16
 ```
-`--checkpoint` also accepts `DEFAULT` (the model's default precision).
+`--checkpoint` also accepts `DEFAULT` (the model's default precision) or any of `DEFAULT_W4A16`, `DEFAULT_Q4_0`.
 
 Optionally, quantize your own variant first and export the resulting checkpoint:
 ```bash

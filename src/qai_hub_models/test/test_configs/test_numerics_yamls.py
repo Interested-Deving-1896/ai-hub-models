@@ -8,21 +8,27 @@ import tempfile
 import pandas as pd
 import pytest
 
+from qai_hub_models import Precision
 from qai_hub_models.configs.manifest_yaml import QAIHMModelManifest
 from qai_hub_models.scorecard.artifacts import ScorecardArtifact
 from qai_hub_models.scorecard.numerics_yaml import (
     QAIHMModelNumerics,
     get_numerics_yaml_path,
 )
+from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.utils.numerics_yaml_helpers import (
     create_numerics_struct,
     get_chipset_registry,
+)
+from qai_hub_models.test.test_configs.manifest_path_check import (
+    get_manifest_support_violations,
 )
 from qai_hub_models.utils.asset_loaders import load_yaml
 from qai_hub_models.utils.path_helpers import MODEL_IDS
 
 
 def test_accuracy_yaml() -> None:
+    path_errors: list[str] = []
     for model_id in MODEL_IDS:
         try:
             accuracy = QAIHMModelNumerics.from_model(model_id, not_exists_ok=True)
@@ -32,6 +38,27 @@ def test_accuracy_yaml() -> None:
             raise AssertionError(
                 f"{model_id} numerics yaml validation failed: {err!s}"
             ) from None
+
+        seen: dict[Precision, set[ScorecardProfilePath]] = {}
+        for metric in accuracy.metrics:
+            for precisions in metric.device_metric.values():
+                for precision, paths in precisions.items():
+                    seen.setdefault(precision, set()).update(paths)
+        if not seen:
+            continue
+
+        manifest = QAIHMModelManifest.from_model(model_id)
+        for precision, seen_paths in seen.items():
+            path_errors.extend(
+                get_manifest_support_violations(
+                    manifest, "numerics.yaml", precision, seen_paths
+                )
+            )
+
+    assert not path_errors, (
+        f"{len(path_errors)} numerics.yaml entries conflict with manifest.yaml:\n"
+        + "\n".join(path_errors)
+    )
 
 
 def test_yaml_roundtrip() -> None:

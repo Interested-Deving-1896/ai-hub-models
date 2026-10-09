@@ -899,8 +899,8 @@ class QAIHMModelManifest(BaseQAIHMConfig):
         ):
             return f"{runtime} is not a supported runtime for this model."
 
-        if self.is_precompiled and runtime != TargetRuntime.QNN_CONTEXT_BINARY:
-            return "Precompiled models are only supported via the QNN path."
+        if self.is_precompiled and not runtime.is_aot_compiled:
+            return "Precompiled models are only supported via runtimes that are compiled ahead of time (is_aot_compiled)."
 
         if precision and not runtime.supports_precision(precision):
             return f"{runtime} does not support precision {precision!s}."

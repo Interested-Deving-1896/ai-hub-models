@@ -14,7 +14,11 @@ from qai_hub_models.scorecard.devices_and_chipsets_yaml import (
     _load_similar_devices_raw,
     load_similar_devices,
 )
+from qai_hub_models.scorecard.path_profile import ScorecardProfilePath
 from qai_hub_models.scorecard.perf_yaml import QAIHMModelPerf
+from qai_hub_models.test.test_configs.manifest_path_check import (
+    get_manifest_support_violations,
+)
 from qai_hub_models.utils.path_helpers import MODEL_IDS
 
 
@@ -40,11 +44,13 @@ def test_perf_yaml() -> None:
                 "You may need to re-generate the valid device list via `python qai_hub_models/models/generate_scorecard_device_yaml.py`"
             )
 
+    path_errors: list[str] = []
     model_id = ""
     try:
         for model_id in MODEL_IDS:
             perf = QAIHMModelPerf.from_model(model_id, not_exists_ok=True)
             model_name: str | None = None
+            manifest = QAIHMModelManifest.from_model(model_id)
 
             # Verify all devices are valid AI Hub Workbench devices.
             for chipset in perf.supported_chipsets:
@@ -53,15 +59,26 @@ def test_perf_yaml() -> None:
             for device in perf.supported_devices:
                 _validate_device(device)
 
-            for precision_perf in perf.precisions.values():
+            for precision, precision_perf in perf.precisions.items():
+                measured_paths: set[ScorecardProfilePath] = set()
                 for component_detail in precision_perf.components.values():
-                    for device in component_detail.performance_metrics:
+                    for (
+                        device,
+                        device_paths,
+                    ) in component_detail.performance_metrics.items():
                         _validate_device(device)
+                        measured_paths.update(device_paths)
+
+                path_errors.extend(
+                    get_manifest_support_violations(
+                        manifest, "perf.yaml", precision, measured_paths
+                    )
+                )
 
                 # If there is 1 component, make sure it matches the model name.
                 if len(precision_perf.components) == 1:
                     if not model_name:
-                        model_name = QAIHMModelManifest.from_model(model_id).name
+                        model_name = manifest.name
                     component_name = next(iter(precision_perf.components))
                     if component_name != model_name:
                         raise ValueError(  # noqa: TRY301
@@ -100,6 +117,11 @@ def test_perf_yaml() -> None:
         raise AssertionError(
             f"{model_id} perf yaml validation failed: {err!s}"
         ) from None
+
+    assert not path_errors, (
+        f"{len(path_errors)} perf.yaml entries conflict with manifest.yaml:\n"
+        + "\n".join(path_errors)
+    )
 
 
 def test_similar_devices_chipsets_resolve() -> None:
