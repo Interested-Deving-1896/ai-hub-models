@@ -35,6 +35,7 @@ from qai_hub_models.utils.asset_loaders import (
 from qai_hub_models.utils.base_model import BaseModel
 from qai_hub_models.utils.evaluate.dispatch import select_evaluate_pipeline
 from qai_hub_models.utils.export.context import (
+    RecipeSourceUnavailableError,
     import_recipe_module,
     resolve_manifest,
     resolve_model_cls,
@@ -137,6 +138,28 @@ def build_evaluate_parser_for(source_dir: Path) -> argparse.ArgumentParser:
     return parser
 
 
+def _run_llm_evaluate(source_dir: Path, forwarded: list[str]) -> None:
+    """Run the recipe's own evaluate.py, which evaluates on the host GPU/CPU.
+
+    The generic evaluate parser offers --device / --chipset, but LLM
+    evaluation never runs on a Workbench device.
+    """
+    if not (source_dir / "evaluate.py").exists():
+        raise RecipeSourceUnavailableError(
+            f"Recipe `{source_dir.name}` ships no evaluate script in this "
+            "installation, so it cannot be evaluated locally."
+        )
+    module_name = f"{import_recipe_module(source_dir).__name__}.evaluate"
+    if not _confirm_run_ok(source_dir):
+        return
+    saved_argv = sys.argv
+    sys.argv = [module_name, *forwarded]
+    try:
+        runpy.run_module(module_name, run_name="__main__", alter_sys=False)
+    finally:
+        sys.argv = saved_argv
+
+
 def run_model_script(model_id: str | Path, script: str, forwarded: list[str]) -> None:
     """Run the given script for the given recipe target.
 
@@ -225,6 +248,9 @@ def _run_model_script(model_id: str | Path, script: str, forwarded: list[str]) -
         return
 
     if script == "evaluate":
+        if resolve_manifest(source_dir).model_type_llm:
+            _run_llm_evaluate(source_dir, forwarded)
+            return
         # Recipes with a bespoke evaluate (LLMs) add flags the generic parser
         # lacks, so their own build_parser()/main() pair wins when present.
         evaluate_module = (

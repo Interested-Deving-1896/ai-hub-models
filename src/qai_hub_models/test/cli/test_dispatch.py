@@ -25,6 +25,7 @@ from qai_hub_models.cli.dispatch import (
 from qai_hub_models.cli.upload_to_hf import build_parser as build_upload_parser
 from qai_hub_models.configs._info_yaml_enums import MODEL_STATUS
 from qai_hub_models.utils.base_model import BaseModel
+from qai_hub_models.utils.export.context import RecipeSourceUnavailableError
 
 
 def test_dispatch_export_builds_parser_and_runs() -> None:
@@ -190,7 +191,9 @@ def test_dispatch_evaluate_builds_parser_and_runs() -> None:
         ) as mock_build,
         patch("qai_hub_models.cli.dispatch.select_evaluate_pipeline") as mock_select,
         patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=True),
+        patch("qai_hub_models.cli.dispatch.resolve_manifest") as mock_manifest,
     ):
+        mock_manifest.return_value.model_type_llm = False
         fake_parser.parse_args = Mock(return_value=fake_parsed)
 
         run_model_script("fake_model", "evaluate", ["--device", "S25"])
@@ -222,6 +225,7 @@ def test_dispatch_evaluate_prompts_for_unpublished_model() -> None:
         patch("qai_hub_models.cli.dispatch.select_evaluate_pipeline") as mock_select,
     ):
         mock_manifest.return_value.status = MODEL_STATUS.UNPUBLISHED
+        mock_manifest.return_value.model_type_llm = False
         fake_parser.parse_args = Mock(return_value=fake_parsed)
 
         run_model_script("sam", "evaluate", [])
@@ -521,11 +525,12 @@ def test_dispatch_evaluate_prefers_recipe_build_parser(tmp_path: Path) -> None:
             "qai_hub_models.cli.dispatch.import_recipe_module",
             return_value=types.ModuleType("fake_model"),
         ),
-        patch("qai_hub_models.cli.dispatch.resolve_manifest"),
+        patch("qai_hub_models.cli.dispatch.resolve_manifest") as mock_manifest,
         patch("qai_hub_models.cli.dispatch._passing_paths", return_value={}),
         patch("qai_hub_models.cli.dispatch.build_evaluate_parser_for") as generic,
         patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=True),
     ):
+        mock_manifest.return_value.model_type_llm = False
         parser.set_preferred_precision_runtimes = Mock()  # type: ignore[attr-defined]
         run_model_script("fake_model", "evaluate", ["--task", "mmlu"])
 
@@ -561,3 +566,56 @@ def test_dispatch_demo_without_main_runs_main_block(tmp_path: Path) -> None:
     sys.modules.pop("fake_recipe_pkg", None)
 
     assert out.read_text() == "--prompt hi"
+
+
+class TestDispatchLLMEvaluate:
+    """LLM `evaluate` runs the recipe's host-side evaluate.py, not the Workbench pipeline."""
+
+    def _run(
+        self, tmp_path: Path, forwarded: list[str], confirm: bool = True
+    ) -> tuple[Mock, list[str]]:
+        """Run the LLM evaluate branch; return the run_module mock and the argv it saw."""
+        argv_seen: list[str] = []
+        with (
+            patch(
+                "qai_hub_models.cli.dispatch.resolve_recipe_dir",
+                return_value=tmp_path,
+            ),
+            patch("qai_hub_models.cli.dispatch.resolve_manifest") as mock_manifest,
+            patch(
+                "qai_hub_models.cli.dispatch.import_recipe_module",
+                return_value=types.ModuleType("fake_llm"),
+            ),
+            patch("qai_hub_models.cli.dispatch._confirm_run_ok", return_value=confirm),
+            patch(
+                "qai_hub_models.cli.dispatch.runpy.run_module",
+                side_effect=lambda *a, **k: argv_seen.extend(sys.argv),
+            ) as mock_run,
+            patch(
+                "qai_hub_models.cli.dispatch.build_evaluate_parser_for",
+                side_effect=AssertionError("Workbench evaluate parser used for LLM"),
+            ),
+        ):
+            mock_manifest.return_value.model_type_llm = True
+            run_model_script("fake_llm", "evaluate", forwarded)
+        return mock_run, argv_seen
+
+    def test_runs_the_recipe_evaluate_script(self, tmp_path: Path) -> None:
+        (tmp_path / "evaluate.py").touch()
+        before = list(sys.argv)
+        mock_run, argv_seen = self._run(tmp_path, ["--task", "wikitext"])
+
+        mock_run.assert_called_once_with(
+            "fake_llm.evaluate", run_name="__main__", alter_sys=False
+        )
+        assert argv_seen == ["fake_llm.evaluate", "--task", "wikitext"]
+        assert sys.argv == before
+
+    def test_declining_the_prompt_skips_evaluate(self, tmp_path: Path) -> None:
+        (tmp_path / "evaluate.py").touch()
+        mock_run, _ = self._run(tmp_path, [], confirm=False)
+        mock_run.assert_not_called()
+
+    def test_missing_evaluate_script_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(RecipeSourceUnavailableError, match="no evaluate script"):
+            self._run(tmp_path, [])
