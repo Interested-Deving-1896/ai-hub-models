@@ -1607,7 +1607,6 @@ def on_device_inference_for_accuracy_validation(
             inputs=hub_val_dataset,
             model=target_model,
             name=model_id,
-            profile=False,
         )
 
         if not component_name:

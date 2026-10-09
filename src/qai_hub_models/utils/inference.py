@@ -224,7 +224,6 @@ class AsyncOnDeviceResult:
                 model=self.inference_job.model,
                 inputs=self.inference_job.inputs,
                 device=self.inference_job.device,
-                profile=False,
             )
             assert isinstance(ijob, hub.InferenceJob)
             self.inference_job = ijob
@@ -356,7 +355,6 @@ class AsyncOnDeviceModel:
             device=self.device,
             name=f"{self.model.name}_demo_inference",
             options=self.inference_options,
-            profile=False,
         )
         assert isinstance(inference_job, hub.InferenceJob)
         return AsyncOnDeviceResult(
