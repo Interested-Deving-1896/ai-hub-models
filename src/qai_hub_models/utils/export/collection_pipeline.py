@@ -71,6 +71,7 @@ def export_model(
     output_dir: str | None = None,
     compile_options: str = "",
     quantize_options: str = "",
+    link_options: str = "",
     inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
@@ -120,6 +121,8 @@ def export_model(
         Extra options for the compile job.
     quantize_options
         Extra options for the quantize job.
+    link_options
+        Extra options for the link job. Ignored for runtimes that do not link.
     inference_options
         Extra options for the profile job.
     zip_assets
@@ -239,6 +242,7 @@ def export_model(
             model_name,
             model,
             target_runtime,
+            extra_options=link_options,
         )
     target_models = assert_success_and_get_target_models(link_jobs or compile_jobs)
 

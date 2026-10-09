@@ -58,6 +58,7 @@ def export_model(
     skip_summary: bool = False,
     output_dir: str | None = None,
     compile_options: str = "",
+    link_options: str = "",
     inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
@@ -95,6 +96,8 @@ def export_model(
         Directory to store generated assets. Defaults to ``<cwd>/export_assets``.
     compile_options
         Extra options for the compile job.
+    link_options
+        Extra options for the link job.
     inference_options
         Extra options for the profile job.
     zip_assets
@@ -159,6 +162,7 @@ def export_model(
         model_name,
         model,
         target_runtime,
+        extra_options=link_options,
     )
     target_model = link_job.get_target_model()
     assert target_model is not None, f"Link job failed: {link_job}"

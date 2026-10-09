@@ -66,6 +66,7 @@ def export_model(
     output_dir: str | None = None,
     compile_options: str = "",
     quantize_options: str = "",
+    link_options: str = "",
     inference_options: str = "",
     zip_assets: bool = False,
     **additional_model_kwargs: Any,
@@ -115,6 +116,8 @@ def export_model(
         Extra options to pass when submitting the compile job.
     quantize_options
         Extra options to pass when submitting the quantize job.
+    link_options
+        Extra options to pass when submitting the link job. Ignored for runtimes that do not link.
     inference_options
         Extra options to pass when submitting the profile job.
     zip_assets
@@ -228,7 +231,12 @@ def export_model(
         assert compiled_model is not None, f"Compile job failed: {compile_job}"
         if target_runtime.uses_hub_link:
             link_job = run_link(
-                compiled_model, device, model_name, model, target_runtime
+                compiled_model,
+                device,
+                model_name,
+                model,
+                target_runtime,
+                extra_options=link_options,
             )
             target_model = link_job.get_target_model()
         else:
