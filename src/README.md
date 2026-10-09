@@ -181,6 +181,12 @@ and many more.
 
 &nbsp;
 
+## Creating a New Model Recipe with Claude
+
+Want to onboard your own model? Follow the instructions in [EXTERNAL_ONBOARDING.md](https://github.com/qualcomm/ai-hub-models/blob/main/EXTERNAL_ONBOARDING.md) to create a new model recipe using Claude.
+
+&nbsp;
+
 ## Model Directory
 
 ### Generative AI

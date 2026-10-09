@@ -181,6 +181,12 @@ and many more.
 
 &nbsp;
 
+## Creating a New Model Recipe with Claude
+
+Want to onboard your own model? Follow the instructions in [EXTERNAL_ONBOARDING.md](EXTERNAL_ONBOARDING.md) to create a new model recipe using Claude.
+
+&nbsp;
+
 ## Model Directory
 
 ### Generative AI
