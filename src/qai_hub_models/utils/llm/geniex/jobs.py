@@ -95,6 +95,16 @@ class GenieXBenchMetrics:
     geniex_version: str | None = None
     qairt_version: str | None = None
     llama_cpp_version: str | None = None
+    stop_reason: str | None = None
+
+    @property
+    def zero_rate_note(self) -> str | None:
+        """Why a reported rate is 0 (e.g. EOS as the first token), else None."""
+        if self.ttft_ms > 0 and self.prefill_tps > 0 and self.decode_tps > 0:
+            return None
+        return (
+            f"zero_rate (gen_tokens={self.gen_tokens}, stop_reason={self.stop_reason})"
+        )
 
 
 class GenieXBenchArtifactHandler(ABC):
@@ -566,6 +576,7 @@ def _parse_cell_metrics(path: str) -> GenieXBenchMetrics | None:
         return None
     agg = cell.get("agg") or {}
     params = cell.get("params") or {}
+    runs = cell.get("runs") or []
 
     def med(key: str) -> float | None:
         entry = agg.get(key) or {}
@@ -596,6 +607,7 @@ def _parse_cell_metrics(path: str) -> GenieXBenchMetrics | None:
         geniex_version=cell.get("geniex_version"),
         qairt_version=cell.get("qairt_version"),
         llama_cpp_version=cell.get("llama_cpp_version"),
+        stop_reason=runs[0].get("stop_reason") if runs else None,
     )
 
 
@@ -629,6 +641,7 @@ def compute_geniex_metrics(
                 f"  [{m.cell_id} ctx={m.context_length}] "
                 f"decode={m.decode_tps:.2f} tok/s, prefill={m.prefill_tps:.2f} tok/s, "
                 f"TTFT={m.ttft_ms:.1f} ms"
+                + (f" [{m.zero_rate_note}]" if m.zero_rate_note else "")
             )
     elif unreadable_schemas:
         seen = sorted(set(unreadable_schemas.values()))

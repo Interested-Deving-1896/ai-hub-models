@@ -237,6 +237,7 @@ def write_csv(rows: list[dict], path: str) -> None:
                 "Prefill TPS",
                 "TTFT (ms)",
                 "Status",
+                "Note",
             ]
         )
         for r in rows:
@@ -251,6 +252,7 @@ def write_csv(rows: list[dict], path: str) -> None:
                     r.get("prefill_tps", ""),
                     r.get("ttft_ms", ""),
                     r["status"],
+                    r.get("note", ""),
                 ]
             )
 
@@ -275,7 +277,8 @@ def write_summary(rows: list[dict]) -> None:
             f"| {r['model']} | {r.get('plugin', '-')} | {r.get('precision', '-')} | "
             f"{r['device']} | {r.get('ctx', '-')} | "
             f"{_format_values(r.get('decode_tps'))} | {_format_values(r.get('prefill_tps'))} | "
-            f"{_format_values(r.get('ttft_ms'), '.1f')} | {r['status']} |\n"
+            f"{_format_values(r.get('ttft_ms'), '.1f')} | "
+            f"{r['status']}{' (' + r['note'] + ')' if r.get('note') else ''} |\n"
             for r in rows
         )
         f.write("\n")
@@ -615,6 +618,7 @@ def _rows_and_updates_from_metrics(
                 "prefill_tps": m.prefill_tps,
                 "ttft_ms": m.ttft_ms,
                 "status": "success",
+                "note": m.zero_rate_note or "",
             }
         )
         if not skip_perf_update:
@@ -794,6 +798,7 @@ def _write_final_outputs(
                 f"  {r['model']} [{prec}] @ {r['device']} ctx={r['ctx']}: "
                 f"decode={r['decode_tps']:.2f} prefill={r['prefill_tps']:.2f} "
                 f"TTFT={r['ttft_ms']:.1f}ms"
+                + (f" [{r['note']}]" if r.get("note") else "")
             )
         else:
             print(f"  {r['model']} [{prec}] @ {r['device']}: {r['status']}")
