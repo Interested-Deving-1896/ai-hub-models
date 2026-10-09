@@ -392,11 +392,16 @@ def install_model(target: str, dry_run: bool = False, assume_yes: bool = False) 
     assume_yes
         If True, skip the interactive ``[y/N]`` confirmation and proceed.
         ``qai-hub-models validate`` intentionally leaves this ``False`` so
-        Install remains the first interactive gate in the report card.
+        Install remains the first interactive gate in the report card
+        whenever there is something to install.
     """
     plan = plan_install(target)
     print(f"Install plan for {target}:", flush=True)
     _print_plan(plan)
+
+    if not any(commands for _, commands in plan):
+        print("Nothing to install.", flush=True)
+        return
 
     if dry_run:
         return

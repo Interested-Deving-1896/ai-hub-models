@@ -399,6 +399,16 @@ class TestInstallModel:
         argvs = [call.args[0] for call in mock_run.call_args_list]
         assert argvs == [["pip", "install", "foo"]]
 
+    def test_empty_plan_skips_prompt(self, fake_tree: Path) -> None:
+        """Asking the user to confirm a no-op install is noise, so skip the prompt."""
+        _write_manifest(fake_tree / "models" / "root_model", "{}\n")
+        with (
+            patch("qai_hub_models.cli.install.subprocess.run") as mock_run,
+            patch("builtins.input", side_effect=AssertionError("prompted")),
+        ):
+            install_mod.install_model("root_model", dry_run=False)
+        mock_run.assert_not_called()
+
 
 class TestHasCudaGpu:
     def test_returns_false_when_nvidia_smi_hangs(self) -> None:
