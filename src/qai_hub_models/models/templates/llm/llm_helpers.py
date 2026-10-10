@@ -143,6 +143,11 @@ def log_perf_on_device_result(
             writer.writerow([model_name, precision, device, tps, prefill_tps, ttft_ms])
 
 
+# Default cap on generated tokens (used by Grace). The perf device scripts lower
+# it to 128 so a diverging model can't stall profiling.
+DEFAULT_MAX_NUM_TOKENS = 2048
+
+
 def create_genie_config(
     context_length: int,
     llm_config: PretrainedConfig,
@@ -212,6 +217,7 @@ def create_genie_config(
     inner: dict[str, Any] = {
         "version": 1,
         "type": "basic",
+        "max-num-tokens": DEFAULT_MAX_NUM_TOKENS,
         "context": {
             "version": 1,
             "size": context_length,

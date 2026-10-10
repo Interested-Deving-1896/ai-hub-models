@@ -64,6 +64,9 @@ genie_retry() {
     }
 }
 
+# Cap generation for perf so a diverging model can't stall profiling.
+sed -i 's/"max-num-tokens": [0-9]*/"max-num-tokens": 128/' genie_config.json
+
 # Run genie (capture initial output, including stderr)
 genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>&1 | tee /data/local/tmp/{DEVICE_LOGS_DIR}/genie.log
 
@@ -82,6 +85,7 @@ if [ -d "$PROMPT_DIR" ]; then
     # The perf sweep above left the seed at {NUM_TRIALS}; reset to the bundle's
     # nominal default so eval isn't silently run at a different seed.
     sed -i 's/"seed": [0-9]*/"seed": 42/' genie_config.json
+    sed -i 's/"max-num-tokens": [0-9]*/"max-num-tokens": 2048/' genie_config.json
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC.
     sed -i 's/"perf_profile": "[^"]*"/"perf_profile": "power_saver"/' htp_backend_ext_config.json
     true > "$EVAL_OUTPUT_FILE"

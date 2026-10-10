@@ -23,6 +23,7 @@ def test_create_genie_config() -> None:
         "dialog": {
             "version": 1,
             "type": "basic",
+            "max-num-tokens": 2048,
             "context": {
                 "version": 1,
                 "size": 4096,

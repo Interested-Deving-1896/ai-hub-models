@@ -129,6 +129,8 @@ cp /data/local/tmp/qxa.qa_adsplib/libc++abi.so.1 ${{ADSP_LIBRARY_PATH}}/
 # Drop stale logs from a prior job on this shared device.
 rm -rf /data/local/tmp/<<DEVICE_LOGS_DIR>>
 mkdir -p /data/local/tmp/<<DEVICE_LOGS_DIR>>
+# Cap generation for perf so a diverging model can't stall profiling.
+sed -i 's/"max-num-tokens": [0-9]*/"max-num-tokens": 128/' genie_config.json
 genie_retry genie-t2t-run -c genie_config.json --prompt_file sample_prompt.txt 2>>/data/local/tmp/<<DEVICE_LOGS_DIR>>/genie_stderr.log | tee /data/local/tmp/<<DEVICE_LOGS_DIR>>/genie.log
 {full_genie_command}
 
@@ -138,6 +140,7 @@ if [ -d "$PROMPT_DIR" ]; then
     # The perf sweep above left the seed at {num_trials - 1}; reset to the
     # bundle's nominal default so eval isn't silently run at a different seed.
     sed -i 's/"seed": [0-9]*/"seed": 42/' genie_config.json
+    sed -i 's/"max-num-tokens": [0-9]*/"max-num-tokens": 2048/' genie_config.json
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC SM8750.
     sed -i 's/"perf_profile": "[^"]*"/"perf_profile": "power_saver"/' htp_backend_ext_config.json
     > "$EVAL_OUTPUT_FILE"

@@ -85,6 +85,8 @@ $env:Path = "$env:QAIRT_HOME\bin\aarch64-windows-msvc;" + $env:Path
 $env:Path = "$env:QAIRT_HOME\lib\aarch64-windows-msvc;" + $env:Path
 $env:ADSP_LIBRARY_PATH = "$env:QAIRT_HOME\lib\hexagon-{HEXAGON_VERSION}\unsigned"
 
+# Cap generation for perf so a diverging model can't stall profiling.
+(Get-Content genie_config.json) -replace '"max-num-tokens": \d+', '"max-num-tokens": 128' | Set-Content genie_config.json
 Invoke-GenieRetry -GenieArgs @("-c", "genie_config.json", "--prompt_file", "sample_prompt.txt") -OutFile "C:/Temp/{DEVICE_LOGS_DIR}/genie.log"
 
 for ($i = 1; $i -le {NUM_TRIALS}; $i++) {
@@ -101,6 +103,7 @@ if (Test-Path $PromptDir) {
     # The perf sweep above left the seed at {NUM_TRIALS}; reset to the bundle's
     # nominal default so eval isn't silently run at a different seed.
     (Get-Content genie_config.json) -replace '"seed": \d+', '"seed": 42' | Set-Content genie_config.json
+    (Get-Content genie_config.json) -replace '"max-num-tokens": \d+', '"max-num-tokens": 2048' | Set-Content genie_config.json
     # Switch to power_saver perf_profile: sustained burst thermal-throttles and kills the eval loop on QDC.
     (Get-Content htp_backend_ext_config.json) -replace '"perf_profile": "[^"]*"', '"perf_profile": "power_saver"' | Set-Content htp_backend_ext_config.json
     "" | Out-File -FilePath $EvalOutputFile -Encoding utf8

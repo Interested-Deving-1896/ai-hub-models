@@ -46,6 +46,7 @@ def test_create_genie_config() -> None:
         "text-generator": {
             "version": 1,
             "type": "basic",
+            "max-num-tokens": 2048,
             "context": {
                 "version": 1,
                 "size": context_length,
