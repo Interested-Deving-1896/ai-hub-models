@@ -137,6 +137,16 @@ def build_evaluate_parser_for(source_dir: Path) -> argparse.ArgumentParser:
         default_device=manifest.default_device,
     )
     parser.set_preferred_precision_runtimes(_passing_paths(manifest, export_paths))
+    parser.add_argument(
+        "--local-model-dir",
+        dest="local_model_dir",
+        type=str,
+        default=None,
+        help="Run precompiled_qnn_onnx model(s) on this machine instead of on "
+        "Workbench. For a single model, the directory holding its wrapper .onnx "
+        "and .bin; for a collection model, a directory with one subdirectory "
+        "per component.",
+    )
     return parser
 
 
