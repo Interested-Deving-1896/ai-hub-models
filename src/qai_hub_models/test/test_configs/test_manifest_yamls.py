@@ -223,32 +223,6 @@ def _collect_website_urls(manifest: QAIHMModelManifest) -> list[tuple[str, str]]
         urls.append((manifest.research_paper, "Research paper does not exist"))
     if manifest.source_repo:
         urls.append((manifest.source_repo, "Source repo does not exist"))
-
-    if (
-        manifest.model_type_llm
-        and manifest.llm_details
-        and manifest.llm_details.devices
-    ):
-        for device_runtime_config_mapping in manifest.llm_details.devices.values():
-            for runtime_detail in device_runtime_config_mapping.values():
-                if runtime_detail.model_download_url.startswith(
-                    ("http://", "https://")
-                ):
-                    url = runtime_detail.model_download_url
-                else:
-                    version = runtime_detail.model_download_url.split("/")[0][1:]
-                    relative_path = "/".join(
-                        runtime_detail.model_download_url.split("/")[1:]
-                    )
-                    url = ASSET_CONFIG.get_model_asset_url(
-                        manifest.id, version, relative_path
-                    )
-                urls.append(
-                    (
-                        url,
-                        f"Download URL does not exist ({runtime_detail.model_download_url})",
-                    )
-                )
     return urls
 
 

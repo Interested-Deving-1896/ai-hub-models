@@ -236,7 +236,6 @@ class TestInfoFieldCoverage:
         _check_coverage(
             LLMDetails,
             info_pb2.ModelInfo.LLMDetails.DESCRIPTOR,
-            pydantic_only={"devices"},
         )
 
     def test_numerics_accuracy_benchmark(self) -> None:
