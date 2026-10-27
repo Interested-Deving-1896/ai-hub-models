@@ -91,6 +91,8 @@ POLL_INTERVAL = 30
 # (5xx) endpoint on tight upload/download loops that have no outer throttle.
 RETRY_BACKOFF_BASE = 5
 RETRY_BACKOFF_MAX = 300
+# Default seconds QDC lets a submitted job run on the device.
+QDC_DEFAULT_JOB_RUN_TIMEOUT = 600
 # QDC submission fail if name exceeds this
 QDC_JOB_NAME_LIMIT = 32
 # Number of consecutive errors tolerated when polling status. With BASE=5 and
@@ -512,6 +514,7 @@ class QDCDeviceFarm(DeviceFarm):
         entry_script: str | None,
         job_name: str,
         timeout: int = DEFAULT_JOB_TIMEOUT,
+        job_timeout: int | None = None,
     ) -> str:
         """
         Zip ``entries``, upload the bundle to QDC, and submit an automated job for it.
@@ -541,6 +544,9 @@ class QDCDeviceFarm(DeviceFarm):
             Job name shown in QDC; truncated to ``QDC_JOB_NAME_LIMIT``.
         timeout
             Unused by this backend; see above.
+        job_timeout
+            Seconds QDC lets the job run on the device before aborting it.
+            Defaults to ``QDC_DEFAULT_JOB_RUN_TIMEOUT`` when None.
 
         Returns
         -------
@@ -553,7 +559,13 @@ class QDCDeviceFarm(DeviceFarm):
             create_zip_from_entries(zip_path, entries)
             artifact_id = self._upload_file(zip_path, ArtifactType.TESTSCRIPT)
         return self._submit_automated_job(
-            qdc_device, [artifact_id], entry_script, job_name=job_name
+            qdc_device,
+            [artifact_id],
+            entry_script,
+            job_name=job_name,
+            job_timeout=QDC_DEFAULT_JOB_RUN_TIMEOUT
+            if job_timeout is None
+            else job_timeout,
         )
 
     def _submit_automated_job(
@@ -562,6 +574,7 @@ class QDCDeviceFarm(DeviceFarm):
         job_artifacts: list[str],
         entry_script: str | None,
         job_name: str = "QDC Automated Job",
+        job_timeout: int = QDC_DEFAULT_JOB_RUN_TIMEOUT,
     ) -> str:
         """
         Submit an automated application job to QDC and return its job_id.
@@ -580,6 +593,8 @@ class QDCDeviceFarm(DeviceFarm):
             Optional entry script path for the job.
         job_name
             Name of the job to submit.
+        job_timeout
+            Seconds QDC lets the job run on the device before aborting it.
 
         Returns
         -------
@@ -597,7 +612,7 @@ class QDCDeviceFarm(DeviceFarm):
                     external_job_id="ExJobId001",
                     job_type=JobType.AUTOMATED,
                     job_mode=JobMode.APPLICATION,
-                    timeout=600,
+                    timeout=job_timeout,
                     test_framework=qdc_device.test_framework,
                     entry_script=entry_script,
                     job_artifacts=job_artifacts,
