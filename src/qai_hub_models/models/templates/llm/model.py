@@ -1780,7 +1780,29 @@ class DynamicSplitPartBase(LLMPartBase, torch.nn.Module, MultiGraphWorkbenchMode
         )
 
 
-class DynamicSplitCollectionBase(MultiGraphWorkbenchModelCollection):
+class LLMCollectionBase(MultiGraphWorkbenchModelCollection):
+    """Collection base shared by every LLM / VLM; sets LLM-wide compile options."""
+
+    def get_component_graph_hub_compile_options(
+        self,
+        component_name: str,
+        graph_name: str,
+        target_runtime: TargetRuntime,
+        precision: Precision,
+        other_compile_options: str = "",
+        device: Device | None = None,
+    ) -> str:
+        return super().get_component_graph_hub_compile_options(
+            component_name,
+            graph_name,
+            target_runtime,
+            precision,
+            other_compile_options + " -O0",
+            device,
+        )
+
+
+class DynamicSplitCollectionBase(LLMCollectionBase):
     """
     Unified Collection base with N Parts for a dynamic-shape split LLM.
 
@@ -3246,7 +3268,7 @@ class LLM_AIMETOnnx(AIMETOnnxQuantizableMixin, LLMConfigEditor, BaseModel, ABC):
         if precision not in {Precision.w4a16, Precision.w4}:
             raise RuntimeError("Only w4a16 and w4 precisions are supported")
 
-        other_compile_options += " --quantize_full_type w8a16 --quantize_io"
+        other_compile_options += " --quantize_full_type w8a16 --quantize_io -O0"
         return super().get_hub_compile_options(
             target_runtime, precision, other_compile_options, device, context_graph_name
         )

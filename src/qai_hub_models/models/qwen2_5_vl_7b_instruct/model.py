@@ -21,9 +21,6 @@ import itertools
 import json
 import logging
 
-from qai_hub_models.utils.base_multi_graph_collection_model import (
-    MultiGraphWorkbenchModelCollection,
-)
 from qai_hub_models.utils.base_multi_graph_model import (
     MultiGraphWorkbenchModel,
 )
@@ -67,6 +64,7 @@ from qai_hub_models.models.templates.llm.model import (
     DEFAULT_SEQUENCE_LENGTH,
     DynamicPreSplitOnnxMixin,
     DynamicQuantizablePreSplitMixin,
+    LLMCollectionBase,
     LLMDynamic_AIMETOnnx,
     LLMPartBase,
     SingleSlotCacheMixin,
@@ -1175,7 +1173,7 @@ class Qwen2_5_VL_7B_Part5_Of_5(Qwen2_5_VL_7B_PartBase):
 # ---------------------------------------------------------------------------
 # Collection Class
 # ---------------------------------------------------------------------------
-class Qwen2_5_VL_7B_Collection(MultiGraphWorkbenchModelCollection):
+class Qwen2_5_VL_7B_Collection(LLMCollectionBase):
     """
     Unified Collection with 5 text Parts + 1 Vision Encoder for Qwen2.5-VL-7B.
 
