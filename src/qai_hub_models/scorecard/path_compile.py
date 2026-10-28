@@ -119,6 +119,18 @@ class ScorecardCompilePath(Enum):
         if self == ScorecardCompilePath.ONNX_FP16:
             return not precision.has_quantized_activations
 
+        if self == ScorecardCompilePath.TFL_CONVERTER:
+            return precision in {
+                Precision.float,
+                Precision.mixed_with_float,
+                Precision.w8a8,
+                Precision.w8a16,
+                Precision.mixed,
+                Precision.w8a8_mixed_int16,
+                Precision.w8a16_mixed_int16,
+                Precision.w8a16_mixed_fp16,
+            }
+
         return self.runtime.supports_precision(precision)
 
     @property
