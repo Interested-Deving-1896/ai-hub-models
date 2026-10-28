@@ -267,9 +267,10 @@ def _call_with_retry(
 
     Used to wrap QDC SDK calls that talk to the network and are safe to repeat:
     status polling (``get_jobs_job_id``), log retrieval/download
-    (``get_jobs_download_logs``), artifact upload (``upload_file``, whose only
-    commit point is the final chunk and which returns the uuid of the
-    successful attempt), and job submission (``submit_job``).
+    (``get_jobs_presigned_download_logs``), artifact upload
+    (``upload_file_v2``, whose only commit point is the final ``end_upload_v2``
+    and which returns the uuid of the successful attempt), and job submission
+    (``submit_job``).
 
     Parameters
     ----------
@@ -724,14 +725,20 @@ class QDCDeviceFarm(DeviceFarm):
         target_path
             Local path to save the downloaded file.
         """
-        # Safe to retry as-is: the SDK fetches the whole file into memory inside
-        # its own request, and only opens target_path (mode 'wb', single write)
-        # after a 200 response. A failed attempt never touches the file, and a
-        # later success truncates it -- so no partial/corrupt file can persist.
-        _call_with_retry(
-            lambda: qdc_api.download_job_log_files(self.client, filename, target_path),
-            f"download_job_log_files({filename})",
-        )
+        # v2 serves the raw file from a presigned URL; re-wrap it into the
+        # single-entry zip that v1 returned and callers unpack. Safe to retry:
+        # each attempt rewrites raw_path in a single 'wb' write.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_path = os.path.join(tmpdir, "log")
+            _call_with_retry(
+                lambda: qdc_api.download_job_log_files_v2(
+                    self.client, filename, raw_path
+                ),
+                f"download_job_log_files_v2({filename})",
+            )
+            create_zip_from_entries(
+                target_path, [(raw_path, os.path.basename(filename))]
+            )
 
     def _upload_file(self, file_path: str, artifact_type: ArtifactType) -> str:
         """Upload a file to QDC.
@@ -748,14 +755,15 @@ class QDCDeviceFarm(DeviceFarm):
         artifact_id: str
             ID of the uploaded artifact.
         """
-        # The SDK uploads large bundles in chunks (start -> continue -> end); the
-        # artifact only commits at the final `end_upload`, and upload_file returns
-        # the uuid of the *successful* attempt -- so a retry after a mid-transfer
-        # drop at worst leaves an orphaned, unreferenced partial artifact server-
-        # side (a benign leak), never a duplicate job. We therefore still retry
-        # network errors here. The 403 actually observed in CI lands on the first
-        # call (post_artifacts_start_upload), before anything is committed.
-        return _call_with_retry(
-            lambda: qdc_api.upload_file(self.client, file_path, artifact_type),
-            f"upload_file({file_path})",
+        # The SDK uploads to presigned URLs (start -> PUT parts -> end); the
+        # artifact only commits at the final `end_upload_v2`, and upload_file_v2
+        # returns the uuid of the *successful* attempt -- so a retry after a
+        # mid-transfer drop at worst leaves an orphaned, unreferenced partial
+        # artifact server-side (a benign leak), never a duplicate job.
+        artifact_id = _call_with_retry(
+            lambda: qdc_api.upload_file_v2(self.client, file_path, artifact_type),
+            f"upload_file_v2({file_path})",
         )
+        if artifact_id is None:
+            raise RuntimeError(f"upload_file_v2 returned None for {file_path}")
+        return artifact_id
