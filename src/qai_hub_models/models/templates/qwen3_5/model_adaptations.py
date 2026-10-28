@@ -143,7 +143,7 @@ def gated_delta_rule(
         x.transpose(1, 2).reshape(-1, seq_len).to(torch.float32) for x in (beta, g)
     )
     state = state.reshape(-1, k_head_dim, v_head_dim)
-    chunk_size = torch.sym_min(seq_len, chunk_size)
+    chunk_size = torch.sym_min(seq_len, chunk_size)  # type: ignore[assignment, unused-ignore]
 
     mask = (
         valid[:, None, :]
