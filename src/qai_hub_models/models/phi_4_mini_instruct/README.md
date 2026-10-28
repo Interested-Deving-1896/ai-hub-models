@@ -20,9 +20,6 @@ qai-hub-models info Phi-4-Mini-Instruct
 # Print performance and accuracy metrics
 qai-hub-models perf Phi-4-Mini-Instruct
 qai-hub-models numerics Phi-4-Mini-Instruct
-
-# Download a ready-to-deploy asset
-qai-hub-models fetch Phi-4-Mini-Instruct --runtime geniex_llamacpp --precision q4_0
 ```
 See the [CLI README](../../../../cli/README.md)
 for the full list of commands and filters.
