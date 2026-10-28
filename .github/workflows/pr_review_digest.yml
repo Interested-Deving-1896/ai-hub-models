@@ -32,7 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          sparse-checkout: src/qai_hub_models/scripts/pr_triage.py
+          sparse-checkout: |
+            src/qai_hub_models/scripts/pr_triage.py
+            src/qai_hub_models/scripts/pr_triage_report.py
+            src/qai_hub_models/scripts/pr_triage_types.py
           sparse-checkout-cone-mode: false
           fetch-depth: 1
 
@@ -46,7 +49,7 @@ jobs:
           if [[ "$APPLY" == "true" ]]; then
             args+=(--apply)
           fi
-          # Run by path: the script is stdlib-only plus the preinstalled `gh`.
+          # Run by path: the scripts are stdlib-only plus the preinstalled `gh`.
           python3 src/qai_hub_models/scripts/pr_triage.py "${args[@]}" \
             --full-report-file "$RUNNER_TEMP/pr_digest_full.md" \
             --slack-message-file "$RUNNER_TEMP/slack_message.json"
