@@ -50,6 +50,12 @@ on:
         default: true
         type: boolean
 
+      eval_dataset:
+        description: 'Device-eval dataset for run_eval (e.g. "grace2"). Blank uses grace2.'
+        required: false
+        default: ''
+        type: string
+
       create_pr:
         description: 'Create PR with perf.yaml changes'
         default: true
@@ -91,6 +97,11 @@ on:
         description: 'Run on-device evaluation. Runs on cs_x_elite, or on the single device named in `device` when exactly one is named.'
         type: boolean
         default: true
+
+      eval_dataset:
+        description: 'Device-eval dataset for run_eval. Blank uses grace2.'
+        type: string
+        default: ''
 
       create_pr:
         description: 'Create PR with perf.yaml changes'
@@ -217,6 +228,7 @@ jobs:
         QAIHM_LLM_EVAL_DEVICE_SCOPE: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
         QAIHM_LLM_PERF_PRECISIONS: ${{ inputs.precision }}
         QAIHM_RUN_EVAL: ${{ inputs.run_eval }}
+        QAIHM_EVAL_DATASET: ${{ inputs.eval_dataset || '' }}
         QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         AWS_ROLE_ARN: ${{ secrets.QAIHM_CI_AWS_ROLE_ARN }}
@@ -243,6 +255,7 @@ jobs:
         QAIHM_LLM_EVAL_DEVICE_SCOPE: ${{ env.QAIHM_TEST_DEVICES_RESOLVED }}
         QAIHM_LLM_PERF_PRECISIONS: ${{ inputs.precision }}
         QAIHM_RUN_EVAL: ${{ inputs.run_eval }}
+        QAIHM_EVAL_DATASET: ${{ inputs.eval_dataset || '' }}
         QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_UPDATES: ${{ github.workspace }}/genie_perf_updates_${{ matrix.pool }}.jsonl
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}

@@ -75,6 +75,8 @@ _OPTIONS: dict[str, tuple[str, str, Callable[[str, str], str]]] = {
     "geniex_version": ("QAIHM_TEST_GENIEX_VERSION", "", _geniex_version),
     "genie_scope": ("QAIHM_TEST_GENIE_SCOPE", "", _genie_scope),
     "checkpoint": ("QAIHM_TEST_CHECKPOINT", "", _checkpoint),
+    # Device-eval dataset for LLM accuracy; empty means grace2.
+    "eval_dataset": ("QAIHM_TEST_EVAL_DATASET", "", lambda key, val: val),
 }
 
 # Values of SpecialModelSetting (scorecard/envvars.py). Duplicated rather than

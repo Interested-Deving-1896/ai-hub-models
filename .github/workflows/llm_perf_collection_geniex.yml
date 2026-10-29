@@ -69,6 +69,12 @@ on:
           - accuracy
           - perf_and_accuracy
 
+      eval_dataset:
+        description: 'Device-eval dataset for the accuracy scope (e.g. "grace2"). Every prompt in it runs. Blank uses grace2.'
+        required: false
+        default: ''
+        type: string
+
       create_pr:
         description: 'Create PR with perf.yaml changes'
         default: true
@@ -115,6 +121,11 @@ on:
         description: 'Collection scope: perf, accuracy, or perf_and_accuracy.'
         type: string
         default: perf
+
+      eval_dataset:
+        description: 'Device-eval dataset for the accuracy scope. Every prompt in it runs. Blank uses grace2.'
+        type: string
+        default: ''
 
       create_pr:
         description: 'Create PR with perf.yaml changes'
@@ -236,6 +247,7 @@ jobs:
         GENIEX_BENCH_PRECISIONS: ${{ inputs.precision || 'default' }}
         GENIEX_VERSION: ${{ inputs.geniex_version || '' }}
         GENIEX_SCOPE: ${{ inputs.scope || 'perf' }}
+        GENIEX_EVAL_DATASET: ${{ inputs.eval_dataset || '' }}
         QAIHM_TEST_QAIRT_VERSION: ${{ inputs.qairt_version || 'qaihm_default' }}
         QAIHM_LLM_PERF_RELEASE_ASSETS: ${{ inputs.release_assets_action_id != '' && format('{0}/llm-release-assets/release-assets.yaml', github.workspace) || '' }}
         QAIHM_LLM_PERF_UPDATES: ${{ github.workspace }}/geniex_perf_updates_${{ matrix.pool }}.jsonl
@@ -256,6 +268,9 @@ jobs:
         # scope=accuracy skips the perf sweep (and perf.yaml updates) entirely.
         if [ "$GENIEX_SCOPE" != "perf" ]; then
           extra+=(--run-eval)
+          if [ -n "$GENIEX_EVAL_DATASET" ]; then
+            extra+=(--eval-dataset "$GENIEX_EVAL_DATASET")
+          fi
         fi
         if [ "$GENIEX_SCOPE" = "accuracy" ]; then
           extra+=(--no-run-perf)

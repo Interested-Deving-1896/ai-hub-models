@@ -44,6 +44,7 @@ _CHECKPOINT_KEY = "ephemeral_quantize_assets/gh_actions/123/qwen3_0_6b-w4a16.zip
             f"qairt_version=2.45,checkpoint={_CHECKPOINT_KEY}",
             {"qairt_version": "2.45", "checkpoint": _CHECKPOINT_KEY},
         ),
+        ("eval_dataset=grace2", {"eval_dataset": "grace2"}),
     ],
 )
 def test_parse_ok(raw: str, want: dict[str, str]) -> None:
@@ -52,6 +53,7 @@ def test_parse_ok(raw: str, want: dict[str, str]) -> None:
         "geniex_version": "",
         "genie_scope": "",
         "checkpoint": "",
+        "eval_dataset": "",
     }
     expected.update(want)
     assert parse(raw) == expected

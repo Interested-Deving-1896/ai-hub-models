@@ -88,6 +88,7 @@ from qai_hub_models import (
     SampleInputsType,
     TargetRuntime,
 )
+from qai_hub_models.datasets.device_eval import is_prompt_task
 from qai_hub_models.models.templates.llm.common import (
     TORCH_DYNAMIC_SHAPE_BELOW_VERSION,
     TORCH_DYNAMIC_SHAPE_MIN_VERSION,
@@ -97,7 +98,6 @@ from qai_hub_models.models.templates.llm.common import (
     is_kv_value_name,
     is_native_kv,
 )
-from qai_hub_models.models.templates.llm.grace_tasks import PROMPT_TASKS
 from qai_hub_models.models.templates.llm.llm_helpers import (
     create_genie_config,
     save_htp_config_for_genie_bundle,
@@ -533,7 +533,7 @@ def _get_evaluator(
         return KLDivEvaluator(context_length, device, tokenizer, verbose=True)
     if "mmmu" in task:
         return MMMUEvaluator(context_length, device, tokenizer)
-    if task in PROMPT_TASKS:
+    if is_prompt_task(task):
         if "output_dir" not in task_kwargs:
             raise ValueError(
                 f"Task '{task}' requires 'output_dir' to be passed via "

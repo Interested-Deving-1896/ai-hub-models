@@ -15,12 +15,10 @@ import numpy as np
 import pytest
 
 from qai_hub_models import Precision
+from qai_hub_models.datasets.device_eval import is_prompt_task
 from qai_hub_models.models.templates.llm.common import cleanup
 from qai_hub_models.models.templates.llm.evaluate import evaluate
-from qai_hub_models.models.templates.llm.grace_tasks import (
-    PROMPT_TASKS,
-    resolve_task_name,
-)
+from qai_hub_models.models.templates.llm.grace_tasks import resolve_task_name
 from qai_hub_models.models.templates.llm.llm_helpers import log_evaluate_test_result
 from qai_hub_models.models.templates.llm.model import (
     LLM_QNN,
@@ -268,7 +266,7 @@ def run_llm_evaluate_test(
     VLMs don't take them. ``fp_baseline_uses_presplit`` (default True) can be
     set False to route the FP baseline through the split wrapper instead.
     """
-    is_prompts = resolve_task_name(task) in PROMPT_TASKS
+    is_prompts = is_prompt_task(resolve_task_name(task))
     is_unquantized = checkpoint == "DEFAULT_UNQUANTIZED"
     if is_prompts:
         assert tmp_path is not None, "tmp_path is required for prompt-generation tasks"

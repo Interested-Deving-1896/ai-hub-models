@@ -70,6 +70,7 @@ jobs:
       geniex_version: ${{ steps.parse_versions.outputs.geniex_version }}
       qairt_version: ${{ steps.parse_versions.outputs.qairt_version }}
       genie_scope: ${{ steps.parse_versions.outputs.genie_scope }}
+      eval_dataset: ${{ steps.parse_versions.outputs.eval_dataset }}
     steps:
       - uses: actions/checkout@v7
 
@@ -197,6 +198,7 @@ jobs:
       qairt_version: ${{ needs.determine_llm_models.outputs.qairt_version }}
       # options' genie_scope overrides test_scope for Genie only.
       run_eval: ${{ (needs.determine_llm_models.outputs.genie_scope || inputs.test_scope) != 'perf' }}
+      eval_dataset: ${{ needs.determine_llm_models.outputs.eval_dataset }}
       create_pr: false
       release_assets_action_id: ${{ inputs.action_id }}
 
@@ -220,6 +222,7 @@ jobs:
       release_assets_action_id: ${{ inputs.action_id }}
       create_pr: false
       scope: ${{ inputs.test_scope }}
+      eval_dataset: ${{ needs.determine_llm_models.outputs.eval_dataset }}
 
   collect_llm_perf_geniex_llamacpp:
     name: Collect LLM Performance Numbers (GenieX-llama.cpp)
@@ -240,3 +243,4 @@ jobs:
       release_assets_action_id: ${{ inputs.action_id }}
       create_pr: false
       scope: ${{ inputs.test_scope }}
+      eval_dataset: ${{ needs.determine_llm_models.outputs.eval_dataset }}
